@@ -29,6 +29,7 @@
 
 /* ----------------------------------------------------------- top beam */
 .topbar {
+  --timber: var(--tex-timber);
   position: absolute;
   top: 0;
   left: 0;
@@ -46,18 +47,30 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(180deg, rgba(255, 210, 150, 0.1), transparent 30%, rgba(0, 0, 0, 0.35)),
-    var(--wood-grain),
-    linear-gradient(#51301a, #2e1a0c);
+    linear-gradient(180deg, rgba(251, 191, 107, 0.12), transparent 36%, rgba(22, 12, 8, 0.3)),
+    var(--timber);
   background-size:
     auto,
-    1100px 424px,
-    auto;
-  border-bottom: 2px solid #110803;
+    960px 96px;
+  border-top: 2px solid #a27642;
+  border-bottom: 3px solid #21110b;
   box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 220, 160, 0.2),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.4);
+    0 6px 12px rgba(15, 7, 3, 0.65),
+    inset 0 2px 0 #53371e,
+    inset 0 4px 0 rgba(243, 198, 124, 0.12),
+    inset 0 -5px 0 #392418,
+    inset 0 -7px 0 #a27137,
+    inset 0 -9px 0 #4e301b;
+}
+
+.topbar__beam::before {
+  content: '';
+  position: absolute;
+  inset: 8px 10px 13px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 3px 50%, #ffe1a0 0 1px, #b58742 2px, #392313 3px, transparent 4px),
+    radial-gradient(circle at calc(100% - 3px) 50%, #ffe1a0 0 1px, #b58742 2px, #392313 3px, transparent 4px);
 }
 
 .topbar__beam::after {
@@ -65,10 +78,10 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 6px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #8a6420 8%, #f2d27b 50%, #8a6420 92%, transparent);
-  opacity: 0.75;
+  bottom: 7px;
+  height: 1px;
+  background: linear-gradient(90deg, #966c35, #e2b96c 28%, #9a6d31 52%, #e2b96c 78%, #966c35);
+  opacity: 0.7;
 }
 
 .topbar > :not(.topbar__beam) {
@@ -84,7 +97,7 @@
   padding: 4px 14px 4px 4px;
   background: none;
   border: 1px solid transparent;
-  border-radius: 40px;
+  border-radius: 12px;
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -103,15 +116,15 @@
 }
 
 .crest__name {
-  font: 700 17px var(--font-caps);
-  letter-spacing: 0.04em;
-  color: #f6e6c0;
-  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.7);
+  font: 700 21px var(--font-display);
+  letter-spacing: 0.01em;
+  color: #ffe1a5;
+  text-shadow: 0 2px 0 #28170e, 0 0 8px rgba(235, 170, 82, 0.15);
 }
 
 .crest__holding {
   font: italic 15px var(--font-fell);
-  color: #d7b98a;
+  color: #d9b986;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
@@ -127,19 +140,22 @@
   align-items: center;
   gap: 9px;
   padding: 10px 20px 9px 16px;
-  font: 700 14px/1 var(--font-caps);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #e9d5ad;
-  text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.6);
-  background: linear-gradient(#654026, #3e2513);
-  border: 2px solid #1a0d05;
-  border-radius: 11px;
+  font: 700 22px/1 var(--font-display);
+  letter-spacing: 0.015em;
+  color: #e4cba0;
+  text-shadow: 0 2px 0 #25160e;
+  background-image:
+    linear-gradient(180deg, rgba(156, 107, 58, 0.35), rgba(35, 21, 13, 0.6)),
+    var(--timber);
+  background-size: auto, 480px 64px;
+  border: 2px solid #342116;
+  border-radius: 13px 11px 13px 11px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 220, 160, 0.3),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
-    0 2px 0 #0e0602,
-    0 5px 12px rgba(0, 0, 0, 0.45);
+    inset 0 0 0 1px #987047,
+    inset 0 3px 0 rgba(237, 191, 123, 0.2),
+    inset 0 -4px 0 rgba(30, 15, 9, 0.5),
+    0 2px 0 #1b100b,
+    0 4px 6px rgba(16, 8, 3, 0.45);
   transition:
     transform 0.1s,
     box-shadow 0.18s,
@@ -148,8 +164,8 @@
 }
 
 .tab:hover {
-  color: #fff1cc;
-  filter: brightness(1.12);
+  color: #fff0c8;
+  filter: brightness(1.15);
 }
 
 .tab:active {
@@ -157,21 +173,33 @@
 }
 
 .tab__icon {
-  font-size: 21px;
-  color: #d6ad5a;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.8));
+  font-size: 24px;
+  color: #d5aa61;
+  filter: drop-shadow(0 2px 0 #2b190e);
 }
 
 .tab--active {
-  color: #fff4d4;
-  background: linear-gradient(#8f5d2c, #5b391b);
-  border-color: #e0b34f;
+  color: #fff0bd;
+  background-image:
+    radial-gradient(ellipse at 50% 0, rgba(243, 185, 78, 0.5), transparent 75%),
+    linear-gradient(180deg, rgba(150, 88, 35, 0.42), rgba(88, 40, 18, 0.52)),
+    var(--timber);
+  background-size: auto, auto, 480px 64px;
+  border-color: #d9ac5b;
   box-shadow:
-    0 0 0 1px #3a2410,
-    inset 0 1px 0 rgba(255, 236, 190, 0.5),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
-    0 0 16px rgba(242, 200, 110, 0.55),
-    0 5px 12px rgba(0, 0, 0, 0.45);
+    0 0 0 1px #302014,
+    inset 0 0 0 1px #6c401d,
+    inset 0 3px 0 rgba(255, 226, 153, 0.4),
+    inset 0 -4px 0 rgba(69, 30, 12, 0.5),
+    0 0 12px rgba(231, 166, 61, 0.2),
+    0 4px 6px rgba(16, 8, 3, 0.5);
+}
+
+.tab:focus-visible,
+.crest:focus-visible,
+.tool:focus-visible {
+  outline: 2px solid #ffe3a1;
+  outline-offset: 4px;
 }
 
 .tab--active .tab__icon {
@@ -192,7 +220,7 @@
   border: 1.5px solid #f2d27b;
   border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-  animation: badge-pulse 2s ease-in-out infinite;
+  background: radial-gradient(circle at 35% 25%, #d56642, #8c3521 65%, #5e2018);
 }
 
 @keyframes badge-pulse {
@@ -218,11 +246,11 @@
   align-items: center;
   gap: 5px;
   padding: 5px 12px 5px 8px;
-  color: #b89a70;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(242, 210, 123, 0.18);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  color: #c5a578;
+  background: linear-gradient(#372419, #291a12);
+  border: 1px solid #836039;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 3px #1f130c, 0 1px 0 rgba(228, 174, 100, 0.2);
 }
 
 .streak__icon {
@@ -247,7 +275,7 @@
 }
 
 .streak__count {
-  font: 900 18px var(--font-caps);
+  font: 700 21px var(--font-display);
   color: #f3e1b8;
 }
 
@@ -268,7 +296,7 @@
 }
 
 .reputation__value {
-  font: 900 28px/1 var(--font-caps);
+  font: 700 30px/1 var(--font-display);
   background: linear-gradient(#fff6cf, #f0c75e 45%, #b37d1e 80%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -280,7 +308,7 @@
 .reputation__label {
   margin-top: 3px;
   font: 700 10px var(--font-caps);
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #cfae73;
 }
@@ -424,14 +452,15 @@
   height: 38px;
   padding: 0;
   font-size: 20px;
-  color: #e9d5ad;
-  background: radial-gradient(circle at 35% 30%, #6e4729, #3a2312 75%);
-  border: 2px solid #1a0d05;
+  color: #e5c48a;
+  background: radial-gradient(circle at 35% 25%, #815b37, #4c321f 55%, #2f2016);
+  border: 2px solid #ad8249;
   border-radius: 50%;
   box-shadow:
-    inset 0 1px 0 rgba(255, 220, 160, 0.3),
-    0 0 0 1px rgba(214, 168, 70, 0.35),
-    0 3px 6px rgba(0, 0, 0, 0.45);
+    inset 0 0 0 1px #372316,
+    inset 0 2px 0 rgba(255, 220, 160, 0.24),
+    0 0 0 1px #26180f,
+    0 3px 4px rgba(0, 0, 0, 0.5);
   transition:
     transform 0.1s,
     box-shadow 0.15s,

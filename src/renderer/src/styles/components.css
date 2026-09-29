@@ -93,9 +93,8 @@
 .seal-button__label {
   align-self: end;
   margin-bottom: -22px;
-  font: 700 11px var(--font-caps);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 700 14px var(--font-caps);
+  letter-spacing: 0.03em;
   color: var(--crimson);
 }
 
@@ -369,9 +368,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 700 14px var(--font-caps);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font: 700 19px var(--font-caps);
+  letter-spacing: 0.02em;
   color: var(--crimson);
 }
 
@@ -455,9 +453,8 @@
   gap: 8px;
   margin-top: 10px;
   padding-top: 10px;
-  font: 700 12.5px var(--font-caps);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 700 16px var(--font-caps);
+  letter-spacing: 0.02em;
   color: var(--ink-2);
   border-top: 2px solid var(--rule);
 }
@@ -522,9 +519,8 @@
 }
 
 .deed__dates {
-  font: 700 13px var(--font-caps);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 700 15px var(--font-caps);
+  letter-spacing: 0.04em;
   color: var(--ink-3);
 }
 
@@ -616,9 +612,8 @@
 
 .deed__seal-label {
   margin-top: 4px;
-  font: 700 11px var(--font-caps);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 700 14px var(--font-caps);
+  letter-spacing: 0.03em;
   color: var(--ink-2);
 }
 
@@ -680,9 +675,8 @@
 
 .settings__heading {
   margin-bottom: 10px;
-  font: 700 13px var(--font-caps);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 700 18px var(--font-caps);
+  letter-spacing: 0.03em;
   color: var(--crimson);
 }
 

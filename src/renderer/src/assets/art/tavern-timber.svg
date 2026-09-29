@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="96" viewBox="0 0 960 96" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="timber" x2="0" y2="1">
+      <stop stop-color="#80502f"/>
+      <stop offset=".3" stop-color="#58351f"/>
+      <stop offset=".8" stop-color="#3b2316"/>
+      <stop offset="1" stop-color="#25160f"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#timber)" d="M0 0h960v96H0z"/>
+  <g fill="none" stroke-linecap="round">
+    <g stroke="#c08b50" opacity=".17" stroke-width="3">
+      <path d="M-20 9C110 4 142 21 281 12S442 2 582 13s245 2 405-3"/>
+      <path d="M-20 29c123-5 141 9 262 5s118-14 231-12 227 19 514 4"/>
+      <path d="M-20 57c134-13 234 9 359-1s259-13 343-3 178 5 305-6"/>
+      <path d="M-20 83c224-8 196 5 332 0s198-10 311-4 207 4 365-5"/>
+    </g>
+    <g stroke="#160e09" opacity=".3" stroke-width="2">
+      <path d="M-20 18c105 6 152-6 242-2s89 11 235 6 304-2 530-5"/>
+      <path d="M-20 40c121 4 214-8 297-1 57 5 63 17 110 17 51 0 62-20 116-20 116 1 293 18 484 4"/>
+      <path d="M-20 65c165-11 230 6 315 4 57-2 62-9 92-9 38 0 51 12 100 9 173-10 279 0 500-5"/>
+      <path d="M-20 91c130-5 186 7 313-2s167 3 303-2 251 9 391 0"/>
+      <path d="M337 44c20-16 58-15 77-2 13 9-1 17-22 17-30 0-43-10-38-15 6-6 23-6 29-1 5 5-1 7-9 7"/>
+      <path d="M731 18c36-5 84-3 112 1m-74 6c35-2 75-1 94 3"/>
+    </g>
+    <g stroke="#ecc487" opacity=".11">
+      <path d="M0 7c175 2 256-2 370 2s359-4 590-3"/>
+      <path d="M0 53c142-6 225 5 310-3m169-6c183-5 295 7 481-3"/>
+      <path d="M0 79c154-4 220 3 309-1s189-7 319-3 226 1 332-3"/>
+    </g>
+  </g>
+</svg>

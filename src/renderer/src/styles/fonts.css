@@ -1,5 +1,29 @@
-/* Almendra Bold (SIL Open Font License, see assets/fonts/almendra/OFL.txt) — the title face.
-   Bundled with the app rather than installed from npm. */
+/* Almendra (SIL Open Font License, see assets/fonts/almendra/OFL.txt).
+   One family for the carved beam, parchment, controls and handwritten signatures. */
+@font-face {
+  font-family: 'Almendra';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../assets/fonts/almendra/Almendra-Regular.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Almendra';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../assets/fonts/almendra/Almendra-Italic.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Almendra';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 700;
+  src: url(../assets/fonts/almendra/Almendra-BoldItalic.ttf) format('truetype');
+}
+
 @font-face {
   font-family: 'Almendra';
   font-style: normal;

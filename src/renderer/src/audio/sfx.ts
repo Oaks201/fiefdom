@@ -1,208 +1,103 @@
 /**
- * The sound of the desk: paper, wax, quills and coin. Each effect is a few synthesised layers,
- * slightly randomised every time so repeated actions never sound mechanical.
+ * Original tavern sound pack: layered wood, parchment, wax, brass and dulcimer.
+ * WAVs are rendered offline with the local SFX MCP; the app needs no audio tools or network.
  */
-import { bell, noise, pluck, tone } from './synth'
+import { bell, midiToFreq, noise, pluck } from './synth'
 
-export type SfxName =
-  | 'page'
-  | 'flip'
-  | 'open'
-  | 'stamp'
-  | 'unstamp'
-  | 'quill'
-  | 'strike'
-  | 'click'
-  | 'coin'
-  | 'lose'
-  | 'goal'
-  | 'perfect'
-  | 'seal'
-  | 'burn'
-  | 'gilded'
-  | 'honored'
-  | 'wanting'
-  | 'error'
+export const SFX_NAMES = [
+  'page', 'flip', 'open', 'stamp', 'unstamp', 'quill', 'strike', 'click', 'coin',
+  'lose', 'goal', 'perfect', 'seal', 'burn', 'gilded', 'honored', 'wanting', 'error'
+] as const
+export type SfxName = (typeof SFX_NAMES)[number]
 
-const r = (lo: number, hi: number): number => lo + Math.random() * (hi - lo)
-
-/** Where effects are sent: the dry bus, and a send into the hall reverb. */
+/** Preserve the effects buses used by the rest of the app. */
 export interface SfxOut {
   dry: AudioNode
   wet: AudioNode
 }
 
-function clink(ctx: BaseAudioContext, dest: AudioNode, t: number, base: number, gain: number): void {
-  const pan = r(-0.25, 0.25)
-  for (const [ratio, amp, dur] of [
-    [1, 1, 0.32],
-    [1.52, 0.55, 0.22],
-    [2.14, 0.4, 0.16],
-    [2.87, 0.25, 0.1]
-  ] as const) {
-    tone(ctx, dest, t, { freq: base * ratio * r(0.99, 1.01), dur, gain: gain * amp, attack: 0.0015, pan })
+const assets = import.meta.glob<string>('../assets/audio/sfx/*.wav', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+})
+
+const banks = Object.fromEntries(SFX_NAMES.map((name) => [
+  name,
+  Object.entries(assets)
+    .filter(([path]) => new RegExp('/' + name + '(?:-\\d+)?\\.wav$').test(path))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, url]) => url)
+])) as Record<SfxName, string[]>
+
+const buffers = new WeakMap<BaseAudioContext, Map<string, Promise<AudioBuffer>>>()
+const lastTake = new WeakMap<BaseAudioContext, Map<SfxName, number>>()
+
+function load(ctx: BaseAudioContext, url: string): Promise<AudioBuffer> {
+  let cache = buffers.get(ctx)
+  if (!cache) {
+    cache = new Map()
+    buffers.set(ctx, cache)
   }
+  let pending = cache.get(url)
+  if (!pending) {
+    pending = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load sound effect: ' + response.status)
+        return response.arrayBuffer()
+      })
+      .then((data) => ctx.decodeAudioData(data))
+      .catch((error: unknown) => {
+        cache.delete(url)
+        throw error
+      })
+    cache.set(url, pending)
+  }
+  return pending
 }
 
-function coins(ctx: BaseAudioContext, dest: AudioNode, t: number, count: number, gain = 0.12): void {
-  for (let i = 0; i < count; i++) clink(ctx, dest, t + i * r(0.06, 0.09), r(2500, 3300), gain * (1 - i * 0.15))
+/** Decode once, ahead of interactions. A failed fetch can be retried on the next action. */
+export function preloadSfx(ctx: BaseAudioContext): void {
+  for (const url of Object.values(banks).flat()) {
+    void load(ctx, url).catch((error: unknown) => console.warn('Sound effect unavailable:', error))
+  }
 }
 
 export function playSfx(ctx: BaseAudioContext, out: SfxOut, name: SfxName, t: number): void {
-  const { dry, wet } = out
-  switch (name) {
-    case 'page': {
-      // a sheet slid across the desk, a crinkle, and paper settling
-      noise(ctx, dry, t, { dur: r(0.2, 0.26), type: 'bandpass', freq: r(2400, 3000), freqEnd: r(1500, 1900), q: 0.9, gain: 0.4, attack: 0.035, pan: r(-0.2, 0.2) })
-      noise(ctx, dry, t + r(0.04, 0.08), { dur: 0.12, type: 'highpass', freq: 3600, q: 0.7, gain: 0.14, attack: 0.01 })
-      noise(ctx, dry, t + r(0.11, 0.16), { dur: 0.2, type: 'lowpass', freq: 900, q: 0.6, gain: 0.26, attack: 0.02 })
-      break
-    }
-    case 'flip': {
-      noise(ctx, dry, t, { dur: 0.15, type: 'bandpass', freq: r(1500, 1900), freqEnd: r(3800, 4600), q: 1.1, gain: 0.27, attack: 0.045, pan: r(-0.3, 0.3) })
-      noise(ctx, dry, t + 0.12, { dur: 0.05, type: 'highpass', freq: 4000, gain: 0.08, attack: 0.005 })
-      break
-    }
-    case 'open': {
-      noise(ctx, dry, t, { dur: 0.22, type: 'bandpass', freq: 2100, freqEnd: 1300, q: 0.8, gain: 0.2, attack: 0.05 })
-      noise(ctx, dry, t + 0.1, { dur: 0.18, type: 'lowpass', freq: 700, gain: 0.16, attack: 0.03 })
-      break
-    }
-    case 'stamp': {
-      // wax pressed under a seal: a soft thud, a squish, a tiny contact click
-      tone(ctx, dry, t, { freq: r(145, 165), freqEnd: 58, dur: 0.19, gain: 0.5, attack: 0.002 })
-      noise(ctx, dry, t, { dur: 0.1, type: 'lowpass', freq: 650, gain: 0.24, attack: 0.002 })
-      noise(ctx, dry, t + 0.004, { dur: 0.03, type: 'bandpass', freq: 2600, q: 2, gain: 0.1, attack: 0.001 })
-      break
-    }
-    case 'unstamp': {
-      noise(ctx, dry, t, { dur: 0.13, type: 'bandpass', freq: 1400, freqEnd: 650, q: 1.2, gain: 0.28, attack: 0.01 })
-      tone(ctx, dry, t, { freq: 290, freqEnd: 210, dur: 0.08, gain: 0.14 })
-      break
-    }
-    case 'quill':
-    case 'strike': {
-      // quick nib strokes on parchment; striking out is faster and heavier
-      const strokes = name === 'strike' ? 4 : Math.round(r(3, 5))
-      let at = t
-      for (let i = 0; i < strokes; i++) {
-        const d = name === 'strike' ? r(0.05, 0.07) : r(0.045, 0.09)
-        noise(ctx, dry, at, { dur: d, type: 'bandpass', freq: r(3800, 5600), q: 3.5, gain: name === 'strike' ? 0.42 : r(0.22, 0.34), attack: 0.008, pan: r(-0.15, 0.15) })
-        noise(ctx, dry, at, { dur: d, type: 'bandpass', freq: r(1700, 2300), q: 3, gain: 0.1, attack: 0.008 })
-        at += d + (name === 'strike' ? 0.015 : r(0.02, 0.05))
-      }
-      break
-    }
-    case 'click': {
-      tone(ctx, dry, t, { type: 'triangle', freq: r(1300, 1500), freqEnd: 900, dur: 0.04, gain: 0.13 })
-      noise(ctx, dry, t, { dur: 0.02, type: 'highpass', freq: 3200, gain: 0.066, attack: 0.001 })
-      break
-    }
-    case 'coin': {
-      coins(ctx, dry, t, 2)
-      break
-    }
-    case 'lose': {
-      pluck(ctx, dry, t, 57, 0.45, { dur: 0.5, bright: 0.6 })
-      pluck(ctx, dry, t + 0.14, 53, 0.4, { dur: 0.7, bright: 0.5 })
-      break
-    }
-    case 'goal': {
-      // a rising lute flourish and a bell: D, A, D
-      ;[62, 69, 74].forEach((m, i) => pluck(ctx, dry, t + i * 0.085, m, 0.72, { pan: (i - 1) * 0.2 }))
-      ;[62, 69, 74].forEach((m, i) => pluck(ctx, wet, t + i * 0.085, m, 0.5))
-      bell(ctx, dry, t + 0.22, 1174.7, 0.035, 1.4)
-      coins(ctx, dry, t + 0.3, 2, 0.1)
-      break
-    }
-    case 'perfect':
-    case 'gilded': {
-      // a small fanfare in D major, with bells and a shower of coin
-      const notes = [62, 66, 69, 74, 78]
-      notes.forEach((m, i) => {
-        pluck(ctx, dry, t + i * 0.07, m, 0.78, { pan: (i - 2) * 0.15 })
-        pluck(ctx, wet, t + i * 0.07, m, 0.55)
-      })
-      brassChord(ctx, dry, wet, t + 0.34, [62, 66, 69], name === 'gilded' ? 1.4 : 0.9)
-      bell(ctx, dry, t + 0.36, 1174.7, 0.04, 1.8, -0.2)
-      bell(ctx, wet, t + 0.5, 1480, 0.03, 1.8, 0.2)
-      coins(ctx, dry, t + 0.45, name === 'gilded' ? 5 : 3, 0.1)
-      break
-    }
-    case 'honored': {
-      ;[57, 62, 66, 69].forEach((m, i) => {
-        pluck(ctx, dry, t + i * 0.1, m, 0.7)
-        pluck(ctx, wet, t + i * 0.1, m, 0.5)
-      })
-      bell(ctx, dry, t + 0.42, 1174.7, 0.035, 1.6)
-      coins(ctx, dry, t + 0.5, 2, 0.1)
-      break
-    }
-    case 'wanting': {
-      ;[69, 65, 62, 57].forEach((m, i) => {
-        pluck(ctx, dry, t + i * 0.22, m, 0.55, { bright: 0.6 })
-        pluck(ctx, wet, t + i * 0.22, m, 0.45, { bright: 0.6 })
-      })
-      break
-    }
-    case 'seal': {
-      // a heavy seal pressed into a pool of hot wax
-      tone(ctx, dry, t, { freq: 120, freqEnd: 38, dur: 0.38, gain: 0.6, attack: 0.002 })
-      noise(ctx, dry, t, { dur: 0.26, type: 'lowpass', freq: 520, gain: 0.26, attack: 0.003 })
-      noise(ctx, wet, t, { dur: 0.3, type: 'lowpass', freq: 400, gain: 0.25, attack: 0.003 })
-      ;[38, 45, 50].forEach((m) => pluck(ctx, wet, t + 0.02, m, 0.7))
-      bell(ctx, wet, t + 0.05, 587.3, 0.04, 2.2)
-      break
-    }
-    case 'burn': {
-      // flames catch: a rising whoosh, crackling, a low roar
-      noise(ctx, dry, t, { dur: 1.5, type: 'bandpass', freq: 320, freqEnd: 2600, q: 0.8, gain: 0.6, attack: 0.5 })
-      noise(ctx, wet, t, { dur: 1.7, type: 'lowpass', freq: 160, freqEnd: 420, q: 0.7, gain: 0.55, attack: 0.3 })
-      for (let i = 0; i < 26; i++) {
-        noise(ctx, dry, t + r(0.05, 1.8), { dur: r(0.006, 0.022), type: 'highpass', freq: r(2000, 4200), gain: r(0.1, 0.32), attack: 0.001, pan: r(-0.5, 0.5) })
-      }
-      break
-    }
-    case 'error': {
-      tone(ctx, dry, t, { type: 'triangle', freq: 200, freqEnd: 128, dur: 0.07, gain: 0.24 })
-      tone(ctx, dry, t + 0.09, { type: 'triangle', freq: 190, freqEnd: 120, dur: 0.08, gain: 0.2 })
-      noise(ctx, dry, t, { dur: 0.05, type: 'lowpass', freq: 420, gain: 0.14 })
-      break
-    }
+  const takes = banks[name]
+  if (!takes.length) return
+  let previous = lastTake.get(ctx)
+  if (!previous) {
+    previous = new Map()
+    lastTake.set(ctx, previous)
   }
+  // Never repeat the same foley take twice in a row; musical cues keep their tuning.
+  const last = previous.get(name) ?? -1
+  const choices = takes.map((_, i) => i).filter((i) => i !== last)
+  const take = choices.length ? choices[Math.floor(Math.random() * choices.length)] : 0
+  previous.set(name, take)
+  void load(ctx, takes[take]).then((buffer) => {
+    if (ctx.state === 'closed') return
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    const pan = ctx.createStereoPanner()
+    pan.pan.value = takes.length > 1 ? (Math.random() - 0.5) * 0.14 : 0
+    source.connect(pan).connect(out.dry)
+    source.onended = () => {
+      source.disconnect()
+      pan.disconnect()
+    }
+    // Preserve delayed result cues even when the first file still needs decoding.
+    source.start(Math.max(t, ctx.currentTime + 0.003))
+  }).catch((error: unknown) => console.warn('Could not play', name, error))
 }
 
-/** A soft horn-like chord: filtered sawtooths with a gentle swell. */
-function brassChord(ctx: BaseAudioContext, dry: AudioNode, wet: AudioNode, t: number, midis: number[], dur: number): void {
-  for (const m of midis) {
-    const f = 440 * Math.pow(2, (m - 69) / 12)
-    const osc = ctx.createOscillator()
-    osc.type = 'sawtooth'
-    osc.frequency.value = f
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.setValueAtTime(500, t)
-    lp.frequency.linearRampToValueAtTime(1500, t + 0.12)
-    lp.frequency.linearRampToValueAtTime(900, t + dur)
-    const g = ctx.createGain()
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(0.04, t + 0.09)
-    g.gain.setValueAtTime(0.036, t + dur - 0.2)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25)
-    osc.connect(lp).connect(g)
-    g.connect(dry)
-    g.connect(wet)
-    osc.start(t)
-    osc.stop(t + dur + 0.3)
-  }
-}
-
-/** The rising hum while a seal is pressed, or the crackle while a contract catches fire. */
 export interface Charge {
   update(progress: number): void
   stop(): void
 }
 
+/** Wax and an open-fifth oath swell, or a growing fire, following the existing hold gesture. */
 export function startCharge(ctx: BaseAudioContext, dest: AudioNode, kind: 'seal' | 'burn'): Charge {
   const t = ctx.currentTime
   const out = ctx.createGain()
@@ -210,52 +105,90 @@ export function startCharge(ctx: BaseAudioContext, dest: AudioNode, kind: 'seal'
   out.gain.exponentialRampToValueAtTime(1, t + 0.08)
   out.connect(dest)
 
-  const lp = ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 700
-  lp.connect(out)
-
-  const osc = ctx.createOscillator()
-  osc.type = 'triangle'
-  osc.frequency.value = kind === 'seal' ? 150 : 90
-  const oscGain = ctx.createGain()
-  oscGain.gain.value = kind === 'seal' ? 0.1 : 0.07
-  const trem = ctx.createOscillator()
-  trem.frequency.value = 7
-  const tremDepth = ctx.createGain()
-  tremDepth.gain.value = 0.02
-  trem.connect(tremDepth).connect(oscGain.gain)
-  osc.connect(oscGain).connect(lp)
-  osc.start(t)
-  trem.start(t)
-
-  let crackle: ReturnType<typeof setInterval> | null = null
-  let progress = 0
-  if (kind === 'burn') {
-    crackle = setInterval(() => {
-      const now = ctx.currentTime
-      for (let i = 0; i < 1 + Math.floor(progress * 4); i++) {
-        noise(ctx, out, now + Math.random() * 0.08, { dur: r(0.006, 0.02), type: 'highpass', freq: r(1800, 4000), gain: 0.06 + progress * 0.2, attack: 0.001 })
-      }
-    }, 70)
+  const nodes: AudioNode[] = [out]
+  const voices: AudioScheduledSourceNode[] = []
+  const levels: Array<{ gain: AudioParam; from: number; to: number }> = []
+  const filters: BiquadFilterNode[] = []
+  // A continuous texture avoids gaps between bursts and stops cleanly on cancellation.
+  const material = ctx.createBufferSource()
+  const bed = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
+  const samples = bed.getChannelData(0)
+  let brown = 0
+  for (let i = 0; i < samples.length; i++) {
+    const white = Math.random() * 2 - 1
+    brown = (brown + white * 0.035) / 1.02
+    const edge = Math.min(1, i / 256, (samples.length - 1 - i) / 256)
+    samples[i] = (kind === 'burn' ? white * 0.45 + brown * 2.5 : white) * edge
   }
+  material.buffer = bed
+  material.loop = true
+  const materialFilter = ctx.createBiquadFilter()
+  materialFilter.type = kind === 'burn' ? 'lowpass' : 'bandpass'
+  materialFilter.frequency.value = kind === 'burn' ? 650 : 1100
+  materialFilter.Q.value = 0.6
+  const materialGain = ctx.createGain()
+  const from = kind === 'burn' ? 0.16 : 0.035
+  const to = kind === 'burn' ? 0.45 : 0.13
+  materialGain.gain.value = from
+  material.connect(materialFilter).connect(materialGain).connect(out)
+  nodes.push(material, materialFilter, materialGain)
+  voices.push(material)
+  levels.push({ gain: materialGain.gain, from, to })
+  filters.push(materialFilter)
+  material.start(t)
+
+  if (kind === 'seal') {
+    const wave = ctx.createPeriodicWave(new Float32Array(6), new Float32Array([0, 1, 0.4, 0.18, 0.1, 0.04]))
+    for (const [midi, from, to] of [[50, 0.04, 0.14], [57, 0.025, 0.08]] as const) {
+      const voice = ctx.createOscillator()
+      voice.setPeriodicWave(wave)
+      voice.frequency.value = midiToFreq(midi)
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = 700
+      const gain = ctx.createGain()
+      gain.gain.value = from
+      voice.connect(filter).connect(gain).connect(out)
+      nodes.push(voice, filter, gain)
+      voices.push(voice)
+      levels.push({ gain: gain.gain, from, to })
+      filters.push(filter)
+      voice.start(t)
+    }
+  }
+
+  let lastTexture = t - 0.1
+  let note = 0
+  let stopped = false
+  material.onended = () => nodes.forEach((node) => node.disconnect())
 
   return {
     update(p) {
-      progress = p
+      if (stopped) return
+      const progress = Math.min(1, Math.max(0, p))
       const now = ctx.currentTime
-      osc.frequency.setTargetAtTime((kind === 'seal' ? 150 : 90) + p * (kind === 'seal' ? 230 : 120), now, 0.05)
-      lp.frequency.setTargetAtTime(700 + p * 1600, now, 0.05)
+      for (const { gain, from, to } of levels) gain.setTargetAtTime(from + (to - from) * progress, now, 0.04)
+      for (const filter of filters) filter.frequency.setTargetAtTime(700 + progress * 1600, now, 0.05)
+      if (kind === 'burn' && now - lastTexture >= 0.085) {
+        lastTexture = now
+        noise(ctx, out, now, { dur: 0.03, type: 'bandpass', freq: 2000 + Math.random() * 1600,
+          gain: 0.08 + progress * 0.18, attack: 0.001, q: 0.7 })
+      }
+      if (kind === 'seal' && note < 3 && progress >= [0.28, 0.56, 0.82][note]) {
+        pluck(ctx, out, now, [62, 69, 74][note], 0.3 + progress * 0.14, { dur: 0.2, bright: 1.2 })
+        bell(ctx, out, now, midiToFreq([74, 81, 86][note]), 0.025 + progress * 0.02, 0.35)
+        note++
+      }
     },
     stop() {
+      if (stopped) return
+      stopped = true
       const now = ctx.currentTime
-      out.gain.cancelScheduledValues(now)
-      out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now)
+      out.gain.cancelAndHoldAtTime(now)
+      // Anchor the release here; otherwise its ramp can start at the initial attack's end.
+      out.gain.setValueAtTime(0.0001 ** (1 - Math.min(1, Math.max(0, (now - t) / 0.08))), now)
       out.gain.exponentialRampToValueAtTime(0.0001, now + 0.07)
-      osc.stop(now + 0.1)
-      trem.stop(now + 0.1)
-      if (crackle) clearInterval(crackle)
-      setTimeout(() => out.disconnect(), 200)
+      for (const voice of voices) voice.stop(now + 0.12)
     }
   }
 }

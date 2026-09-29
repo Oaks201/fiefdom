@@ -18,9 +18,8 @@
 }
 
 .archive__stats dt {
-  font: 700 11px var(--font-caps);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font: 700 15px var(--font-caps);
+  letter-spacing: 0.03em;
   color: var(--ink-3);
 }
 
@@ -59,7 +58,7 @@
 .select select {
   width: auto;
   padding: 7px 10px;
-  font: 700 13px var(--font-caps);
+  font: 700 16px var(--font-caps);
 }
 
 .archive__grid {

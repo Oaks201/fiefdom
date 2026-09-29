@@ -67,7 +67,7 @@ An unfinished today never breaks your streak; it just hasn't joined it yet.
 
 ## Sound
 
-Fiefdom plays **Innfolk Mirth** as its looping background soundtrack. The recording is bundled with the app and works offline. Every action has a sound too: paper when you turn a page, a wax stamp when you keep a duty, quill scratches when you write a number, coin for reputation, a chime when you meet a goal and a fanfare for a perfect day.
+Fiefdom plays **Innfolk Mirth** as its looping background soundtrack. The recording is bundled with the app and works offline. Every action has an original tavern sound too: soft parchment, wooden clicks, wax presses, quill strokes, brass coins, and mellow dulcimer rewards. The 34 bundled effects were rendered locally with an SFX MCP and tuned using the music's measured pitch and rhythm. [Sound-design notes, local tools, and an audition](docs/sound-design.md).
 
 Open **Settings** (the cog in the top bar) to turn the music and the sound effects on or off and set their volumes. The music-note button, or the **M** key, pauses and resumes the music. The music rests while the window is minimised, then resumes from the same place.
 
@@ -113,8 +113,8 @@ src/
   shared/          Types shared by both sides of the bridge
   renderer/src/
     lib/           Pure rules, no UI: dates, ledger operations, contracts, reputation
-    audio/         Synthesized sound effects, reverb, and looping soundtrack player
-    assets/audio/  The bundled Innfolk Mirth soundtrack
+    audio/         Sound-effect playback, live hold textures, reverb, and soundtrack player
+    assets/audio/  The bundled Innfolk Mirth soundtrack and original tavern SFX
     assets/art/    Painted tavern desk and parchment textures
     state/         Stores: the ledger (+ saving), UI, clock, notices
     components/    Wax seals, hold-to-confirm, dialogs, desk props, chronicle/contract/archive parts
@@ -139,4 +139,4 @@ If it still fails, it prints the reason (for example a proxy or antivirus blocki
 
 Desk and parchment artwork generated for Fiefdom with the built-in image generation tool. Asset paths and full prompts are recorded in [the art notes](docs/art-assets.md).
 
-Fonts: Almendra, Cinzel, EB Garamond and IM Fell English (SIL Open Font License), bundled with the app so it works offline. Background music: **Innfolk Mirth**, supplied by the user. Sound effects are synthesized live by the app with the Web Audio API. Icons from [game-icons.net](https://game-icons.net) by their authors, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), via react-icons.
+Font: Almendra in regular, bold and italic styles (SIL Open Font License), bundled with the app so it works offline. Background music: **Innfolk Mirth**, supplied by the user. Original sound effects rendered with [sfx-api](https://github.com/gteuscher/sfx-api); live hold textures use the Web Audio API. Illustrated top-bar timber is an original SVG. Icons from [game-icons.net](https://game-icons.net) by their authors, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), via react-icons.

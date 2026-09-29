@@ -23,16 +23,17 @@
   --vellum: #f6ecd3;
 
   --tex-parchment: url('../assets/art/painted-parchment.png');
+  --tex-timber: url('../assets/art/tavern-timber.svg');
 
   --wood-0: #1c0f06;
   --wood-1: #2d190b;
   --wood-2: #4a2c16;
   --wood-3: #6b4226;
 
-  --font-display: 'Almendra', 'Cinzel', Georgia, serif;
-  --font-caps: 'Cinzel', 'EB Garamond', serif;
-  --font-body: 'EB Garamond', Georgia, 'Times New Roman', serif;
-  --font-fell: 'IM Fell English', 'EB Garamond', Georgia, serif;
+  --font-display: 'Almendra', Georgia, serif;
+  --font-caps: var(--font-display);
+  --font-body: var(--font-display);
+  --font-fell: var(--font-display);
 
   /* fine brown speckle for paper */
   --tex-speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.40 0 0 0 0 0.26 0 0 0 0 0.10 0 0 0 1 -0.42'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -57,7 +58,7 @@ body,
 
 body {
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.45;
   color: var(--ink);
   background: var(--wood-0);
@@ -163,13 +164,12 @@ button:disabled {
   justify-content: center;
   gap: 8px;
   padding: 9px 18px 8px;
-  font: 700 13px/1.2 var(--font-caps);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 700 17px/1.2 var(--font-caps);
+  letter-spacing: 0.02em;
   color: #f8e9c6;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
-  background: linear-gradient(#80502a, #5a3418);
-  border: 1px solid #2b180a;
+  background: linear-gradient(rgba(126, 76, 34, 0.35), rgba(43, 23, 9, 0.4)), var(--tex-timber) center / 500px 78px;
+  border: 1px solid #92612b;
   border-radius: 9px;
   box-shadow:
     inset 0 1px 0 rgba(255, 222, 170, 0.35),
@@ -260,7 +260,7 @@ button:disabled {
 
 .btn--small {
   padding: 6px 12px 5px;
-  font-size: 11.5px;
+  font-size: 14px;
   border-radius: 7px;
 }
 
@@ -359,7 +359,7 @@ button:disabled {
 /* ----------------------------------------------------------- chips */
 .chip {
   padding: 5px 11px 4px;
-  font: 700 12px/1.2 var(--font-caps);
+  font: 700 14px/1.2 var(--font-caps);
   letter-spacing: 0.04em;
   color: var(--ink-2);
   background: rgba(120, 80, 40, 0.08);
@@ -406,9 +406,8 @@ button:disabled {
 }
 
 .field__label {
-  font: 700 11.5px var(--font-caps);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 700 15px var(--font-caps);
+  letter-spacing: 0.03em;
   color: var(--ink-2);
 }
 

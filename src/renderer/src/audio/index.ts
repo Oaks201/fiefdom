@@ -1,6 +1,6 @@
 /**
  * The app's sound: one AudioContext, a music bus and an effects bus (each with its own volume),
- * a stone-hall reverb for effects, and a compressor so nothing ever clips.
+ * a short tavern-room reverb for effects, and a compressor so nothing ever clips.
  *
  *   sfx('stamp')            play an effect (silently ignored when effects are off)
  *   charge('seal')          a sound that follows a press-and-hold; call update(p) and stop()
@@ -10,7 +10,7 @@ import { DEFAULT_SOUND } from '../lib/ledger'
 import type { SoundSettings } from '../lib/types'
 import soundtrack from '../assets/audio/innfolk-mirth.mp3'
 import { MusicPlayer } from './player'
-import { playSfx, startCharge, type Charge, type SfxName, type SfxOut } from './sfx'
+import { playSfx, preloadSfx, startCharge, type Charge, type SfxName, type SfxOut } from './sfx'
 import { hallImpulse } from './synth'
 
 export type { SfxName }
@@ -53,7 +53,7 @@ function build(): Graph | null {
   master.connect(comp).connect(halve).connect(limiter).connect(ctx.destination)
 
   const reverb = ctx.createConvolver()
-  reverb.buffer = hallImpulse(ctx)
+  reverb.buffer = hallImpulse(ctx, 0.65, 3.4)
   reverb.connect(master)
 
   const musicBus = ctx.createGain()
@@ -64,12 +64,13 @@ function build(): Graph | null {
   sfxBus.gain.value = 0
   sfxBus.connect(master)
   const sfxRoom = ctx.createGain()
-  sfxRoom.gain.value = 0.12
+  sfxRoom.gain.value = 0.035
   sfxBus.connect(sfxRoom).connect(reverb)
   const sfxWetBus = ctx.createGain()
   sfxWetBus.gain.value = 0
   sfxWetBus.connect(reverb)
 
+  preloadSfx(ctx)
   return { ctx, musicBus, sfxBus, sfxWetBus, sfxOut: { dry: sfxBus, wet: sfxWetBus } }
 }
 
