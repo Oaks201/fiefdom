@@ -2,12 +2,12 @@
  * Gradients and filters shared by every seal and sheet of parchment, defined once for the page.
  */
 export const WAX = {
-  crimson: ['#e56a58', '#a8261d', '#5a0c09', '#7c1611'],
-  gold: ['#fff0b3', '#d9a93c', '#7a520f', '#9c6d17'],
-  royal: ['#8fb2f0', '#2d57a6', '#0f2350', '#1d3c7a'],
-  forest: ['#94d19a', '#2f7440', '#0f3a1b', '#1f5a2e'],
-  amber: ['#ffd08a', '#d98424', '#6e3508', '#a45a12'],
-  ash: ['#b3aca2', '#57514b', '#1c1916', '#3a3531']
+  crimson: ['#ffab76', '#c5402e', '#561b16', '#8c281f'],
+  gold: ['#fff3b0', '#e1ae43', '#694016', '#a26e26'],
+  royal: ['#bdd2ff', '#4b79bc', '#1b2b50', '#2e4c7d'],
+  forest: ['#c2dfa3', '#589250', '#243d22', '#3a6535'],
+  amber: ['#ffe4a3', '#e69a37', '#723b16', '#a86425'],
+  ash: ['#e0d2b9', '#8a7d6c', '#383029', '#605345']
 } as const
 
 export type WaxColor = keyof typeof WAX
@@ -18,20 +18,38 @@ export function SvgDefs(): React.JSX.Element {
       <defs>
         {Object.entries(WAX).map(([name, [hi, mid, lo, deep]]) => (
           <g key={name}>
-            <radialGradient id={`wax-${name}`} cx="34%" cy="30%" r="78%">
+            <radialGradient id={`wax-${name}`} cx="30%" cy="20%" r="85%">
               <stop offset="0" stopColor={hi} />
-              <stop offset="0.45" stopColor={mid} />
+              <stop offset="0.3" stopColor={mid} />
+              <stop offset="0.72" stopColor={deep} />
               <stop offset="1" stopColor={lo} />
             </radialGradient>
-            <radialGradient id={`wax-${name}-pressed`} cx="62%" cy="66%" r="70%">
-              <stop offset="0" stopColor={mid} />
-              <stop offset="1" stopColor={deep} />
+            <linearGradient id={`wax-${name}-rim`} x1="20%" y1="0%" x2="70%" y2="100%">
+              <stop offset="0" stopColor={hi} />
+              <stop offset="0.25" stopColor={mid} />
+              <stop offset="0.65" stopColor={deep} />
+              <stop offset="1" stopColor={lo} />
+            </linearGradient>
+            <radialGradient id={`wax-${name}-pressed`} cx="58%" cy="76%" r="90%">
+              <stop offset="0" stopColor={deep} />
+              <stop offset="0.65" stopColor={deep} />
+              <stop offset="1" stopColor={lo} />
             </radialGradient>
+            <linearGradient id={`wax-${name}-emblem`} x1="0%" y1="0%" x2="25%" y2="100%">
+              <stop offset="0" stopColor={hi} />
+              <stop offset="1" stopColor={mid} />
+            </linearGradient>
           </g>
         ))}
-        <radialGradient id="wax-gloss" cx="30%" cy="24%" r="40%">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        <linearGradient id="wax-edge-light" x1="10%" y1="0%" x2="65%" y2="100%">
+          <stop offset="0" stopColor="#fff4d3" stopOpacity="0.8" />
+          <stop offset="0.45" stopColor="#fff4d3" stopOpacity="0.12" />
+          <stop offset="1" stopColor="#1e100a" stopOpacity="0.45" />
+        </linearGradient>
+        <radialGradient id="seal-socket-well" cx="50%" cy="60%" r="60%">
+          <stop offset="0" stopColor="#704421" stopOpacity="0.02" />
+          <stop offset="0.8" stopColor="#704421" stopOpacity="0.06" />
+          <stop offset="1" stopColor="#704421" stopOpacity="0.18" />
         </radialGradient>
         <filter id="seal-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="2.2" />

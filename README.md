@@ -2,7 +2,7 @@
 
 A medieval habit ledger. You are a minor noble granted a modest holding; keeping your word — a weekly contract and a roll of daily duties — earns **reputation**, the currency your holding will one day run on. This first part is the ledger itself; the game comes later.
 
-![The Chronicle](docs/chronicle.jpg)
+![The Chronicle](docs/tavern-preview.png)
 
 ## Getting started (Windows)
 
@@ -67,9 +67,9 @@ An unfinished today never breaks your streak; it just hasn't joined it yet.
 
 ## Sound
 
-Fiefdom plays its own music: an endless, gently varying piece in D Dorian (a mode common in medieval music) for lute, recorder, frame drum and a hurdy-gurdy drone. The app composes and synthesizes it live, so it never repeats exactly and there are no recordings involved. Every action has a sound too: paper when you turn a page, a wax stamp when you keep a duty, quill scratches when you write a number, coin for reputation, a chime when you meet a goal and a fanfare for a perfect day.
+Fiefdom plays **Innfolk Mirth** as its looping background soundtrack. The recording is bundled with the app and works offline. Every action has a sound too: paper when you turn a page, a wax stamp when you keep a duty, quill scratches when you write a number, coin for reputation, a chime when you meet a goal and a fanfare for a perfect day.
 
-Open **Settings** (the cog in the top bar) to turn the music and the sound effects on or off and set their volumes. The music-note button, or the **M** key, pauses and resumes the music. The music rests while the window is minimised.
+Open **Settings** (the cog in the top bar) to turn the music and the sound effects on or off and set their volumes. The music-note button, or the **M** key, pauses and resumes the music. The music rests while the window is minimised, then resumes from the same place.
 
 ## Keyboard
 
@@ -112,8 +112,10 @@ src/
   preload/         The tiny, typed bridge exposed to the page as window.fiefdom
   shared/          Types shared by both sides of the bridge
   renderer/src/
-    lib/           Pure rules, no UI: dates, ledger operations, contracts, reputation, the music composer
-    audio/         The synthesizer (lute, recorder, drum, drone, reverb), sound effects, music player
+    lib/           Pure rules, no UI: dates, ledger operations, contracts, reputation
+    audio/         Synthesized sound effects, reverb, and looping soundtrack player
+    assets/audio/  The bundled Innfolk Mirth soundtrack
+    assets/art/    Painted tavern desk and parchment textures
     state/         Stores: the ledger (+ saving), UI, clock, notices
     components/    Wax seals, hold-to-confirm, dialogs, desk props, chronicle/contract/archive parts
     pages/         Chronicle, Contract, Archive
@@ -135,4 +137,6 @@ If it still fails, it prints the reason (for example a proxy or antivirus blocki
 
 ## Credits
 
-Fonts: Almendra, Cinzel, EB Garamond and IM Fell English (SIL Open Font License), bundled with the app so it works offline. Music and sound effects are synthesized live by the app with the Web Audio API. Icons from [game-icons.net](https://game-icons.net) by their authors, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), via react-icons.
+Desk and parchment artwork generated for Fiefdom with the built-in image generation tool. Asset paths and full prompts are recorded in [the art notes](docs/art-assets.md).
+
+Fonts: Almendra, Cinzel, EB Garamond and IM Fell English (SIL Open Font License), bundled with the app so it works offline. Background music: **Innfolk Mirth**, supplied by the user. Sound effects are synthesized live by the app with the Web Audio API. Icons from [game-icons.net](https://game-icons.net) by their authors, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), via react-icons.

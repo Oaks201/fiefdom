@@ -95,7 +95,7 @@ export function SettingsModal(): React.JSX.Element {
         <SoundRow
           icon={GiLyre}
           label="Music"
-          hint="Lute, recorder and drone — never quite the same twice"
+          hint="Innfolk Mirth — a tune for the tavern"
           on={sound.music}
           volume={sound.musicVolume}
           onToggle={(music) => setS({ music, musicVolume: music && sound.musicVolume === 0 ? 0.5 : sound.musicVolume })}
@@ -177,7 +177,7 @@ export function SettingsModal(): React.JSX.Element {
       )}
 
       <p className="settings__fine">
-        Music and sounds are played live by the app. Icons by the authors of game-icons.net (CC BY 3.0); fonts under the SIL Open Font License.
+        Background music: Innfolk Mirth. Sound effects are played live by the app. Icons by the authors of game-icons.net (CC BY 3.0); fonts under the SIL Open Font License.
       </p>
 
       <div className="modal__actions">

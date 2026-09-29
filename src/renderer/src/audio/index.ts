@@ -1,6 +1,6 @@
 /**
  * The app's sound: one AudioContext, a music bus and an effects bus (each with its own volume),
- * a shared stone-hall reverb, and a compressor so nothing ever clips.
+ * a stone-hall reverb for effects, and a compressor so nothing ever clips.
  *
  *   sfx('stamp')            play an effect (silently ignored when effects are off)
  *   charge('seal')          a sound that follows a press-and-hold; call update(p) and stop()
@@ -8,6 +8,7 @@
  */
 import { DEFAULT_SOUND } from '../lib/ledger'
 import type { SoundSettings } from '../lib/types'
+import soundtrack from '../assets/audio/innfolk-mirth.mp3'
 import { MusicPlayer } from './player'
 import { playSfx, startCharge, type Charge, type SfxName, type SfxOut } from './sfx'
 import { hallImpulse } from './synth'
@@ -58,9 +59,6 @@ function build(): Graph | null {
   const musicBus = ctx.createGain()
   musicBus.gain.value = 0
   musicBus.connect(master)
-  const musicWet = ctx.createGain()
-  musicWet.gain.value = 0.42
-  musicBus.connect(musicWet).connect(reverb)
 
   const sfxBus = ctx.createGain()
   sfxBus.gain.value = 0
@@ -85,7 +83,7 @@ function ensure(): Graph | null {
   if (!allowedToStart()) return null
   try {
     graph = build()
-    if (graph) player = new MusicPlayer(graph.ctx, graph.musicBus)
+    if (graph) player = new MusicPlayer(graph.ctx, graph.musicBus, soundtrack)
   } catch (err) {
     console.warn('Sound is unavailable:', err)
     graphFailed = true
@@ -123,7 +121,7 @@ export function applySoundSettings(next: SoundSettings): void {
   const g = ensure()
   if (!g) return
   const now = g.ctx.currentTime
-  g.musicBus.gain.setTargetAtTime(next.music ? 1.5 * next.musicVolume ** 1.7 : 0, now, 0.12)
+  g.musicBus.gain.setTargetAtTime(next.music ? next.musicVolume ** 1.7 : 0, now, 0.12)
   const fx = next.effects ? next.effectsVolume ** 2 : 0
   g.sfxBus.gain.setTargetAtTime(fx, now, 0.04)
   g.sfxWetBus.gain.setTargetAtTime(fx, now, 0.04)
@@ -174,7 +172,7 @@ export function initAudio(initial: SoundSettings): () => void {
     if (g.ctx.state === 'suspended' && (musicWanted() || effectsOn())) void g.ctx.resume().catch(() => undefined)
     if (musicWanted() && !player?.playing) syncMusic()
   }
-  // Minimised: let the music rest; restored: it begins again.
+  // Minimised: let the music rest; restored: resume where it paused.
   const onVisibility = (): void => syncMusic()
   window.addEventListener('pointerdown', onGesture, true)
   window.addEventListener('keydown', onGesture, true)

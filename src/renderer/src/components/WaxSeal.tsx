@@ -58,11 +58,11 @@ export const WaxSeal = memo(function WaxSeal({
   stamp
 }: WaxSealProps) {
   const d = useMemo(() => blobPath(seed), [seed])
-  const deep = WAX[color][3]
+  const [highlight, , shadow, deep] = WAX[color]
   const classes = ['wax-seal', stamp ? 'wax-seal--stamp' : '', className ?? ''].filter(Boolean).join(' ')
 
   const emblem = (dx: number, dy: number, fill: string): React.JSX.Element | null => {
-    if (Icon) return <Icon x={30 + dx} y={30 + dy} size={40} color={fill} />
+    if (Icon) return <Icon x={30 + dx} y={30 + dy} size={40} fill={fill} />
     if (letter)
       return (
         <text
@@ -92,16 +92,32 @@ export const WaxSeal = memo(function WaxSeal({
       aria-hidden={title ? undefined : true}
     >
       {title && <title>{title}</title>}
-      <path d={d} transform="translate(2 3.5)" fill="rgba(20,8,2,.55)" filter="url(#seal-shadow)" />
-      <path d={d} fill={`url(#wax-${color})`} />
-      <path d={d} fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="0.8" />
-      <circle cx="50" cy="50" r="31.5" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.4" />
-      <circle cx="50" cy="50" r="30" fill={`url(#wax-${color}-pressed)`} />
-      <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,0,0,.4)" strokeWidth="2" />
-      {emblem(-0.9, -0.9, 'rgba(0,0,0,.5)')}
-      {emblem(0.9, 0.9, 'rgba(255,255,255,.3)')}
-      {emblem(0, 0, deep)}
-      <ellipse cx="38" cy="30" rx="24" ry="16" fill="url(#wax-gloss)" />
+      <path d={d} transform="translate(1 4)" fill="#241006" fillOpacity="0.65" filter="url(#seal-shadow)" />
+      {/* A visible lower edge gives the wax weight even at the smallest stamp size. */}
+      <path d={d} transform="translate(0 2.5)" fill={shadow} stroke="#291509" strokeOpacity="0.7" strokeWidth="1.8" />
+      <path d={d} fill={`url(#wax-${color})`} stroke={shadow} strokeWidth="1.3" />
+      <path d={d} transform="translate(2.5 2.5) scale(.95)" fill="none" stroke="url(#wax-edge-light)" strokeWidth="1.8" />
+
+      {/* The rounded lip and recessed face read like a hand-carved signet impression. */}
+      <circle cx="50" cy="50.8" r="34" fill={shadow} fillOpacity="0.65" />
+      <circle cx="50" cy="49.4" r="34" fill={`url(#wax-${color}-rim)`} />
+      <circle cx="50" cy="50" r="29.8" fill={`url(#wax-${color}-pressed)`} stroke={shadow} strokeWidth="1.4" />
+      <path d="M20.3 50a29.7 29.7 0 0 1 59.4 0" fill="none" stroke={shadow} strokeOpacity="0.65" strokeWidth="1.6" />
+      <path d="M21.8 59a29.6 29.6 0 0 0 56.4 0" fill="none" stroke={highlight} strokeOpacity="0.5" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M22 36a32 32 0 0 1 36-17" fill="none" stroke={highlight} strokeOpacity="0.85" strokeWidth="1.8" strokeLinecap="round" />
+
+      {/* Tiny tooling marks stay on the rim, clear of the readable emblem. */}
+      <g fill={deep} fillOpacity="0.65" stroke={highlight} strokeOpacity="0.3" strokeWidth="0.6">
+        <path d="m50 11 1.7 3-1.7 3-1.7-3Z" />
+        <path d="m50 83 1.7 3-1.7 3-1.7-3Z" />
+        <path d="m11 50 3-1.7 3 1.7-3 1.7Z" />
+        <path d="m83 50 3-1.7 3 1.7-3 1.7Z" />
+      </g>
+      <path d="M20 25q4-5 8-6M16 34l2-4M69 79l5-4" fill="none" stroke={highlight} strokeOpacity="0.45" strokeWidth="1.7" strokeLinecap="round" />
+
+      {emblem(0, 1.7, shadow)}
+      {emblem(-0.7, -0.8, highlight)}
+      {emblem(0, 0, `url(#wax-${color}-emblem)`)}
     </svg>
   )
 })
@@ -110,7 +126,15 @@ export const WaxSeal = memo(function WaxSeal({
 export function SealSocket({ size = 64, className }: { size?: number; className?: string }): React.JSX.Element {
   return (
     <svg className={`seal-socket ${className ?? ''}`} width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="40" fill="rgba(110,70,30,.08)" stroke="rgba(90,55,20,.45)" strokeWidth="2" strokeDasharray="5 5" />
+      <circle cx="50" cy="51.5" r="39" fill="none" stroke="#fff0bd" strokeOpacity="0.45" strokeWidth="2" />
+      <circle cx="50" cy="50" r="39" fill="url(#seal-socket-well)" stroke="#704421" strokeOpacity="0.5" strokeWidth="1.8" />
+      <circle cx="50" cy="50" r="33" fill="none" stroke="#704421" strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2 5" />
+      <g fill="#704421" fillOpacity="0.5">
+        <path d="m50 7 2.4 4.5-2.4 4.5-2.4-4.5Z" />
+        <path d="m50 84 2.4 4.5-2.4 4.5-2.4-4.5Z" />
+        <path d="m7 50 4.5-2.4 4.5 2.4-4.5 2.4Z" />
+        <path d="m84 50 4.5-2.4 4.5 2.4-4.5 2.4Z" />
+      </g>
     </svg>
   )
 }
