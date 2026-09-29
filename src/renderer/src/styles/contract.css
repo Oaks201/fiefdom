@@ -1,0 +1,395 @@
+/* ==========================================================================
+   The Contract page: drafting, the sealed deed, progress, weigh-in, burning
+   ========================================================================== */
+
+.contract-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(250px, 0.85fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.contract-rules {
+  padding: 18px 20px;
+  background: rgba(255, 249, 232, 0.35);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.rules {
+  margin: 10px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.rules li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 16px;
+  border-bottom: 1px dashed var(--rule-soft);
+}
+
+.rules strong {
+  font: 700 15px var(--font-caps);
+  color: var(--gold-deep);
+  white-space: nowrap;
+}
+
+.contract-rules .muted {
+  font: italic 15px var(--font-body);
+}
+
+.deed--draft .deed__foot {
+  align-items: center;
+}
+
+.contract-active {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(370px, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.contract-active__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.contract-active__main .deed {
+  width: 100%;
+}
+
+.contract-active__side,
+.archive-detail__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* status ribbon */
+.status-ribbon {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -26px;
+  padding: 7px 34px 6px;
+  white-space: nowrap;
+  font: 700 12.5px var(--font-caps);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff4d6;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  background: linear-gradient(#3d68b8, #1d3c7a);
+  clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+}
+
+.status-ribbon--awaiting {
+  background: linear-gradient(#e0923a, #a45a12);
+}
+
+.status-ribbon--upcoming {
+  background: linear-gradient(#3f8a52, #1f5a2e);
+}
+
+/* weekly progress columns */
+.progress__grid {
+  display: grid;
+  grid-template-columns: 92px repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px 4px;
+}
+
+.progress__row {
+  display: contents;
+}
+
+.progress__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0 2px;
+  line-height: 1.1;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.progress__day:hover:not(:disabled) {
+  background: rgba(255, 250, 236, 0.7);
+  border-color: var(--rule);
+}
+
+.progress__day.is-today .progress__dayname,
+.progress__day.is-today .progress__daynum {
+  color: var(--crimson);
+}
+
+.progress__dayname {
+  font: 700 10.5px var(--font-caps);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.progress__daynum {
+  font: 700 16px var(--font-caps);
+}
+
+.progress__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.progress__label svg {
+  font-size: 18px;
+  color: var(--crimson);
+}
+
+.progress__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress__bar {
+  position: relative;
+  width: 20px;
+  height: 58px;
+  overflow: hidden;
+  background: rgba(92, 58, 24, 0.12);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 3px rgba(60, 35, 10, 0.35);
+}
+
+.progress__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(#cf463a, #7e1712);
+  border-radius: 5px 5px 0 0;
+  transition: height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.progress__cell.is-met .progress__fill {
+  background: linear-gradient(#fff0b3, #dca744 50%, #9c6d17);
+  box-shadow: 0 0 8px rgba(242, 200, 110, 0.8);
+}
+
+.progress__cell.is-future .progress__bar {
+  background: repeating-linear-gradient(-45deg, rgba(92, 58, 24, 0.09) 0 4px, transparent 4px 8px);
+  box-shadow: none;
+  outline: 1px dashed rgba(92, 58, 24, 0.3);
+  outline-offset: -1px;
+}
+
+.progress__cell.is-today .progress__bar {
+  outline: 2px solid rgba(139, 30, 26, 0.35);
+  outline-offset: 1px;
+}
+
+.progress__value {
+  font: 700 11px var(--font-caps);
+  color: var(--ink-2);
+}
+
+.progress__cell.is-met .progress__value {
+  color: var(--gold-deep);
+}
+
+.progress__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 12px;
+  font-size: 15.5px;
+  color: var(--ink-2);
+}
+
+.progress__summary strong {
+  font: 700 15px var(--font-caps);
+  color: var(--ink);
+}
+
+/* weigh-in */
+.weighin {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weighin .panel__head {
+  margin-bottom: 0;
+}
+
+.weighin__lead,
+.weighin--locked p {
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.weighin__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.weighin__row .field {
+  width: 210px;
+}
+
+.weighin__delta {
+  padding-bottom: 12px;
+  font: 700 20px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.weighin__delta.is-down {
+  color: var(--forest);
+}
+
+.weighin__delta.is-up {
+  color: var(--crimson);
+}
+
+.weighin .btn--hold {
+  align-self: flex-start;
+  padding: 12px 22px 11px;
+}
+
+/* burning */
+.burn__list {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.burn__list li {
+  padding: 2px 0;
+}
+
+.modal--burn .modal__title {
+  color: var(--crimson);
+}
+
+/* result after the final weigh-in */
+.result {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+.result__seal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.result__grade {
+  margin-top: 8px;
+  font: 700 30px/1.1 var(--font-display);
+}
+
+.result__blurb {
+  font: italic 15px var(--font-fell);
+  color: var(--ink-2);
+}
+
+.result__dates {
+  font: 700 15px var(--font-caps);
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+.result__stats {
+  margin: 10px 0 14px;
+}
+
+.result__stats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--rule-soft);
+}
+
+.result__stats dt {
+  color: var(--ink-2);
+}
+
+.result__stats dd {
+  margin: 0;
+  font: 700 15px var(--font-caps);
+}
+
+/* letters patent */
+.modal--patent {
+  width: min(600px, 100%);
+}
+
+.patent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.patent__seal {
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+}
+
+.patent__lead {
+  font: italic 17.5px/1.55 var(--font-fell);
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.patent__row {
+  display: flex;
+  gap: 14px;
+}
+
+.patent__row > .field {
+  flex: 1;
+}
+
+.field--title {
+  flex: 0 0 120px !important;
+}
+
+.field--grow {
+  flex: 1;
+}
+
+.patent__fine {
+  margin-top: 8px;
+  padding-top: 12px;
+  font-size: 14px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.patent__fine p + p {
+  margin-top: 6px;
+}
+
+@media (max-width: 1150px) {
+  .contract-active,
+  .contract-draft {
+    grid-template-columns: 1fr;
+  }
+}

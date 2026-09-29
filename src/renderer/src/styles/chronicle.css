@@ -1,0 +1,738 @@
+/* ==========================================================================
+   The Chronicle: one day at a time
+   ========================================================================== */
+
+.chronicle {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ----------------------------------------------------------- day header */
+.daynav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.daynav__arrow {
+  width: 46px;
+  height: 46px;
+  padding: 0 0 4px;
+  font: 400 34px/1 var(--font-fell);
+  color: var(--ink-2);
+  background: rgba(255, 250, 236, 0.4);
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  box-shadow: 0 2px 0 rgba(92, 58, 24, 0.15);
+  transition:
+    background 0.15s,
+    transform 0.08s;
+}
+
+.daynav__arrow:hover:not(:disabled) {
+  color: var(--crimson);
+  background: rgba(255, 250, 236, 0.85);
+}
+
+.daynav__arrow:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.daynav__arrow:disabled {
+  opacity: 0.3;
+}
+
+.daynav__center {
+  text-align: center;
+  min-width: 0;
+}
+
+.daynav__eyebrow {
+  font: 700 12px var(--font-caps);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--crimson);
+}
+
+.daynav__date {
+  font: 400 34px/1.15 var(--font-fell);
+  color: var(--ink);
+}
+
+.daynav__sub {
+  margin-top: 2px;
+  font: italic 16px var(--font-body);
+  color: var(--ink-3);
+}
+
+.stripbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stripbar .weekstrip {
+  flex: 1;
+  min-width: 0;
+}
+
+.stripbar__tools {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.stripbar__tools > .calendar-wrap > .btn--icon {
+  width: 100%;
+  height: 34px;
+}
+
+.calendar__title {
+  white-space: nowrap;
+}
+
+/* calendar popover */
+.calendar-wrap {
+  position: relative;
+}
+
+.calendar {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -8px;
+  z-index: 20;
+  width: 336px;
+  padding: 16px 16px 12px;
+  animation: modal-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+
+.calendar > :not(.sheet__paper) {
+  position: relative;
+  z-index: 1;
+}
+
+.sheet--small .sheet__paper {
+  filter: url(#rough-edge-soft) drop-shadow(0 12px 18px rgba(0, 0, 0, 0.5));
+  box-shadow: inset 0 0 30px rgba(125, 72, 22, 0.4);
+}
+
+.calendar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.calendar__title {
+  font: 700 16px var(--font-caps);
+  letter-spacing: 0.06em;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.calendar__weekday {
+  padding-bottom: 4px;
+  font: 700 10.5px var(--font-caps);
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.calendar__day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  height: 46px;
+  padding: 4px 0 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.calendar__day:hover:not(:disabled) {
+  background: rgba(255, 250, 236, 0.7);
+  border-color: var(--rule);
+}
+
+.calendar__day:disabled {
+  opacity: 0.35;
+}
+
+.calendar__day.is-other {
+  opacity: 0.45;
+}
+
+.calendar__day.is-contract {
+  background: rgba(45, 87, 166, 0.07);
+}
+
+.calendar__day.is-today .calendar__num {
+  color: var(--crimson);
+  font-weight: 900;
+}
+
+.calendar__day.is-selected {
+  background: rgba(255, 250, 236, 0.9);
+  border-color: var(--gold);
+}
+
+.calendar__num {
+  font: 700 13px var(--font-caps);
+}
+
+.calendar__foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* ----------------------------------------------------------- week strip */
+.weekstrip {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.weekstrip__jump {
+  width: 30px;
+  font: 400 22px var(--font-fell);
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+}
+
+.weekstrip__jump:hover:not(:disabled) {
+  color: var(--crimson);
+  background: rgba(255, 250, 236, 0.5);
+}
+
+.weekstrip__jump:disabled {
+  opacity: 0.25;
+}
+
+.weekstrip__days {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.weekday {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 4px 8px;
+  background: rgba(255, 250, 236, 0.26);
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.1s,
+    box-shadow 0.15s;
+}
+
+.weekday:hover:not(:disabled) {
+  background: rgba(255, 250, 236, 0.6);
+  transform: translateY(-1px);
+}
+
+.weekday:disabled {
+  opacity: 0.4;
+}
+
+.weekday.is-selected {
+  background: rgba(255, 251, 240, 0.85);
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 2px rgba(201, 150, 46, 0.35),
+    0 4px 10px rgba(80, 45, 10, 0.18);
+}
+
+.weekday__name {
+  font: 700 11px var(--font-caps);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.weekday__num {
+  font: 700 21px/1.1 var(--font-caps);
+  color: var(--ink);
+}
+
+.weekday.is-today .weekday__num,
+.weekday.is-today .weekday__name {
+  color: var(--crimson);
+}
+
+.weekday__ring {
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.weekday__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(92, 58, 24, 0.2);
+}
+
+/* the contract ribbon under the days it covers */
+.weekday.is-contract::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  right: -5px;
+  bottom: -7px;
+  height: 4px;
+  background: linear-gradient(#3d68b8, #1d3c7a);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.weekday.is-contract-start::after {
+  left: 10px;
+  border-radius: 3px 0 0 3px;
+}
+
+.weekday.is-contract-end::after {
+  right: 10px;
+  border-radius: 0 3px 3px 0;
+}
+
+.ring-seal {
+  margin: -3px;
+}
+
+/* ----------------------------------------------------------- tallies */
+.chronicle__tallies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.tally {
+  position: relative;
+  padding: 14px 20px 16px;
+  background: rgba(255, 249, 232, 0.42);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 251, 240, 0.32),
+    inset 0 0 0 5px rgba(92, 58, 24, 0.14),
+    0 2px 0 rgba(92, 58, 24, 0.08);
+  transition: box-shadow 0.3s;
+}
+
+.tally:focus-within {
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 251, 240, 0.45),
+    inset 0 0 0 5px rgba(201, 150, 46, 0.45),
+    0 0 0 3px rgba(201, 150, 46, 0.2);
+}
+
+.tally.is-invalid {
+  animation: shake 0.4s;
+}
+
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+.tally__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.tally__icon {
+  font-size: 24px;
+  color: var(--crimson);
+}
+
+.tally__label {
+  flex: 1;
+  font: 700 13.5px var(--font-caps);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.tally__main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 6px;
+}
+
+.tally__field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  cursor: text;
+}
+
+.tally__input {
+  field-sizing: content;
+  min-width: 1.6ch;
+  max-width: 100%;
+  padding: 0 2px;
+  font: 700 54px/1.15 var(--font-caps);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  caret-color: var(--crimson);
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s;
+}
+
+.tally__input:hover {
+  border-bottom-color: rgba(92, 58, 24, 0.2);
+}
+
+.tally__input:focus {
+  outline: none;
+  border-bottom: 2px dashed var(--gold);
+}
+
+.tally__input::placeholder {
+  color: rgba(77, 52, 33, 0.28);
+  font-style: normal;
+}
+
+.tally__unit {
+  font: 700 13px var(--font-caps);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tally__seal {
+  width: 66px;
+  height: 66px;
+  flex: none;
+}
+
+.tally__bar {
+  height: 13px;
+  overflow: hidden;
+  background: rgba(92, 58, 24, 0.13);
+  border-radius: 7px;
+  box-shadow:
+    inset 0 1px 3px rgba(60, 35, 10, 0.4),
+    0 1px 0 rgba(255, 250, 235, 0.5);
+}
+
+.tally__fill {
+  height: 100%;
+  background: linear-gradient(180deg, #d0463b, #8b1e1a);
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.tally.is-met .tally__fill {
+  background: linear-gradient(180deg, #fff0b3, #e0ae47 45%, #a8761d);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 10px rgba(242, 200, 110, 0.7);
+}
+
+.tally__goal,
+.tally__unbound {
+  margin: 7px 0 11px;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.tally__goal strong {
+  font: 700 15px var(--font-caps);
+  color: var(--ink);
+}
+
+.tally.is-met .tally__goal strong {
+  color: var(--gold-deep);
+}
+
+.tally__unbound {
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+.tally__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+/* ----------------------------------------------------------- duties & day ledger */
+.chronicle__lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.duties__count {
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.duties__count.is-complete {
+  color: var(--gold-deep);
+}
+
+.duties__empty {
+  padding: 4px 0 10px;
+  font: italic 17px/1.5 var(--font-fell);
+  color: var(--ink-2);
+}
+
+.duties__list {
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.duty {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px dashed rgba(92, 58, 24, 0.22);
+}
+
+.duty__grip {
+  width: 14px;
+  font-size: 12px;
+  letter-spacing: -2px;
+  color: rgba(92, 58, 24, 0.4);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.duty:hover .duty__grip {
+  opacity: 1;
+}
+
+.duty.is-dragging {
+  opacity: 0.45;
+}
+
+.duty.is-drop-before::before,
+.duty.is-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(242, 200, 110, 0.9);
+}
+
+.duty.is-drop-before::before {
+  top: -2px;
+}
+
+.duty.is-drop-after::after {
+  bottom: -2px;
+}
+
+.duty__toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 6px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+
+.duty__toggle:hover {
+  background: rgba(255, 250, 236, 0.5);
+}
+
+.duty__box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  background: rgba(255, 251, 240, 0.55);
+  border: 2px solid rgba(92, 58, 24, 0.55);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 3px rgba(60, 35, 10, 0.28);
+}
+
+.duty__box .wax-seal {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+}
+
+.duty__name {
+  flex: 1;
+  min-width: 0;
+  font: 400 19px/1.3 var(--font-body);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.duty.is-done .duty__name {
+  color: var(--ink);
+}
+
+.duty__key {
+  opacity: 0.55;
+}
+
+.duty__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.duty:hover .duty__actions,
+.duty:focus-within .duty__actions {
+  opacity: 1;
+}
+
+.duty__rename {
+  flex: 1;
+  margin: 5px 6px;
+  padding: 5px 9px;
+  font: 400 19px var(--font-body);
+  background: rgba(255, 252, 242, 0.9);
+  border: 1px solid var(--gold);
+  border-radius: 7px;
+  box-shadow: 0 0 0 3px rgba(201, 150, 46, 0.25);
+  outline: none;
+}
+
+.duties__add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px dashed transparent;
+  border-radius: 9px;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.duties__add:focus-within {
+  background: rgba(255, 252, 242, 0.65);
+  border-color: var(--gold);
+}
+
+.duties__plus {
+  width: 24px;
+  font: 400 26px/1 var(--font-fell);
+  text-align: center;
+  color: var(--crimson);
+}
+
+.duties__add input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  font: 400 19px var(--font-body);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.ledger__empty {
+  font: italic 16px var(--font-fell);
+  color: var(--ink-3);
+}
+
+.ledger__perfect {
+  margin-top: 12px;
+  font: italic 17px var(--font-fell);
+  text-align: center;
+  color: var(--gold-deep);
+}
+
+.ledger__todo {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(92, 58, 24, 0.06);
+  border-radius: 8px;
+}
+
+.ledger__todo h4 {
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.ledger__todo ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+/* ----------------------------------------------------------- shortcuts footer */
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  padding-top: 12px;
+  font: italic 14px var(--font-body);
+  color: var(--ink-3);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.shortcuts .kbd {
+  margin: 0 2px;
+  font-style: normal;
+}
+
+@media (max-width: 1100px) {
+  .daynav__date {
+    font-size: 28px;
+  }
+  .chronicle__lower {
+    grid-template-columns: 1fr;
+  }
+}
