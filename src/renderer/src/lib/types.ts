@@ -16,23 +16,65 @@ export interface Habit {
   retiredOn?: ISODate
 }
 
+/**
+ * What a day can record:
+ * - `steps`    steps walked
+ * - `eaten`    calories eaten (kept under a contract's calorie limit)
+ * - `calories` calories burned (the rule of contracts sealed before the calorie limit)
+ */
+export type Metric = 'steps' | 'eaten' | 'calories'
+
+export const METRICS: readonly Metric[] = ['steps', 'eaten', 'calories']
+
 export interface DayLog {
   steps?: number
+  eaten?: number
   calories?: number
   /** habit id → done */
   done: Record<string, true>
+  /** Metrics typed in by hand (or cleared by hand). Fitbit sync never overwrites these. */
+  manual?: Partial<Record<Metric, true>>
+  /** The last value Fitbit reported for each metric, kept so a hand-typed number can be swapped back. */
+  synced?: Partial<Record<Metric, number>>
+}
+
+/**
+ * How a contract judges calories.
+ * - `limit`: eat no more than `caloriesGoal` (and, when set, no fewer than `caloriesMin`).
+ * - `burn`:  burn at least `caloriesGoal` — how contracts worked before the calorie limit.
+ */
+export type CalorieRule = 'limit' | 'burn'
+
+/**
+ * - `common`: earns reputation for keeping its terms.
+ * - `wager`:  reputation is staked when it is sealed and repaid, multiplied, at the weigh-in. Burning it forfeits the stake.
+ */
+export type ContractKind = 'common' | 'wager'
+
+/** A duty as it was sworn into a contract. */
+export interface SwornDuty {
+  id: string
+  name: string
 }
 
 /** A sealed weekly contract. Its terms are immutable; it can only be closed (weigh-in) or burned. */
 export interface Contract {
   id: string
+  kind: ContractKind
   startDate: ISODate
   /** startDate + 6 */
   endDate: ISODate
   /** minimum steps each day */
   stepsGoal: number
-  /** minimum calories burned each day */
+  calorieRule: CalorieRule
+  /** `limit`: the most calories to eat each day · `burn`: the fewest calories to burn each day */
   caloriesGoal: number
+  /** `limit` only: the fewest calories to eat each day, when the contract names a range */
+  caloriesMin?: number
+  /** `wager` only: the reputation staked at the sealing */
+  stake?: number
+  /** Duties sworn at the sealing. Absent on contracts sealed before duties were part of the terms. */
+  duties?: SwornDuty[]
   startWeight: number
   unit: WeightUnit
   sealedAt: string
@@ -41,6 +83,9 @@ export interface Contract {
   closedAt?: string
   /** optional reflection written at the final weigh-in */
   note?: string
+  /** A burned wager stays in the Archive as ash, so the forfeited stake is remembered. */
+  burnedOn?: ISODate
+  burnedAt?: string
 }
 
 export interface SoundSettings {
@@ -66,5 +111,3 @@ export interface Ledger {
   days: Record<ISODate, DayLog>
   contracts: Contract[]
 }
-
-export type Metric = 'steps' | 'calories'

@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import icon from '../../resources/icon.png?asset'
 import type { AppInfo } from '../shared/api'
+import { registerHealthIpc } from './healthIpc'
 import { LedgerFile } from './ledgerFile'
 
 const isDev = !app.isPackaged
@@ -171,6 +172,8 @@ if (!app.requestSingleInstanceLock()) {
     ledger = new LedgerFile(dataDir)
 
     registerIpc()
+    // Fitbit (through the Google Health API); its connection is kept beside the ledger
+    registerHealthIpc(dataDir, () => mainWindow)
     createWindow()
 
     app.on('activate', () => {

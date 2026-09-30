@@ -7,13 +7,14 @@ import { ContractDocument } from '../components/contract/ContractDocument'
 import { WeekProgress } from '../components/contract/WeekProgress'
 import { Modal } from '../components/Modal'
 import { contractHaystack, evaluateContract, matchesQuery, type ContractEval } from '../lib/contracts'
-import { formatRep, formatSigned } from '../lib/format'
+import { formatShort } from '../lib/dates'
+import { formatNumber, formatRep, formatSigned } from '../lib/format'
 import type { Contract, WeightUnit } from '../lib/types'
 import { useToday } from '../state/clock'
 import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
 
-type Filter = 'all' | 'gilded' | 'honored' | 'wanting' | 'open'
+type Filter = 'all' | 'gilded' | 'honored' | 'wanting' | 'open' | 'wager' | 'burned'
 type Sort = 'newest' | 'oldest' | 'reputation' | 'weight'
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
@@ -21,8 +22,25 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'gilded', label: 'Gilded' },
   { id: 'honored', label: 'Honored' },
   { id: 'wanting', label: 'Found wanting' },
-  { id: 'open', label: 'Open' }
+  { id: 'open', label: 'Open' },
+  { id: 'wager', label: 'Wagers' },
+  { id: 'burned', label: 'Burned' }
 ]
+
+function passes(ev: ContractEval, filter: Filter): boolean {
+  switch (filter) {
+    case 'all':
+      return true
+    case 'open':
+      return ev.status !== 'closed' && ev.status !== 'burned'
+    case 'wager':
+      return ev.contract.kind === 'wager'
+    case 'burned':
+      return ev.status === 'burned'
+    default:
+      return ev.grade === filter
+  }
+}
 
 const LB_PER_KG = 2.2046226218
 
@@ -47,11 +65,7 @@ export function ArchivePage(): React.JSX.Element {
   )
 
   const shown = useMemo(() => {
-    const list = evals.filter(({ ev, hay }) => {
-      if (filter === 'open' && ev.status === 'closed') return false
-      if (filter !== 'all' && filter !== 'open' && ev.grade !== filter) return false
-      return matchesQuery(hay, query)
-    })
+    const list = evals.filter(({ ev, hay }) => passes(ev, filter) && matchesQuery(hay, query))
     const by: Record<Sort, (a: ContractEval, b: ContractEval) => number> = {
       newest: (a, b) => b.contract.startDate.localeCompare(a.contract.startDate),
       oldest: (a, b) => a.contract.startDate.localeCompare(b.contract.startDate),
@@ -72,6 +86,10 @@ export function ArchivePage(): React.JSX.Element {
   const gilded = closed.filter((ev) => ev.grade === 'gilded').length
 
   const selected = archiveId ? evals.find((x) => x.ev.contract.id === archiveId)?.ev : undefined
+  // Wagers and ashes get their own chips only once there are some.
+  const hasWagers = evals.some((x) => x.ev.contract.kind === 'wager')
+  const hasAsh = evals.some((x) => x.ev.status === 'burned')
+  const filters = FILTERS.filter((f) => (f.id === 'wager' ? hasWagers : f.id === 'burned' ? hasAsh : true))
 
   return (
     <div className="archive">
@@ -113,7 +131,7 @@ export function ArchivePage(): React.JSX.Element {
           />
         </label>
         <div className="chips" role="radiogroup" aria-label="Filter by outcome">
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} className={`chip ${filter === f.id ? 'is-on' : ''}`}
               onClick={() => {
                 sfx('click')
@@ -162,16 +180,34 @@ export function ArchivePage(): React.JSX.Element {
           <div className="archive-detail">
             <ContractDocument ev={selected} profile={ledger.profile} />
             <div className="archive-detail__side">
-              <section className="panel">
-                <header className="panel__head">
-                  <h3 className="panel__title">The Week</h3>
-                  <span className="panel__aside">{formatRep(selected.reputation)} reputation</span>
-                </header>
-                <WeekProgress ev={selected} />
-              </section>
-              <button type="button" className="btn btn--ghost btn--burn" onClick={() => setBurning(selected.contract)}>
-                <GiFire aria-hidden="true" /> Burn this contract…
-              </button>
+              {selected.status === 'burned' ? (
+                <section className="panel panel--ash">
+                  <header className="panel__head">
+                    <h3 className="panel__title">
+                      <GiFire aria-hidden="true" /> Ash
+                    </h3>
+                    <span className="panel__aside">{formatRep(selected.reputation)} reputation</span>
+                  </header>
+                  <p>
+                    This {selected.contract.kind === 'wager' ? 'wager' : 'contract'} was burned
+                    {selected.contract.burnedOn ? ` on ${formatShort(selected.contract.burnedOn)}` : ''}. What was recorded under it burned with it
+                    {selected.contract.kind === 'wager' ? `, and its stake of ${formatNumber(selected.stake)} reputation is forfeit` : ''}.
+                  </p>
+                </section>
+              ) : (
+                <>
+                  <section className="panel">
+                    <header className="panel__head">
+                      <h3 className="panel__title">The Week</h3>
+                      <span className="panel__aside">{formatRep(selected.reputation)} reputation</span>
+                    </header>
+                    <WeekProgress ev={selected} />
+                  </section>
+                  <button type="button" className="btn btn--ghost btn--burn" onClick={() => setBurning(selected.contract)}>
+                    <GiFire aria-hidden="true" /> Burn this {selected.contract.kind === 'wager' ? 'wager' : 'contract'}…
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

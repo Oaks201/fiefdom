@@ -1,8 +1,10 @@
 import type { IconType } from 'react-icons'
-import { GiBookshelf, GiCandleFlame, GiCog, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled } from 'react-icons/gi'
+import { GiBookshelf, GiCandleFlame, GiCog, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled } from 'react-icons/gi'
 import { contractStatus } from '../lib/contracts'
+import { formatAgo } from '../lib/format'
 import { openContract, setSound } from '../lib/ledger'
 import { useToday } from '../state/clock'
+import { useHealth } from '../state/health'
 import { useLedgerData, useReputation } from '../state/hooks'
 import { useLedger } from '../state/store'
 import { useUI, type Page } from '../state/ui'
@@ -35,6 +37,21 @@ export function TopBar(): React.JSX.Element {
 
   const profile = ledger.profile
   const music = ledger.settings.sound.music
+
+  // Fitbit: shown once it has been set up — spins while syncing, flags trouble
+  const health = useHealth()
+  const fitbit = health.status
+  const showFitbit = health.available && !!fitbit && (fitbit.connected || !!fitbit.problem)
+  const fitbitTrouble = !!fitbit?.problem || (!!fitbit?.connected && !!health.lastError)
+  const fitbitTitle = health.syncing
+    ? 'Syncing with Fitbit…'
+    : fitbit?.problem
+      ? `Fitbit needs attention: ${fitbit.problem}`
+      : health.lastError
+        ? `Fitbit: ${health.lastError}. Click to try again.`
+        : health.lastSync
+          ? `Fitbit synced ${formatAgo(health.lastSync)}. Click to sync now.`
+          : 'Sync with Fitbit'
   const initial = (profile?.name.trim()[0] ?? 'F').toUpperCase()
 
   return (
@@ -81,6 +98,18 @@ export function TopBar(): React.JSX.Element {
           >
             <GiMusicalNotes aria-hidden="true" />
           </button>
+          {showFitbit && (
+            <button
+              type="button"
+              className={`tool tool--sync ${health.syncing ? 'is-busy' : ''} ${fitbitTrouble ? 'has-alert' : ''}`}
+              aria-label="Sync with Fitbit"
+              title={fitbitTitle}
+              onClick={() => (fitbit?.connected ? void health.sync() : setSettingsOpen(true))}
+            >
+              <GiCycle aria-hidden="true" />
+              {fitbitTrouble && <span className="tool__alert">!</span>}
+            </button>
+          )}
           <button type="button" className="tool" aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
             <GiCog aria-hidden="true" />
           </button>
@@ -90,7 +119,10 @@ export function TopBar(): React.JSX.Element {
           <span className="streak__count">{rep.currentStreak}</span>
           <span className="streak__label">{rep.currentStreak === 1 ? 'day' : 'days'}</span>
         </div>
-        <div className="reputation" title={`Reputation — ${rep.fromDays.toLocaleString('en-US')} from days, ${rep.fromContracts.toLocaleString('en-US')} from contracts`}>
+        <div
+          className="reputation"
+          title={`Reputation — ${rep.fromDays.toLocaleString('en-US')} from days, ${rep.fromContracts.toLocaleString('en-US')} from contracts (bonuses and wagers, less stakes)`}
+        >
           <WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />
           <span className="reputation__text">
             <span className="reputation__value">

@@ -8,28 +8,9 @@ import { useLedgerData } from '../state/hooks'
 import { appInfo, isDesktop, revealLedgerFolder } from '../state/persistence'
 import { useLedger } from '../state/store'
 import { useUI } from '../state/ui'
+import { FitbitSettings } from './FitbitSettings'
 import { Modal } from './Modal'
-
-function Switch({ on, label, onChange }: { on: boolean; label: string; onChange(on: boolean): void }): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      className={`switch ${on ? 'is-on' : ''}`}
-      onClick={() => {
-        sfx('click')
-        onChange(!on)
-      }}
-    >
-      <span className="switch__track" aria-hidden="true">
-        <span className="switch__word">{on ? 'On' : 'Off'}</span>
-      </span>
-      <span className="switch__knob" aria-hidden="true" />
-    </button>
-  )
-}
+import { Switch } from './Switch'
 
 interface SoundRowProps {
   icon: IconType
@@ -118,6 +99,8 @@ export function SettingsModal(): React.JSX.Element {
           Press <kbd className="kbd">M</kbd> anywhere to pause or resume the music.
         </p>
       </section>
+
+      <FitbitSettings open={open} />
 
       <section className="settings__section">
         <h3 className="settings__heading">The ledger</h3>

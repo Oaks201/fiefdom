@@ -5,9 +5,9 @@ import { DayLedger } from '../components/chronicle/DayLedger'
 import { DutyList } from '../components/chronicle/DutyList'
 import { Tally } from '../components/chronicle/Tally'
 import { WeekStrip } from '../components/chronicle/WeekStrip'
-import { contractStatus } from '../lib/contracts'
+import { calorieMetricFor, contractStatus } from '../lib/contracts'
 import { addDays, diffDays, formatLong, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../lib/dates'
-import { contractOn, openContract } from '../lib/ledger'
+import { contractOn, dutiesSwornUnder, openContract } from '../lib/ledger'
 import { useToday } from '../state/clock'
 import { useLedgerData } from '../state/hooks'
 import { isDialogOpen, isTyping, useUI } from '../state/ui'
@@ -55,6 +55,8 @@ export function ChroniclePage(): React.JSX.Element {
   }, [setDate, today])
 
   const contract = contractOn(ledger, date)
+  // calories eaten against a limit — or burned, for a contract sealed under the old rule
+  const calorieMetric = calorieMetricFor(ledger, date)
   const relative = formatRelativeDay(date, today)
   const dayOfContract = contract ? diffDays(contract.startDate, date) + 1 : 0
 
@@ -142,7 +144,7 @@ export function ChroniclePage(): React.JSX.Element {
 
       <div className="chronicle__tallies">
         <Tally metric="steps" date={date} inputRef={stepsRef} />
-        <Tally metric="calories" date={date} inputRef={caloriesRef} />
+        <Tally key={calorieMetric} metric={calorieMetric} date={date} inputRef={caloriesRef} />
       </div>
 
       <div className="chronicle__lower">
@@ -171,9 +173,11 @@ export function ChroniclePage(): React.JSX.Element {
         <span>
           <kbd className="kbd">1</kbd>–<kbd className="kbd">9</kbd> duties
         </span>
-        <span>
-          <kbd className="kbd">N</kbd> new duty
-        </span>
+        {!dutiesSwornUnder(ledger) && (
+          <span>
+            <kbd className="kbd">N</kbd> new duty
+          </span>
+        )}
         <span>
           <kbd className="kbd">+1200</kbd> adds to a tally
         </span>

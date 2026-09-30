@@ -10,6 +10,7 @@ import { ArchivePage } from './pages/ArchivePage'
 import { ChroniclePage } from './pages/ChroniclePage'
 import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
+import { startHealthSync } from './state/health'
 import { setSound } from './lib/ledger'
 import { useLedger } from './state/store'
 import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
@@ -54,6 +55,9 @@ export default function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Fitbit: fill in steps and calories once the ledger is open, then keep them fresh.
+  useEffect(() => (status === 'ready' ? startHealthSync() : undefined), [status])
 
   // Sound: start once the ledger (and its sound settings) is loaded; follow settings changes;
   // turn pages and days with the rustle of paper.

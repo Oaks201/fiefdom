@@ -57,6 +57,18 @@ export function parseInteger(input: string): number {
   return parseInt(raw, 10)
 }
 
+/** "just now", "4 minutes ago", "2 hours ago", "3 days ago" */
+export function formatAgo(then: number, now: number = Date.now()): string {
+  const s = Math.max(0, Math.round((now - then) / 1000))
+  if (s < 60) return 'just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return m === 1 ? 'a minute ago' : `${m} minutes ago`
+  const h = Math.round(m / 60)
+  if (h < 24) return h === 1 ? 'an hour ago' : `${h} hours ago`
+  const d = Math.round(h / 24)
+  return d === 1 ? 'a day ago' : `${d} days ago`
+}
+
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`
 }

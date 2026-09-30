@@ -14,9 +14,15 @@ export function DayLedger({ date, today }: { date: ISODate; today: ISODate }): R
   const past = date < today
 
   const remaining: string[] = []
-  if (day.contract) {
-    if (!day.stepsMet) remaining.push(`Walk ${formatNumber(day.contract.stepsGoal - (log.steps ?? 0))} more steps`)
-    if (!day.caloriesMet) remaining.push(`Burn ${formatNumber(day.contract.caloriesGoal - (log.calories ?? 0))} more calories`)
+  const c = day.contract
+  if (c) {
+    if (!day.stepsMet) remaining.push(`Walk ${formatNumber(c.stepsGoal - (log.steps ?? 0))} more steps`)
+    if (!day.caloriesMet) {
+      if (c.calorieRule === 'burn') remaining.push(`Burn ${formatNumber(c.caloriesGoal - (log.calories ?? 0))} more calories`)
+      else if (log.eaten === undefined) remaining.push('Record the calories you eat')
+      else if (day.caloriesOver) remaining.push(`Over the calorie limit by ${formatNumber(log.eaten - c.caloriesGoal)}`)
+      else if (c.caloriesMin !== undefined) remaining.push(`Eat at least ${formatNumber(c.caloriesMin - log.eaten)} more calories`)
+    }
   }
   const dutiesLeft = day.dutiesTotal - day.dutiesDone
   if (dutiesLeft > 0) remaining.push(`Keep ${dutiesLeft === 1 ? '1 more duty' : `${dutiesLeft} more duties`}`)

@@ -8,19 +8,18 @@ import type { Ledger } from '../src/renderer/src/lib/types'
 const NOW = '2026-09-28T12:00:00.000Z'
 
 function base(): Ledger {
-  let l = sealContract(
-    createLedger(),
-    { startDate: '2026-09-28', stepsGoal: 10000, caloriesGoal: 500, startWeight: 180, unit: 'lb' },
-    { id: 'c1', today: '2026-09-28', now: NOW }
-  )
-  l = addHabit(l, { id: 'a', name: 'Read', createdOn: '2026-09-28' })
+  let l = addHabit(createLedger(), { id: 'a', name: 'Read', createdOn: '2026-09-28' })
   l = addHabit(l, { id: 'b', name: 'Stretch', createdOn: '2026-09-28' })
-  return l
+  return sealContract(
+    l,
+    { kind: 'common', startDate: '2026-09-28', stepsGoal: 10000, caloriesGoal: 2000, startWeight: 180, unit: 'lb' },
+    { id: 'c1', today: '2026-09-28', now: NOW, balance: 0 }
+  )
 }
 
 function perfectDay(l: Ledger, date: string): Ledger {
   l = setMetric(l, date, 'steps', 10000)
-  l = setMetric(l, date, 'calories', 500)
+  l = setMetric(l, date, 'eaten', 1900)
   l = toggleDuty(l, date, 'a')
   return toggleDuty(l, date, 'b')
 }
@@ -38,6 +37,7 @@ test('a perfect day earns every line', () => {
       ['perfect', 5]
     ]
   )
+  assert.equal(day.lines[1].label, 'Within the calorie limit')
   assert.equal(day.total, 33)
 })
 
@@ -48,6 +48,26 @@ test('partial days earn partial reputation and are not perfect', () => {
   assert.equal(day.perfect, false)
   assert.equal(day.streak, 0)
   assert.equal(day.total, 10 + 4)
+})
+
+test('the calorie limit is kept only when calories are recorded and within range', () => {
+  const l = base()
+  const at = (eaten: number | undefined): ReturnType<typeof evaluateDay> => evaluateDay(setMetric(l, '2026-09-28', 'eaten', eaten), '2026-09-28', 0)
+  assert.equal(at(undefined).caloriesMet, false) // nothing recorded: no stamp
+  assert.equal(at(0).caloriesMet, true)
+  assert.equal(at(2000).caloriesMet, true) // exactly the limit
+  assert.equal(at(2001).caloriesMet, false)
+  assert.equal(at(2001).caloriesOver, true)
+  // calories burned no longer count under a limit
+  assert.equal(evaluateDay(setMetric(l, '2026-09-28', 'calories', 3000), '2026-09-28', 0).caloriesMet, false)
+
+  const ranged = sealContract(
+    createLedger(),
+    { kind: 'common', startDate: '2026-09-28', stepsGoal: 10000, caloriesGoal: 2000, caloriesMin: 1500, startWeight: 180, unit: 'lb' },
+    { id: 'c2', today: '2026-09-28', now: NOW, balance: 0 }
+  )
+  assert.equal(evaluateDay(setMetric(ranged, '2026-09-28', 'eaten', 1200), '2026-09-28', 0).caloriesMet, false)
+  assert.equal(evaluateDay(setMetric(ranged, '2026-09-28', 'eaten', 1500), '2026-09-28', 0).caloriesMet, true)
 })
 
 test('streaks add +1 per consecutive perfect day, and an unfinished today does not break them', () => {
@@ -73,16 +93,26 @@ test('days without a contract can still be perfect through duties alone', () => 
   assert.equal(evaluateDay(createLedger(), '2026-09-01', 0).applicable, false)
 })
 
-test('closing a contract adds the honoured bonus, and a flawless week adds more', () => {
+test('closing a contract adds the honoured bonus, and a flawless week — duties included — adds more', () => {
   let l = base()
   for (let i = 0; i < 7; i++) {
     const d = addDays('2026-09-28', i)
     l = setMetric(l, d, 'steps', 10000)
-    l = setMetric(l, d, 'calories', 500)
+    l = setMetric(l, d, 'eaten', 1800)
+    l = toggleDuty(l, d, 'a')
+    if (i !== 3) l = toggleDuty(l, d, 'b')
   }
-  const before = computeReputation(l, '2026-10-04')
-  l = closeContract(l, 'c1', { finalWeight: 178 }, { today: '2026-10-04', now: NOW })
-  const after = computeReputation(l, '2026-10-04')
+  // one sworn duty was missed once: honored, not flawless
+  let before = computeReputation(l, '2026-10-04')
+  let closed = closeContract(l, 'c1', { finalWeight: 178 }, { today: '2026-10-04', now: NOW })
+  let after = computeReputation(closed, '2026-10-04')
+  assert.equal(after.fromContracts, 25)
+  assert.equal(after.total - before.total, 25)
+
+  l = toggleDuty(l, '2026-10-01', 'b')
+  before = computeReputation(l, '2026-10-04')
+  closed = closeContract(l, 'c1', { finalWeight: 178 }, { today: '2026-10-04', now: NOW })
+  after = computeReputation(closed, '2026-10-04')
   assert.equal(after.fromContracts, 75)
   assert.equal(after.total - before.total, 75)
 })

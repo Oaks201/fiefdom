@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { GiCheckMark, GiQuill } from 'react-icons/gi'
+import { GiCheckMark, GiPadlock, GiQuill } from 'react-icons/gi'
 import { sfx } from '../../audio'
-import { formatShort, minDate, type ISODate } from '../../lib/dates'
-import { activeHabits, addHabit, cleanName, dayLog, LIMITS, moveHabit, renameHabit, retireHabit, toggleDuty } from '../../lib/ledger'
+import { addDays, formatRange, formatShort, maxDate, minDate, type ISODate } from '../../lib/dates'
+import {
+  activeHabits,
+  addHabit,
+  cleanName,
+  dayLog,
+  dutiesSwornUnder,
+  LIMITS,
+  moveHabit,
+  renameHabit,
+  retireFloor,
+  retireHabit,
+  swornMessage,
+  toggleDuty
+} from '../../lib/ledger'
 import type { Habit } from '../../lib/types'
 import { useApplyWithFeedback, useLedgerData, newId } from '../../state/hooks'
 import { useLedger } from '../../state/store'
@@ -30,6 +43,10 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
   const habits = activeHabits(ledger, date)
   const log = dayLog(ledger, date)
   const doneCount = habits.filter((h) => log.done[h.id]).length
+  // While a contract is open its duties are sworn: they are kept or missed, never changed.
+  const sworn = dutiesSwornUnder(ledger)
+  const swornRef = useRef(sworn)
+  swornRef.current = sworn
 
   const [justDone, setJustDone] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
@@ -64,7 +81,13 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
         }
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
-        newDutyRef.current?.focus()
+        const lock = swornRef.current
+        if (lock) {
+          toast(swornMessage(lock))
+          sfx('error')
+        } else {
+          newDutyRef.current?.focus()
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -83,11 +106,18 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
     setNewName('')
   }
 
+  // A duty sworn under a sealed contract stays on that contract's days.
+  const retireFrom = (h: Habit): ISODate => {
+    const floor = retireFloor(ledger, h.id)
+    return floor ? maxDate(date, floor) : date
+  }
+
   const confirmRetire = (h: Habit): void => {
-    apply((l) => retireHabit(l, h.id, date))
-    sfx('strike')
+    if (apply((l) => retireHabit(l, h.id, date))) {
+      sfx('strike')
+      toast(`“${h.name}” was struck from the roll.`)
+    }
     setRetiring(null)
-    toast(`“${h.name}” was struck from the roll.`)
   }
 
   const onDrop = (): void => {
@@ -107,7 +137,14 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
   return (
     <section className="panel duties">
       <header className="panel__head">
-        <h3 className="panel__title">Daily Duties</h3>
+        <h3 className="panel__title">
+          Daily Duties
+          {sworn && (
+            <span className="duties__sworn" title={swornMessage(sworn)}>
+              <GiPadlock aria-hidden="true" /> Sworn
+            </span>
+          )}
+        </h3>
         {habits.length > 0 && (
           <span className={`duties__count ${doneCount === habits.length ? 'is-complete' : ''}`}>
             {doneCount} of {habits.length} kept
@@ -116,9 +153,14 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
       </header>
 
       {habits.length === 0 ? (
-        <p className="duties__empty">
-          No duties on the roll yet. Add the small things you mean to do every day — <em>read twenty pages</em>, <em>drink eight cups of water</em>, <em>no sweets</em>.
-        </p>
+        sworn ? (
+          <p className="duties__empty">No duties are on the roll for this day.</p>
+        ) : (
+          <p className="duties__empty">
+            No duties on the roll yet. Add the small things you mean to do every day — <em>read twenty pages</em>, <em>drink eight cups of water</em>,{' '}
+            <em>no sweets</em>. Sealing a contract swears them in for its week.
+          </p>
+        )
       ) : (
         <ol ref={listRef} className="duties__list" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
           {habits.map((h, i) => {
@@ -173,7 +215,7 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
                     {i < 9 && <kbd className="kbd duty__key">{i + 1}</kbd>}
                   </button>
                 )}
-                {editing !== h.id && (
+                {editing !== h.id && !sworn && (
                   <span className="duty__actions">
                     <button type="button" className="icon-btn" title="Rename" aria-label={`Rename ${h.name}`} onClick={() => setEditing(h.id)}>
                       <GiQuill />
@@ -189,47 +231,61 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
         </ol>
       )}
 
-      <form
-        className="duties__add"
-        onSubmit={(e) => {
-          e.preventDefault()
-          add()
-        }}
-      >
-        <span className="duties__plus" aria-hidden="true">
-          +
-        </span>
-        <input
-          ref={newDutyRef}
-          value={newName}
-          maxLength={LIMITS.habitName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setNewName('')
-              e.currentTarget.blur()
-            }
+      {sworn ? (
+        <p className="duties__lock">
+          <GiPadlock aria-hidden="true" />
+          <span>
+            Sworn under the contract of <strong>{formatRange(sworn.startDate, sworn.endDate)}</strong>. Duties can be added or struck once it is closed or burned.
+          </span>
+        </p>
+      ) : (
+        <form
+          className="duties__add"
+          onSubmit={(e) => {
+            e.preventDefault()
+            add()
           }}
-          placeholder="Add a duty to the roll…"
-          aria-label="New duty"
-        />
-        <kbd className="kbd">N</kbd>
-        {newName.trim() && (
-          <button type="submit" className="btn btn--small">
-            Add
-          </button>
-        )}
-      </form>
+        >
+          <span className="duties__plus" aria-hidden="true">
+            +
+          </span>
+          <input
+            ref={newDutyRef}
+            value={newName}
+            maxLength={LIMITS.habitName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setNewName('')
+                e.currentTarget.blur()
+              }
+            }}
+            placeholder="Add a duty to the roll…"
+            aria-label="New duty"
+          />
+          <kbd className="kbd">N</kbd>
+          {newName.trim() && (
+            <button type="submit" className="btn btn--small">
+              Add
+            </button>
+          )}
+        </form>
+      )}
 
       <Modal open={retiring !== null} onClose={() => setRetiring(null)} title="Strike from the roll?" className="modal--narrow">
         {retiring && (
           <>
             <p>
               <strong>“{retiring.name}”</strong>{' '}
-              {date <= retiring.createdOn
+              {retireFrom(retiring) <= retiring.createdOn
                 ? 'will be removed entirely, as if it had never been written.'
-                : `will no longer appear from ${formatShort(date)} onward. Earlier days keep their record of it.`}
+                : `will no longer appear from ${formatShort(retireFrom(retiring))} onward. Earlier days keep their record of it.`}
             </p>
+            {retireFrom(retiring) > date && (
+              <p className="muted">
+                It was sworn under a contract that ran until {formatShort(addDays(retireFrom(retiring), -1))}, so it stays on that week’s days.
+              </p>
+            )}
             <div className="modal__actions">
               <button type="button" className="btn btn--ghost" onClick={() => setRetiring(null)} data-autofocus>
                 Keep it

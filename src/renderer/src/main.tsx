@@ -8,6 +8,7 @@ import './styles/components.css'
 import './styles/chronicle.css'
 import './styles/contract.css'
 import './styles/archive.css'
+import './styles/terms.css'
 
 import App from './App'
 

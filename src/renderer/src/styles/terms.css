@@ -1,0 +1,616 @@
+/* ==========================================================================
+   Calorie limits, sworn duties, wagers, ash — and Fitbit
+   ========================================================================== */
+
+/* ----------------------------------------------------------- tallies */
+.tally__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 1px;
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--royal);
+  background: rgba(45, 87, 166, 0.09);
+  border: 1px solid rgba(45, 87, 166, 0.3);
+  border-radius: 999px;
+}
+
+.tally__source svg {
+  font-size: 13px;
+}
+
+.tally__bar {
+  position: relative;
+}
+
+.tally__floor {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: rgba(42, 26, 12, 0.55);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 250, 235, 0.55);
+}
+
+/* over the calorie limit: the bar runs out, and no stamp is given */
+.tally.is-over .tally__fill {
+  background: repeating-linear-gradient(-45deg, #b8322a 0 7px, #8b1e1a 7px 14px);
+  box-shadow: 0 0 8px rgba(184, 50, 42, 0.55);
+}
+
+.tally.is-over .tally__goal strong {
+  color: var(--crimson);
+}
+
+.tally.is-over .tally__input {
+  color: var(--crimson);
+}
+
+.tally__adopt {
+  align-self: center;
+  margin-left: 4px;
+  font-size: 14.5px;
+}
+
+.tally__aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  align-self: center;
+  font: italic 14.5px var(--font-body);
+  color: var(--ink-3);
+}
+
+/* ----------------------------------------------------------- sworn duties */
+.duties__sworn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  padding: 2px 9px 1px 7px;
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff3d6;
+  background: linear-gradient(#a8322a, #6d1612);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.35),
+    0 1px 2px rgba(60, 20, 5, 0.4);
+}
+
+.duties__sworn svg {
+  font-size: 12px;
+}
+
+.duties__lock {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  font: italic 15px/1.4 var(--font-body);
+  color: var(--ink-2);
+  background: rgba(139, 30, 26, 0.05);
+  border: 1px dashed rgba(139, 30, 26, 0.3);
+  border-radius: 8px;
+}
+
+.duties__lock svg {
+  flex: none;
+  margin-top: 2px;
+  font-size: 17px;
+  color: var(--crimson);
+}
+
+.duties__lock strong {
+  font-style: normal;
+}
+
+/* ----------------------------------------------------------- choosing a kind of contract */
+.contract-draft {
+  grid-template-areas:
+    'kinds kinds'
+    'deed rules';
+}
+
+.contract-kinds {
+  grid-area: kinds;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contract-draft > .deed {
+  grid-area: deed;
+}
+
+.contract-draft > .contract-rules {
+  grid-area: rules;
+}
+
+.kind {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  grid-template-areas:
+    'icon name'
+    'icon blurb';
+  align-items: center;
+  gap: 1px 12px;
+  padding: 12px 16px;
+  text-align: left;
+  color: var(--ink-2);
+  background: rgba(255, 249, 232, 0.35);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 4px rgba(255, 251, 240, 0.28);
+  transition:
+    background 0.15s,
+    box-shadow 0.2s,
+    transform 0.1s;
+}
+
+.kind:hover {
+  background: rgba(255, 249, 232, 0.6);
+}
+
+.kind:active {
+  transform: translateY(1px);
+}
+
+.kind.is-on {
+  color: var(--ink);
+  background: rgba(255, 251, 238, 0.82);
+  border-color: rgba(139, 30, 26, 0.55);
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 251, 240, 0.4),
+    inset 0 0 0 5px rgba(139, 30, 26, 0.25),
+    0 3px 10px rgba(60, 30, 5, 0.18);
+}
+
+.kind--wager.is-on {
+  border-color: rgba(168, 118, 29, 0.8);
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 251, 240, 0.4),
+    inset 0 0 0 5px rgba(201, 150, 46, 0.45),
+    0 0 14px rgba(242, 200, 110, 0.45);
+}
+
+.kind.is-disabled {
+  opacity: 0.6;
+}
+
+.kind__icon {
+  grid-area: icon;
+  font-size: 32px;
+  color: var(--crimson);
+}
+
+.kind--wager .kind__icon {
+  color: var(--gold-deep);
+}
+
+.kind__name {
+  grid-area: name;
+  font: 700 18px var(--font-caps);
+  letter-spacing: 0.02em;
+}
+
+.kind__blurb {
+  grid-area: blurb;
+  font: italic 15px/1.35 var(--font-body);
+  color: var(--ink-3);
+}
+
+.kind__blurb em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--gold-deep);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------- the deed's new terms */
+.deed__aside {
+  font: italic 15px var(--font-body);
+  white-space: nowrap;
+}
+
+.deed__duties {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.deed-duties {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deed-duties > li {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 0;
+}
+
+/* semicolons between duties, never before the "add" field */
+.deed-duties > li:has(+ li:not(.deed-duties__add))::after {
+  content: ';';
+  color: var(--ink-2);
+}
+
+.deed-duties__strike {
+  margin-left: 2px;
+  padding: 0 3px;
+  font: 13px var(--font-body);
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  opacity: 0.55;
+}
+
+.deed-duties__strike:hover,
+.deed-duties__strike:focus-visible {
+  color: var(--crimson);
+  opacity: 1;
+}
+
+.deed-duties > li.is-confirming .ink {
+  text-decoration: line-through;
+  text-decoration-color: var(--crimson);
+}
+
+.deed-duties > li.is-confirming .deed-duties__strike {
+  font: italic 700 14px var(--font-body);
+  color: var(--crimson);
+  opacity: 1;
+}
+
+.deed-duties__add form {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.deed-duties__add input {
+  min-width: 12ch;
+  font-size: 17px !important;
+  text-align: left !important;
+}
+
+.deed__stake {
+  margin-top: 4px;
+  padding-top: 8px !important;
+  border-top: 1px dashed rgba(168, 118, 29, 0.45);
+}
+
+.deed--wager .deed__title {
+  color: #5a3c0c;
+}
+
+.deed--wager::before {
+  border-color: rgba(168, 118, 29, 0.55);
+  outline-color: rgba(168, 118, 29, 0.28);
+}
+
+/* a burned deed: scorched edges and faded ink */
+.deed--burned .deed__paper {
+  background-image:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 250, 235, 0.45) 30%, transparent 72%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(70, 35, 12, 0.5) 88%, rgba(30, 12, 4, 0.85) 100%),
+    var(--tex-parchment);
+  filter: url(#rough-edge-soft) grayscale(0.35) drop-shadow(0 10px 14px rgba(60, 30, 5, 0.38));
+}
+
+.deed--burned .deed__terms,
+.deed--burned .deed__preamble {
+  opacity: 0.72;
+}
+
+.deed__clause--burned {
+  font-style: italic;
+  color: #6b2a14;
+}
+
+/* ----------------------------------------------------------- the aside beside a draft */
+.rules b {
+  font-weight: 700;
+}
+
+.rules em {
+  margin-left: 4px;
+  font: 700 13px var(--font-caps);
+  font-style: normal;
+  color: var(--ink-3);
+}
+
+.rules strong.is-cost,
+.ledger__amount.is-cost,
+.card__rep.is-cost,
+.wager-panel strong.is-cost {
+  color: var(--crimson);
+}
+
+.contract-rules__grades {
+  margin-top: 12px;
+  padding-top: 10px;
+  font: 15px/1.45 var(--font-body);
+  color: var(--ink-2);
+  border-top: 1px solid var(--rule-soft);
+}
+
+/* ----------------------------------------------------------- week progress */
+.progress__cell.is-over .progress__fill {
+  height: 100% !important;
+  background: repeating-linear-gradient(-45deg, #b8322a 0 5px, #8b1e1a 5px 10px);
+}
+
+.progress__cell.is-over .progress__value {
+  color: var(--crimson);
+}
+
+.progress__row--duties .progress__bar {
+  height: 30px;
+}
+
+/* ----------------------------------------------------------- the wager beside an open contract */
+.wager-panel__odds {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.wager-panel__odds li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  font-size: 16px;
+  border-bottom: 1px dashed var(--rule-soft);
+  border-radius: 6px;
+}
+
+.wager-panel__odds em {
+  margin-left: 4px;
+  font: 700 13px var(--font-caps);
+  font-style: normal;
+  color: var(--ink-3);
+}
+
+.wager-panel__odds strong {
+  font: 700 15px var(--font-caps);
+  color: var(--gold-deep);
+}
+
+.wager-panel__odds li.is-pace {
+  background: rgba(242, 210, 123, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(201, 150, 46, 0.45);
+}
+
+.wager-panel .muted {
+  font: italic 15px var(--font-body);
+}
+
+/* ----------------------------------------------------------- the Archive */
+.card__wager {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  padding: 1px 9px 0 7px;
+  font: 700 12px var(--font-caps);
+  letter-spacing: 0.05em;
+  color: #5a3c0c;
+  background: linear-gradient(#f7df98, #d9a843);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(90, 60, 12, 0.35);
+}
+
+.card--burned .card__paper {
+  background-image:
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(70, 35, 12, 0.35) 85%, rgba(30, 12, 4, 0.7) 100%),
+    var(--tex-speckle),
+    linear-gradient(170deg, #e5d8bd, #c9b692);
+}
+
+.card--burned .card__dates,
+.card--burned .card__terms {
+  opacity: 0.75;
+}
+
+.card__ash {
+  grid-area: chart;
+  font: italic 15.5px/1.4 var(--font-body);
+  color: #6b2a14;
+}
+
+.archive__controls .search {
+  flex-basis: 220px;
+}
+
+.minibars__over {
+  fill: #8b1e1a;
+}
+
+.panel--ash {
+  background: rgba(230, 214, 190, 0.5);
+}
+
+.panel--ash .panel__aside {
+  color: var(--crimson);
+}
+
+.panel--ash p {
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+/* ----------------------------------------------------------- the Fitbit button in the top bar */
+.tool--sync.is-busy svg {
+  animation: spin 1.1s linear infinite;
+}
+
+.tool__alert {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font: 900 11px/1 var(--font-caps);
+  color: #fff;
+  background: radial-gradient(circle at 35% 25%, #e0924a, #a45a12 65%, #6b3a0c);
+  border: 1.5px solid #f2d27b;
+  border-radius: 50%;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1.1s linear infinite;
+}
+
+/* ----------------------------------------------------------- Settings → Fitbit */
+.fitbit__card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 249, 232, 0.5);
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+}
+
+.fitbit__card.is-connected {
+  border-color: rgba(47, 116, 64, 0.4);
+  box-shadow: inset 3px 0 0 var(--forest);
+}
+
+.fitbit__icon {
+  margin-top: 2px;
+  font-size: 28px;
+  color: var(--crimson);
+}
+
+.fitbit__card.is-connected .fitbit__icon {
+  color: var(--forest);
+}
+
+.fitbit__lead {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.fitbit__lead code,
+.fitbit__help code {
+  font: 13px ui-monospace, Consolas, monospace;
+  padding: 1px 4px;
+  background: rgba(92, 58, 24, 0.08);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.fitbit__status,
+.fitbit__note {
+  margin-top: 6px;
+  font-size: 14.5px;
+  color: var(--ink-3);
+}
+
+.fitbit__note svg {
+  vertical-align: -2px;
+}
+
+.fitbit__problem {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 14.5px;
+  color: #7a1f14;
+  background: rgba(217, 132, 36, 0.12);
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+}
+
+.fitbit__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 15.5px;
+}
+
+.fitbit__hint {
+  display: block;
+  font: italic 13.5px var(--font-body);
+  color: var(--ink-3);
+}
+
+.fitbit__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 10px;
+}
+
+.fitbit__actions .btn svg {
+  vertical-align: -2px;
+  margin-right: 3px;
+}
+
+.fitbit__waiting {
+  font: italic 15px var(--font-body);
+  color: var(--ink-2);
+}
+
+.fitbit__help {
+  margin-top: 10px;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+
+.fitbit__help summary {
+  cursor: pointer;
+  font: 700 14.5px var(--font-caps);
+  color: var(--crimson);
+}
+
+.fitbit__help ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  line-height: 1.5;
+}
+
+.fitbit__help li + li {
+  margin-top: 5px;
+}
+
+.fitbit__help code {
+  display: block;
+  margin: 3px 0;
+}
+
+@media (max-width: 1150px) {
+  .contract-draft {
+    grid-template-areas:
+      'kinds'
+      'deed'
+      'rules';
+  }
+}

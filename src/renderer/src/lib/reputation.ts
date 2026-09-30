@@ -1,9 +1,9 @@
 /**
  * Reputation is never stored — it is recalculated from the ledger, so editing a past day
- * simply re-tells history. Everything a player can earn is listed here.
+ * simply re-tells history. Everything a player can earn (or stake) is listed here.
  */
 import { addDays, type ISODate } from './dates'
-import { CONTRACT_REP, evaluateContract } from './contracts'
+import { calorieMetricOf, caloriesKept, contractsRep, CONTRACT_REP, overLimit, stepsKept } from './contracts'
 import { activeHabits, contractOn, dayLog } from './ledger'
 import type { Contract, Ledger } from './types'
 
@@ -30,6 +30,8 @@ export interface DayRep {
   contract?: Contract
   stepsMet: boolean | null
   caloriesMet: boolean | null
+  /** ate past the contract's calorie limit */
+  caloriesOver: boolean
   dutiesTotal: number
   dutiesDone: number
   /** there was something to do this day (a contract or at least one duty) */
@@ -44,14 +46,20 @@ export function evaluateDay(ledger: Ledger, date: ISODate, prevStreak: number): 
   const log = dayLog(ledger, date)
   const habits = activeHabits(ledger, date)
   const dutiesDone = habits.filter((h) => log.done[h.id]).length
-  const stepsMet = contract ? (log.steps ?? 0) >= contract.stepsGoal : null
-  const caloriesMet = contract ? (log.calories ?? 0) >= contract.caloriesGoal : null
+  const calories = contract ? log[calorieMetricOf(contract)] : undefined
+  const stepsMet = contract ? stepsKept(contract, log.steps) : null
+  const caloriesMet = contract ? caloriesKept(contract, calories) : null
   const applicable = !!contract || habits.length > 0
   const perfect = applicable && stepsMet !== false && caloriesMet !== false && dutiesDone === habits.length
 
   const lines: RepLine[] = []
   if (stepsMet) lines.push({ key: 'steps', label: 'Steps goal met', amount: DAY_REP.steps })
-  if (caloriesMet) lines.push({ key: 'calories', label: 'Calories goal met', amount: DAY_REP.calories })
+  if (caloriesMet && contract)
+    lines.push({
+      key: 'calories',
+      label: contract.calorieRule === 'limit' ? 'Within the calorie limit' : 'Calories goal met',
+      amount: DAY_REP.calories
+    })
   if (dutiesDone > 0)
     lines.push({
       key: 'duties',
@@ -71,6 +79,7 @@ export function evaluateDay(ledger: Ledger, date: ISODate, prevStreak: number): 
     contract,
     stepsMet,
     caloriesMet,
+    caloriesOver: contract ? overLimit(contract, calories) : false,
     dutiesTotal: habits.length,
     dutiesDone,
     applicable,
@@ -82,6 +91,7 @@ export function evaluateDay(ledger: Ledger, date: ISODate, prevStreak: number): 
 export interface RepSummary {
   total: number
   fromDays: number
+  /** bonuses and wager returns, less the reputation staked on wagers */
   fromContracts: number
   days: Map<ISODate, DayRep>
   currentStreak: number
@@ -96,7 +106,9 @@ export function firstRelevantDate(ledger: Ledger): ISODate | null {
     if (first === null || d < first) first = d
   }
   ledger.habits.forEach((h) => consider(h.createdOn))
-  ledger.contracts.forEach((c) => consider(c.startDate))
+  ledger.contracts.forEach((c) => {
+    if (!c.burnedAt) consider(c.startDate)
+  })
   Object.keys(ledger.days).forEach(consider)
   return first
 }
@@ -118,12 +130,7 @@ export function computeReputation(ledger: Ledger, today: ISODate): RepSummary {
     }
   }
 
-  let fromContracts = 0
-  for (const c of ledger.contracts) {
-    if (!c.closedAt) continue
-    fromContracts += CONTRACT_REP.honored
-    if (evaluateContract(ledger, c, today).flawless) fromContracts += CONTRACT_REP.flawless
-  }
+  const fromContracts = contractsRep(ledger, today)
 
   // An unfinished today doesn't break the streak — it just hasn't joined it yet.
   const todayRep = days.get(today)
