@@ -1,0 +1,61 @@
+{
+  "matchups": {
+    "beasts": { "weakTo": ["steel", "coin"], "resists": [] },
+    "mythic": { "weakTo": ["arcane", "engine"], "resists": ["steel"] },
+    "militia": { "weakTo": ["coin"], "resists": [] },
+    "orc": { "weakTo": ["engine"], "resists": ["coin"] },
+    "goblin": { "weakTo": ["coin"], "resists": ["steel"] },
+    "dwarf": { "weakTo": ["arcane"], "resists": ["engine"] },
+    "archmage": { "weakTo": ["steel"], "resists": ["arcane"] }
+  },
+  "hosts": [
+    {
+      "rival": "orc",
+      "companies": [
+        { "id": "grunts", "name": "Grunts", "power": 8, "reach": "melee" },
+        { "id": "wolfRiders", "name": "Wolf Riders", "power": 14, "reach": "melee" },
+        { "id": "shamans", "name": "Shamans", "power": 12, "reach": "ranged" },
+        { "id": "brutes", "name": "Brutes", "power": 20, "reach": "melee" }
+      ],
+      "commander": { "id": "ugraksWarboss", "name": "Ugrak's Warboss", "power": 35, "reach": "melee" },
+      "intentPattern": ["charge", "strike", "charge", "strike"],
+      "specials": [{ "kind": "fixedIntent", "intent": "spell", "unit": "shamans" }]
+    },
+    {
+      "rival": "goblin",
+      "companies": [
+        { "id": "sneaks", "name": "Sneaks", "power": 6, "reach": "melee" },
+        { "id": "slingers", "name": "Slingers", "power": 8, "reach": "ranged" },
+        { "id": "trapSetters", "name": "Trap-setters", "power": 10, "reach": "ranged" },
+        { "id": "hiredOgres", "name": "Hired Ogres", "power": 24, "reach": "melee" }
+      ],
+      "commander": { "id": "goldenGuard", "name": "The Golden Guard", "power": 28, "reach": "melee" },
+      "intentPattern": ["shift", "volley", "strike", "brace"],
+      "specials": [{ "kind": "fixedIntent", "intent": "charge", "unit": "hiredOgres", "condition": { "rounds": [2] } }]
+    },
+    {
+      "rival": "dwarf",
+      "companies": [
+        { "id": "thunderers", "name": "Thunderers", "power": 14, "reach": "ranged" },
+        { "id": "ironbreakers", "name": "Ironbreakers", "power": 18, "reach": "melee" },
+        { "id": "runePriests", "name": "Rune Priests", "power": 16, "reach": "ranged" },
+        { "id": "hammerers", "name": "Hammerers", "power": 24, "reach": "melee" }
+      ],
+      "commander": { "id": "anvilGuard", "name": "The Anvil Guard", "power": 32, "reach": "melee" },
+      "intentPattern": ["brace", "volley", "strike", "strike"],
+      "specials": [{ "kind": "fixedIntent", "intent": "spell", "unit": "runePriests", "condition": { "rounds": [3] } }]
+    },
+    {
+      "rival": "archmage",
+      "companies": [
+        { "id": "wisps", "name": "Wisps", "power": 6, "reach": "ranged" },
+        { "id": "apprentices", "name": "Apprentices", "power": 10, "reach": "ranged" },
+        { "id": "shadowHounds", "name": "Shadow Hounds", "power": 12, "reach": "melee" },
+        { "id": "stoneSentinels", "name": "Stone Sentinels", "power": 20, "reach": "melee" }
+      ],
+      "commander": { "id": "emrysEcho", "name": "Emrys's Echo", "power": 34, "reach": "melee" },
+      "intentPattern": ["spell", "shift", "spell", "strike"],
+      "specials": [{ "kind": "fixedIntent", "intent": "spell", "unit": "emrysEcho", "lanes": "all", "condition": { "rounds": [4] } }]
+    }
+  ]
+}

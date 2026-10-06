@@ -1,0 +1,126 @@
+[
+  {
+    "id": "barracksFoundry",
+    "name": "Barracks + Foundry",
+    "buildings": ["barracks", "foundry"],
+    "land": null,
+    "tags": ["steel", "engine"],
+    "hybrids": [
+      { "id": "ironclads", "name": "Ironclads", "stage": 1, "reach": "melee" },
+      { "id": "cataphracts", "name": "Cataphracts", "stage": 2, "reach": "melee" },
+      { "id": "ironLegion", "name": "the Iron Legion", "stage": 3, "reach": "melee" }
+    ],
+    "perks": [
+      { "id": "shieldwall", "name": "Shieldwall", "stage": 2, "effects": [{ "kind": "wallsMult", "mult": 2, "rings": [4, 5] }] },
+      { "id": "siegebreakers", "name": "Siegebreakers", "stage": 3, "v2": true, "effects": [{ "kind": "ignoreFortification", "in": "daily" }] }
+    ]
+  },
+  {
+    "id": "barracksMageTower",
+    "name": "Barracks + Mage Tower",
+    "buildings": ["barracks", "mageTower"],
+    "land": "west",
+    "tags": ["steel", "arcane"],
+    "hybrids": [
+      { "id": "spellblades", "name": "Spellblades", "stage": 1, "reach": "melee" },
+      { "id": "battlemages", "name": "Battlemages", "stage": 2, "reach": "melee" },
+      { "id": "knightsOfTheVeil", "name": "Knights of the Veil", "stage": 3, "reach": "melee" }
+    ],
+    "perks": [
+      { "id": "wardedSteel", "name": "Warded Steel", "stage": 2, "effects": [{ "kind": "rallyFloor", "add": 0.05 }] },
+      { "id": "oathguard", "name": "Oathguard", "stage": 3, "effects": [{ "kind": "tribute", "mult": 0.5 }] }
+    ]
+  },
+  {
+    "id": "barracksMerchantHall",
+    "name": "Barracks + Merchant Hall",
+    "buildings": ["barracks", "merchantHall"],
+    "land": "north",
+    "tags": ["steel", "coin"],
+    "hybrids": [
+      { "id": "beastcatchers", "name": "Beastcatchers", "stage": 1, "reach": "melee" },
+      { "id": "rangers", "name": "Rangers", "stage": 2, "reach": "ranged" },
+      { "id": "royalHunt", "name": "the Royal Hunt", "stage": 3, "reach": "ranged" }
+    ],
+    "perks": [
+      { "id": "bounties", "name": "Bounties", "stage": 2, "effects": [{ "kind": "spoils", "mult": 2, "against": "beast" }] },
+      {
+        "id": "theRoyalHunt",
+        "name": "The Royal Hunt",
+        "stage": 3,
+        "effects": [{ "kind": "royalHunt", "reputation": 60, "trophy": true, "against": "beast", "limit": { "uses": 1, "per": "week" } }]
+      }
+    ]
+  },
+  {
+    "id": "foundryMageTower",
+    "name": "Foundry + Mage Tower",
+    "buildings": ["foundry", "mageTower"],
+    "land": "south",
+    "tags": ["engine", "arcane"],
+    "hybrids": [
+      { "id": "clayGolems", "name": "Clay Golems", "stage": 1, "reach": "melee" },
+      { "id": "runeGolems", "name": "Rune Golems", "stage": 2, "reach": "melee" },
+      { "id": "runeforgedTitans", "name": "Runeforged Titans", "stage": 3, "reach": "melee" }
+    ],
+    "perks": [
+      { "id": "runedWalls", "name": "Runed Walls", "stage": 2, "effects": [{ "kind": "wallsMult", "mult": 2, "against": "mythic" }] },
+      { "id": "wardstones", "name": "Wardstones", "stage": 3, "effects": [{ "kind": "mythicStrength", "mult": 0.85 }] }
+    ]
+  },
+  {
+    "id": "foundryMerchantHall",
+    "name": "Foundry + Merchant Hall",
+    "buildings": ["foundry", "merchantHall"],
+    "land": "east",
+    "tags": ["engine", "coin"],
+    "hybrids": [
+      { "id": "warWagons", "name": "War Wagons", "stage": 1, "reach": "ranged" },
+      { "id": "bombardBattery", "name": "Bombard Battery", "stage": 2, "reach": "ranged" },
+      { "id": "dragonfireBattery", "name": "Dragonfire Battery", "stage": 3, "reach": "ranged" }
+    ],
+    "perks": [
+      { "id": "tradeRoads", "name": "Trade Roads", "stage": 2, "effects": [{ "kind": "cost", "what": ["tiers", "crossings"], "mult": 0.9 }] },
+      {
+        "id": "guildCharters",
+        "name": "Guild Charters",
+        "stage": 3,
+        "v2": true,
+        "replaces": "tradeRoads",
+        "effects": [
+          { "kind": "cost", "what": ["tiers", "crossings"], "mult": 0.8 },
+          { "kind": "tithes", "mult": 1.5 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mageTowerMerchantHall",
+    "name": "Mage Tower + Merchant Hall",
+    "buildings": ["mageTower", "merchantHall"],
+    "land": null,
+    "tags": ["arcane", "coin"],
+    "hybrids": [
+      { "id": "alchemists", "name": "Alchemists", "stage": 1, "reach": "ranged" },
+      { "id": "illusionists", "name": "Illusionists", "stage": 2, "reach": "ranged" },
+      { "id": "shadowCourt", "name": "the Shadow Court", "stage": 3, "reach": "ranged" }
+    ],
+    "perks": [
+      {
+        "id": "spyNetwork",
+        "name": "Spy Network",
+        "stage": 2,
+        "v2": true,
+        "effects": [
+          { "kind": "foretell", "days": 1, "threat": "raid" },
+          { "kind": "raidStrength", "mult": 0.9 },
+          { "kind": "reveal", "what": "treasury", "whom": "all" },
+          { "kind": "reveal", "what": "army", "whom": "all" },
+          { "kind": "reveal", "what": "threatStrength" },
+          { "kind": "reveal", "what": "hostRoster" }
+        ]
+      },
+      { "id": "grandIllusion", "name": "Grand Illusion", "stage": 3, "effects": [{ "kind": "grandIllusion", "limit": { "uses": 1, "per": "week" } }] }
+    ]
+  }
+]

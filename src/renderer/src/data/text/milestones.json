@@ -1,0 +1,42 @@
+{
+  "milestones.m1": {
+    "template": "Milestone 1 broken at {mark} {unit} on {date}. Unlocked: the Armory; every company can carry one item; rank I items for sale.",
+    "final": null
+  },
+  "milestones.m2": {
+    "template": "Milestone 2 broken at {mark} {unit} on {date}. Unlocked: the first Wings; choose one of two Wings for each building.",
+    "final": null
+  },
+  "milestones.m3": {
+    "template": "Milestone 3 broken at {mark} {unit} on {date}. Unlocked: Elite companies, rank I, recruitable in each building.",
+    "final": null
+  },
+  "milestones.m4": {
+    "template": "Milestone 4 broken at {mark} {unit} on {date}. Unlocked: the Proving Grounds, all companies +10%; a second item slot.",
+    "final": null
+  },
+  "milestones.m5": {
+    "template": "Milestone 5 broken at {mark} {unit} on {date}. Unlocked: the second Wings; rank II items.",
+    "final": null
+  },
+  "milestones.m6": {
+    "template": "Milestone 6 broken at {mark} {unit} on {date}. Unlocked: the Healing Springs, rally floor +10% and Respite bank +1; Tier V becomes possible.",
+    "final": null
+  },
+  "milestones.m7": {
+    "template": "Milestone 7 broken at {mark} {unit} on {date}. Unlocked: Elites to rank II; the Sworn, the lord's own retinue.",
+    "final": null
+  },
+  "milestones.m8": {
+    "template": "Milestone 8 broken at {mark} {unit} on {date}. Unlocked: the third Wings; rank III items; the Crown Forge, +1 banner.",
+    "final": null
+  },
+  "milestones.m9": {
+    "template": "Milestone 9 broken at {mark} {unit} on {date}. Unlocked: Legendary items, one per building.",
+    "final": null
+  },
+  "milestones.m10": {
+    "template": "Milestone 10 broken at {mark} {unit} on {date}. Unlocked: the Sovereign's Statue, +10% reputation and the title \"the Steadfast\"; the Crownguard Ascendant, +10 power.",
+    "final": null
+  }
+}

@@ -1,0 +1,290 @@
+{
+  "units.militia": {
+    "template": "Barracks company at Tier I. Steel, melee.",
+    "final": null
+  },
+  "units.menAtArms": {
+    "template": "Barracks company at Tier II. Steel, melee.",
+    "final": null
+  },
+  "units.pikemen": {
+    "template": "Barracks company at Tier III. Steel, melee.",
+    "final": null
+  },
+  "units.knights": {
+    "template": "Barracks company at Tier IV. Steel, melee.",
+    "final": null
+  },
+  "units.champions": {
+    "template": "Barracks company at Tier V. Steel, melee.",
+    "final": null
+  },
+  "units.watchmen": {
+    "template": "Merchant Hall company at Tier I. Coin, melee.",
+    "final": null
+  },
+  "units.sellswords": {
+    "template": "Merchant Hall company at Tier II. Coin, melee.",
+    "final": null
+  },
+  "units.caravanGuard": {
+    "template": "Merchant Hall company at Tier III. Coin, melee.",
+    "final": null
+  },
+  "units.freeLances": {
+    "template": "Merchant Hall company at Tier IV. Coin, melee.",
+    "final": null
+  },
+  "units.gildedHost": {
+    "template": "Merchant Hall company at Tier V. Coin, melee.",
+    "final": null
+  },
+  "units.hedgeWardens": {
+    "template": "Mage Tower company at Tier I. Arcane, ranged.",
+    "final": null
+  },
+  "units.acolytes": {
+    "template": "Mage Tower company at Tier II. Arcane, ranged.",
+    "final": null
+  },
+  "units.wardens": {
+    "template": "Mage Tower company at Tier III. Arcane, melee.",
+    "final": null
+  },
+  "units.magi": {
+    "template": "Mage Tower company at Tier IV. Arcane, ranged.",
+    "final": null
+  },
+  "units.archmagi": {
+    "template": "Mage Tower company at Tier V. Arcane, ranged.",
+    "final": null
+  },
+  "units.palisadeCrew": {
+    "template": "Foundry company at Tier I. Engine, melee.",
+    "final": null
+  },
+  "units.crossbowmen": {
+    "template": "Foundry company at Tier II. Engine, ranged.",
+    "final": null
+  },
+  "units.ballistaCrew": {
+    "template": "Foundry company at Tier III. Engine, ranged.",
+    "final": null
+  },
+  "units.trebuchetBattery": {
+    "template": "Foundry company at Tier IV. Engine, ranged.",
+    "final": null
+  },
+  "units.ironColossus": {
+    "template": "Foundry company at Tier V. Engine, melee.",
+    "final": null
+  },
+  "units.crownguard": {
+    "template": "Raised when all four buildings stand at Tier IV. Steel, Coin, Arcane and Engine, melee.",
+    "final": null
+  },
+  "units.ironclads": {
+    "template": "Barracks + Foundry hybrid company at stage I. Steel and Engine, melee.",
+    "final": null
+  },
+  "units.cataphracts": {
+    "template": "Barracks + Foundry hybrid company at stage II. Steel and Engine, melee.",
+    "final": null
+  },
+  "units.ironLegion": {
+    "template": "Barracks + Foundry hybrid company at stage III. Steel and Engine, melee.",
+    "final": null
+  },
+  "units.spellblades": {
+    "template": "Barracks + Mage Tower hybrid company at stage I. Steel and Arcane, melee.",
+    "final": null
+  },
+  "units.battlemages": {
+    "template": "Barracks + Mage Tower hybrid company at stage II. Steel and Arcane, melee.",
+    "final": null
+  },
+  "units.knightsOfTheVeil": {
+    "template": "Barracks + Mage Tower hybrid company at stage III. Steel and Arcane, melee.",
+    "final": null
+  },
+  "units.beastcatchers": {
+    "template": "Barracks + Merchant Hall hybrid company at stage I. Steel and Coin, melee.",
+    "final": null
+  },
+  "units.rangers": {
+    "template": "Barracks + Merchant Hall hybrid company at stage II. Steel and Coin, ranged.",
+    "final": null
+  },
+  "units.royalHunt": {
+    "template": "Barracks + Merchant Hall hybrid company at stage III. Steel and Coin, ranged.",
+    "final": null
+  },
+  "units.clayGolems": {
+    "template": "Foundry + Mage Tower hybrid company at stage I. Engine and Arcane, melee.",
+    "final": null
+  },
+  "units.runeGolems": {
+    "template": "Foundry + Mage Tower hybrid company at stage II. Engine and Arcane, melee.",
+    "final": null
+  },
+  "units.runeforgedTitans": {
+    "template": "Foundry + Mage Tower hybrid company at stage III. Engine and Arcane, melee.",
+    "final": null
+  },
+  "units.warWagons": {
+    "template": "Foundry + Merchant Hall hybrid company at stage I. Engine and Coin, ranged.",
+    "final": null
+  },
+  "units.bombardBattery": {
+    "template": "Foundry + Merchant Hall hybrid company at stage II. Engine and Coin, ranged.",
+    "final": null
+  },
+  "units.dragonfireBattery": {
+    "template": "Foundry + Merchant Hall hybrid company at stage III. Engine and Coin, ranged.",
+    "final": null
+  },
+  "units.alchemists": {
+    "template": "Mage Tower + Merchant Hall hybrid company at stage I. Arcane and Coin, ranged.",
+    "final": null
+  },
+  "units.illusionists": {
+    "template": "Mage Tower + Merchant Hall hybrid company at stage II. Arcane and Coin, ranged.",
+    "final": null
+  },
+  "units.shadowCourt": {
+    "template": "Mage Tower + Merchant Hall hybrid company at stage III. Arcane and Coin, ranged.",
+    "final": null
+  },
+  "units.oathsworn": {
+    "template": "Barracks Elite company. Steel, melee.",
+    "final": null
+  },
+  "units.goldCloaks": {
+    "template": "Merchant Hall Elite company. Coin, melee.",
+    "final": null
+  },
+  "units.starwardens": {
+    "template": "Mage Tower Elite company. Arcane, ranged.",
+    "final": null
+  },
+  "units.sappers": {
+    "template": "Foundry Elite company. Engine, melee.",
+    "final": null
+  },
+  "units.sworn": {
+    "template": "The lord's retinue. Two tags chosen once, melee.",
+    "final": null
+  },
+  "units.grunts": {
+    "template": "Orc company, melee.",
+    "final": null
+  },
+  "units.wolfRiders": {
+    "template": "Orc company, melee.",
+    "final": null
+  },
+  "units.shamans": {
+    "template": "Orc company, ranged.",
+    "final": null
+  },
+  "units.brutes": {
+    "template": "Orc company, melee.",
+    "final": null
+  },
+  "units.ugraksWarboss": {
+    "template": "Orc commander.",
+    "final": null
+  },
+  "units.sneaks": {
+    "template": "Goblin company, melee.",
+    "final": null
+  },
+  "units.slingers": {
+    "template": "Goblin company, ranged.",
+    "final": null
+  },
+  "units.trapSetters": {
+    "template": "Goblin company, ranged.",
+    "final": null
+  },
+  "units.hiredOgres": {
+    "template": "Goblin company, melee.",
+    "final": null
+  },
+  "units.goldenGuard": {
+    "template": "Goblin commander.",
+    "final": null
+  },
+  "units.thunderers": {
+    "template": "Dwarf company, ranged.",
+    "final": null
+  },
+  "units.ironbreakers": {
+    "template": "Dwarf company, melee.",
+    "final": null
+  },
+  "units.runePriests": {
+    "template": "Dwarf company, ranged.",
+    "final": null
+  },
+  "units.hammerers": {
+    "template": "Dwarf company, melee.",
+    "final": null
+  },
+  "units.anvilGuard": {
+    "template": "Dwarf commander.",
+    "final": null
+  },
+  "units.wisps": {
+    "template": "Archmage company, ranged.",
+    "final": null
+  },
+  "units.apprentices": {
+    "template": "Archmage company, ranged.",
+    "final": null
+  },
+  "units.shadowHounds": {
+    "template": "Archmage company, melee.",
+    "final": null
+  },
+  "units.stoneSentinels": {
+    "template": "Archmage company, melee.",
+    "final": null
+  },
+  "units.emrysEcho": {
+    "template": "Archmage commander.",
+    "final": null
+  },
+  "units.wyvern": {
+    "template": "Mythic of the Wyrmfells. Mythic Hunt: Wyvern Brood.",
+    "final": null
+  },
+  "units.matriarch": {
+    "template": "Mythic of the Wyrmfells. Mythic Hunt: Wyvern Brood.",
+    "final": null
+  },
+  "units.basilisk": {
+    "template": "Mythic of the Wyrmfells. Mythic Hunt: The Basilisk.",
+    "final": null
+  },
+  "units.dragon": {
+    "template": "Mythic of the Wyrmfells. Mythic Hunt: The Dragon.",
+    "final": null
+  },
+  "units.griffin": {
+    "template": "Mythic of the Thornwild. Mythic Hunt: Griffin Flight.",
+    "final": null
+  },
+  "units.manticore": {
+    "template": "Mythic of the Thornwild. Mythic Hunt: The Manticore.",
+    "final": null
+  },
+  "units.huntLord": {
+    "template": "Mythic of the Thornwild. Mythic Hunt: The Wild Hunt.",
+    "final": null
+  },
+  "units.hound": {
+    "template": "Mythic of the Thornwild. Mythic Hunt: The Wild Hunt.",
+    "final": null
+  }
+}

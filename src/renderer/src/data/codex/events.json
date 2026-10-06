@@ -1,0 +1,114 @@
+[
+  {
+    "id": "ugraksChallenge",
+    "name": "Ugrak's Challenge",
+    "kind": "rival",
+    "recurring": false,
+    "criteria": { "id": "incursionsLostToPlayer", "params": { "rival": "orc", "count": 3 } },
+    "effect": { "battle": "duel", "companiesPerSide": 2, "winRespect": 30, "loseTribute": 200 }
+  },
+  {
+    "id": "grandAuction",
+    "name": "The Grand Auction",
+    "kind": "rival",
+    "recurring": false,
+    "criteria": { "id": "treasuryAtLeast", "params": { "rival": "goblin", "amount": 2000 } },
+    "effect": { "neutralVillages": 2, "bidders": "playerAndAllRivals", "trustApplies": true }
+  },
+  {
+    "id": "deepCall",
+    "name": "The Deep Call",
+    "kind": "rival",
+    "recurring": false,
+    "criteria": { "id": "fortificationLevelsAtLeast", "params": { "rival": "dwarf", "levels": 20 } },
+    "effect": { "rival": "dwarf", "weeks": 4, "conquestReachHexes": 2 }
+  },
+  {
+    "id": "beastSurge",
+    "name": "The Beast Surge",
+    "kind": "world",
+    "recurring": true,
+    "criteria": { "id": "weekSchedule", "params": { "firstWeek": 10, "everyWeeks": 13 } },
+    "effect": { "weeks": 2, "beastGarrisonMult": 1.2, "beastThreatShare": 0.6 }
+  },
+  {
+    "id": "hungryWinter",
+    "name": "The Hungry Winter",
+    "kind": "world",
+    "recurring": false,
+    "criteria": { "id": "firstFullWeekOfMonth", "params": { "month": 12 } },
+    "effect": { "weeks": 4, "titheMult": 0.75, "loyaltyMult": 0.8 }
+  },
+  {
+    "id": "dragonWakes",
+    "name": "The Dragon Wakes",
+    "kind": "world",
+    "recurring": false,
+    "criteria": { "id": "lairUnsealedFromWeek", "params": { "lair": "wyrmfells", "week": 30 } },
+    "effect": { "battle": "dragon", "target": "westernmostHex", "winReputation": 400, "winItem": "dragonsHeart" }
+  },
+  {
+    "id": "wildHunt",
+    "name": "The Wild Hunt",
+    "kind": "world",
+    "recurring": false,
+    "criteria": { "id": "lairUnsealedFromWeekAtFullMoon", "params": { "lair": "thornwild", "week": 26 } },
+    "effect": { "battle": "wildHunt", "target": "easternmostHex" }
+  },
+  {
+    "id": "pretender",
+    "name": "The Pretender",
+    "kind": "reaction",
+    "recurring": false,
+    "criteria": { "id": "weeksAfterRivalConquered", "params": { "weeks": 3 } },
+    "effect": { "hostShareOfLastArmy": 0.4, "seizesNeutralHexes": 2 }
+  },
+  {
+    "id": "fearOfTheCrown",
+    "name": "Fear of the Crown",
+    "kind": "reaction",
+    "recurring": false,
+    "criteria": { "id": "playerHoldsClaimableShare", "params": { "share": 0.4 } },
+    "effect": { "weeks": 6, "rivalArmySpendMult": 1.1 }
+  },
+  {
+    "id": "villageUprising",
+    "name": "Village Uprising",
+    "kind": "reaction",
+    "recurring": false,
+    "criteria": { "id": "conqueredVillageLoyaltyBelow", "params": { "loyalty": 20, "weeks": 4 } },
+    "effect": { "turnsNeutralChance": 0.3, "keepCost": 50 }
+  },
+  {
+    "id": "wanderingOrder",
+    "name": "The Wandering Order",
+    "kind": "opportunity",
+    "recurring": false,
+    "criteria": { "id": "realmConsistencyStreak", "params": { "realmConsistency": 0.9, "weeks": 6 } },
+    "effect": { "companyPower": 20, "companyTags": ["steel", "arcane"], "weeks": 4 }
+  },
+  {
+    "id": "merchantCaravan",
+    "name": "The Merchant Caravan",
+    "kind": "opportunity",
+    "recurring": true,
+    "criteria": { "id": "seededInterval", "params": { "aboutEveryWeeks": 5 } },
+    "effect": { "itemsOffered": 1, "discount": 0.4, "days": 7 }
+  },
+  {
+    "id": "lostHeir",
+    "name": "The Lost Heir",
+    "kind": "opportunity",
+    "recurring": false,
+    "criteria": { "id": "allyAndRespectAtLeast", "params": { "respect": 80 } },
+    "effect": { "accordOpensAtRespect": 50 }
+  },
+  {
+    "id": "envoys",
+    "name": "Envoys",
+    "kind": "opportunity",
+    "recurring": true,
+    "criteria": { "id": "rivalAtWarWithRival", "params": { "aboutPerMonth": 2 } },
+    "effect": { "lendCompanyDays": 1, "askerRespect": 10, "foeRespect": -5 }
+  }
+]

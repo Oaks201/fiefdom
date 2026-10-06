@@ -1,0 +1,71 @@
+{
+  "lairs": [
+    { "id": "wyrmfells", "name": "the Wyrmfells", "land": "west" },
+    { "id": "thornwild", "name": "the Thornwild", "land": "east" }
+  ],
+  "quarries": [
+    {
+      "id": "wyvernBrood",
+      "name": "Wyvern Brood",
+      "lair": "wyrmfells",
+      "eventOnly": false,
+      "roster": [
+        { "id": "wyvern", "name": "Wyvern", "power": 18, "count": 3, "reach": "melee" },
+        { "id": "matriarch", "name": "the Matriarch", "power": 30, "count": 1, "reach": "melee" }
+      ],
+      "special": "broodVolley",
+      "specialEffects": [{ "kind": "fixedIntent", "intent": "volley", "unit": "wyvern" }]
+    },
+    {
+      "id": "basilisk",
+      "name": "The Basilisk",
+      "lair": "wyrmfells",
+      "eventOnly": false,
+      "roster": [{ "id": "basilisk", "name": "The Basilisk", "power": 60, "count": 1, "reach": "melee", "healthPerPower": 6 }],
+      "special": "petrify",
+      "specialEffects": [{ "kind": "mythicSpecial", "special": "petrify" }]
+    },
+    {
+      "id": "dragon",
+      "name": "The Dragon",
+      "lair": "wyrmfells",
+      "eventOnly": true,
+      "roster": [{ "id": "dragon", "name": "The Dragon", "power": 90, "count": 1, "reach": "melee", "healthPerPower": 8 }],
+      "special": "fire",
+      "specialEffects": [{ "kind": "mythicSpecial", "special": "fire", "lanes": 2 }]
+    },
+    {
+      "id": "griffinFlight",
+      "name": "Griffin Flight",
+      "lair": "thornwild",
+      "eventOnly": false,
+      "roster": [{ "id": "griffin", "name": "Griffin", "power": 16, "count": 3, "reach": "melee" }],
+      "special": "griffinDive",
+      "specialEffects": [
+        { "kind": "fixedIntent", "intent": "charge", "unit": "griffin" },
+        { "kind": "mythicSpecial", "special": "griffinDive", "unit": "griffin" }
+      ]
+    },
+    {
+      "id": "manticore",
+      "name": "The Manticore",
+      "lair": "thornwild",
+      "eventOnly": false,
+      "roster": [{ "id": "manticore", "name": "The Manticore", "power": 45, "count": 1, "reach": "melee", "healthPerPower": 5 }],
+      "special": "poison",
+      "specialEffects": [{ "kind": "mythicSpecial", "special": "poison", "damagePerRound": 5 }]
+    },
+    {
+      "id": "wildHunt",
+      "name": "The Wild Hunt",
+      "lair": "thornwild",
+      "eventOnly": true,
+      "roster": [
+        { "id": "huntLord", "name": "The Hunt Lord", "power": 50, "count": 1, "reach": "melee" },
+        { "id": "hound", "name": "Hound", "power": 12, "count": 4, "reach": "melee" }
+      ],
+      "special": "huntTheWeak",
+      "specialEffects": [{ "kind": "mythicSpecial", "special": "huntTheWeak", "unit": "hound" }]
+    }
+  ]
+}

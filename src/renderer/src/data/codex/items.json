@@ -1,0 +1,29 @@
+[
+  { "id": "whetstones", "name": "Whetstones", "rank": "I", "cost": 60, "effects": [{ "kind": "power", "add": 2 }] },
+  { "id": "towerShields", "name": "Tower Shields", "rank": "I", "cost": 60, "effects": [{ "kind": "health", "mult": 1.2, "in": "grand" }] },
+  { "id": "coldIronEdges", "name": "Cold Iron Edges", "rank": "I", "cost": 80, "effects": [{ "kind": "addTag", "tag": "steel" }] },
+  { "id": "luckyCoin", "name": "Lucky Coin", "rank": "I", "cost": 80, "effects": [{ "kind": "addTag", "tag": "coin" }] },
+  { "id": "runeChalk", "name": "Rune Chalk", "rank": "I", "cost": 80, "effects": [{ "kind": "addTag", "tag": "arcane" }] },
+  { "id": "powderKegs", "name": "Powder Kegs", "rank": "I", "cost": 80, "effects": [{ "kind": "addTag", "tag": "engine" }] },
+
+  { "id": "bannerOfTheRealm", "name": "Banner of the Realm", "rank": "II", "cost": 180, "effects": [{ "kind": "power", "mult": 1.1, "target": "lane", "in": "grand" }] },
+  { "id": "healersSatchel", "name": "Healer's Satchel", "rank": "II", "cost": 200, "effects": [{ "kind": "heal", "share": 0.15, "in": "grand" }] },
+  { "id": "huntersNets", "name": "Hunter's Nets", "rank": "II", "cost": 150, "effects": [{ "kind": "match", "set": 1.8, "against": "beast" }] },
+  { "id": "wardingCharms", "name": "Warding Charms", "rank": "II", "cost": 150, "effects": [{ "kind": "damageTaken", "mult": 0.7, "against": "mythic", "in": "grand" }] },
+
+  { "id": "dragonbonePlate", "name": "Dragonbone Plate", "rank": "III", "cost": 300, "effects": [{ "kind": "health", "mult": 1.3, "in": "grand" }] },
+  { "id": "stormglassBolts", "name": "Stormglass Bolts", "rank": "III", "cost": 300, "effects": [{ "kind": "damage", "mult": 1.25, "reach": "ranged", "in": "grand" }] },
+  { "id": "oathRing", "name": "Oath-Ring", "rank": "III", "cost": 250, "effects": [{ "kind": "ignoreWeary" }] },
+  { "id": "heraldsHorn", "name": "Herald's Horn", "rank": "III", "cost": 350, "effects": [{ "kind": "readiness", "add": 0.1, "in": "grand", "limit": { "uses": 1, "per": "month" } }] },
+
+  { "id": "unbrokenBanner", "name": "The Unbroken Banner", "rank": "legendary", "building": "barracks", "cost": 400, "effects": [{ "kind": "rallyFloor", "add": 0.05, "target": "realm" }] },
+  { "id": "gildedLedger", "name": "The Gilded Ledger", "rank": "legendary", "building": "merchantHall", "cost": 400, "effects": [{ "kind": "reputationBonus", "add": 0.05, "target": "realm" }] },
+  { "id": "starglassOrb", "name": "The Starglass Orb", "rank": "legendary", "building": "mageTower", "cost": 400, "effects": [{ "kind": "mythicStrength", "mult": 0.85, "target": "realm" }] },
+  { "id": "anvilHeart", "name": "The Anvil-Heart", "rank": "legendary", "building": "foundry", "cost": 400, "effects": [{ "kind": "walls", "add": 10, "target": "realm" }] },
+
+  { "id": "wyvernScaleCloak", "name": "Wyvern Scale Cloak", "rank": "trophy", "quarry": "wyvernBrood", "cost": null, "effects": [{ "kind": "power", "mult": 1.15 }, { "kind": "immune", "special": "broodVolley" }] },
+  { "id": "basiliskEye", "name": "Basilisk Eye", "rank": "trophy", "quarry": "basilisk", "cost": null, "effects": [{ "kind": "power", "mult": 1.15 }, { "kind": "immune", "special": "petrify" }] },
+  { "id": "griffinFeather", "name": "Griffin Feather", "rank": "trophy", "quarry": "griffinFlight", "cost": null, "effects": [{ "kind": "power", "mult": 1.15 }, { "kind": "immune", "special": "griffinDive" }] },
+  { "id": "manticoreBarb", "name": "Manticore Barb", "rank": "trophy", "quarry": "manticore", "cost": null, "effects": [{ "kind": "power", "mult": 1.15 }, { "kind": "immune", "special": "poison" }] },
+  { "id": "dragonsHeart", "name": "Dragon's Heart", "rank": "trophy", "quarry": "dragon", "cost": null, "effects": [{ "kind": "power", "mult": 1.15 }, { "kind": "immune", "special": "fire" }] }
+]

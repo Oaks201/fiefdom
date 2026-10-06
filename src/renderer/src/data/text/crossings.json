@@ -1,0 +1,50 @@
+{
+  "crossings.barracksFoundry.name": {
+    "template": "Barracks + Foundry",
+    "final": null
+  },
+  "crossings.barracksFoundry.body": {
+    "template": "Hybrid company: Ironclads → Cataphracts → the Iron Legion, Steel and Engine. Brotherhood perk: Shieldwall. Legend perk: Siegebreakers.",
+    "final": null
+  },
+  "crossings.barracksMageTower.name": {
+    "template": "Barracks + Mage Tower",
+    "final": null
+  },
+  "crossings.barracksMageTower.body": {
+    "template": "Hybrid company: Spellblades → Battlemages → Knights of the Veil, Steel and Arcane. Brotherhood perk: Warded Steel. Legend perk: Oathguard.",
+    "final": null
+  },
+  "crossings.barracksMerchantHall.name": {
+    "template": "Barracks + Merchant Hall",
+    "final": null
+  },
+  "crossings.barracksMerchantHall.body": {
+    "template": "Hybrid company: Beastcatchers → Rangers → the Royal Hunt, Steel and Coin. Brotherhood perk: Bounties. Legend perk: The Royal Hunt.",
+    "final": null
+  },
+  "crossings.foundryMageTower.name": {
+    "template": "Foundry + Mage Tower",
+    "final": null
+  },
+  "crossings.foundryMageTower.body": {
+    "template": "Hybrid company: Clay Golems → Rune Golems → Runeforged Titans, Engine and Arcane. Brotherhood perk: Runed Walls. Legend perk: Wardstones.",
+    "final": null
+  },
+  "crossings.foundryMerchantHall.name": {
+    "template": "Foundry + Merchant Hall",
+    "final": null
+  },
+  "crossings.foundryMerchantHall.body": {
+    "template": "Hybrid company: War Wagons → Bombard Battery → Dragonfire Battery, Engine and Coin. Brotherhood perk: Trade Roads. Legend perk: Guild Charters.",
+    "final": null
+  },
+  "crossings.mageTowerMerchantHall.name": {
+    "template": "Mage Tower + Merchant Hall",
+    "final": null
+  },
+  "crossings.mageTowerMerchantHall.body": {
+    "template": "Hybrid company: Alchemists → Illusionists → the Shadow Court, Arcane and Coin. Brotherhood perk: Spy Network. Legend perk: Grand Illusion.",
+    "final": null
+  }
+}

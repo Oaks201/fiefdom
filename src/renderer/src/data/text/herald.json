@@ -1,0 +1,154 @@
+{
+  "herald.threat.beasts": {
+    "template": "Beasts threaten hex {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.threat.mythic": {
+    "template": "A mythic threatens hex {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.threat.raid": {
+    "template": "{rival} raid expected on hex {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.threat.conquest": {
+    "template": "{rival} conquest attempt announced on hex {hex} for {date}. Strength: {strength}.",
+    "final": null
+  },
+  "herald.threat.siegeDay": {
+    "template": "Siege day: today's threat strikes harder.",
+    "final": null
+  },
+  "herald.grandBattle.warning": {
+    "template": "Grand Battle ({trigger}) at hex {hex} on {date}. Enemy: {host}.",
+    "final": null
+  },
+  "herald.grandBattle.queued": {
+    "template": "Grand Battle ({trigger}) at hex {hex} queued for {date}.",
+    "final": null
+  },
+  "herald.results": {
+    "template": "Yesterday: {results}.",
+    "final": null
+  },
+  "herald.front.war": {
+    "template": "{rival} and {other} are at war on the {front} front.",
+    "final": null
+  },
+  "herald.front.peace": {
+    "template": "{rival} and {other} are at peace on the {front} front.",
+    "final": null
+  },
+  "herald.front.emboldened": {
+    "template": "{rival} is Emboldened on the {front} front.",
+    "final": null
+  },
+  "herald.front.humbled": {
+    "template": "{rival} is Humbled on the {front} front.",
+    "final": null
+  },
+  "herald.borderCampaign.taken": {
+    "template": "{rival} took hex {hex} from {other}.",
+    "final": null
+  },
+  "herald.borderCampaign.held": {
+    "template": "{rival} attacked hex {hex}, held by {other}, and was driven off.",
+    "final": null
+  },
+  "herald.coalition.formed": {
+    "template": "Coalition formed: {members}.",
+    "final": null
+  },
+  "herald.coalition.broken": {
+    "template": "The coalition of {members} is broken.",
+    "final": null
+  },
+  "herald.coalition.ended": {
+    "template": "The coalition of {members} has ended.",
+    "final": null
+  },
+  "herald.coalition.watcher": {
+    "template": "{rival} stays out of the coalition.",
+    "final": null
+  },
+  "herald.rumor.army": {
+    "template": "Rumor: {rival} is buying troops.",
+    "final": null
+  },
+  "herald.rumor.expand": {
+    "template": "Rumor: {rival} is looking for new land.",
+    "final": null
+  },
+  "herald.rumor.fortify": {
+    "template": "Rumor: {rival} is fortifying its hexes.",
+    "final": null
+  },
+  "herald.rumor.special": {
+    "template": "Rumor: {rival} is saving its treasury for something.",
+    "final": null
+  },
+  "herald.rival.conquered": {
+    "template": "{rival} is conquered.",
+    "final": null
+  },
+  "herald.rival.abdicated": {
+    "template": "{rival} has abdicated.",
+    "final": null
+  },
+  "herald.rival.allied": {
+    "template": "{rival} is allied with the realm.",
+    "final": null
+  },
+  "herald.ascendancy.warning": {
+    "template": "{rival}'s power is growing well beyond the realm's.",
+    "final": null
+  },
+  "herald.ascendancy.lifted": {
+    "template": "{rival}'s Ultimatum is lifted.",
+    "final": null
+  },
+  "herald.ascendancy.delayed": {
+    "template": "{rival}'s siege is delayed until {date}.",
+    "final": null
+  },
+  "herald.ritual.longNight": {
+    "template": "The Archmage cast the Long Night: mythic threats come more often until {date}.",
+    "final": null
+  },
+  "herald.ritual.veilOfFog": {
+    "template": "The Archmage cast the Veil of Fog: tidings show no strength bands until {date}.",
+    "final": null
+  },
+  "herald.ritual.summoning": {
+    "template": "The Archmage cast the Summoning: a mythic garrison holds hex {hex}.",
+    "final": null
+  },
+  "herald.ritual.curseOfWeariness": {
+    "template": "The Archmage cast the Curse of Weariness: {company} is Weary until {date}.",
+    "final": null
+  },
+  "herald.milestone": {
+    "template": "Milestone {index} broken.",
+    "final": null
+  },
+  "herald.grace.0": {
+    "template": "The Crown's Grace: none.",
+    "final": null
+  },
+  "herald.grace.1": {
+    "template": "The Crown's Grace: level I.",
+    "final": null
+  },
+  "herald.grace.2": {
+    "template": "The Crown's Grace: level II.",
+    "final": null
+  },
+  "herald.grace.3": {
+    "template": "The Crown's Grace: level III.",
+    "final": null
+  },
+  "herald.worldEvent": {
+    "template": "World event: {event}.",
+    "final": null
+  }
+}

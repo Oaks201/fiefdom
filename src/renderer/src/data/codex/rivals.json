@@ -1,0 +1,66 @@
+{
+  "rivals": [
+    {
+      "id": "orc",
+      "ruler": "Ugrak the Unbowed",
+      "shortName": "Ugrak",
+      "title": "Orc Warlord",
+      "people": "Orc",
+      "realm": "The Ashen Steppe",
+      "road": "barracks",
+      "personality": "Builds armies; raids more often",
+      "prizes": "noLostBattle",
+      "voice": "Blunt threats, grudging praise",
+      "banner": "crimson",
+      "levy": { "tag": "steel", "reach": "melee" }
+    },
+    {
+      "id": "goblin",
+      "ruler": "Skivvet Goldtooth",
+      "shortName": "Skivvet",
+      "title": "Goblin Trade-Prince",
+      "people": "Goblin",
+      "realm": "The Gilded Warren",
+      "road": "merchantHall",
+      "personality": "Bids on villages, trades land, hires mercenaries",
+      "prizes": "calorieAverage",
+      "voice": "Haggling, flattery, bad bargains",
+      "banner": "ochre",
+      "levy": { "tag": "coin", "reach": "melee" }
+    },
+    {
+      "id": "archmage",
+      "ruler": "Emrys the Ageless",
+      "shortName": "Emrys",
+      "title": "Archmage",
+      "people": "Archmage",
+      "realm": "The Veiled Vale",
+      "road": "mageTower",
+      "personality": "Saves for Rituals; raids less often",
+      "prizes": "allDuties",
+      "voice": "Riddles and old warnings",
+      "banner": "violet",
+      "levy": { "tag": "arcane", "reach": "ranged" }
+    },
+    {
+      "id": "dwarf",
+      "ruler": "Hrodgar Anvilborn",
+      "shortName": "Hrodgar",
+      "title": "Dwarf Thane",
+      "people": "Dwarf",
+      "realm": "Dun Kaldor",
+      "road": "foundry",
+      "personality": "Fortifies everything; raids less often",
+      "prizes": "stepPool",
+      "voice": "Proverbs about stone and patience",
+      "banner": "bronze",
+      "levy": { "tag": "engine", "reach": "melee" }
+    }
+  ],
+  "fronts": [
+    { "id": "north", "rivals": ["orc", "goblin"] },
+    { "id": "south", "rivals": ["archmage", "dwarf"] },
+    { "id": "west", "rivals": ["orc", "archmage"] },
+    { "id": "east", "rivals": ["goblin", "dwarf"] }
+  ]
+}

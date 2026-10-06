@@ -1,0 +1,35 @@
+{
+  "buildings": [
+    { "id": "barracks", "name": "Barracks", "tag": "steel" },
+    { "id": "merchantHall", "name": "Merchant Hall", "tag": "coin" },
+    { "id": "mageTower", "name": "Mage Tower", "tag": "arcane" },
+    { "id": "foundry", "name": "Foundry", "tag": "engine" }
+  ],
+  "companies": [
+    { "id": "militia", "name": "Militia", "source": "building", "building": "barracks", "tier": 1, "tags": ["steel"], "reach": "melee" },
+    { "id": "menAtArms", "name": "Men-at-Arms", "source": "building", "building": "barracks", "tier": 2, "tags": ["steel"], "reach": "melee" },
+    { "id": "pikemen", "name": "Pikemen", "source": "building", "building": "barracks", "tier": 3, "tags": ["steel"], "reach": "melee" },
+    { "id": "knights", "name": "Knights", "source": "building", "building": "barracks", "tier": 4, "tags": ["steel"], "reach": "melee" },
+    { "id": "champions", "name": "Champions", "source": "building", "building": "barracks", "tier": 5, "tags": ["steel"], "reach": "melee" },
+
+    { "id": "watchmen", "name": "Watchmen", "source": "building", "building": "merchantHall", "tier": 1, "tags": ["coin"], "reach": "melee" },
+    { "id": "sellswords", "name": "Sellswords", "source": "building", "building": "merchantHall", "tier": 2, "tags": ["coin"], "reach": "melee" },
+    { "id": "caravanGuard", "name": "Caravan Guard", "source": "building", "building": "merchantHall", "tier": 3, "tags": ["coin"], "reach": "melee" },
+    { "id": "freeLances", "name": "Free Lances", "source": "building", "building": "merchantHall", "tier": 4, "tags": ["coin"], "reach": "melee" },
+    { "id": "gildedHost", "name": "The Gilded Host", "source": "building", "building": "merchantHall", "tier": 5, "tags": ["coin"], "reach": "melee" },
+
+    { "id": "hedgeWardens", "name": "Hedge-wardens", "source": "building", "building": "mageTower", "tier": 1, "tags": ["arcane"], "reach": "ranged" },
+    { "id": "acolytes", "name": "Acolytes", "source": "building", "building": "mageTower", "tier": 2, "tags": ["arcane"], "reach": "ranged" },
+    { "id": "wardens", "name": "Wardens", "source": "building", "building": "mageTower", "tier": 3, "tags": ["arcane"], "reach": "melee" },
+    { "id": "magi", "name": "Magi", "source": "building", "building": "mageTower", "tier": 4, "tags": ["arcane"], "reach": "ranged" },
+    { "id": "archmagi", "name": "Archmagi", "source": "building", "building": "mageTower", "tier": 5, "tags": ["arcane"], "reach": "ranged" },
+
+    { "id": "palisadeCrew", "name": "Palisade Crew", "source": "building", "building": "foundry", "tier": 1, "tags": ["engine"], "reach": "melee" },
+    { "id": "crossbowmen", "name": "Crossbowmen", "source": "building", "building": "foundry", "tier": 2, "tags": ["engine"], "reach": "ranged" },
+    { "id": "ballistaCrew", "name": "Ballista Crew", "source": "building", "building": "foundry", "tier": 3, "tags": ["engine"], "reach": "ranged" },
+    { "id": "trebuchetBattery", "name": "Trebuchet Battery", "source": "building", "building": "foundry", "tier": 4, "tags": ["engine"], "reach": "ranged" },
+    { "id": "ironColossus", "name": "Iron Colossus", "source": "building", "building": "foundry", "tier": 5, "tags": ["engine"], "reach": "melee" },
+
+    { "id": "crownguard", "name": "The Crownguard", "source": "crownguard", "tags": ["steel", "coin", "arcane", "engine"], "reach": "melee" }
+  ]
+}
