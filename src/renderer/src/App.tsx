@@ -12,6 +12,7 @@ import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
 import { startHealthSync } from './state/health'
 import { setSound } from './lib/ledger'
+import { useCampaign } from './state/campaign'
 import { useLedger } from './state/store'
 import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 
@@ -25,6 +26,8 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     void load()
+    // Only read here; nothing is written until a campaign is founded.
+    void useCampaign.getState().load()
   }, [load])
 
   // Keep "today" fresh; if the Chronicle was showing today, follow it into the new day.

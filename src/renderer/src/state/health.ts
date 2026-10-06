@@ -24,7 +24,8 @@ const STALE_AFTER_MS = 5 * 60_000
 export const METRIC_NAMES: Record<HealthMetric, string> = {
   steps: 'steps',
   eaten: 'calories eaten (food log)',
-  calories: 'calories burned in activity'
+  calories: 'calories burned in activity',
+  burned: 'total calories burned'
 }
 
 type Busy = null | 'import' | 'connect' | 'disconnect' | 'forget'
