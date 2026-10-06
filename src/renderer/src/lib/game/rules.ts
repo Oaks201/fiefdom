@@ -562,6 +562,24 @@ const RULES_TABLE = {
     itemSlots: { base: 1, withSecondSlot: 2 },
     /** Elites recruit for 300; rank II costs 600 more. The Sworn join free (A-21). */
     elite: { recruitCost: 300, rankIICost: 600 }
+  },
+
+  map: {
+    /** Ch 3: six rings around the castle, 127 hexes; ring 6 is the Rim. */
+    radius: 6,
+    /** Ch 3 rule 3: a road hex gives 2 × ring to its building; a between-land hex gives ring to each of its two. */
+    dominion: { roadPerRing: 2, betweenPerRing: 1 },
+    /** A-13: villages seeded in rings 1 to 5 (4 in the Commons, 6 in the Wildwood, 8 in the Marches). */
+    seededVillages: [0, 4, 6, 8, 0],
+    /** A-13: a road village credits its building 1; a between-land village credits each of its two 0.5. */
+    villageCredit: { road: 1, between: 0.5, maxSpread: 1 },
+    /**
+     * A-108: seeded villages never touch a rival village or a village in their own ring, and at
+     * most this many pairs of them touch across neighboring rings (2 is the fewest 4/6/8 allows).
+     * Each attempt (labels villages:0, villages:1, …) searches at most `searchBudget` steps;
+     * running out of attempts is a bug.
+     */
+    villageSeeding: { maxTouchingPairs: 2, searchBudget: 20_000, maxAttempts: 1_000 } // TUNE (A-108)
   }
 }
 

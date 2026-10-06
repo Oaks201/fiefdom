@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "check:game": "node scripts/check-game-rules.cjs",
+    "map:print": "tsx scripts/print-map.ts",
     "dist": "electron-vite build && electron-builder --win --x64",
     "dist:dir": "electron-vite build && electron-builder --dir"
   },

@@ -65,7 +65,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | --- | --- | --- | --- | --- |
 | [T01](tasks/T01-foundations.md) | Foundations: types, rules table, RNG, campaign clock, codex and text data | 1 Foundations | — | done |
 | [T02](tasks/T02-persistence-and-ledger.md) | Persistence and ledger additions: campaign.json, weigh-ins, total calories | 1 Foundations | T01 | done |
-| [T03](tasks/T03-map-and-dominion.md) | The realm map, ownership and Dominion | 2 Core rules | T01 | todo |
+| [T03](tasks/T03-map-and-dominion.md) | The realm map, ownership and Dominion | 2 Core rules | T01 | done |
 | [T04](tasks/T04-contracts-score-purse.md) | Contracts, consistency scores and the purse | 2 Core rules | T01 | todo |
 | [T05](tasks/T05-weight-systems.md) | Weight: Momentum, Milestones, the Crown's Grace, the Healer's range | 2 Core rules | T01 | todo |
 | [T06](tasks/T06-campaign-and-settlement.md) | Campaign founding and the settlement engine | 2 Core rules | T02 T03 T04 T05 | todo |
