@@ -134,6 +134,10 @@ export interface LandContract {
   respiteDays: number
   status: 'queued' | 'active' | 'paid' | 'withdrawn'
   score?: number
+  /** The days a Respite was spent on; they leave every pillar. `respiteDays` is their count. */
+  respiteDates: ISODate[]
+  /** What the purse has paid for it so far (after rounding, adjustments included). */
+  paid?: { payout: number; pledgeReturn: number }
 }
 
 export interface DailyOrders {
@@ -476,4 +480,39 @@ export interface CampaignState {
   log: GameEvent[]
   /** The last campaign day settled, and the campaign week it fell in. */
   settledThrough: { day: ISODate; week: number }
+}
+
+// ── Scores, contracts and the purse (T04) ────────────────────────────────────
+
+/**
+ * One campaign day as the scoring rules see it. T06 adapts ledger days into these; the score
+ * module never reads the ledger itself. `eaten` undefined means no food was logged.
+ */
+export interface DayRecord {
+  date: ISODate
+  steps?: number
+  eaten?: number
+  dutiesKept: number
+  dutiesSworn: number
+}
+
+/** The three pillars of one week (Ch 4), each 0 to 1. */
+export interface Pillars {
+  steps: number
+  table: number
+  duties: number
+}
+
+/** A gain or a loss before it is posted to the purse (rounded at posting, A-11). */
+export interface PurseLine {
+  kind: PurseEventKind
+  amount: number
+  source: string
+}
+
+/** The Steward's Counsel (Ch 4): a suggestion only; it never changes the Charter. */
+export interface StewardSuggestion {
+  direction: 'gentler' | 'firmer'
+  textId: string
+  facts: { weeks: number; average: number }
 }

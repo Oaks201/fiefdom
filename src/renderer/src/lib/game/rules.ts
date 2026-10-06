@@ -580,6 +580,11 @@ const RULES_TABLE = {
      * running out of attempts is a bug.
      */
     villageSeeding: { maxTouchingPairs: 2, searchBudget: 20_000, maxAttempts: 1_000 } // TUNE (A-108)
+  },
+
+  scores: {
+    /** Realm Consistency is Q over the last 28 settled days (Ch 5, A-39). */
+    realmConsistencyDays: 28
   }
 }
 
