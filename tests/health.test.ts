@@ -114,6 +114,32 @@ test('daily totals come back for each metric, across pages', async () => {
   }
 })
 
+test('daily rollups bound page size to the requested days, including nutrition and later pages', async () => {
+  const { google, service } = await setup({ data: WEEK, pageSize: 2 })
+  try {
+    service.setClient(google.clientFile())
+    await service.connect({ nutrition: true })
+    for (const [first, last, days] of [
+      ['2026-09-25', '2026-09-25', 1],
+      ['2026-09-13', '2026-09-26', 14],
+      ['2026-06-29', '2026-09-26', 90]
+    ] as const) {
+      const before = google.requests.length
+      const result = await service.fetchDays(first, last)
+      assert.deepEqual(result.errors, {})
+      for (const [metric, value] of [['steps', 9876], ['calories', 2300], ['eaten', 2240.6]] as const) {
+        assert.equal(result.points.find((p) => p.metric === metric && p.date === '2026-09-25')?.value, value)
+      }
+      const calls = google.requests.slice(before).filter((r) => r.path.endsWith('/dataPoints:dailyRollUp'))
+      assert.ok(calls.length >= 3)
+      for (const call of calls) assert.equal((call.body as { pageSize?: number }).pageSize, days)
+      if (days > 1) assert.ok(calls.some((r) => (r.body as { pageToken?: string }).pageToken))
+    }
+  } finally {
+    await google.close()
+  }
+})
+
 test('the other range format is tried when Google rejects the first, and busy answers are retried', async () => {
   const { google, service } = await setup({ data: WEEK, rejectInclusiveEnd: true, flakyOnce: true })
   try {

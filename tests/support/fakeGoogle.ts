@@ -132,6 +132,7 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
         const body = JSON.parse(raw || '{}') as {
           range?: { start?: { date?: Record<string, number> }; end?: { date?: Record<string, number>; time?: Record<string, number> } }
           pageToken?: string
+          pageSize?: number
           windowSizeDays?: number
         }
         requests.push({ path: url.pathname, body })
@@ -158,6 +159,25 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
           json(res, 400, { error: { code: 400, message: 'Invalid range.', status: 'INVALID_ARGUMENT' } })
           return
         }
+        const maxDays = type === 'total-calories' ? 14 : 90
+        const requestedSize = body.pageSize ?? 1440
+        // Google validates the page's duration as well as the requested range.
+        if (body.windowSizeDays * requestedSize > maxDays) {
+          json(res, 400, {
+            error: {
+              code: 400,
+              message: 'Invalid argument in request.',
+              status: 'INVALID_ARGUMENT',
+              details: [{
+                '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                reason: 'INVALID_ROLLUP_QUERY_DURATION',
+                domain: 'health.googleapis.com',
+                metadata: { field: 'range', maxDurationDays: String(maxDays), dataType: type }
+              }]
+            }
+          })
+          return
+        }
         const inclusiveEnd = endTime?.hours === 23
         if (opts.rejectInclusiveEnd && inclusiveEnd) {
           json(res, 400, { error: { code: 400, message: 'Range end must be a day boundary.', status: 'INVALID_ARGUMENT' } })
@@ -169,7 +189,7 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
         let last = iso(e)
         if (!inclusiveEnd) last = new Date(Date.parse(`${last}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
         const span = Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000) + 1
-        if (span > (type === 'total-calories' ? 14 : 90)) {
+        if (span > maxDays) {
           // (total-calories counts resting metabolism too; the app reads active-energy-burned instead)
           json(res, 400, { error: { code: 400, message: 'Range too long.', status: 'INVALID_ARGUMENT' } })
           return
@@ -188,7 +208,7 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
           else continue
           points.push(point)
         }
-        const size = opts.pageSize ?? 1440
+        const size = Math.min(requestedSize, opts.pageSize ?? requestedSize)
         const from = body.pageToken ? Number(body.pageToken) : 0
         const page = points.slice(from, from + size)
         json(res, 200, { rollupDataPoints: page, ...(from + size < points.length ? { nextPageToken: String(from + size) } : {}) })

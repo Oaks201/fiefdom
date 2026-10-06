@@ -401,12 +401,14 @@ export class HealthService {
 
     for (let chunkStart = first; chunkStart <= last; ) {
       const chunkEnd = [addDaysISO(chunkStart, source.maxDays - 1), last].sort()[0]
+      // Google caps windowSizeDays * pageSize too; its default can exceed the nutrition limit.
+      const pageSize = daysBetween(chunkStart, chunkEnd) + 1
       let lastError: unknown = null
       for (const range of rangeFormats(chunkStart, chunkEnd)) {
         try {
           let pageToken: string | undefined
           do {
-            const body: Record<string, unknown> = { range, windowSizeDays: 1, ...(pageToken ? { pageToken } : {}) }
+            const body: Record<string, unknown> = { range, windowSizeDays: 1, pageSize, ...(pageToken ? { pageToken } : {}) }
             const data = await this.post(url, body)
             const list = Array.isArray(data.rollupDataPoints) ? data.rollupDataPoints : []
             for (const point of list) {
