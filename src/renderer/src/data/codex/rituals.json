@@ -1,0 +1,6 @@
+[
+  { "id": "longNight", "name": "The Long Night", "order": 1, "params": { "days": 7, "mythicThreatMult": 2 } },
+  { "id": "veilOfFog", "name": "Veil of Fog", "order": 2, "params": { "days": 7, "hideStrengthBands": true } },
+  { "id": "summoning", "name": "The Summoning", "order": 3, "params": { "garrison": "mythic", "placement": "neutralHexBesidePlayerBorder" } },
+  { "id": "curseOfWeariness", "name": "Curse of Weariness", "order": 4, "params": { "days": 5, "target": "strongestCompany" } }
+]

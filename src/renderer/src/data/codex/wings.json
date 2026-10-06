@@ -1,0 +1,29 @@
+[
+  { "id": "drillYard", "name": "Drill Yard", "building": "barracks", "wave": 1, "effects": [{ "kind": "power", "add": 2, "target": "buildingCompany" }] },
+  { "id": "watchtowers", "name": "Watchtowers", "building": "barracks", "wave": 1, "effects": [{ "kind": "foretell", "days": 1, "threat": "raid", "road": "barracks" }] },
+  { "id": "veteransHall", "name": "Veterans' Hall", "building": "barracks", "wave": 2, "effects": [{ "kind": "wearyDays", "add": -1 }] },
+  { "id": "musterField", "name": "Muster Field", "building": "barracks", "wave": 2, "effects": [{ "kind": "banners", "add": 1, "pool": "assault" }] },
+  { "id": "hallOfHeroes", "name": "Hall of Heroes", "building": "barracks", "wave": 3, "effects": [{ "kind": "grantDoctrine", "doctrine": "lastStand" }] },
+  { "id": "shieldForge", "name": "Shield Forge", "building": "barracks", "wave": 3, "effects": [{ "kind": "health", "mult": 1.15, "target": "ownFronts", "in": "grand" }] },
+
+  { "id": "countingHouse", "name": "Counting House", "building": "merchantHall", "wave": 1, "effects": [{ "kind": "tithes", "mult": 1.25 }] },
+  { "id": "envoysRest", "name": "Envoy's Rest", "building": "merchantHall", "wave": 1, "effects": [{ "kind": "trust", "add": 0.05 }] },
+  { "id": "exchange", "name": "Exchange", "building": "merchantHall", "wave": 2, "effects": [{ "kind": "cost", "what": ["trade"], "mult": 0.8 }] },
+  { "id": "spymaster", "name": "Spymaster", "building": "merchantHall", "wave": 2, "effects": [{ "kind": "reveal", "what": "treasury", "whom": "neighbors" }] },
+  { "id": "goldenRoad", "name": "Golden Road", "building": "merchantHall", "wave": 3, "effects": [{ "kind": "courtshipSlots", "add": 1 }] },
+  { "id": "theBank", "name": "The Bank", "building": "merchantHall", "wave": 3, "effects": [{ "kind": "interest", "rate": 0.02, "cap": 40 }] },
+
+  { "id": "observatory", "name": "Observatory", "building": "mageTower", "wave": 1, "effects": [{ "kind": "reveal", "what": "hostRoster" }] },
+  { "id": "herbGarden", "name": "Herb Garden", "building": "mageTower", "wave": 1, "effects": [{ "kind": "respiteBank", "add": 1 }] },
+  { "id": "scryingPool", "name": "Scrying Pool", "building": "mageTower", "wave": 2, "effects": [{ "kind": "eventHint", "limit": { "uses": 1, "per": "month" } }] },
+  { "id": "wardCircle", "name": "Ward Circle", "building": "mageTower", "wave": 2, "effects": [{ "kind": "mythicStrength", "mult": 0.9 }] },
+  { "id": "leylineAnchor", "name": "Leyline Anchor", "building": "mageTower", "wave": 3, "effects": [{ "kind": "ordersOffered", "set": 4 }] },
+  { "id": "sanctum", "name": "Sanctum", "building": "mageTower", "wave": 3, "effects": [{ "kind": "readinessFloor", "min": 0.7 }] },
+
+  { "id": "kilns", "name": "Kilns", "building": "foundry", "wave": 1, "effects": [{ "kind": "cost", "what": ["fortification"], "mult": 0.75 }] },
+  { "id": "armorer", "name": "Armorer", "building": "foundry", "wave": 1, "effects": [{ "kind": "itemSlots", "add": 1, "target": "oneCompany" }] },
+  { "id": "engineWorks", "name": "Engine Works", "building": "foundry", "wave": 2, "effects": [{ "kind": "power", "mult": 1.1, "reach": "ranged" }] },
+  { "id": "bastions", "name": "Bastions", "building": "foundry", "wave": 2, "effects": [{ "kind": "walls", "add": 6 }] },
+  { "id": "greatForge", "name": "Great Forge", "building": "foundry", "wave": 3, "effects": [{ "kind": "cost", "what": ["items"], "mult": 0.7 }] },
+  { "id": "siegePark", "name": "Siege Park", "building": "foundry", "wave": 3, "effects": [{ "kind": "dailyAssaults", "add": 1 }] }
+]

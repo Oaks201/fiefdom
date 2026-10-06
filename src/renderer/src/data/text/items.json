@@ -1,0 +1,94 @@
+{
+  "items.whetstones": {
+    "template": "Rank I item. +2 power.",
+    "final": null
+  },
+  "items.towerShields": {
+    "template": "Rank I item. +20% health in Grand Battles.",
+    "final": null
+  },
+  "items.coldIronEdges": {
+    "template": "Rank I item. Adds the Steel tag.",
+    "final": null
+  },
+  "items.luckyCoin": {
+    "template": "Rank I item. Adds the Coin tag.",
+    "final": null
+  },
+  "items.runeChalk": {
+    "template": "Rank I item. Adds the Arcane tag.",
+    "final": null
+  },
+  "items.powderKegs": {
+    "template": "Rank I item. Adds the Engine tag.",
+    "final": null
+  },
+  "items.bannerOfTheRealm": {
+    "template": "Rank II item. +10% power to every company in its lane.",
+    "final": null
+  },
+  "items.healersSatchel": {
+    "template": "Rank II item. Heals 15% health each round.",
+    "final": null
+  },
+  "items.huntersNets": {
+    "template": "Rank II item. ×1.8 against beasts instead of ×1.5.",
+    "final": null
+  },
+  "items.wardingCharms": {
+    "template": "Rank II item. −30% damage from mythics.",
+    "final": null
+  },
+  "items.dragonbonePlate": {
+    "template": "Rank III item. +30% health.",
+    "final": null
+  },
+  "items.stormglassBolts": {
+    "template": "Rank III item. Ranged damage +25%.",
+    "final": null
+  },
+  "items.oathRing": {
+    "template": "Rank III item. Ignores Weary.",
+    "final": null
+  },
+  "items.heraldsHorn": {
+    "template": "Rank III item. Once a month, Readiness +0.1 for the whole battle.",
+    "final": null
+  },
+  "items.unbrokenBanner": {
+    "template": "Legendary item of the Barracks. Realm rally floor +5%.",
+    "final": null
+  },
+  "items.gildedLedger": {
+    "template": "Legendary item of the Merchant Hall. +5% all reputation.",
+    "final": null
+  },
+  "items.starglassOrb": {
+    "template": "Legendary item of the Mage Tower. All mythic attacks −15%.",
+    "final": null
+  },
+  "items.anvilHeart": {
+    "template": "Legendary item of the Foundry. Walls +10.",
+    "final": null
+  },
+  "items.wyvernScaleCloak": {
+    "template": "Trophy of Wyvern Brood. +15% power and immunity to its special.",
+    "final": null
+  },
+  "items.basiliskEye": {
+    "template": "Trophy of The Basilisk. +15% power and immunity to its special.",
+    "final": null
+  },
+  "items.griffinFeather": {
+    "template": "Trophy of Griffin Flight. +15% power and immunity to its special.",
+    "final": null
+  },
+  "items.manticoreBarb": {
+    "template": "Trophy of The Manticore. +15% power and immunity to its special.",
+    "final": null
+  },
+  "items.dragonsHeart": {
+    "template": "Trophy of The Dragon. +15% power and immunity to its special.",
+    "final": null
+  }
+}

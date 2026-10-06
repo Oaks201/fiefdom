@@ -1,0 +1,14 @@
+{
+  "coalitions.firstFall": {
+    "template": "Coalition formed after the first rival fell: {members}, until {date}. {watcher} stays apart.",
+    "final": null
+  },
+  "coalitions.lastAlliance": {
+    "template": "Coalition formed after the second rival fell: {members}, until one of them is resolved.",
+    "final": null
+  },
+  "coalitions.risingCrown": {
+    "template": "Coalition formed against the rising crown: {members}, until {date}.",
+    "final": null
+  }
+}

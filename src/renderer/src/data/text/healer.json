@@ -1,0 +1,67 @@
+{
+  "healer.crashDieting": {
+    "template": "Healer check-in: the logged calorie average for the last two weeks is below the calorie floor of {floor} kcal.",
+    "final": null,
+    "approved": false
+  },
+  "healer.tooFast": {
+    "template": "Healer check-in: weight is coming off faster than the safe pace. Momentum is held at half and Milestones are paused until the trend slows.",
+    "final": null,
+    "approved": false
+  },
+  "healer.plateau": {
+    "template": "Healer check-in: the weight trend is flat. Consistency this week was {consistency}%, so the plateau floor keeps Momentum.",
+    "final": null,
+    "approved": false
+  },
+  "healer.regain": {
+    "template": "Healer check-in: weight is up this week. Broken Milestones stay broken, and Momentum never goes below zero.",
+    "final": null,
+    "approved": false
+  },
+  "healer.unsafeGoal": {
+    "template": "Healer check-in: a goal of {goal} {unit} is below BMI 18.5 for the height given, so it was not set.",
+    "final": null,
+    "approved": false
+  },
+  "healer.overtraining": {
+    "template": "Healer check-in: the step pool is met. Steps beyond the pool add nothing to the score.",
+    "final": null,
+    "approved": false
+  },
+  "healer.illnessAndTravel": {
+    "template": "Healer check-in: the last {days} days scored low. {respite} Respite days are banked and can pause the contract.",
+    "final": null,
+    "approved": false
+  },
+  "healer.fearOfLosing": {
+    "template": "Healer check-in: no rival can win before week {week}, and rings 0 to 2 can never be taken.",
+    "final": null,
+    "approved": false
+  },
+  "healer.comingBack": {
+    "template": "Healer check-in: away for {days} days. Rings 0 to 2 held. A short contract can be sealed.",
+    "final": null,
+    "approved": false
+  },
+  "healer.shame": {
+    "template": "Healer check-in: {what} was lost on {date}. It is recorded in the Chronicle.",
+    "final": null,
+    "approved": false
+  },
+  "healer.compulsiveChecking": {
+    "template": "Healer check-in: today's orders are set. Nothing else is due before the day closes at {closeTime}.",
+    "final": null,
+    "approved": false
+  },
+  "healer.payingOrRushing": {
+    "template": "Healer check-in: nothing in the realm can be bought with money, and no timer can be skipped.",
+    "final": null,
+    "approved": false
+  },
+  "healer.privacy": {
+    "template": "Healer check-in: the ledger, weigh-ins and goals are stored only on this computer.",
+    "final": null,
+    "approved": false
+  }
+}

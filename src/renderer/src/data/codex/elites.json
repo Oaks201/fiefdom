@@ -1,0 +1,48 @@
+{
+  "elites": [
+    {
+      "id": "oathsworn",
+      "name": "The Oathsworn",
+      "building": "barracks",
+      "tags": ["steel"],
+      "reach": "melee",
+      "power": [16, 26],
+      "ability": [{ "kind": "damageTaken", "mult": 0.75, "fromIntent": "charge" }]
+    },
+    {
+      "id": "goldCloaks",
+      "name": "The Gold Cloaks",
+      "building": "merchantHall",
+      "tags": ["coin"],
+      "reach": "melee",
+      "power": [16, 26],
+      "ability": [{ "kind": "spoils", "mult": 1.25 }]
+    },
+    {
+      "id": "starwardens",
+      "name": "The Starwardens",
+      "building": "mageTower",
+      "tags": ["arcane"],
+      "reach": "ranged",
+      "power": [16, 26],
+      "ability": [{ "kind": "splash", "share": 0.5, "target": "enemyRear", "in": "grand" }]
+    },
+    {
+      "id": "sappers",
+      "name": "The Sappers",
+      "building": "foundry",
+      "tags": ["engine"],
+      "reach": "melee",
+      "power": [16, 26],
+      "ability": [{ "kind": "ignoreIntent", "intent": "brace", "in": "grand" }, { "kind": "ignoreFortification" }]
+    }
+  ],
+  "sworn": {
+    "id": "sworn",
+    "name": "The Sworn",
+    "tagCount": 2,
+    "reach": "melee",
+    "power": 24,
+    "ability": [{ "kind": "ignoreWeary" }, { "kind": "noRout", "in": "grand", "condition": { "rounds": [1] } }]
+  }
+}

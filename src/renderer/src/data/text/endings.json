@@ -1,0 +1,18 @@
+{
+  "endings.ultimatum": {
+    "template": "Ultimatum from {rival}: the Siege of the Crown comes on {date} unless their power falls back by a week close before then.",
+    "final": null
+  },
+  "endings.siege": {
+    "template": "The Siege of the Crown against {rival} on {date}: {result}.",
+    "final": null
+  },
+  "endings.victory": {
+    "template": "Victory in week {week}. All four rivals resolved. Days kept: {daysKept}. Hexes held: {hexes}. Realm Consistency: {consistency}%.",
+    "final": null
+  },
+  "endings.fall": {
+    "template": "The Fall of the realm in week {week}. {rival} won the Siege of the Crown. Days kept: {daysKept}. Hexes held: {hexes}.",
+    "final": null
+  }
+}

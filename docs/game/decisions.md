@@ -113,4 +113,8 @@ This file settles what the design book ([design-book-v2.md](design-book-v2.md)) 
 
 Add new entries here as `A-1xx` (one line each: the ambiguity, the reading you chose, the task, the date). The owner will confirm or change them.
 
-- *(none yet)*
+- **A-101** — The Engine Works Wing says "ranged +10%" without saying power or damage. Read as +10% *power* for ranged companies, in daily battles and Grand Battles alike (Stormglass Bolts, which says "ranged damage", stays Grand-Battle damage). T01, 2026-10-06.
+- **A-102** — Appendix C gives no reach for the four rival commanders or for the mythic units. All are melee; the Wyverns still Volley through their fixed intent. T01, 2026-10-06.
+- **A-103** — Ch 7 lists a mythic reduction at Mage Tower II (−10%), IV (−20%) and V (−30%) but none at III. Read as Tier III keeps Tier II's −10%: a tier never takes an effect away. The same holds for every unlisted effect (Barracks I and II keep the 50% rally floor; features such as hired blades or foresight stay from their tier up). T01, 2026-10-06.
+- **A-104** — The Royal Hunt (Legend perk) pays 60 reputation "and a trophy item", but every Appendix C trophy comes from a mythic. Reading until the owner names one: the hunt pays the 60 reputation; the codex marks `trophy: true` and grants no particular item. T01, 2026-10-06.
+- **A-105** — The book's Spymaster Wing shows neighbors' *treasuries* as numbers; T10's task text says treasury and AV. The codex follows the book (treasury only). T01, 2026-10-06.

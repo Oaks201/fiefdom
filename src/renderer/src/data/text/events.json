@@ -1,0 +1,114 @@
+{
+  "events.ugraksChallenge.title": {
+    "template": "Ugrak's Challenge",
+    "final": null
+  },
+  "events.ugraksChallenge.body": {
+    "template": "Ugrak challenges the realm to a duel at hex {hex} on {date}: {companies} companies a side. Win: Orc Respect +{respect}. Lose: {tribute} tribute.",
+    "final": null
+  },
+  "events.grandAuction.title": {
+    "template": "The Grand Auction",
+    "final": null
+  },
+  "events.grandAuction.body": {
+    "template": "Neutral villages at sealed auction: hexes {hexes}. Bids close at the next week close. Trust applies.",
+    "final": null
+  },
+  "events.deepCall.title": {
+    "template": "The Deep Call",
+    "final": null
+  },
+  "events.deepCall.body": {
+    "template": "Until {date} the Dwarf may make conquest attempts on hexes {reach} away from its land.",
+    "final": null
+  },
+  "events.beastSurge.title": {
+    "template": "The Beast Surge",
+    "final": null
+  },
+  "events.beastSurge.body": {
+    "template": "Until {date}: neutral beast garrisons +{garrison}%, and beasts bring {share}% of daily threats.",
+    "final": null
+  },
+  "events.hungryWinter.title": {
+    "template": "The Hungry Winter",
+    "final": null
+  },
+  "events.hungryWinter.body": {
+    "template": "Until {date}: tithes −{tithes}%, and every village's loyalty −{loyalty}%.",
+    "final": null
+  },
+  "events.dragonWakes.title": {
+    "template": "The Dragon Wakes",
+    "final": null
+  },
+  "events.dragonWakes.body": {
+    "template": "The Dragon attacks hex {hex} on {date} in a Grand Battle. Win: the Dragon's Heart and {reputation} reputation.",
+    "final": null
+  },
+  "events.wildHunt.title": {
+    "template": "The Wild Hunt",
+    "final": null
+  },
+  "events.wildHunt.body": {
+    "template": "The Wild Hunt attacks hex {hex} on {date} in a Grand Battle.",
+    "final": null
+  },
+  "events.pretender.title": {
+    "template": "The Pretender",
+    "final": null
+  },
+  "events.pretender.body": {
+    "template": "A rebel host rises in the old lands of the {rival} and seizes hexes {hexes}.",
+    "final": null
+  },
+  "events.fearOfTheCrown.title": {
+    "template": "Fear of the Crown",
+    "final": null
+  },
+  "events.fearOfTheCrown.body": {
+    "template": "Until {date}, every rival spends more on armies.",
+    "final": null
+  },
+  "events.villageUprising.title": {
+    "template": "Village Uprising",
+    "final": null
+  },
+  "events.villageUprising.body": {
+    "template": "The village at hex {hex} turns neutral on {date} unless {cost} is paid.",
+    "final": null
+  },
+  "events.wanderingOrder.title": {
+    "template": "The Wandering Order",
+    "final": null
+  },
+  "events.wanderingOrder.body": {
+    "template": "A company of power {power}, {tags}, serves the realm until {date}.",
+    "final": null
+  },
+  "events.merchantCaravan.title": {
+    "template": "The Merchant Caravan",
+    "final": null
+  },
+  "events.merchantCaravan.body": {
+    "template": "{item} offered at {discount}% off until {date}.",
+    "final": null
+  },
+  "events.lostHeir.title": {
+    "template": "The Lost Heir",
+    "final": null
+  },
+  "events.lostHeir.body": {
+    "template": "{rival} offers a marriage pact: its Accord opens at Respect {respect}.",
+    "final": null
+  },
+  "events.envoys.title": {
+    "template": "Envoys",
+    "final": null
+  },
+  "events.envoys.body": {
+    "template": "{rival} asks to borrow one company on {date}. Lending it: Respect +{gain} with {rival}, −{loss} with {foe}.",
+    "final": null
+  }
+}

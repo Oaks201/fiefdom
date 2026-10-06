@@ -1,0 +1,33 @@
+[
+  { "id": "shieldwall", "name": "Shieldwall", "source": { "kind": "building", "id": "barracks", "tier": 1 }, "effects": [{ "kind": "damageTaken", "mult": 0.5, "target": "ownFronts" }] },
+  {
+    "id": "charge",
+    "name": "Charge",
+    "source": { "kind": "building", "id": "barracks", "tier": 2 },
+    "effects": [
+      { "kind": "damage", "mult": 1.75, "target": "laneFront" },
+      { "kind": "damageTaken", "mult": 1.25, "target": "laneFront" }
+    ]
+  },
+  { "id": "rally", "name": "Rally", "source": { "kind": "building", "id": "barracks", "tier": 3 }, "effects": [{ "kind": "heal", "share": 0.25, "target": "lane" }] },
+  { "id": "holdFast", "name": "Hold Fast", "source": { "kind": "building", "id": "barracks", "tier": 4 }, "effects": [{ "kind": "noRout", "target": "allCompanies" }] },
+
+  { "id": "bribe", "name": "Bribe", "source": { "kind": "building", "id": "merchantHall", "tier": 1 }, "effects": [{ "kind": "skipAction", "excludeMythic": true, "target": "enemyCompany" }] },
+  { "id": "spoilsOfWar", "name": "Spoils of War", "source": { "kind": "building", "id": "merchantHall", "tier": 2 }, "effects": [{ "kind": "spoils", "mult": 1.5 }] },
+  { "id": "reserves", "name": "Reserves", "source": { "kind": "building", "id": "merchantHall", "tier": 3 }, "effects": [{ "kind": "hire" }] },
+
+  { "id": "arcaneWard", "name": "Arcane Ward", "source": { "kind": "building", "id": "mageTower", "tier": 1 }, "effects": [{ "kind": "cancelIntent", "intents": ["spell", "volley"], "target": "enemyCompany" }] },
+  { "id": "foresight", "name": "Foresight", "source": { "kind": "building", "id": "mageTower", "tier": 2 }, "effects": [{ "kind": "revealIntents", "rounds": 1 }] },
+  { "id": "firestorm", "name": "Firestorm", "source": { "kind": "building", "id": "mageTower", "tier": 3 }, "effects": [{ "kind": "directDamage", "tagPower": { "tag": "arcane", "mult": 0.4 }, "target": "enemyFronts" }] },
+
+  { "id": "volley", "name": "Volley", "source": { "kind": "building", "id": "foundry", "tier": 1 }, "effects": [{ "kind": "damage", "mult": 1.5, "reach": "ranged" }] },
+  { "id": "siegeEngines", "name": "Siege Engines", "source": { "kind": "building", "id": "foundry", "tier": 3 }, "effects": [{ "kind": "ignoreIntent", "intent": "brace" }] },
+  { "id": "barrage", "name": "Barrage", "source": { "kind": "building", "id": "foundry", "tier": 4 }, "effects": [{ "kind": "rangedHitsRear" }] },
+
+  { "id": "phalanx", "name": "Phalanx", "source": { "kind": "crossing", "id": "barracksFoundry", "stage": 1 }, "effects": [{ "kind": "health", "mult": 2, "target": "centerFront" }] },
+  { "id": "blinkStrike", "name": "Blink Strike", "source": { "kind": "crossing", "id": "barracksMageTower", "stage": 1 }, "effects": [{ "kind": "moveEnemy", "target": "enemyCompany" }] },
+  { "id": "huntersMark", "name": "Hunter's Mark", "source": { "kind": "crossing", "id": "barracksMerchantHall", "stage": 1 }, "effects": [{ "kind": "damageTaken", "mult": 1.5, "target": "enemyCompany" }] },
+  { "id": "earthshatter", "name": "Earthshatter", "source": { "kind": "crossing", "id": "foundryMageTower", "stage": 1 }, "effects": [{ "kind": "directDamage", "perStage": 6, "target": "enemyFronts" }] },
+  { "id": "dragonfire", "name": "Dragonfire", "source": { "kind": "crossing", "id": "foundryMerchantHall", "stage": 1 }, "effects": [{ "kind": "damage", "mult": 2, "reach": "ranged", "target": "lane" }] },
+  { "id": "confusion", "name": "Confusion", "source": { "kind": "crossing", "id": "mageTowerMerchantHall", "stage": 1 }, "effects": [{ "kind": "setIntent", "intent": "brace", "target": "enemyLane" }] }
+]

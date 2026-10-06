@@ -1,0 +1,7 @@
+[
+  { "id": "holdTheLine", "name": "Hold the Line", "source": { "kind": "building", "id": "barracks", "tier": 2 }, "effects": [{ "kind": "health", "mult": 1.2, "target": "ownFronts" }] },
+  { "id": "mercenaryContract", "name": "Mercenary Contract", "source": { "kind": "building", "id": "merchantHall", "tier": 2 }, "effects": [{ "kind": "hire", "free": true }] },
+  { "id": "foreknowledge", "name": "Foreknowledge", "source": { "kind": "building", "id": "mageTower", "tier": 2 }, "effects": [{ "kind": "revealIntents", "rounds": "all" }] },
+  { "id": "engineeredFortress", "name": "Engineered Fortress", "source": { "kind": "building", "id": "foundry", "tier": 2 }, "effects": [{ "kind": "wallsAsHealth", "target": "centerFront" }] },
+  { "id": "lastStand", "name": "Last Stand", "source": { "kind": "wing", "id": "hallOfHeroes" }, "effects": [{ "kind": "damage", "mult": 1.3, "condition": { "ownHealthBelow": 0.3 } }] }
+]

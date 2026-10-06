@@ -63,7 +63,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 
 | ID | Task | Phase | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| [T01](tasks/T01-foundations.md) | Foundations: types, rules table, RNG, campaign clock, codex and text data | 1 Foundations | — | todo |
+| [T01](tasks/T01-foundations.md) | Foundations: types, rules table, RNG, campaign clock, codex and text data | 1 Foundations | — | done |
 | [T02](tasks/T02-persistence-and-ledger.md) | Persistence and ledger additions: campaign.json, weigh-ins, total calories | 1 Foundations | T01 | todo |
 | [T03](tasks/T03-map-and-dominion.md) | The realm map, ownership and Dominion | 2 Core rules | T01 | todo |
 | [T04](tasks/T04-contracts-score-purse.md) | Contracts, consistency scores and the purse | 2 Core rules | T01 | todo |
