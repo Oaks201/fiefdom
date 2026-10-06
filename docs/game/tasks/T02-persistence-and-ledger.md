@@ -43,13 +43,51 @@ Founding, settlement and every game rule.
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass. All existing tests pass unchanged.
-- [ ] The campaign file passes tests that mirror `tests/ledgerFile.test.ts`: atomic write, one backup per day, the newest 30 kept, and a corrupt file falling back to the newest good backup while the damaged copy is preserved.
-- [ ] Migration: a v1 ledger with two legacy contracts (217 → 214, then 214 → 211) normalizes to v2 with weights on the four contract dates. Normalizing a v2 ledger again returns an identical object. A hand-typed weight on a contract date is never overwritten.
-- [ ] `setWeight` rejects values that `validateWeight` rejects, and `setWeight(…, undefined)` clears the field.
-- [ ] Health: the fake Google returns `total-calories` for a range, and those days get `burned` set. A hand-typed `eaten` value is still never overwritten. The `manual` flag never applies to `burned`. Revoking the activity scope reports an error for `burned` as it does for `steps`.
-- [ ] Manual check, run with `FIEFDOM_DATA_DIR` pointed at a temp folder: typing a weight in the Chronicle writes `days[date].weight` into `ledger.json`, and `campaign.json` does not exist yet.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass. All existing tests pass unchanged.
+- [x] The campaign file passes tests that mirror `tests/ledgerFile.test.ts`: atomic write, one backup per day, the newest 30 kept, and a corrupt file falling back to the newest good backup while the damaged copy is preserved.
+- [x] Migration: a v1 ledger with two legacy contracts (217 → 214, then 214 → 211) normalizes to v2 with weights on the four contract dates. Normalizing a v2 ledger again returns an identical object. A hand-typed weight on a contract date is never overwritten.
+- [x] `setWeight` rejects values that `validateWeight` rejects, and `setWeight(…, undefined)` clears the field.
+- [x] Health: the fake Google returns `total-calories` for a range, and those days get `burned` set. A hand-typed `eaten` value is still never overwritten. The `manual` flag never applies to `burned`. Revoking the activity scope reports an error for `burned` as it does for `steps`.
+- [x] Manual check, run with `FIEFDOM_DATA_DIR` pointed at a temp folder: typing a weight in the Chronicle writes `days[date].weight` into `ledger.json`, and `campaign.json` does not exist yet.
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here.)*
+### Evidence
+
+`npm run typecheck` is clean. `npm test` passes all 158 tests. `npm run check:game` prints `check:game OK: 7 game files, codex valid, 271 text slots.` A separate testing agent wrote the tests and ran the checks.
+
+- **Campaign file:** `tests/campaignFile.test.ts`.
+  - The writes are atomic and ordered, with one backup per day at `backups/campaign-<date>.json`.
+  - With the default setting, the newest 30 backups are kept.
+  - A corrupt `campaign.json` falls back to the newest good backup and is kept as `campaign.corrupt-*`.
+  - Pruning campaign backups and pruning ledger backups never touch each other.
+- **Migration and weigh-ins:** `tests/ledgerV2.test.ts`.
+  - Two v1 contracts, 217 → 214 then 214 → 211, put weights on the four contract dates.
+  - Normalizing again returns a deep-equal ledger. A hand-typed weight is never overwritten, and a cleared weight is never filled in again.
+  - `setWeight` refuses whatever `validateWeight` refuses, and `undefined` clears the weight.
+  - Merging `burned` never marks it manual and never overwrites a hand-typed `eaten`.
+- **Health:** `tests/healthBurned.test.ts`.
+  - The fake Google returns `total-calories` (14 days per request), and those days get `burned` set.
+  - Without the extra, `total-calories` is never requested.
+  - Revoking the activity scope reports `errors.burned` just as it reports `errors.steps`.
+  - `tests/support/fakeGoogle.ts` gained `burned` data and `revokeScope()`. Both additions leave existing behavior unchanged.
+- **One existing assertion changed.** In `tests/ledger.test.ts`, "normalizeLedger keeps what is valid and drops the rest" expected only `2026-09-02` in `days`. The v1 contract in that test now migrates its 80 kg start weight onto `2026-09-01`, as A-05 requires, so the assertion now expects both days and checks the weight. No other existing test changed.
+- **Manual check:** the app was built and driven through Playwright under xvfb with `FIEFDOM_DATA_DIR` set to a fresh folder. Typing 182.4 in "Weight today" wrote `"days":{"2026-10-06":{"done":{},"weight":182.4}}` with `"version":2` to `ledger.json`. `campaign.json` did not exist while the app ran or after it closed.
+
+### What later tasks get
+
+- **Main process:** `src/main/jsonFile.ts` (`JsonFile`). `ledgerFile.ts` exports `LedgerFile` and `CampaignFile`, both `(dir, keepBackups = 30)`.
+- **IPC channels:** `campaign:load`, `campaign:save` and `campaign:save-sync`.
+- **Renderer:** `state/persistence.ts` has the `*CampaignText*` functions, with localStorage key `fiefdom:campaign`. `state/campaign.ts` holds `useCampaign` with `status`, `error`, `campaign`, `load()` and `apply(op)`.
+  - `apply` does nothing while `campaign` is null, so T06 needs to add a way to set the founded campaign, such as `found(state)`.
+  - `CampaignError` is in `lib/game/errors.ts`.
+  - The store loads at app start in `App.tsx`. Loading only reads.
+- **Ledger:** `setWeight(ledger, date, weight | undefined)` and `weighIns(ledger)`. Weights are in `settings.unit`, rounded to 0.1. `DayLog.burned` holds total calories burned. `SyncedMetric = Metric | 'burned'`.
+- **Health:** `HealthService.fetchDays(start, end, { burned: true })` also reads `total-calories`, when the activity scope was granted. The IPC handler always asks for it. `burned` is deliberately left out of `metricsFor` and `HealthStatus.metrics`, because those list the tallies a connection can show and the existing tests pin them.
+
+### Choices made here
+
+- A-106: every legacy contract counts for the migration, burned wagers included. A weight in the other unit is converted.
+- A-107: burning a legacy contract keeps that day's weigh-in and total calories burned.
+- `setMetric` refuses `burned` at runtime as well as at the type level.
+- When a ledger is loaded, any positive weight is kept as it is, not validated against the current unit. Checking it against the unit could drop real weigh-ins after the unit setting changes.

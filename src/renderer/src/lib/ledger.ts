@@ -171,6 +171,8 @@ export function clampMetric(metric: SyncedMetric, value: number): number {
  * Clearing a number Fitbit had filled in keeps it clear; clearing anything else simply empties it.
  */
 export function setMetric(ledger: Ledger, date: ISODate, metric: Metric, value: number | undefined): Ledger {
+  // total calories burned is Fitbit's alone (A-06), whatever an untyped caller passes
+  if (!METRICS.includes(metric)) throw new LedgerError('That figure cannot be typed by hand.')
   const next = copyDay(dayLog(ledger, date))
   const manual = { ...next.manual }
   if (value === undefined || !Number.isFinite(value)) {
