@@ -56,6 +56,8 @@ export interface Campaign {
   /** lb per week, default 0.8 */
   targetPace: number
   status: 'active' | 'won' | 'fallen'
+  /** The Healer's Dispensation (Ch 9 rule 7); on unless this is false. */
+  dispensation?: boolean
 }
 
 export interface Charter {
@@ -229,10 +231,38 @@ export interface WeighIn {
 
 export interface MilestoneState {
   index: number
+  /** In lb. A Keeping Milestone's mark is the goal. */
   mark: number
   earliestWeek: number
   brokenOn?: ISODate
+  /** The campaign week it broke in. */
+  brokenWeek?: number
   byDispensation?: boolean
+  /** A Keeping Milestone (Ch 9 rule 2): breaks after weeks spent near the goal, not at a mark. */
+  keeping?: boolean
+}
+
+/** What the weight rules record at each week close, so Grace and the streaks can be derived (T05). */
+export interface WeightWeek {
+  week: number
+  /** The week's last day, whose close is the week close. */
+  day: ISODate
+  /** Momentum M, 0 to 1. */
+  momentum: number
+  /** Realm Consistency at the close. */
+  realmConsistency: number
+  /** The 7-day average weight in lb at the close, when there is one. */
+  average?: number
+  tooFast: boolean
+}
+
+/** One ledger day as the Healer reads it (Ch 4). */
+export interface HealerDay {
+  date: ISODate
+  /** kcal logged */
+  eaten?: number
+  /** Fitbit's total calories burned (A-06) */
+  burned?: number
 }
 
 export interface WorldEvent {
@@ -435,6 +465,10 @@ export interface WeightState {
   grace: GraceLevel
   /** The Healer's current calorie floor, once computed. */
   healerFloor?: number
+  /** One record per week close, oldest first. */
+  weeks: WeightWeek[]
+  /** The last goal change; the founding goal is not a change. */
+  goalChangedOn?: ISODate
 }
 
 export interface FrontState {

@@ -554,7 +554,9 @@ const RULES_TABLE = {
       burnedWindowDays: 14,
       activityFactor: 1.4,
       mifflin: { perKg: 10, perCm: 6.25, perYear: 5, male: 5, female: -161 }
-    }
+    },
+    /** A rough patch (Ch 16 "Illness and travel"): this many low-scoring days in a row. */
+    roughPatchDays: 3 // TUNE (A-120)
   },
 
   armory: {
@@ -585,7 +587,10 @@ const RULES_TABLE = {
   scores: {
     /** Realm Consistency is Q over the last 28 settled days (Ch 5, A-39). */
     realmConsistencyDays: 28
-  }
+  },
+
+  /** Weight rules compute in lb (A-05); BMI uses kg and m. */
+  units: { lbPerKg: 2.2046226218, cmPerM: 100 }
 }
 
 export const RULES = deepFreeze(RULES_TABLE)
