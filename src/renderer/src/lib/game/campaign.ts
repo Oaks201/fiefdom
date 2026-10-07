@@ -79,13 +79,16 @@ export function borderCampaignWeeks(seed: number, startDate: ISODate, throughWee
 
 // ── The starting forces ──────────────────────────────────────────────────────
 
-/** One company per building at Tier I (Ch 7), named and tagged from the codex. */
+/**
+ * One company per building at Tier I (Ch 7), named and tagged from the codex. Its id is the
+ * building's, the stable slot `roster.ts` upgrades in place.
+ */
 export function foundingRoster(): Company[] {
   return CODEX.buildings.map((b) => {
     const entry = CODEX.companies.find((c) => c.source === 'building' && c.building === b.id && c.tier === 1)
     if (!entry) throw new Error(`The codex has no Tier I company for ${b.id}`)
     return {
-      id: entry.id,
+      id: b.id,
       name: entry.name,
       source: 'building',
       power: byTier(RULES.buildings.pureCompanyPower, 1),

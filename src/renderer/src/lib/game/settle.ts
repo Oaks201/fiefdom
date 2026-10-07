@@ -12,8 +12,9 @@
 import type { Ledger } from '../types'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
 import { borderCampaignWeeks } from './campaign'
-import { earnRespite, lateCorrection, respiteBankCap, settleContract, type AccordPaid } from './contracts'
-import { balance, dailyIncome, merchantHallBonus, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
+import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
+import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
+import { realmEffects } from './effects'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { RULES } from './rules'
 import { consistency, pillarScore, realmConsistency, termsOf, weekPillars, type ScoreTerms } from './score'
@@ -92,22 +93,14 @@ export function weekStartsOnOf(state: CampaignState, ledger: Ledger): WeekStarts
   return state.campaign.weekStartsOn ?? ledger.settings.weekStartsOn
 }
 
-function milestoneBroken(state: CampaignState, index: number): boolean {
-  return state.weight.milestones.some((m) => m.index === index && m.brokenOn !== undefined)
-}
-
-/**
- * The realm's reputation bonus: the Merchant Hall's tier, plus the Statue (Milestone 10). Rates
- * add (A-31). T07's `realmEffects` replaces this once it exists.
- */
+/** The realm's reputation bonus rate: every source in `realmEffects` (Merchant Hall, Statue, items), added (A-31). */
 export function reputationBonus(state: CampaignState): number {
-  const statue = milestoneBroken(state, RULES.milestones.unlocks.statue) ? RULES.milestones.boons.statueReputation : 0
-  return merchantHallBonus(state.buildings.merchantHall) + statue
+  return realmEffects(state).reputationBonus.value
 }
 
-/** The Respite bank's cap: by Mage Tower tier, +1 with the Healing Springs. T07's effects replace this. */
+/** The Respite bank's cap from `realmEffects` (Mage Tower tier, the Healing Springs, the Herb Garden). */
 function respiteCap(state: CampaignState): number {
-  return respiteBankCap(state.buildings.mageTower, milestoneBroken(state, RULES.milestones.unlocks.healingSprings))
+  return realmEffects(state).respiteBank.value
 }
 
 function contractsOf(state: CampaignState): LandContract[] {
@@ -268,7 +261,7 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
       settling: h.village?.settlingUntil !== undefined && h.village.settlingUntil > ctx.day,
       scorched: h.status === 'scorched'
     }))
-  const titheLines = tithes(villages, 1, reputationBonus(state), days)
+  const titheLines = tithes(villages, realmEffects(state).titheMult.value, reputationBonus(state), days)
   const purse = postAll(postAll(state.purse, ctx.day, lines), ctx.day, titheLines)
   const snapshot = snapshotOf(state, ctx.day) as DaySnapshot
   const income = postedTotal(lines)

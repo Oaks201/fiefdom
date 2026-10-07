@@ -601,6 +601,12 @@ const RULES_TABLE = {
      * window), the Healer (21 days) and the burned bootstrap (14 days) can look back from week 1.
      */
     preludeDays: 28
+  },
+
+  /** T07: realm effects, buildings and the roster. */
+  effects: {
+    /** The Crown's Grace level from which tribute halves and contested hexes hold longer (Ch 9). */
+    graceIILevel: 2
   }
 }
 

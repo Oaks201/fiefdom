@@ -114,6 +114,8 @@ export type CompanySource =
   | 'sworn'
   /** A rival's company, bought from its host list (Appendix C). */
   | 'host'
+  /** A rival envoy company for one battle, at Respect 50 (Ch 5, A-20). */
+  | 'envoy'
 
 export interface Company {
   id: string
@@ -524,6 +526,8 @@ export interface CampaignState {
   settledThrough: { day: ISODate; week: number }
   /** What settlement keeps for itself (T06). */
   settlement: SettlementState
+  /** Wings, Elites, the Sworn and the item stash (T14). Absent means none yet. */
+  armory?: ArmoryState
 }
 
 // ── Settlement (T06) ─────────────────────────────────────────────────────────
@@ -594,4 +598,169 @@ export interface StewardSuggestion {
   direction: 'gentler' | 'firmer'
   textId: string
   facts: { weeks: number; average: number }
+}
+
+// ── Realm effects and the armory slice (T07) ─────────────────────────────────
+
+/**
+ * What T14 fills: the Wings chosen, the Elites recruited, the Sworn and the items owned. Equipped
+ * items live on each company's `items` in `CampaignState.roster`. T07 reads this slice; until
+ * T14 writes it, it is absent and reads as empty.
+ */
+export interface ArmoryState {
+  /** Wing ids chosen, permanently (Appendix C). */
+  wings: string[]
+  /** Elite companies recruited, by codex id, at rank 1 or 2. */
+  elites: { id: string; rank: 1 | 2 }[] // rules-ok: literal type
+  /** The Sworn (Milestone 7), with the two tags chosen once (A-21). */
+  sworn?: { tags: Tag[] }
+  /** Item ids owned and not equipped on any company. */
+  stash: string[]
+  /** The company holding the Armorer Wing's third item slot. */
+  armorerCompany?: string
+}
+
+/** Where an effect's value comes from, for tooltips. Screens turn these into labels. */
+export type EffectSourceRef =
+  | { kind: 'base' }
+  | { kind: 'castle'; tier: CastleTier }
+  | { kind: 'building'; id: BuildingId; tier: BuildingTier }
+  /** A Crossing at a stage (its hybrid, its signature Order). */
+  | { kind: 'crossing'; id: CrossingId; stage: CrossingStage }
+  /** A Crossing perk (Ch 8). */
+  | { kind: 'perk'; id: string; crossing: CrossingId }
+  /** A Milestone boon (Ch 9): the Proving Grounds, the Healing Springs and so on. */
+  | { kind: 'milestone'; index: number; boon: string }
+  | { kind: 'wing'; id: string }
+  /** An item equipped on `company`. */
+  | { kind: 'item'; id: string; company: string }
+  /** A lair sealed by taking its Lair Mouth (Ch 3 rule 5). */
+  | { kind: 'lair'; id: string }
+  /** The Crown's Grace at a level (Ch 9). */
+  | { kind: 'grace'; level: GraceLevel }
+  /** A Weary company, through `until` (Ch 10, A-123). */
+  | { kind: 'weary'; until: ISODate }
+
+export interface Contribution {
+  from: EffectSourceRef
+  value: number
+}
+
+/**
+ * A number and what produced it. With `op: 'add'` the contributions sum to `value`; with
+ * `op: 'mult'` they multiply to it (an empty list is 1).
+ */
+export interface Sourced {
+  value: number
+  op: 'add' | 'mult'
+  sources: Contribution[]
+}
+
+/** A switch and what turned it on. */
+export interface Flag {
+  on: boolean
+  sources: EffectSourceRef[]
+}
+
+/** How much of a hidden value the player may see. */
+export interface Reveal {
+  whom: 'none' | 'neighbors' | 'all'
+  sources: EffectSourceRef[]
+}
+
+/** A codex effect and where it comes from, passed on for the battle engines to interpret. */
+export interface Grant {
+  effect: Effect
+  from: EffectSourceRef
+}
+
+/** An Order or a Doctrine the realm holds, and what granted it. */
+export interface Unlocked {
+  id: string
+  from: EffectSourceRef
+}
+
+/**
+ * Every realm-wide modifier in one answer (T07 `realmEffects`). Combat, the economy and screens
+ * read these instead of asking where a bonus comes from. Shares are fractions (0.05 = 5%).
+ */
+export interface Effects {
+  /** Banners in every battle: the castle tier, +1 with the Crown Forge. */
+  banners: Sourced
+  /** Extra banners for one pool only (the Muster Field adds to the assault pool). */
+  poolBanners: { defense: Sourced; assault: Sourced }
+  /** Walls W: the castle's, the Foundry tier's, Bastions and the Anvil-Heart. */
+  walls: Sourced
+  /** Walls that count double in some battles (Shieldwall on rings 4 and 5, Runed Walls against mythics). Read with `wallsFor`. */
+  wallsDouble: { rings?: number[]; against?: Foe; from: EffectSourceRef }[]
+  /** The arms bonus `a`: the Foundry tier's total (A-31). */
+  armsBonus: Sourced
+  /** Company power bonuses that belong in `p`: the Proving Grounds (all), ranged bonuses, and a building company's own. */
+  companyPower: { all: Sourced; ranged: Sourced; buildingCompany: Record<BuildingId, Sourced> }
+  /** The Crownguard Ascendant's power bonus (Milestone 10). */
+  crownguardBonus: Sourced
+  /** The rally floor `r`. */
+  rallyFloor: Sourced
+  /** Mythic strength multiplier from everywhere but the lairs. */
+  mythicStrength: Sourced
+  /** Mythic strength multiplier by lair side, the lair's seal included. */
+  mythicStrengthBySide: Partial<Record<Land, Sourced>>
+  /** Rival raid strength multiplier (the Spy Network). */
+  raidStrength: Sourced
+  /** The reputation bonus rate; rates add (A-31). */
+  reputationBonus: Sourced
+  /** The pledge cap multiplier (Merchant Hall III). */
+  pledgeCap: Sourced
+  /** The share of every pledge that returns at least (Merchant Hall IV). */
+  minPledgeReturn: Sourced
+  /** The Respite bank's cap. */
+  respiteBank: Sourced
+  courtshipSlots: Sourced
+  dailyAssaults: Sourced
+  /** Days of warning before a threat strikes or a Grand Battle starts. `raidsOnRoad` adds to `raids` along one road. */
+  foretell: { threats: Sourced; raids: Sourced; raidsOnRoad: Partial<Record<BuildingId, Sourced>>; grandBattles: Sourced }
+  /** Which hidden values the player may see as numbers. */
+  reveals: Record<RevealKind, Reveal>
+  /** Village tithe multiplier. */
+  titheMult: Sourced
+  /** Cost multipliers by what is bought. */
+  costs: Record<CostKind, Sourced>
+  /** Spoils multiplier by the kind of foe beaten. */
+  spoils: Record<Foe, Sourced>
+  /** Tribute multiplier on a lost battle (Grace II, Oathguard). */
+  tribute: Sourced
+  /** Days a contested hex holds before it falls (Grace II). */
+  contestedDays: Sourced
+  /** Item slots per company (Milestones 1 and 4); 0 before the Armory opens. */
+  itemSlots: Sourced
+  /** Companies that may carry one more item (the Armorer). */
+  extraItemSlots: Sourced
+  /** Hired blades for daily battles (Merchant Hall II). */
+  hiredBlades: Flag
+  /** The player's daily assaults ignore fortification (Siegebreakers). */
+  assaultIgnoresFortification: Flag
+  /** One beast attack a week becomes a hunt (the Royal Hunt). */
+  royalHunt: { on: boolean; reputation: number; trophy: boolean; perWeek: number; sources: EffectSourceRef[] }
+  /** Lost battles a week that cost no tribute and contest no hex (Grand Illusion). */
+  grandIllusion: Sourced
+  /** Trust added to the player's bids (Envoy's Rest). */
+  trust: Sourced
+  /** Weekly interest on the purse (The Bank). */
+  interest: { rate: number; cap: number; sources: EffectSourceRef[] }
+  /** Event hints a month (the Scrying Pool). */
+  eventHints: Sourced
+  /** Days added to every Weary status (the Veterans' Hall takes one off). */
+  wearyDays: Sourced
+  /** Orders offered per Grand Battle round. */
+  ordersOffered: Sourced
+  /** Grand Battle Readiness never below this (0 = no floor). */
+  readinessFloor: Sourced
+  /** The Order deck. */
+  orders: Unlocked[]
+  /** The Doctrines the player may pick from. */
+  doctrines: Unlocked[]
+  /** The Crossing perks in force, by perk id (a replaced perk is not listed). */
+  perks: Unlocked[]
+  /** Realm-wide effects no field above covers (Grand Battle effects), for T12 to interpret. */
+  battle: Grant[]
 }
