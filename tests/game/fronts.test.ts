@@ -138,12 +138,12 @@ test('A-26: a rival at war with another rival raids the player half as often', (
   near(war, calm / 2)
 })
 
-test('Ch 12: coalition partners are never at War on their front', () => {
+test('Ch 13: while a coalition stands, its members’ shared front is at Peace', () => {
   const coalition: Coalition = { members: ['orc', 'goblin'], trigger: 'risingCrown', warChest: 0 }
   let state = { ...realm(), coalitions: [coalition] }
   for (let i = 0; i < 60; i++) {
     state = drawFronts(state, week(addDays(SUNDAY, 7 * i), 6 + i))
-    assert.notEqual(state.fronts.north.state, 'war')
+    assert.equal(state.fronts.north.state, 'peace')
   }
 })
 

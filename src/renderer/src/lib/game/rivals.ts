@@ -959,7 +959,7 @@ export function frontWarChance(front: FrontId): number {
 /**
  * Draws each front's state for the coming week from the seed (A-144): War at its war chance, then
  * Peace or Tension. A call to arms in force holds it at War; a front between coalition partners
- * is never at War; a front with a resolved rival is at Peace.
+ * (Ch 13) or with a resolved rival is at Peace.
  */
 export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
   let state = input
@@ -972,8 +972,7 @@ export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
     const u = draw(state.campaign.seed, w.day, `front:${id}`)
     let next: Disposition = u < p ? 'war' : u < p + (1 - p) * RULES.rivalAi.frontPeaceShareOfRest ? 'peace' : 'tension'
     if (calls.some((c) => (c.rival === a && c.target === b) || (c.rival === b && c.target === a))) next = 'war'
-    if (next === 'war' && coalitionPartners(state, a, b, tomorrow)) next = 'tension'
-    if (!isActive(state, a) || !isActive(state, b)) next = 'peace'
+    if (coalitionPartners(state, a, b, tomorrow) || !isActive(state, a) || !isActive(state, b)) next = 'peace'
     if (next !== front.state) w.emit('front', { front: id, state: next, track: front.track })
     state = withTrack(state, front, front.track, next)
   }
