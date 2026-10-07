@@ -433,8 +433,8 @@ export interface GameEventMap {
   trophy: { hexId: string; source: 'mythic' | 'royalHunt'; lair?: string }
   /** A hex changed hands. */
   hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
-  /** A courtship resolved at week close (Ch 6). */
-  courtship: { hexId: string; outcome: 'defected' | 'held'; bid: number; loyaltyDrop?: number; winner?: Owner }
+  /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
+  courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
   deal: { rival: RivalId; deal: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms'; price: number; hexId?: string; target?: RivalId }
   /** Rival news the Herald may pass on as rumor or report. */

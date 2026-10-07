@@ -158,5 +158,73 @@
   "herald.steward.firmer": {
     "template": "Steward's Counsel: consistency averaged {average}% over the last {weeks} weeks. Firmer Charter terms can be set before the next contract.",
     "final": null
+  },
+  "herald.deal.refused.campaignOver": {
+    "template": "No deals: the campaign is over.",
+    "final": null
+  },
+  "herald.deal.refused.rivalResolved": {
+    "template": "{rival} no longer negotiates.",
+    "final": null
+  },
+  "herald.deal.refused.respect": {
+    "template": "{rival} needs Respect {needed} for this deal.",
+    "final": null
+  },
+  "herald.deal.refused.atWar": {
+    "template": "{rival} is at war with the realm: no hex sales.",
+    "final": null
+  },
+  "herald.deal.refused.gate": {
+    "template": "A Gate is never traded.",
+    "final": null
+  },
+  "herald.deal.refused.noHex": {
+    "template": "No hex to trade with {rival}.",
+    "final": null
+  },
+  "herald.deal.refused.notRivalHex": {
+    "template": "{rival} does not hold hex {hex}.",
+    "final": null
+  },
+  "herald.deal.refused.notPlayerHex": {
+    "template": "The realm does not hold hex {hex}.",
+    "final": null
+  },
+  "herald.deal.refused.notClaimable": {
+    "template": "Hex {hex} cannot change hands with {rival}.",
+    "final": null
+  },
+  "herald.deal.refused.innerRing": {
+    "template": "Hexes in rings 1 and 2 are never sold.",
+    "final": null
+  },
+  "herald.deal.refused.cooldown": {
+    "template": "{rival} makes one hex deal every 4 weeks.",
+    "final": null
+  },
+  "herald.deal.refused.grandBattleWarning": {
+    "template": "No Truce while a Grand Battle is announced.",
+    "final": null
+  },
+  "herald.deal.refused.inForce": {
+    "template": "This agreement with {rival} is already in force.",
+    "final": null
+  },
+  "herald.deal.refused.noTarget": {
+    "template": "{rival} has no one to call to arms against.",
+    "final": null
+  },
+  "herald.deal.refused.noFront": {
+    "template": "{rival} and {target} share no front.",
+    "final": null
+  },
+  "herald.deal.refused.targetAllied": {
+    "template": "{rival} and {target} are in a coalition.",
+    "final": null
+  },
+  "herald.deal.refused.reputation": {
+    "template": "This deal costs {needed}.",
+    "final": null
   }
 }

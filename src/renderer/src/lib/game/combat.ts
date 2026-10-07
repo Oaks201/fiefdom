@@ -33,6 +33,7 @@ import { CODEX, type Matchup, type MatchupId } from './codex'
 import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
+import { blocksConquest, blocksRaids, raidRateMult } from './land'
 import { claimableBy, hexDistance, neighbors } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { pick, roll, weighted } from './rng'
@@ -140,10 +141,6 @@ export function armyValue(state: CampaignState, rival: RivalId): number {
   return state.rivals[rival].companies.reduce((sum, c) => sum + c.power, 0)
 }
 
-function dealOn(state: CampaignState, rival: RivalId, kind: 'truce' | 'pact', date: ISODate): boolean {
-  return state.deals.some((d) => d.rival === rival && d.kind === kind && d.madeOn <= date && (d.until === undefined || d.until >= date))
-}
-
 /** An Accord with this rival runs on `date`: it makes no raids or conquest attempts (Ch 14). */
 function accordOn(state: CampaignState, rival: RivalId, date: ISODate): boolean {
   const c = state.contracts.active
@@ -154,14 +151,14 @@ function accordOn(state: CampaignState, rival: RivalId, date: ISODate): boolean 
 export function canRaid(state: CampaignState, rival: RivalId, date: ISODate): boolean {
   const r = state.rivals[rival]
   if (r.status !== 'active' || r.disposition.player === 'peace') return false
-  return !dealOn(state, rival, 'truce', date) && !accordOn(state, rival, date)
+  return !blocksRaids(state, rival, date) && !accordOn(state, rival, date)
 }
 
 /** Whether `rival` may strike a conquest attempt on `date` (Ch 10, Ch 12): active, at War, and no Truce, pact or Accord. */
 export function canConquer(state: CampaignState, rival: RivalId, date: ISODate): boolean {
   const r = state.rivals[rival]
   if (r.status !== 'active' || r.disposition.player !== 'war') return false
-  return !dealOn(state, rival, 'truce', date) && !dealOn(state, rival, 'pact', date) && !accordOn(state, rival, date)
+  return !blocksConquest(state, rival, date) && !accordOn(state, rival, date)
 }
 
 function hexMap(state: CampaignState): Map<string, HexState> {
@@ -199,7 +196,7 @@ export function raiderWeights(state: CampaignState, date: ISODate): { rival: Riv
     let weight = RULES.rivals.raidFrequency[rival] * (1 + touching)
     if (Object.values(state.fronts).some((f) => f.rivals.includes(rival) && f.state === 'war')) weight *= RULES.rivals.raiderWeight.atWarWithRival
     if (state.coalitions.some((c) => c.members.includes(rival) && (c.until === undefined || c.until >= date))) weight *= RULES.rivals.raiderWeight.inCoalition
-    if (dealOn(state, rival, 'pact', date)) weight *= RULES.trade.pact.raidRateMult
+    weight *= raidRateMult(state, rival, date)
     weight = COMBAT_HOOKS.raiderWeight(state, rival, date, weight)
     if (weight > 0) out.push({ rival, weight })
   }
