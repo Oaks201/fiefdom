@@ -85,10 +85,6 @@ const noop: Phase = (state) => state
 
 // ── Reading the state ────────────────────────────────────────────────────────
 
-export function weekStartsOnOf(state: CampaignState, ledger: Ledger): WeekStartsOn {
-  return state.campaign.weekStartsOn ?? ledger.settings.weekStartsOn
-}
-
 /** The realm's reputation bonus rate: every source in `realmEffects` (Merchant Hall, Statue, items), added (A-31). */
 export function reputationBonus(state: CampaignState): number {
   return realmEffects(state).reputationBonus.value
@@ -387,7 +383,7 @@ function runPhases<N extends string>(state: CampaignState, names: readonly N[], 
  * then the next dawn, which fixes the next day's tidings on the border as it now stands (T08).
  */
 function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: EventBuffer, hooks: PhaseHooks): CampaignState {
-  const weekStartsOn = weekStartsOnOf(state, ledger)
+  const { weekStartsOn } = state.campaign
   const week = campaignWeek(state.campaign.startDate, day, weekStartsOn)
   const weekClose = isWeekCloseDay(day, weekStartsOn)
   const ctx: PhaseContext = { day, week, weekClose, weekStartsOn, ledger, emit: events.emitter(day), hooks }
@@ -418,7 +414,7 @@ function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events:
   let next = putSnapshot(state, { ...fresh, streak: old?.streak ?? 0, ...(old?.paid ? { paid: old.paid } : {}) })
   if (day < state.campaign.startDate) return next // the founding day: inputs only
 
-  const weekStartsOn = weekStartsOnOf(state, ledger)
+  const { weekStartsOn } = state.campaign
   let adjustment = 0
   const adjust = (amount: number, source: string): void => {
     if (amount <= 0) return
@@ -536,7 +532,7 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
       days.push({
         day,
         week: next.settledThrough.week,
-        weekClosed: isWeekCloseDay(day, weekStartsOnOf(next, ledger)),
+        weekClosed: isWeekCloseDay(day, next.campaign.weekStartsOn),
         events: events.all.slice(from),
         purseChange: roundPosting(balance(next.purse) - before)
       })
@@ -544,7 +540,7 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
   }
 
   // The open day's dawn, if no settled day has brought it yet (the campaign's first day).
-  if (active) next = dawn(next, openDay(now, timeZone), weekStartsOnOf(next, ledger))
+  if (active) next = dawn(next, openDay(now, timeZone))
 
   let awayDays = 0
   if (options.launch) {

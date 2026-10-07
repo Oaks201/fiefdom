@@ -71,6 +71,7 @@ function campaign(over: Partial<Campaign> = {}): Campaign {
     unit: 'lb',
     targetPace: 0.8,
     status: 'active',
+    weekStartsOn: 1,
     ...over
   }
 }

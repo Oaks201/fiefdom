@@ -73,7 +73,6 @@ const DAILY_KINDS: readonly DailyThreatKind[] = ['beasts', 'mythic', 'raid']
 const GRAND_BATTLE_KINDS: ReadonlySet<HexKind> = new Set<HexKind>(['gate', 'capital', 'lairMouth'])
 /** The between-lands the lairs open onto: mythics come from these sides (A-27). */
 const LAIR_LANDS: ReadonlySet<Land> = new Set(CODEX.lairs.map((l) => l.land as Land))
-const DEFAULT_WEEK_START: WeekStartsOn = 1
 
 // ── Extension points for world modifiers (T10, T13) ──────────────────────────
 
@@ -132,11 +131,7 @@ function withCombat(state: CampaignState, combat: CombatState): CampaignState {
   return { ...state, combat }
 }
 
-function weekStartOf(state: CampaignState): WeekStartsOn {
-  return state.campaign.weekStartsOn ?? DEFAULT_WEEK_START
-}
-
-function weekNumber(state: CampaignState, date: ISODate, weekStartsOn: WeekStartsOn = weekStartOf(state)): number {
+function weekNumber(state: CampaignState, date: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): number {
   return campaignWeek(state.campaign.startDate, date, weekStartsOn)
 }
 
@@ -378,7 +373,7 @@ function maxForetold(effects: Effects): number {
  * day the realm foretells (whose week is already scheduled). Settlement runs it after the day
  * before closes, and once for the open day. Returns the same state when nothing is new.
  */
-export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = weekStartOf(state)): CampaignState {
+export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): CampaignState {
   if (state.campaign.status !== 'active' || day < state.campaign.startDate) return state
   const lastOfWeek = addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
   const next = scheduleThreats(state, day, lastOfWeek)

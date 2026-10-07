@@ -64,8 +64,8 @@ export interface Campaign {
   status: 'active' | 'won' | 'fallen'
   /** The Healer's Dispensation (Ch 9 rule 7); on unless this is false. */
   dispensation?: boolean
-  /** The week start fixed at founding (`settings.weekStartsOn` then). Settlement reads this, not the ledger's current setting. */
-  weekStartsOn?: WeekStartsOn
+  /** The week start fixed at founding (`settings.weekStartsOn` then). Every rule reads this, never the ledger's current setting. */
+  weekStartsOn: WeekStartsOn
 }
 
 export interface Charter {
