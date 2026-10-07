@@ -16,6 +16,7 @@ import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './
 import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
+import { recoverLoyalty, resolveCourtships } from './land'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { RULES } from './rules'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
@@ -286,6 +287,12 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
   return putSnapshot({ ...state, purse }, { ...snapshot, paid: { daily: snapshot.paid?.daily ?? 0, weekly: income } })
 }
 
+/** Courtships resolve at the week's Realm Consistency (Ch 6), then the player's villages recover loyalty (A-22) (T09). */
+const courtshipsPhase: Phase = (state, ctx) => {
+  const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
+  return recoverLoyalty(resolveCourtships(state, { day: ctx.day, realmConsistency: rc, emit: ctx.emit }))
+}
+
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
 const weightPhase: Phase = (state, ctx) => {
   const { qw } = weekIncome(state, ctx.day, ctx.weekStartsOn)
@@ -329,7 +336,7 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T13 `world`). */
 export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   weeklyIncome: weeklyIncomePhase,
-  courtships: noop, // T09
+  courtships: courtshipsPhase, // T09
   weight: weightPhase,
   rivalTurn: noop, // T10
   fronts: noop, // T10

@@ -71,7 +71,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | [T06](tasks/T06-campaign-and-settlement.md) | Campaign founding and the settlement engine | 2 Core rules | T02 T03 T04 T05 | done |
 | [T07](tasks/T07-buildings-roster-effects.md) | Buildings, castle, Crossings, roster and realm effects | 3 The war | T03 T04 | | done |
 | [T08](tasks/T08-daily-combat-and-assault.md) | Daily combat and the daily assault | 3 The war | T06 T07 | done |
-| [T09](tasks/T09-influence-trade-fortify.md) | Influence, trade, fortification and reclaiming | 3 The war | T06 T07 | todo |
+| [T09](tasks/T09-influence-trade-fortify.md) | Influence, trade, fortification and reclaiming | 3 The war | T06 T07 | done |
 | [T10](tasks/T10-rivals.md) | Rivals: benchmark economy, weekly turn, Respect, fronts, Border Campaigns | 3 The war | T08 T09 | todo |
 | [T11](tasks/T11-simulator-v1.md) | Simulator v1: economy and land (report only) | 4 Big systems | T10 | todo |
 | [T12](tasks/T12-grand-battle-engine.md) | Grand Battle engine | 4 Big systems | T07 T08 T10 | todo |
