@@ -15,15 +15,21 @@ import {
   type Settings,
   type SoundSettings,
   type SwornDuty,
+  type SyncedMetric,
   type WeightUnit
 } from './types'
 
-export const LEDGER_VERSION = 1 as const
+/** 2 added hand-typed weigh-ins and Fitbit's total calories burned to the day log (A-05, A-06). */
+export const LEDGER_VERSION = 2 as const
+
+const LB_PER_KG = 2.2046226218
 
 export const LIMITS = {
   steps: { min: 0, max: 200_000 },
   eaten: { min: 0, max: 20_000 },
   calories: { min: 0, max: 20_000 },
+  /** total calories burned, resting included */
+  burned: { min: 0, max: 20_000 },
   stepsGoal: { min: 100, max: 100_000 },
   /** the most a contract may allow you to eat in a day, and the least */
   calorieLimit: { min: 800, max: 10_000 },
@@ -116,7 +122,13 @@ function hasKeys(o: object | undefined): boolean {
 }
 
 function isEmptyDay(d: DayLog): boolean {
-  return METRICS.every((m) => d[m] === undefined) && !hasKeys(d.done) && !hasKeys(d.manual)
+  return (
+    METRICS.every((m) => d[m] === undefined) &&
+    d.burned === undefined &&
+    d.weight === undefined &&
+    !hasKeys(d.done) &&
+    !hasKeys(d.manual)
+  )
 }
 
 /** Drops bookkeeping that no longer means anything. */
@@ -149,7 +161,7 @@ function copyDay(d: DayLog): DayLog {
   }
 }
 
-export function clampMetric(metric: Metric, value: number): number {
+export function clampMetric(metric: SyncedMetric, value: number): number {
   const { min, max } = LIMITS[metric]
   return Math.min(max, Math.max(min, Math.round(value)))
 }
@@ -159,6 +171,8 @@ export function clampMetric(metric: Metric, value: number): number {
  * Clearing a number Fitbit had filled in keeps it clear; clearing anything else simply empties it.
  */
 export function setMetric(ledger: Ledger, date: ISODate, metric: Metric, value: number | undefined): Ledger {
+  // total calories burned is Fitbit's alone (A-06), whatever an untyped caller passes
+  if (!METRICS.includes(metric)) throw new LedgerError('That figure cannot be typed by hand.')
   const next = copyDay(dayLog(ledger, date))
   const manual = { ...next.manual }
   if (value === undefined || !Number.isFinite(value)) {
@@ -192,19 +206,26 @@ export function metricSource(day: DayLog, metric: Metric): 'fitbit' | 'hand' | n
 
 export interface SyncedPoint {
   date: ISODate
-  metric: Metric
+  metric: SyncedMetric
   value: number
 }
+
+const isSyncedMetric = (m: unknown): m is SyncedMetric => m === 'burned' || METRICS.includes(m as Metric)
 
 /**
  * Folds numbers reported by Fitbit into the ledger. Hand-typed numbers are never replaced — Fitbit's
  * figure is only remembered beside them. A zero means Fitbit has nothing for that day (no food logged,
- * the tracker not worn), so it never counts as a record.
+ * the tracker not worn), so it never counts as a record. Total calories burned is Fitbit's alone:
+ * it is simply kept up to date, with no hand-typed side to protect.
  */
 export function mergeSynced(ledger: Ledger, points: readonly SyncedPoint[]): Ledger {
   let next = ledger
   for (const p of points) {
-    if (!isISODate(p.date) || !METRICS.includes(p.metric) || typeof p.value !== 'number' || !Number.isFinite(p.value)) continue
+    if (!isISODate(p.date) || !isSyncedMetric(p.metric) || typeof p.value !== 'number' || !Number.isFinite(p.value)) continue
+    if (p.metric === 'burned') {
+      next = mergeBurned(next, p.date, clampMetric('burned', p.value))
+      continue
+    }
     const day = dayLog(next, p.date)
     const manual = !!day.manual?.[p.metric]
     const before = day.synced?.[p.metric]
@@ -223,6 +244,46 @@ export function mergeSynced(ledger: Ledger, points: readonly SyncedPoint[]): Led
     }
   }
   return next
+}
+
+function mergeBurned(ledger: Ledger, date: ISODate, value: number): Ledger {
+  const day = dayLog(ledger, date)
+  if (value > 0) {
+    if (day.burned === value) return ledger
+    return putDay(ledger, date, { ...copyDay(day), burned: value })
+  }
+  if (day.burned === undefined) return ledger
+  const d = copyDay(day)
+  delete d.burned
+  return putDay(ledger, date, d)
+}
+
+// ---------------------------------------------------------------------------
+// Weigh-ins (A-05): typed by hand, in the ledger's unit
+// ---------------------------------------------------------------------------
+
+/** Records the weight for a day, or clears it with `undefined`. */
+export function setWeight(ledger: Ledger, date: ISODate, weight: number | undefined): Ledger {
+  if (!isISODate(date)) throw new LedgerError('That is not a day of the ledger.')
+  const current = dayLog(ledger, date)
+  if (weight === undefined) {
+    if (current.weight === undefined) return ledger
+    const next = copyDay(current)
+    delete next.weight
+    return putDay(ledger, date, next)
+  }
+  const problem = validateWeight(weight, ledger.settings.unit)
+  if (problem) throw new LedgerError(problem)
+  const rounded = roundWeight(weight)
+  if (current.weight === rounded) return ledger
+  return putDay(ledger, date, { ...copyDay(current), weight: rounded })
+}
+
+/** Every weigh-in in the ledger, oldest first. */
+export function weighIns(ledger: Ledger): { date: ISODate; weight: number }[] {
+  const list: { date: ISODate; weight: number }[] = []
+  for (const [date, d] of Object.entries(ledger.days)) if (d.weight !== undefined) list.push({ date, weight: d.weight })
+  return list.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export function toggleDuty(ledger: Ledger, date: ISODate, habitId: string): Ledger {
@@ -446,7 +507,8 @@ export function closeContract(
 
 /**
  * Burning a contract destroys it together with its progress: the steps and calories recorded on
- * its days are erased (so is the reputation they earned). Duties checked off on those days are kept.
+ * its days are erased (so is the reputation they earned). Duties checked off on those days are kept,
+ * and so are weigh-ins and Fitbit's total calories burned, which were never the contract's progress.
  * A common contract vanishes; a wager stays in the Archive as ash, its stake forfeit.
  */
 export function burnContract(ledger: Ledger, id: string, ctx: { today: ISODate; now: string }): Ledger {
@@ -460,7 +522,11 @@ export function burnContract(ledger: Ledger, id: string, ctx: { today: ISODate; 
   for (const date of daysInRange(contract.startDate, contract.endDate)) {
     const log = next.days[date]
     if (!log || (METRICS.every((m) => log[m] === undefined) && !hasKeys(log.manual) && !hasKeys(log.synced))) continue
-    const rest: DayLog = { done: log.done }
+    const rest: DayLog = {
+      done: log.done,
+      ...(log.burned !== undefined ? { burned: log.burned } : {}),
+      ...(log.weight !== undefined ? { weight: log.weight } : {})
+    }
     next = putDay(next, date, rest)
   }
   return next
@@ -518,6 +584,9 @@ function normalizeDay(d: Record<string, unknown>, habitIds: Set<string>): DayLog
     // Numbers from before Fitbit sync existed were all typed by hand.
     if (log[m] !== undefined && synced[m] === undefined) manual[m] = true
   }
+  // Fitbit's alone: never marked as typed by hand.
+  if (isNum(d.burned) && d.burned > 0) log.burned = clampMetric('burned', d.burned)
+  if (isNum(d.weight) && d.weight > 0) log.weight = d.weight
   if (hasKeys(manual)) log.manual = manual
   if (hasKeys(synced)) log.synced = synced
   return tidy(log)
@@ -613,5 +682,26 @@ export function normalizeLedger(raw: unknown): Ledger {
     contracts.push(contract)
   }
 
-  return { version: LEDGER_VERSION, profile, settings, habits, days, contracts: sortContracts(contracts) }
+  const sorted = sortContracts(contracts)
+  // A version 1 ledger kept weights only on its contracts; they become the first weigh-ins (A-05).
+  if (!(isNum(raw.version) && raw.version >= LEDGER_VERSION)) copyContractWeights(days, sorted, settings.unit)
+
+  return { version: LEDGER_VERSION, profile, settings, habits, days, contracts: sorted }
+}
+
+function convertWeight(weight: number, from: WeightUnit, to: WeightUnit): number {
+  if (from === to) return weight
+  return roundWeight(from === 'kg' ? weight * LB_PER_KG : weight / LB_PER_KG)
+}
+
+/** Puts each contract's start and final weight on its start and close dates, where that day has no weight yet. */
+function copyContractWeights(days: Record<ISODate, DayLog>, contracts: readonly Contract[], unit: WeightUnit): void {
+  for (const c of contracts) {
+    const readings: [ISODate, number][] = [[c.startDate, c.startWeight]]
+    if (c.finalWeight !== undefined && c.closedOn) readings.push([c.closedOn, c.finalWeight])
+    for (const [date, weight] of readings) {
+      if (!(weight > 0) || days[date]?.weight !== undefined) continue
+      days[date] = { ...(days[date] ?? { done: {} }), weight: convertWeight(weight, c.unit, unit) }
+    }
+  }
 }

@@ -12,6 +12,8 @@ import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
 import { startHealthSync } from './state/health'
 import { setSound } from './lib/ledger'
+import { useCampaign } from './state/campaign'
+import { startCampaignClock } from './state/campaignClock'
 import { useLedger } from './state/store'
 import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 
@@ -22,9 +24,12 @@ export default function App(): React.JSX.Element {
   const error = useLedger((s) => s.error)
   const load = useLedger((s) => s.load)
   const page = useUI((s) => s.page)
+  const campaignStatus = useCampaign((s) => s.status)
 
   useEffect(() => {
     void load()
+    // Only read here; nothing is written until a campaign is founded.
+    void useCampaign.getState().load()
   }, [load])
 
   // Keep "today" fresh; if the Chronicle was showing today, follow it into the new day.
@@ -58,6 +63,9 @@ export default function App(): React.JSX.Element {
 
   // Fitbit: fill in steps and calories once the ledger is open, then keep them fresh.
   useEffect(() => (status === 'ready' ? startHealthSync() : undefined), [status])
+
+  // The campaign settles at launch (after the first Fitbit sync attempt) and at each 04:00 close.
+  useEffect(() => (status === 'ready' && campaignStatus === 'ready' ? startCampaignClock() : undefined), [status, campaignStatus])
 
   // Sound: start once the ledger (and its sound settings) is loaded; follow settings changes;
   // turn pages and days with the rustle of paper.

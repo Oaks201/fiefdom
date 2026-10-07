@@ -8,8 +8,11 @@ export interface AppInfo {
   platform: string
 }
 
-/** What Fitbit (through the Google Health API) can fill in on a day. */
-export type HealthMetric = 'steps' | 'eaten' | 'calories'
+/**
+ * What Fitbit (through the Google Health API) can fill in on a day. `burned` is total calories
+ * burned, resting included: read only, kept for the Healer's range, never a tally (A-06).
+ */
+export type HealthMetric = 'steps' | 'eaten' | 'calories' | 'burned'
 
 export interface HealthStatus {
   /** a Google OAuth client file has been loaded */
@@ -63,6 +66,12 @@ export interface FiefdomBridge {
   saveLedger(json: string): Promise<void>
   /** Synchronous save, used only while the window is closing. */
   saveLedgerSync(json: string): boolean
+  /** Returns the saved campaign JSON, or null when no campaign has been saved yet. */
+  loadCampaign(): Promise<string | null>
+  /** Persists the campaign JSON beside the ledger, written the same safe way. */
+  saveCampaign(json: string): Promise<void>
+  /** Synchronous save, used only while the window is closing. */
+  saveCampaignSync(json: string): boolean
   /** Opens the folder that holds the ledger and its backups. */
   revealLedger(): Promise<void>
   appInfo(): Promise<AppInfo>

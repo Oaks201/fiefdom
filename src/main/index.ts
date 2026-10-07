@@ -4,11 +4,12 @@ import path from 'node:path'
 import icon from '../../resources/icon.png?asset'
 import type { AppInfo } from '../shared/api'
 import { registerHealthIpc } from './healthIpc'
-import { LedgerFile } from './ledgerFile'
+import { CampaignFile, LedgerFile } from './ledgerFile'
 
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
 let ledger: LedgerFile
+let campaign: CampaignFile
 
 // ---------------------------------------------------------------------------
 // Window size & position are remembered between launches.
@@ -141,6 +142,23 @@ function registerIpc(): void {
     }
   })
 
+  ipcMain.handle('campaign:load', () => campaign.load())
+
+  ipcMain.handle('campaign:save', async (_event, json: unknown) => {
+    if (typeof json !== 'string') throw new Error('Campaign must be a string')
+    await campaign.save(json)
+  })
+
+  ipcMain.on('campaign:save-sync', (event, json: unknown) => {
+    try {
+      if (typeof json !== 'string') throw new Error('Campaign must be a string')
+      campaign.saveSync(json)
+      event.returnValue = true
+    } catch {
+      event.returnValue = false
+    }
+  })
+
   ipcMain.handle('ledger:reveal', async () => {
     fs.mkdirSync(ledger.dir, { recursive: true })
     await shell.openPath(ledger.dir)
@@ -170,6 +188,8 @@ if (!app.requestSingleInstanceLock()) {
     // FIEFDOM_DATA_DIR lets you point the app at a different ledger (handy for testing).
     const dataDir = process.env['FIEFDOM_DATA_DIR']?.trim() || app.getPath('userData')
     ledger = new LedgerFile(dataDir)
+    // the game's state sits beside the ledger (A-08)
+    campaign = new CampaignFile(dataDir)
 
     registerIpc()
     // Fitbit (through the Google Health API); its connection is kept beside the ledger

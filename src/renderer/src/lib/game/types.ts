@@ -56,6 +56,10 @@ export interface Campaign {
   /** lb per week, default 0.8 */
   targetPace: number
   status: 'active' | 'won' | 'fallen'
+  /** The Healer's Dispensation (Ch 9 rule 7); on unless this is false. */
+  dispensation?: boolean
+  /** The week start fixed at founding (`settings.weekStartsOn` then). Settlement reads this, not the ledger's current setting. */
+  weekStartsOn?: WeekStartsOn
 }
 
 export interface Charter {
@@ -108,6 +112,10 @@ export type CompanySource =
   | 'ally'
   | 'hired'
   | 'sworn'
+  /** A rival's company, bought from its host list (Appendix C). */
+  | 'host'
+  /** A rival envoy company for one battle, at Respect 50 (Ch 5, A-20). */
+  | 'envoy'
 
 export interface Company {
   id: string
@@ -134,6 +142,10 @@ export interface LandContract {
   respiteDays: number
   status: 'queued' | 'active' | 'paid' | 'withdrawn'
   score?: number
+  /** The days a Respite was spent on; they leave every pillar. `respiteDays` is their count. */
+  respiteDates: ISODate[]
+  /** What the purse has paid for it so far (after rounding, adjustments included). */
+  paid?: { payout: number; pledgeReturn: number }
 }
 
 export interface DailyOrders {
@@ -141,6 +153,14 @@ export interface DailyOrders {
   assaultTarget?: string
   assault: string[]
   defense: string[]
+  /** More assaults, when the realm allows them (Castle IV, the Siege Park; T08). */
+  extraAssaults?: { target: string; companies: string[] }[]
+  /** The companies the player fields on defense instead of the Marshal's best B (T08). */
+  defenseOverride?: string[]
+  /** Hired blades for the day's defense battles (Merchant Hall II, A-19; T08). */
+  hired?: number
+  /** Rival envoy companies for the day's defense battles (Respect 50, A-20; T08). */
+  envoys?: RivalId[]
 }
 
 export interface Courtship {
@@ -225,10 +245,38 @@ export interface WeighIn {
 
 export interface MilestoneState {
   index: number
+  /** In lb. A Keeping Milestone's mark is the goal. */
   mark: number
   earliestWeek: number
   brokenOn?: ISODate
+  /** The campaign week it broke in. */
+  brokenWeek?: number
   byDispensation?: boolean
+  /** A Keeping Milestone (Ch 9 rule 2): breaks after weeks spent near the goal, not at a mark. */
+  keeping?: boolean
+}
+
+/** What the weight rules record at each week close, so Grace and the streaks can be derived (T05). */
+export interface WeightWeek {
+  week: number
+  /** The week's last day, whose close is the week close. */
+  day: ISODate
+  /** Momentum M, 0 to 1. */
+  momentum: number
+  /** Realm Consistency at the close. */
+  realmConsistency: number
+  /** The 7-day average weight in lb at the close, when there is one. */
+  average?: number
+  tooFast: boolean
+}
+
+/** One ledger day as the Healer reads it (Ch 4). */
+export interface HealerDay {
+  date: ISODate
+  /** kcal logged */
+  eaten?: number
+  /** Fitbit's total calories burned (A-06) */
+  burned?: number
 }
 
 export interface WorldEvent {
@@ -364,9 +412,25 @@ export interface GameEventMap {
     spoils?: number
     tribute?: number
     contested?: boolean
+    /** T08: the strike of a conquest attempt on a hex it already contests. */
+    restrike?: boolean
+    /** T08: a conquest attempt beaten on a contested hex: the contest is over. */
+    broken?: boolean
+    /** T08: the hex is scorched through this day. */
+    scorchedUntil?: ISODate
+    /** T08: the hex is contested through this day. */
+    contestedUntil?: ISODate
+    /** T08: Grand Illusion spared this loss its tribute or its contest. */
+    grandIllusion?: boolean
+    /** T08: the Royal Hunt turned this beast attack into a hunt worth this much. */
+    hunt?: number
   }
   /** The player's daily assault (Ch 6). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number }
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number; wear?: number }
+  /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
+  calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
+  /** A trophy earned in daily combat, for T14 to turn into an item (A-131). */
+  trophy: { hexId: string; source: 'mythic' | 'royalHunt'; lair?: string }
   /** A hex changed hands. */
   hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
   /** A courtship resolved at week close (Ch 6). */
@@ -405,6 +469,10 @@ export interface GameEventMap {
   rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied' }
   /** The campaign ended (Ch 14). */
   campaignEnd: { outcome: 'won' | 'fallen' }
+  /** A campaign week closed (T06): its number and the behavior income it paid (tithes not included). */
+  weekClosed: { week: number; income: number }
+  /** A ledger correction inside the grace window was taken in (A-02); `adjustment` is what the purse gained. */
+  correction: { correctedDay: ISODate; adjustment: number }
 }
 
 export type GameEventKind = keyof GameEventMap
@@ -431,6 +499,10 @@ export interface WeightState {
   grace: GraceLevel
   /** The Healer's current calorie floor, once computed. */
   healerFloor?: number
+  /** One record per week close, oldest first. */
+  weeks: WeightWeek[]
+  /** The last goal change; the founding goal is not a change. */
+  goalChangedOn?: ISODate
 }
 
 export interface FrontState {
@@ -476,4 +548,298 @@ export interface CampaignState {
   log: GameEvent[]
   /** The last campaign day settled, and the campaign week it fell in. */
   settledThrough: { day: ISODate; week: number }
+  /** What settlement keeps for itself (T06). */
+  settlement: SettlementState
+  /** Wings, Elites, the Sworn and the item stash (T14). Absent means none yet. */
+  armory?: ArmoryState
+  /** The threat schedule, the dawn tidings, conquest attempts and contested hexes (T08). Absent means none yet. */
+  combat?: CombatState
+}
+
+// ── Daily combat (T08) ───────────────────────────────────────────────────────
+
+/** The day's one daily threat (Ch 10); conquest attempts come on top of it. */
+export type DailyThreatKind = 'beasts' | 'mythic' | 'raid'
+
+/** One day of the threat schedule: its type and raider, drawn at the week close before it (A-28). */
+export interface ScheduledThreat {
+  date: ISODate
+  kind: DailyThreatKind
+  rival?: RivalId
+}
+
+/** The day's threat as the Herald announces it at dawn: its target and strength are fixed then (A-28). */
+export interface Tiding {
+  date: ISODate
+  kind: DailyThreatKind
+  hexId: string
+  rival?: RivalId
+  /** Exact strength. Screens show it only through `tidings()`, which bands it unless revealed. */
+  strength: number
+  siegeDay: boolean
+}
+
+/** A rival conquest attempt, announced the day before it strikes (Ch 10). T10 plans them. */
+export interface ConquestAttempt {
+  rival: RivalId
+  hexId: string
+  announcedOn: ISODate
+  date: ISODate
+  strength: number
+}
+
+/** A hex a conquest attempt has beaten once: the same force strikes again each day until `until` (Ch 10). */
+export interface ContestedHex {
+  hexId: string
+  rival: RivalId
+  strength: number
+  /** The day the attempt first won. */
+  since: ISODate
+  /** The last day it holds; a loss on this day passes the hex at the next dawn. */
+  until: ISODate
+}
+
+export interface CombatState {
+  /** The coming days' threat types and raiders. */
+  schedule: ScheduledThreat[]
+  /** Tidings fixed at dawn (and foretold days) for days not yet settled. */
+  tidings: Tiding[]
+  /** Conquest attempts announced and not yet struck. */
+  conquests: ConquestAttempt[]
+  contested: ContestedHex[]
+}
+
+// ── Settlement (T06) ─────────────────────────────────────────────────────────
+
+/**
+ * One ledger day's inputs as settlement read them (A-02). Scores and income are computed from
+ * these, never from the ledger, so a ledger edit outside the grace window changes nothing.
+ */
+export interface DaySnapshot {
+  date: ISODate
+  steps?: number
+  /** kcal logged; undefined means no food was logged. */
+  eaten?: number
+  dutiesKept: number
+  dutiesSworn: number
+  /** The day's weigh-in, converted to lb. */
+  weightLb?: number
+  /** Fitbit's total calories burned (A-06). */
+  burned?: number
+  /** The perfect-day streak ending on this day. */
+  streak: number
+  /** What the purse paid for this day's behavior, after rounding: daily, and weekly on a week's last day. */
+  paid?: { daily: number; weekly?: number }
+}
+
+export interface SettlementState {
+  /**
+   * Every settled day's inputs, oldest first, plus the days just before the start that the
+   * weight and Healer windows look back over (snapshotted at founding).
+   */
+  snapshots: DaySnapshot[]
+  /** The hidden Border Campaign weeks (Ch 12), fixed at founding. Never shown. */
+  borderCampaignWeeks: number[]
+  /** The last day the app was launched (A-10), as the campaign day open then. */
+  lastLaunch?: ISODate
+}
+
+// ── Scores, contracts and the purse (T04) ────────────────────────────────────
+
+/**
+ * One campaign day as the scoring rules see it. T06 adapts ledger days into these; the score
+ * module never reads the ledger itself. `eaten` undefined means no food was logged.
+ */
+export interface DayRecord {
+  date: ISODate
+  steps?: number
+  eaten?: number
+  dutiesKept: number
+  dutiesSworn: number
+}
+
+/** The three pillars of one week (Ch 4), each 0 to 1. */
+export interface Pillars {
+  steps: number
+  table: number
+  duties: number
+}
+
+/** A gain or a loss before it is posted to the purse (rounded at posting, A-11). */
+export interface PurseLine {
+  kind: PurseEventKind
+  amount: number
+  source: string
+}
+
+/** The Steward's Counsel (Ch 4): a suggestion only; it never changes the Charter. */
+export interface StewardSuggestion {
+  direction: 'gentler' | 'firmer'
+  textId: string
+  facts: { weeks: number; average: number }
+}
+
+// ── Realm effects and the armory slice (T07) ─────────────────────────────────
+
+/**
+ * What T14 fills: the Wings chosen, the Elites recruited, the Sworn and the items owned. Equipped
+ * items live on each company's `items` in `CampaignState.roster`. T07 reads this slice; until
+ * T14 writes it, it is absent and reads as empty.
+ */
+export interface ArmoryState {
+  /** Wing ids chosen, permanently (Appendix C). */
+  wings: string[]
+  /** Elite companies recruited, by codex id, at rank 1 or 2. */
+  elites: { id: string; rank: 1 | 2 }[] // rules-ok: literal type
+  /** The Sworn (Milestone 7), with the two tags chosen once (A-21). */
+  sworn?: { tags: Tag[] }
+  /** Item ids owned and not equipped on any company. */
+  stash: string[]
+  /** The company holding the Armorer Wing's third item slot. */
+  armorerCompany?: string
+}
+
+/** Where an effect's value comes from, for tooltips. Screens turn these into labels. */
+export type EffectSourceRef =
+  | { kind: 'base' }
+  | { kind: 'castle'; tier: CastleTier }
+  | { kind: 'building'; id: BuildingId; tier: BuildingTier }
+  /** A Crossing at a stage (its hybrid, its signature Order). */
+  | { kind: 'crossing'; id: CrossingId; stage: CrossingStage }
+  /** A Crossing perk (Ch 8). */
+  | { kind: 'perk'; id: string; crossing: CrossingId }
+  /** A Milestone boon (Ch 9): the Proving Grounds, the Healing Springs and so on. */
+  | { kind: 'milestone'; index: number; boon: string }
+  | { kind: 'wing'; id: string }
+  /** An item equipped on `company`. */
+  | { kind: 'item'; id: string; company: string }
+  /** A lair sealed by taking its Lair Mouth (Ch 3 rule 5). */
+  | { kind: 'lair'; id: string }
+  /** The Crown's Grace at a level (Ch 9). */
+  | { kind: 'grace'; level: GraceLevel }
+  /** A Weary company, through `until` (Ch 10, A-123). */
+  | { kind: 'weary'; until: ISODate }
+
+export interface Contribution {
+  from: EffectSourceRef
+  value: number
+}
+
+/**
+ * A number and what produced it. With `op: 'add'` the contributions sum to `value`; with
+ * `op: 'mult'` they multiply to it (an empty list is 1).
+ */
+export interface Sourced {
+  value: number
+  op: 'add' | 'mult'
+  sources: Contribution[]
+}
+
+/** A switch and what turned it on. */
+export interface Flag {
+  on: boolean
+  sources: EffectSourceRef[]
+}
+
+/** How much of a hidden value the player may see. */
+export interface Reveal {
+  whom: 'none' | 'neighbors' | 'all'
+  sources: EffectSourceRef[]
+}
+
+/** A codex effect and where it comes from, passed on for the battle engines to interpret. */
+export interface Grant {
+  effect: Effect
+  from: EffectSourceRef
+}
+
+/** An Order or a Doctrine the realm holds, and what granted it. */
+export interface Unlocked {
+  id: string
+  from: EffectSourceRef
+}
+
+/**
+ * Every realm-wide modifier in one answer (T07 `realmEffects`). Combat, the economy and screens
+ * read these instead of asking where a bonus comes from. Shares are fractions (0.05 = 5%).
+ */
+export interface Effects {
+  /** Banners in every battle: the castle tier, +1 with the Crown Forge. */
+  banners: Sourced
+  /** Extra banners for one pool only (the Muster Field adds to the assault pool). */
+  poolBanners: { defense: Sourced; assault: Sourced }
+  /** Walls W: the castle's, the Foundry tier's, Bastions and the Anvil-Heart. */
+  walls: Sourced
+  /** Walls that count double in some battles (Shieldwall on rings 4 and 5, Runed Walls against mythics). Read with `wallsFor`. */
+  wallsDouble: { rings?: number[]; against?: Foe; from: EffectSourceRef }[]
+  /** The arms bonus `a`: the Foundry tier's total (A-31). */
+  armsBonus: Sourced
+  /** Company power bonuses that belong in `p`: the Proving Grounds (all), ranged bonuses, and a building company's own. */
+  companyPower: { all: Sourced; ranged: Sourced; buildingCompany: Record<BuildingId, Sourced> }
+  /** The Crownguard Ascendant's power bonus (Milestone 10). */
+  crownguardBonus: Sourced
+  /** The rally floor `r`. */
+  rallyFloor: Sourced
+  /** Mythic strength multiplier from everywhere but the lairs. */
+  mythicStrength: Sourced
+  /** Mythic strength multiplier by lair side, the lair's seal included. */
+  mythicStrengthBySide: Partial<Record<Land, Sourced>>
+  /** Rival raid strength multiplier (the Spy Network). */
+  raidStrength: Sourced
+  /** The reputation bonus rate; rates add (A-31). */
+  reputationBonus: Sourced
+  /** The pledge cap multiplier (Merchant Hall III). */
+  pledgeCap: Sourced
+  /** The share of every pledge that returns at least (Merchant Hall IV). */
+  minPledgeReturn: Sourced
+  /** The Respite bank's cap. */
+  respiteBank: Sourced
+  courtshipSlots: Sourced
+  dailyAssaults: Sourced
+  /** Days of warning before a threat strikes or a Grand Battle starts. `raidsOnRoad` adds to `raids` along one road. */
+  foretell: { threats: Sourced; raids: Sourced; raidsOnRoad: Partial<Record<BuildingId, Sourced>>; grandBattles: Sourced }
+  /** Which hidden values the player may see as numbers. */
+  reveals: Record<RevealKind, Reveal>
+  /** Village tithe multiplier. */
+  titheMult: Sourced
+  /** Cost multipliers by what is bought. */
+  costs: Record<CostKind, Sourced>
+  /** Spoils multiplier by the kind of foe beaten. */
+  spoils: Record<Foe, Sourced>
+  /** Tribute multiplier on a lost battle (Grace II, Oathguard). */
+  tribute: Sourced
+  /** Days a contested hex holds before it falls (Grace II). */
+  contestedDays: Sourced
+  /** Item slots per company (Milestones 1 and 4); 0 before the Armory opens. */
+  itemSlots: Sourced
+  /** Companies that may carry one more item (the Armorer). */
+  extraItemSlots: Sourced
+  /** Hired blades for daily battles (Merchant Hall II). */
+  hiredBlades: Flag
+  /** The player's daily assaults ignore fortification (Siegebreakers). */
+  assaultIgnoresFortification: Flag
+  /** One beast attack a week becomes a hunt (the Royal Hunt). */
+  royalHunt: { on: boolean; reputation: number; trophy: boolean; perWeek: number; sources: EffectSourceRef[] }
+  /** Lost battles a week that cost no tribute and contest no hex (Grand Illusion). */
+  grandIllusion: Sourced
+  /** Trust added to the player's bids (Envoy's Rest). */
+  trust: Sourced
+  /** Weekly interest on the purse (The Bank). */
+  interest: { rate: number; cap: number; sources: EffectSourceRef[] }
+  /** Event hints a month (the Scrying Pool). */
+  eventHints: Sourced
+  /** Days added to every Weary status (the Veterans' Hall takes one off). */
+  wearyDays: Sourced
+  /** Orders offered per Grand Battle round. */
+  ordersOffered: Sourced
+  /** Grand Battle Readiness never below this (0 = no floor). */
+  readinessFloor: Sourced
+  /** The Order deck. */
+  orders: Unlocked[]
+  /** The Doctrines the player may pick from. */
+  doctrines: Unlocked[]
+  /** The Crossing perks in force, by perk id (a replaced perk is not listed). */
+  perks: Unlocked[]
+  /** Realm-wide effects no field above covers (Grand Battle effects), for T12 to interpret. */
+  battle: Grant[]
 }

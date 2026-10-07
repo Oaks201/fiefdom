@@ -32,6 +32,35 @@ export function saveLedgerTextSync(json: string): boolean {
   }
 }
 
+// ---------------------------------------------------------------------------
+// The campaign: campaign.json beside the ledger (A-08), or its own localStorage key.
+// ---------------------------------------------------------------------------
+const CAMPAIGN_LS_KEY = 'fiefdom:campaign'
+
+export async function loadCampaignText(): Promise<string | null> {
+  if (bridge) return bridge.loadCampaign()
+  try {
+    return localStorage.getItem(CAMPAIGN_LS_KEY)
+  } catch {
+    return null
+  }
+}
+
+export async function saveCampaignText(json: string): Promise<void> {
+  if (bridge) return bridge.saveCampaign(json)
+  localStorage.setItem(CAMPAIGN_LS_KEY, json)
+}
+
+export function saveCampaignTextSync(json: string): boolean {
+  if (bridge) return bridge.saveCampaignSync(json)
+  try {
+    localStorage.setItem(CAMPAIGN_LS_KEY, json)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function revealLedgerFolder(): Promise<void> {
   await bridge?.revealLedger()
 }

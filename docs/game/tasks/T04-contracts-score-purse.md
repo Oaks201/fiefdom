@@ -51,18 +51,57 @@ Momentum and the floor calculation (T05), settlement scheduling (T06), screens (
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] Test 1 (E-01): the Ch 4 worked example (pool 50,000, 46,000 walked; food logged 6 of 7 days, averaging 1,950 against a 2,000 limit; 19 of 21 duties) gives Q = 0.893968 ± 1e-6 and f = 0.823280 ± 1e-6. The payout posts as **80.7** (exact 80.68). A 70 pledge returns **115.3** (exact 115.26).
-- [ ] f(Q) at 0.40, 0.55, 0.70, 0.80, 0.90 and 1.00 equals 0, 0.25, 0.5, 0.667, 0.833 and 1 (±0.001). Q = 0.3 gives 0, and inputs above 1 clamp to 1.
-- [ ] Full payouts by length: 10, 34.5 (E-05), 98, 238 and 600. Sealing a 7-day contract before any building reaches Tier II is refused, as are 14 days before Castle II and 30 days before Castle III.
-- [ ] Withdrawal on day 4 of a 7-day contract at Q = 0.9 pays 33.3 and returns half the pledge.
-- [ ] Respite: spending it on yesterday removes that day from every pillar and moves the end date by +1. Spending it on the day before yesterday is refused. The bank never exceeds its cap.
-- [ ] Daily: 3 of 4 duties earns 9. A perfect day after 3 perfect days in a row earns 12 + 5 + 3 = 20. The streak bonus never exceeds +7.
-- [ ] Weekly: 55,000 walked against a 50,000 pool earns 70. `T_w` = 6/7 earns 60.0. The flawless +50 appears only when all three pillars are 1.0. A partial 4-day week 1 prorates the pool to 28,571.
-- [ ] A day logged at 0.85 × the floor scores as fully over budget (A-41).
-- [ ] The Merchant Hall Tier I bonus turns a 70 gain into 71.4.
-- [ ] Purse: a 50 tribute on a 30 balance takes 30 and leaves 0. A pledge above the balance is refused. The balance always equals the sum of events. A late correction that lowers Q posts nothing; one that raises it posts an `adjust` for the difference.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] Test 1 (E-01): the Ch 4 worked example (pool 50,000, 46,000 walked; food logged 6 of 7 days, averaging 1,950 against a 2,000 limit; 19 of 21 duties) gives Q = 0.893968 ± 1e-6 and f = 0.823280 ± 1e-6. The payout posts as **80.7** (exact 80.68). A 70 pledge returns **115.3** (exact 115.26).
+- [x] f(Q) at 0.40, 0.55, 0.70, 0.80, 0.90 and 1.00 equals 0, 0.25, 0.5, 0.667, 0.833 and 1 (±0.001). Q = 0.3 gives 0, and inputs above 1 clamp to 1.
+- [x] Full payouts by length: 10, 34.5 (E-05), 98, 238 and 600. Sealing a 7-day contract before any building reaches Tier II is refused, as are 14 days before Castle II and 30 days before Castle III.
+- [x] Withdrawal on day 4 of a 7-day contract at Q = 0.9 pays 33.3 and returns half the pledge.
+- [x] Respite: spending it on yesterday removes that day from every pillar and moves the end date by +1. Spending it on the day before yesterday is refused. The bank never exceeds its cap.
+- [x] Daily: 3 of 4 duties earns 9. A perfect day after 3 perfect days in a row earns 12 + 5 + 3 = 20. The streak bonus never exceeds +7.
+- [x] Weekly: 55,000 walked against a 50,000 pool earns 70. `T_w` = 6/7 earns 60.0. The flawless +50 appears only when all three pillars are 1.0. A partial 4-day week 1 prorates the pool to 28,571.
+- [x] A day logged at 0.85 × the floor scores as fully over budget (A-41).
+- [x] The Merchant Hall Tier I bonus turns a 70 gain into 71.4.
+- [x] Purse: a 50 tribute on a 30 balance takes 30 and leaves 0. A pledge above the balance is refused. The balance always equals the sum of events. A late correction that lowers Q posts nothing; one that raises it posts an `adjust` for the difference.
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here.)*
+### Evidence
+
+`npm run typecheck` is clean. `npm test` passes all 235 tests (48 new; run after rebasing onto T03). `npm run check:game` prints `check:game OK: 12 game files, codex valid, 273 text slots.`
+
+Each verification line is covered by these tests in `tests/game/`:
+
+- **Test 1 (E-01):** `score.test.ts` "Ch 4 worked example gives Q = 0.893968 (E-01)" and "…pillars: S = 0.92, T = 6/7, D = 19/21". `contracts.test.ts` "Test 1: Ch 4 worked example pays 80.68 (posted 80.7); a 70 pledge returns 115.26 (posted 115.3) (E-01)" seals the contract, scores the week, checks f = 0.823280 ± 1e-6, settles it and reads the two posted events.
+- **f(Q):** "f(Q) at 0.40 … 1.00 is 0, 0.25, 0.5, 0.667, 0.833, 1; below clamps to 0 and above to 1".
+- **Lengths:** "Full payouts by length: 10, 34.5 (E-05), 98, 238 and 600" and "Lengths unlock: 7 days at any building Tier II, 14 at Castle II, 30 at Castle III" (each refusal is asserted).
+- **Withdrawal:** "Withdrawal on day 4 of a 7-day contract at Q = 0.9 pays 33.3 and returns half the pledge".
+- **Respite:** "Respite on yesterday removes that day from every pillar and moves the end date by +1", "Respite on the day before yesterday, without a bank, or outside the contract is refused", "Respite is earned once per 7 days played and the bank never exceeds its cap".
+- **Daily:** "Daily: 3 of 4 duties earns 9", "Daily: a perfect day after 3 perfect days in a row earns 12 + 5 + 3 = 20", "Daily: the streak bonus never exceeds +7".
+- **Weekly:** "Weekly: 55,000 walked against a 50,000 pool earns 70", "Weekly: T_w = 6/7 earns 60.0", "Weekly: the flawless +50 appears only when all three pillars are 1.0", and `score.test.ts` "a partial 4-day week 1 prorates the pool to 28,571 (A-04)".
+- **A-41:** "A day logged at 0.85 × the floor scores as fully over budget (A-41)".
+- **Merchant Hall:** "The Merchant Hall Tier I bonus turns a 70 gain into 71.4".
+- **Purse:** "Purse: a 50 tribute on a 30 balance takes 30 and leaves 0", "A pledge above the balance is refused…", "Purse: the balance always equals the sum of events…" (200 mixed postings), and "Late data only helps: a lower Q posts nothing; a higher Q posts an adjust for the difference".
+
+### What later tasks get
+
+- **`score.ts`** reads `DayRecord`s (`{ date, steps?, eaten?, dutiesKept, dutiesSworn }`, in `types.ts`) and `ScoreTerms` (`termsOf(charter, floor)`). It exports `weekPillars`, `pillarScore`, `weekScores`, `consistency` (Q for any span, with a `respite` list), `realmConsistency` (the latest 28 days), `valor(day, weekSoFar, stepPool)`, `poolShare`, `tablePillar` and `budgetScore`. `eaten === undefined` means no food was logged. Without a Healer floor, the 1,200 minimum floor judges under-eating. T06 adapts ledger days into records. For a partial week 1, pass only the days from the campaign start.
+- **`contracts.ts`** is pure. Each transition takes the contracts and purse slices and returns new ones: `seal`, `settleContract`, `withdraw`, `lateCorrection`, `spendRespite` and `earnRespite`. The math is in `payoutCurve`, `contractPayout`, `pledgeReturn`, `withdrawalPayout`, `pledgeCap` and `availableLengths`. There is also `validateCharter(charter, { floor, medicalSupervision })`, `respiteBankCap(mageTowerTier, healingSprings)` and `stewardSuggestion(weeklyScores)`.
+  - `ContractsState.active` holds the contract in the slot, including one sealed today that starts at the next dawn. `queued` holds the one waiting behind it. Paying or withdrawing promotes the queued contract.
+  - `settleContract`, `withdraw` and `lateCorrection` take `score` (Q) from the caller, so T06 decides which day records count: the contract's days, with `contract.respiteDates` passed to `consistency`. The returned `outcome` matches the `contract` game event's payload, so T06 posts it to the log.
+  - **Accord hook (T13):** `settleContract` returns `accord: { contractId, rival, curve }` for an Accord, and `accordRespectGain(curve, respectAtStart)` gives D-01's 50 or 60 × f(Q). T13 still has to gate who can seal an Accord by Respect.
+  - `earnRespite(contracts, daysPlayed, cap)` is meant to run once per settled day. The cap comes from effects (`respiteBankCap` gives the base).
+- **`economy.ts`** has `dailyIncome`, `weeklyIncome`, `tithes` and `merchantHallBonus`/`withBonus`. They return unrounded `PurseLine`s that each name their source (`duties`, `perfectDay`, `streak`, `steps`, `calories`, `flawless`, `momentum`, `tithe:<hexId>`). The purse functions are `post`, `postAll`, `spend`, `tribute`, `balance`, `displayBalance`, `roundPosting` and `foundingPurse`.
+  - `post` signs each amount by its kind and rounds it to 0.1. It refuses (`CampaignError`) anything that would take the balance below zero, except `tribute`, which is trimmed to the balance. A posting that rounds to 0 is skipped. Event ids are sequential (`pe-N`), unless the caller passes one.
+  - `bonus` is the realm's total reputation bonus rate (A-31: the rates add), and T07's effects supply it. Battle spoils (T08) should go through `withBonus` too.
+- **`types.ts`:** `LandContract` gained `respiteDates` (with `respiteDays` kept as its count) and `paid` (the posted payout and pledge return). New types: `DayRecord`, `Pillars`, `PurseLine` and `StewardSuggestion`.
+- **`rules.ts`:** appended `scores.realmConsistencyDays: 28`.
+- **Text:** `herald.steward.gentler` and `herald.steward.firmer` are new plain-fact slots in `herald.json`, with `{average}` and `{weeks}`. The catalog had no Steward file, and the Counsel appears among the Herald's tidings.
+
+### Choices made here
+
+- A-111: a contract's weekly pillars use only its own days in each week.
+- A-112: the reputation bonus applies to contract payouts, not to pledge returns.
+- A-113: Respite needs a running contract and only changes that contract's score.
+- A-114: withdrawal counts the withdrawal day. Sealing re-checks the Charter against the current floor.
+- A late correction compares the contract's total proceeds (payout + pledge return) with what was paid, and it posts one `adjust` for any increase.
+- The Steward returns a direction and plain facts only. It proposes no specific numbers, because the book gives no rule for how much gentler or firmer the terms should be.

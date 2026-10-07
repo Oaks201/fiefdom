@@ -146,7 +146,8 @@ export function registerHealthIpc(dataDir: string, getWindow: () => BrowserWindo
     if (typeof r.start !== 'string' || typeof r.end !== 'string' || !ISO.test(r.start) || !ISO.test(r.end)) {
       throw new Error('A range of dates is needed.')
     }
-    return service.fetchDays(r.start, r.end)
+    // total calories burned rides along, for the Healer's range (A-06); it never becomes a tally
+    return service.fetchDays(r.start, r.end, { burned: true })
   })
 
   return service

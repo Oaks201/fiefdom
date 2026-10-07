@@ -328,7 +328,11 @@ const RULES_TABLE = {
     scorchedDays: 3,
     contestedDays: { base: 1, graceII: 2 },
     /** A border hex's chance of being hit is weighted by ring^1.5. */
-    targetRingExponent: 1.5
+    targetRingExponent: 1.5,
+    /** T08: tidings band a threat by its strength over the defense's Army: Weaker, Matched, Stronger, Overwhelming. */
+    strengthBands: [0.8, 1.25, 2], // TUNE (A-133)
+    /** T08: tidings are fixed for every foretold day, but never further ahead than this. */
+    maxForetellDays: 3
   },
 
   grandBattles: {
@@ -554,7 +558,9 @@ const RULES_TABLE = {
       burnedWindowDays: 14,
       activityFactor: 1.4,
       mifflin: { perKg: 10, perCm: 6.25, perYear: 5, male: 5, female: -161 }
-    }
+    },
+    /** A rough patch (Ch 16 "Illness and travel"): this many low-scoring days in a row. */
+    roughPatchDays: 3 // TUNE (A-120)
   },
 
   armory: {
@@ -562,6 +568,49 @@ const RULES_TABLE = {
     itemSlots: { base: 1, withSecondSlot: 2 },
     /** Elites recruit for 300; rank II costs 600 more. The Sworn join free (A-21). */
     elite: { recruitCost: 300, rankIICost: 600 }
+  },
+
+  map: {
+    /** Ch 3: six rings around the castle, 127 hexes; ring 6 is the Rim. */
+    radius: 6,
+    /** Ch 3 rule 3: a road hex gives 2 × ring to its building; a between-land hex gives ring to each of its two. */
+    dominion: { roadPerRing: 2, betweenPerRing: 1 },
+    /** A-13: villages seeded in rings 1 to 5 (4 in the Commons, 6 in the Wildwood, 8 in the Marches). */
+    seededVillages: [0, 4, 6, 8, 0],
+    /** A-13: a road village credits its building 1; a between-land village credits each of its two 0.5. */
+    villageCredit: { road: 1, between: 0.5, maxSpread: 1 },
+    /**
+     * A-108: seeded villages never touch a rival village or a village in their own ring, and at
+     * most this many pairs of them touch across neighboring rings (2 is the fewest 4/6/8 allows).
+     * Each attempt (labels villages:0, villages:1, …) searches at most `searchBudget` steps;
+     * running out of attempts is a bug.
+     */
+    villageSeeding: { maxTouchingPairs: 2, searchBudget: 20_000, maxAttempts: 1_000 } // TUNE (A-108)
+  },
+
+  scores: {
+    /** Realm Consistency is Q over the last 28 settled days (Ch 5, A-39). */
+    realmConsistencyDays: 28
+  },
+
+  /** Weight rules compute in lb (A-05); BMI uses kg and m. */
+  units: { lbPerKg: 2.2046226218, cmPerM: 100 },
+
+  /** T06: founding and the settlement engine. */
+  settlement: {
+    /** The Border Campaign schedule is fixed this many weeks ahead and extended as weeks pass. */
+    borderScheduleAheadWeeks: 104,
+    /**
+     * Founding snapshots this many days before the start, so the weight trend (28-day too-fast
+     * window), the Healer (21 days) and the burned bootstrap (14 days) can look back from week 1.
+     */
+    preludeDays: 28
+  },
+
+  /** T07: realm effects, buildings and the roster. */
+  effects: {
+    /** The Crown's Grace level from which tribute halves and contested hexes hold longer (Ch 9). */
+    graceIILevel: 2
   }
 }
 

@@ -24,15 +24,24 @@ export const DEFAULT_API_BASE = 'https://health.googleapis.com'
  * How each metric is read: the data type, where the day's total sits in a rollup point, and the longest
  * range one request may ask for. "Calories burned" means calories burned in activity: Google's
  * `total-calories` also counts resting metabolism (about 2,000 a day), which would make a contract's
- * "burn 500 calories" term pass on every day.
+ * "burn 500 calories" term pass on every day. That total is read separately, as `burned`, only to
+ * estimate maintenance for the Healer's range (A-06); it never judges a contract.
  */
 const SOURCES: Record<HealthMetric, { type: string; scope: string; maxDays: number; read(point: Record<string, unknown>): unknown }> = {
   steps: { type: 'steps', scope: SCOPES.activity, maxDays: 90, read: (p) => pick(p, 'steps', 'countSum') },
   calories: { type: 'active-energy-burned', scope: SCOPES.activity, maxDays: 90, read: (p) => pick(p, 'activeEnergyBurned', 'kcalSum') },
-  eaten: { type: 'nutrition-log', scope: SCOPES.nutrition, maxDays: 90, read: (p) => pick(p, 'nutritionLog', 'energy', 'kcalSum') }
+  eaten: { type: 'nutrition-log', scope: SCOPES.nutrition, maxDays: 90, read: (p) => pick(p, 'nutritionLog', 'energy', 'kcalSum') },
+  burned: { type: 'total-calories', scope: SCOPES.activity, maxDays: 14, read: (p) => pick(p, 'totalCalories', 'kcalSum') }
 }
 
+/** The metrics a connection shows as tallies. `burned` is read beside them on request, never shown. */
 const METRIC_ORDER: HealthMetric[] = ['steps', 'calories', 'eaten']
+
+/** Extra reads that never become tallies. */
+export interface FetchExtras {
+  /** total calories burned, resting included (A-06) */
+  burned?: boolean
+}
 /** Where Google's OAuth endpoints live, in current and older client files. */
 const GOOGLE_HOSTS = new Set(['accounts.google.com', 'oauth2.googleapis.com', 'www.googleapis.com'])
 const GOOGLE_REVOKE = 'https://oauth2.googleapis.com/revoke'
@@ -372,15 +381,21 @@ export class HealthService {
     return this.status()
   }
 
-  /** Daily totals for each date from `start` to `end` inclusive, for whatever the granted scopes allow. */
-  async fetchDays(start: string, end: string): Promise<HealthFetchResult> {
+  /**
+   * Daily totals for each date from `start` to `end` inclusive, for whatever the granted scopes allow.
+   * `extras.burned` also reads total calories burned, when the activity scope was granted.
+   */
+  async fetchDays(start: string, end: string, extras: FetchExtras = {}): Promise<HealthFetchResult> {
     if (!this.data.client || !this.data.refreshToken) throw new Error('Fitbit is not connected.')
     const span = daysBetween(start, end)
     if (span < 0 || span >= MAX_RANGE_DAYS) throw new Error('That range of days cannot be read.')
 
+    const metrics = metricsFor(this.data.scopes)
+    if (extras.burned && (this.data.scopes ?? []).includes(SOURCES.burned.scope)) metrics.push('burned')
+
     const points: HealthPoint[] = []
     const errors: HealthFetchResult['errors'] = {}
-    for (const metric of metricsFor(this.data.scopes)) {
+    for (const metric of metrics) {
       try {
         const values = await this.rollup(metric, start, end)
         for (const [date, value] of values) points.push({ date, metric, value })

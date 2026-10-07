@@ -26,10 +26,20 @@ export type Metric = 'steps' | 'eaten' | 'calories'
 
 export const METRICS: readonly Metric[] = ['steps', 'eaten', 'calories']
 
+/**
+ * What Fitbit can report for a day: the tallies, plus `burned`, the total calories burned
+ * (resting included). `burned` is read-only: never typed by hand, never a tally, never scored (A-06).
+ */
+export type SyncedMetric = Metric | 'burned'
+
 export interface DayLog {
   steps?: number
   eaten?: number
   calories?: number
+  /** total calories burned, resting included, as Fitbit reported it; only for the Healer's range (A-06) */
+  burned?: number
+  /** a weigh-in typed by hand, in `settings.unit` (A-05) */
+  weight?: number
   /** habit id → done */
   done: Record<string, true>
   /** Metrics typed in by hand (or cleared by hand). Fitbit sync never overwrites these. */
@@ -104,7 +114,7 @@ export interface Settings {
 }
 
 export interface Ledger {
-  version: 1
+  version: 2
   profile: Profile | null
   settings: Settings
   habits: Habit[]

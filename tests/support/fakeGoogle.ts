@@ -13,7 +13,7 @@ const NUTRITION = 'https://www.googleapis.com/auth/googlehealth.nutrition.readon
 
 export interface FakeGoogleOptions {
   /** date → values; missing dates have no data point */
-  data?: Record<string, { steps?: number; calories?: number; eaten?: number }>
+  data?: Record<string, { steps?: number; calories?: number; eaten?: number; burned?: number }>
   /** reject the 23:59:59 range format with a 400, as some deployments might */
   rejectInclusiveEnd?: boolean
   /** points per page, to exercise paging */
@@ -36,6 +36,8 @@ export interface FakeGoogle {
   expireAll(): void
   /** the current access tokens stop working, but refresh still does */
   staleAccess(): void
+  /** the user withdraws one scope in their Google account: existing tokens lose it, and its data answers 403 */
+  revokeScope(scope: string): void
   requests: Array<{ path: string; body: unknown }>
   close(): Promise<void>
 }
@@ -203,6 +205,7 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
           const point: Record<string, unknown> = { civilStartTime: civil(0, 0, 0), civilEndTime: civil(23, 59, 59) }
           if (type === 'steps' && v?.steps !== undefined) point.steps = { countSum: String(v.steps) }
           else if (type === 'active-energy-burned' && v?.calories !== undefined) point.activeEnergyBurned = { kcalSum: v.calories }
+          else if (type === 'total-calories' && v?.burned !== undefined) point.totalCalories = { kcalSum: v.burned }
           else if (type === 'total-calories' && v?.calories !== undefined) point.totalCalories = { kcalSum: v.calories + 1800 }
           else if (type === 'nutrition-log' && v?.eaten !== undefined) point.nutritionLog = { energy: { kcalSum: v.eaten } }
           else continue
@@ -249,6 +252,9 @@ export async function startFakeGoogle(opts: FakeGoogleOptions = {}): Promise<Fak
     },
     staleAccess() {
       access.clear()
+    },
+    revokeScope(scope: string) {
+      for (const tokens of [access, refresh]) for (const [token, scopes] of tokens) tokens.set(token, scopes.filter((s) => s !== scope))
     },
     close: () =>
       new Promise<void>((r) => {
