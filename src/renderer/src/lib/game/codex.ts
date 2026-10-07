@@ -20,22 +20,26 @@ import eventsJson from '../../data/codex/events.json'
 import rivalsJson from '../../data/codex/rivals.json'
 import { RULES, deepFreeze, type DeepReadonly } from './rules'
 import { RIVAL_MOMENTS } from './text'
-import type {
-  BuildingId,
-  CostKind,
-  CrossingId,
-  Effect,
-  EffectKind,
-  EffectTarget,
-  Foe,
-  FrontId,
-  Intent,
-  Land,
-  MythicSpecial,
-  Reach,
-  RevealKind,
-  RivalId,
-  Tag
+import {
+  BUILDING_IDS,
+  COST_KINDS,
+  FOES,
+  FRONT_IDS,
+  LANDS,
+  REVEAL_KINDS,
+  RIVAL_IDS,
+  type BuildingId,
+  type CrossingId,
+  type Effect,
+  type EffectKind,
+  type EffectTarget,
+  type FrontId,
+  type Intent,
+  type Land,
+  type MythicSpecial,
+  type Reach,
+  type RivalId,
+  type Tag
 } from './types'
 
 // ── Entry types ──────────────────────────────────────────────────────────────
@@ -334,14 +338,7 @@ export function requiredTextIds(codex: Codex = CODEX): string[] {
 
 const TAGS: readonly Tag[] = ['steel', 'coin', 'arcane', 'engine']
 const REACHES: readonly Reach[] = ['melee', 'ranged']
-const BUILDING_IDS: readonly BuildingId[] = ['barracks', 'merchantHall', 'mageTower', 'foundry']
-const RIVAL_IDS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
-const FRONT_IDS: readonly FrontId[] = ['north', 'south', 'west', 'east']
-const LANDS: readonly Land[] = FRONT_IDS
 const INTENTS: readonly Intent[] = ['strike', 'charge', 'volley', 'brace', 'shift', 'spell']
-const FOES: readonly Foe[] = ['beast', 'mythic', 'rival', 'militia']
-const COST_KINDS: readonly CostKind[] = ['tiers', 'crossings', 'items', 'fortification', 'trade']
-const REVEAL_KINDS: readonly RevealKind[] = ['treasury', 'army', 'threatStrength', 'hostRoster']
 const MYTHIC_SPECIALS: readonly MythicSpecial[] = ['broodVolley', 'petrify', 'fire', 'griffinDive', 'poison', 'huntTheWeak']
 const ITEM_RANKS: readonly ItemRank[] = ['I', 'II', 'III', 'legendary', 'trophy']
 const EVENT_KINDS: readonly EventKind[] = ['rival', 'world', 'reaction', 'opportunity']

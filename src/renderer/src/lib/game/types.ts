@@ -10,14 +10,19 @@ import type { ISODate } from '../dates'
 export type { ISODate }
 
 // ── Identities ───────────────────────────────────────────────────────────────
+// Each list is the single source of its type: loop over the list, never retype it.
 
-export type RivalId = 'orc' | 'goblin' | 'dwarf' | 'archmage'
+/** In the book's usual order, which also breaks ties between rivals. */
+export const RIVAL_IDS = ['orc', 'goblin', 'dwarf', 'archmage'] as const
+export type RivalId = (typeof RIVAL_IDS)[number]
 export type Owner = 'player' | RivalId | 'neutral'
-export type BuildingId = 'barracks' | 'merchantHall' | 'mageTower' | 'foundry'
+export const BUILDING_IDS = ['barracks', 'merchantHall', 'mageTower', 'foundry'] as const
+export type BuildingId = (typeof BUILDING_IDS)[number]
 export type Tag = 'steel' | 'coin' | 'arcane' | 'engine'
 export type Reach = 'melee' | 'ranged'
-/** A between-land, named by the direction it lies in from the castle. */
-export type Land = 'north' | 'south' | 'west' | 'east'
+/** The between-lands, named by the direction they lie in from the castle. */
+export const LANDS = ['north', 'south', 'west', 'east'] as const
+export type Land = (typeof LANDS)[number]
 /** The six building pairs (Ch 8), named alphabetically as in the book's table. */
 export type CrossingId =
   | 'barracksFoundry'
@@ -26,8 +31,9 @@ export type CrossingId =
   | 'foundryMageTower'
   | 'foundryMerchantHall'
   | 'mageTowerMerchantHall'
-/** The four Rim fronts between neighboring rivals (Ch 12). */
-export type FrontId = 'north' | 'south' | 'west' | 'east'
+/** The four Rim fronts between neighboring rivals (Ch 12), each named for the between-land its battlefields lie in. */
+export const FRONT_IDS = LANDS
+export type FrontId = Land
 export type Disposition = 'peace' | 'tension' | 'war'
 export type BuildingTier = 1 | 2 | 3 | 4 | 5 // rules-ok: literal type
 export type CastleTier = 1 | 2 | 3 | 4 | 5 // rules-ok: literal type
@@ -318,7 +324,8 @@ export interface WorldEvent {
 // ── Effects: how the codex describes what things do ──────────────────────────
 
 /** What kind of foe an effect is limited to. */
-export type Foe = 'beast' | 'mythic' | 'rival' | 'militia'
+export const FOES = ['beast', 'mythic', 'rival', 'militia'] as const
+export type Foe = (typeof FOES)[number]
 
 /**
  * Who an effect applies to. Omitted means the holder: an item's company, an Elite itself,
@@ -354,9 +361,11 @@ export interface EffectBase {
 }
 
 /** A cost that an effect discounts. */
-export type CostKind = 'tiers' | 'crossings' | 'items' | 'fortification' | 'trade'
+export const COST_KINDS = ['tiers', 'crossings', 'items', 'fortification', 'trade'] as const
+export type CostKind = (typeof COST_KINDS)[number]
 /** A hidden value an effect lets the player see. */
-export type RevealKind = 'treasury' | 'army' | 'threatStrength' | 'hostRoster'
+export const REVEAL_KINDS = ['treasury', 'army', 'threatStrength', 'hostRoster'] as const
+export type RevealKind = (typeof REVEAL_KINDS)[number]
 /** A mythic quarry's special (Appendix C, Mythic Hunts). */
 export type MythicSpecial = 'broodVolley' | 'petrify' | 'fire' | 'griffinDive' | 'poison' | 'huntTheWeak'
 
@@ -510,6 +519,9 @@ export type GameEventKind = keyof GameEventMap
 export type GameEvent = {
   [K in GameEventKind]: { id: string; day: ISODate; kind: K } & GameEventMap[K]
 }[GameEventKind]
+
+/** Posts a game event; whoever hands out the emitter dates it and adds it to the log. */
+export type Emit = <K extends GameEventKind>(kind: K, payload: GameEventMap[K]) => void
 
 // ── The campaign's state: one slice per system ───────────────────────────────
 

@@ -1,7 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  BUILDING_IDS,
   DIRECTIONS,
   LAND_BUILDINGS,
   borderHexes,
@@ -24,7 +23,7 @@ import {
   villageCredits
 } from '../../src/renderer/src/lib/game/map'
 import { MAP_ASCII_LEGEND, mapAscii } from '../../src/renderer/src/lib/game/dev/mapAscii'
-import type { BuildingId, HexState, Land, Owner, RivalId } from '../../src/renderer/src/lib/game/types'
+import { BUILDING_IDS, type BuildingId, type HexState, type Land, type Owner, type RivalId } from '../../src/renderer/src/lib/game/types'
 
 const RIVALS: RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
 const LANDS: Land[] = ['north', 'south', 'west', 'east']

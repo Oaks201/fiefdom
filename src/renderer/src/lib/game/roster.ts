@@ -17,19 +17,19 @@
  */
 import { CODEX } from './codex'
 import { realmEffects } from './effects'
-import { BUILDING_IDS } from './map'
 import { RULES, byTier } from './rules'
-import type {
-  BuildingId,
-  CampaignState,
-  Company,
-  CompanySource,
-  Contribution,
-  Effects,
-  ISODate,
-  Reach,
-  RivalId,
-  Tag
+import {
+  BUILDING_IDS,
+  type BuildingId,
+  type CampaignState,
+  type Company,
+  type CompanySource,
+  type Contribution,
+  type Effects,
+  type ISODate,
+  type Reach,
+  type RivalId,
+  type Tag
 } from './types'
 
 export interface RosterOptions {

@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buyCastleTier, buyCrossing, buyTier, castleOffer, crossingOffer, rivalOf, tierOffer } from '../../src/renderer/src/lib/game/buildings'
+import { buyCastleTier, buyCrossing, buyTier, castleOffer, crossingOffer, tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { dominion } from '../../src/renderer/src/lib/game/map'
+import { dominion, rivalOfRoad } from '../../src/renderer/src/lib/game/map'
 import { crownguardPower, refreshRoster, roster, rosterDetail } from '../../src/renderer/src/lib/game/roster'
 import type { CampaignState, CrossingId } from '../../src/renderer/src/lib/game/types'
 import {
@@ -67,7 +67,7 @@ test('Ch 7: tiers are never lost; after Dominion falls only the next tier waits'
 
 test('Ch 7 / A-42: Tier V needs the matching rival resolved and Milestone 6', () => {
   let state = withPurse(withDominion(withBuildings(realm(), { foundry: 4 }), 'foundry', 68), 5_000)
-  assert.equal(rivalOf('foundry'), 'dwarf')
+  assert.equal(rivalOfRoad('foundry'), 'dwarf')
   state = withMilestones(state, 6)
   assert.deepEqual(tierOffer(state, 'foundry').reason, { code: 'rivalUnresolved', rival: 'dwarf' })
 

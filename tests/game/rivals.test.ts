@@ -6,7 +6,6 @@ import { COMBAT_HOOKS, armyValue, combatOf, dawn, tidings } from '../../src/rend
 import { resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
 import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import {
-  adjustRespect,
   armyBand,
   armyPointCost,
   benchmarkConsistency,
@@ -28,6 +27,7 @@ import {
   type WeekHabits
 } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
+import { adjustRespect } from '../../src/renderer/src/lib/game/state'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, DayRecord, GameEvent, GraceLevel, RivalId } from '../../src/renderer/src/lib/game/types'
 import { FOUNDED_AT, TZ, charter, chicago, steadyLedger } from './fixtures/ledgers'

@@ -13,10 +13,10 @@
 import { CODEX } from './codex'
 import { balance, roundPosting, spend } from './economy'
 import { milestoneBroken, realmEffects } from './effects'
-import { BUILDING_IDS, dominion } from './map'
+import { dominion, rivalOfRoad } from './map'
 import { refreshRoster } from './roster'
 import { RULES, byTier } from './rules'
-import type { BuildingId, BuildingTier, CampaignState, CastleTier, CrossingId, CrossingStage, ISODate, RivalId } from './types'
+import { BUILDING_IDS, type BuildingId, type BuildingTier, type CampaignState, type CastleTier, type CrossingId, type CrossingStage, type ISODate, type RivalId } from './types'
 
 export type Refusal =
   | { code: 'campaignOver' }
@@ -68,13 +68,6 @@ function checked(state: CampaignState, next: number, cost: number, requirements:
   return { ok: true, next, cost }
 }
 
-/** The rival whose road leads to `building` (Orc and Barracks, Goblin and Merchant Hall, …). */
-export function rivalOf(building: BuildingId): RivalId {
-  const rival = CODEX.rivals.find((r) => r.road === building)
-  if (!rival) throw new Error(`No rival on the ${building} road`)
-  return rival.id
-}
-
 // ── Building tiers ───────────────────────────────────────────────────────────
 
 export function tierOffer(state: CampaignState, building: BuildingId): Offer {
@@ -84,7 +77,7 @@ export function tierOffer(state: CampaignState, building: BuildingId): Offer {
   const cost = roundPosting(byTier(RULES.buildings.tierCost, next) * realmEffects(state).costs.tiers.value)
   const needed = byTier(RULES.buildings.tierDominion, next)
   const have = dominion(state.hexes, 'player')[building]
-  const rival = rivalOf(building)
+  const rival = rivalOfRoad(building)
   const tierV = RULES.milestones.unlocks.tierV
   return checked(state, next, cost, [
     have < needed ? { code: 'dominion', needed, have } : null,

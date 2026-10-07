@@ -13,33 +13,32 @@
  * Shared by many tasks: add fields, don't reorganize them.
  */
 import { CODEX } from './codex'
-import { BUILDING_IDS } from './map'
 import { RULES, byTier } from './rules'
-import type {
-  BuildingId,
-  BuildingTier,
-  CampaignState,
-  Contribution,
-  CostKind,
-  CrossingId,
-  CrossingStage,
-  Effect,
-  EffectSourceRef,
-  Effects,
-  Flag,
-  Foe,
-  Grant,
-  Land,
-  Reveal,
-  RevealKind,
-  Sourced
+import {
+  BUILDING_IDS,
+  COST_KINDS,
+  FOES,
+  REVEAL_KINDS,
+  type BuildingId,
+  type BuildingTier,
+  type CampaignState,
+  type Contribution,
+  type CostKind,
+  type CrossingId,
+  type CrossingStage,
+  type Effect,
+  type EffectSourceRef,
+  type Effects,
+  type Flag,
+  type Foe,
+  type Grant,
+  type Land,
+  type Reveal,
+  type RevealKind,
+  type Sourced
 } from './types'
 
 // ── Building values ──────────────────────────────────────────────────────────
-
-const COST_KINDS: readonly CostKind[] = ['tiers', 'crossings', 'items', 'fortification', 'trade']
-const FOES: readonly Foe[] = ['beast', 'mythic', 'rival', 'militia']
-const REVEAL_KINDS: readonly RevealKind[] = ['treasury', 'army', 'threatStrength', 'hostRoster']
 
 function sum(base: Contribution[] = []): Sourced {
   return { value: base.reduce((t, c) => t + c.value, 0), op: 'add', sources: base }

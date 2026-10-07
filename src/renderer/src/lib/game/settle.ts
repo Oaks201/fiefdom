@@ -20,21 +20,10 @@ import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './lan
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
+import { EventBuffer } from './state'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { closeWeightWeek, toLb, weekMomentum } from './weight'
-import type {
-  CampaignState,
-  Charter,
-  DayRecord,
-  DaySnapshot,
-  GameEvent,
-  GameEventKind,
-  GameEventMap,
-  ISODate,
-  LandContract,
-  PurseLine,
-  WeekStartsOn
-} from './types'
+import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, PurseLine, WeekStartsOn } from './types'
 
 // ── The phase registry ───────────────────────────────────────────────────────
 
@@ -85,7 +74,7 @@ export interface PhaseContext {
   /** The ledger, for phases that read a day's inputs. Scores read `state.settlement.snapshots`. */
   readonly ledger: Ledger
   /** Posts a game event, dated `day`. It reaches `state.log` when the phase returns. */
-  emit<K extends GameEventKind>(kind: K, payload: GameEventMap[K]): void
+  readonly emit: Emit
   readonly hooks: PhaseHooks
 }
 
@@ -139,9 +128,14 @@ function records(state: CampaignState, from: ISODate, to: ISODate): DayRecord[] 
   return snapshotsBetween(state.settlement.snapshots, start, to).map(toDayRecord)
 }
 
-/** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor. */
+/** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor (A-124). */
 function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
   return termsOf(charterOn(state, day), state.weight.healerFloor)
+}
+
+/** Realm Consistency at `day`'s close: Q over the last 28 settled campaign days (A-39). */
+function realmConsistencyOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
+  return realmConsistency(records(state, state.campaign.startDate, day), currentTerms(state, day), weekStartsOn)
 }
 
 /** A contract's Q over its days through `through`, without its Respite days, by its sealed terms. */
@@ -169,8 +163,8 @@ function dailyLines(state: CampaignState, snapshot: DaySnapshot): { lines: Purse
   return { lines: income.lines, streak: income.streak }
 }
 
-/** The week ending `day`: its pillars, q_w and the behavior income it pays (steps, calories, flawless, Momentum). */
-function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number } {
+/** The week ending `day`: its campaign days, q_w and the behavior income it pays (steps, calories, flawless, Momentum). */
+function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number; days: number } {
   const days = records(state, weekOf(day, weekStartsOn), day)
   const pillars = weekPillars(days, currentTerms(state, day))
   const qw = pillarScore(pillars)
@@ -183,7 +177,7 @@ function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStarts
     cap: campaign.targetPace
   })
   const lines = weeklyIncome({ ...pillars, momentum: momentum.m, days: days.length }, reputationBonus(state))
-  return { lines, qw }
+  return { lines, qw, days: days.length }
 }
 
 // ── Day phases ───────────────────────────────────────────────────────────────
@@ -272,8 +266,7 @@ const contractEnd: Phase = (state, ctx) => {
 
 /** Step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
 const weeklyIncomePhase: Phase = (state, ctx) => {
-  const { lines } = weekIncome(state, ctx.day, ctx.weekStartsOn)
-  const days = records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).length
+  const { lines, days } = weekIncome(state, ctx.day, ctx.weekStartsOn)
   const villages = state.hexes
     .filter((h) => h.owner === 'player' && h.village)
     .map((h) => ({
@@ -296,22 +289,19 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
  * Then the player's villages recover loyalty (A-22) (T09).
  */
 const courtshipsPhase: Phase = (state, ctx) => {
-  const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
-  const week = { day: ctx.day, realmConsistency: rc, emit: ctx.emit }
+  const week = { day: ctx.day, realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit }
   return recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
 }
 
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
 const weightPhase: Phase = (state, ctx) => {
-  const { qw } = weekIncome(state, ctx.day, ctx.weekStartsOn)
-  const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
   const result = closeWeightWeek(state.campaign, state.weight, {
     day: ctx.day,
     week: ctx.week,
     weighIns: weighInsOf(state.settlement.snapshots),
     days: state.settlement.snapshots.map(toHealerDay),
-    qw,
-    realmConsistency: rc
+    qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)
   })
   for (const m of result.broken) ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
@@ -383,27 +373,6 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────
-
-/** Collects events from phases and hands them to the log in order. */
-class EventBuffer {
-  readonly all: GameEvent[] = []
-  private pending: { day: ISODate; kind: GameEventKind; payload: object }[] = []
-
-  emitter(day: ISODate): PhaseContext['emit'] {
-    return (kind, payload) => {
-      this.pending.push({ day, kind, payload })
-    }
-  }
-
-  flush(state: CampaignState): CampaignState {
-    if (this.pending.length === 0) return state
-    const base = state.log.length
-    const events = this.pending.map(({ day, kind, payload }, i) => ({ id: `ev-${base + i + 1}`, day, kind, ...payload }) as GameEvent)
-    this.pending = []
-    this.all.push(...events)
-    return { ...state, log: [...state.log, ...events] }
-  }
-}
 
 function runPhases<N extends string>(state: CampaignState, names: readonly N[], phases: Record<N, Phase>, ctx: PhaseContext, events: EventBuffer): CampaignState {
   let next = state
