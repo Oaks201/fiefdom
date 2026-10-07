@@ -37,6 +37,10 @@ function sealOn(state: CampaignState, today: string, termDays: number, id: strin
 
 const LEDGER = steadyLedger('2026-09-10', 70)
 
+/** What daily combat (T08) adds to every day: battle reports and their spoils and tribute. */
+const COMBAT_EVENTS: string[] = ['defense', 'assault', 'calledOff', 'trophy', 'respect', 'hexTransfer']
+const COMBAT_PURSE: string[] = ['spoils', 'tribute']
+
 test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
@@ -189,12 +193,14 @@ test('A-02: editing a day 3 days back changes nothing, and neither does editing 
   assert.equal(s3.state.settlement.snapshots.find((s) => s.date === '2026-10-15')?.steps, 40_000)
 })
 
-test('A ledger with no data settles without throwing and pays nothing beyond the founding grant (Momentum’s floor needs consistency)', () => {
+test('A ledger with no data settles without throwing and pays no behavior income beyond the founding grant (Momentum’s floor needs consistency)', () => {
   const ledger = emptyLedger()
   const { state, events } = settle(found(ledger), ledger, chicago('2026-11-02'))
   assert.equal(state.settledThrough.day, '2026-11-01')
-  assert.equal(balance(state.purse), 100)
-  assert.deepEqual(state.purse.events.map((e) => e.source), ['founding'])
+  // Daily battles (T08) still pay spoils and take tribute; nothing else moves the purse.
+  const behavior = state.purse.events.filter((e) => !COMBAT_PURSE.includes(e.kind))
+  assert.deepEqual(behavior.map((e) => e.source), ['founding'])
+  assert.equal(balance({ events: behavior }), 100)
   assert.deepEqual(state.weight.weeks.map((w) => [w.week, w.momentum]), [[1, 0], [2, 0], [3, 0], [4, 0]])
   assert.deepEqual(events.filter((e) => e.kind === 'weekClosed').map((e) => e.kind === 'weekClosed' && [e.week, e.income]), [
     [1, 0],
@@ -216,7 +222,8 @@ test('Week 1 is prorated: a perfect partial week pays 4/7 of the full weekly amo
 
 test('Daily: duties, the perfect day and the streak are paid at each close', () => {
   const { state } = settle(found(LEDGER), LEDGER, chicago('2026-10-11'))
-  const byDay = (day: string): [string, number][] => state.purse.events.filter((e) => e.date === day).map((e) => [e.source, e.amount])
+  const byDay = (day: string): [string, number][] =>
+    state.purse.events.filter((e) => e.date === day && !COMBAT_PURSE.includes(e.kind)).map((e) => [e.source, e.amount])
   // 12 + 5 with the 2% bonus; the streak adds +1 per perfect day before it.
   assert.deepEqual(byDay('2026-10-08'), [['duties', 12.2], ['perfectDay', 5.1]])
   assert.deepEqual(byDay('2026-10-09'), [['duties', 12.2], ['perfectDay', 5.1], ['streak', 1]])
@@ -231,7 +238,7 @@ test('Contracts: the running contract is scored each day, paid on its last day, 
   assert.ok((mid.contracts.active?.score ?? 0) > 0.9)
   assert.equal(mid.contracts.active?.id, 'c1')
   const end = settle(mid, LEDGER, chicago('2026-10-11'))
-  assert.deepEqual(end.events.map((e) => e.kind), ['contract'])
+  assert.deepEqual(end.events.filter((e) => !COMBAT_EVENTS.includes(e.kind)).map((e) => e.kind), ['contract'])
   assert.equal(end.state.contracts.active?.id, 'c2')
   assert.equal(end.state.contracts.active?.startDate, '2026-10-11')
   const pays = end.state.purse.events.filter((e) => e.source === 'contract:c1').map((e) => e.kind)

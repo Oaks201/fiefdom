@@ -328,7 +328,11 @@ const RULES_TABLE = {
     scorchedDays: 3,
     contestedDays: { base: 1, graceII: 2 },
     /** A border hex's chance of being hit is weighted by ring^1.5. */
-    targetRingExponent: 1.5
+    targetRingExponent: 1.5,
+    /** T08: tidings band a threat by its strength over the defense's Army: Weaker, Matched, Stronger, Overwhelming. */
+    strengthBands: [0.8, 1.25, 2], // TUNE (A-133)
+    /** T08: tidings are fixed for every foretold day, but never further ahead than this. */
+    maxForetellDays: 3
   },
 
   grandBattles: {

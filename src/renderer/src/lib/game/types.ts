@@ -153,6 +153,14 @@ export interface DailyOrders {
   assaultTarget?: string
   assault: string[]
   defense: string[]
+  /** More assaults, when the realm allows them (Castle IV, the Siege Park; T08). */
+  extraAssaults?: { target: string; companies: string[] }[]
+  /** The companies the player fields on defense instead of the Marshal's best B (T08). */
+  defenseOverride?: string[]
+  /** Hired blades for the day's defense battles (Merchant Hall II, A-19; T08). */
+  hired?: number
+  /** Rival envoy companies for the day's defense battles (Respect 50, A-20; T08). */
+  envoys?: RivalId[]
 }
 
 export interface Courtship {
@@ -404,9 +412,25 @@ export interface GameEventMap {
     spoils?: number
     tribute?: number
     contested?: boolean
+    /** T08: the strike of a conquest attempt on a hex it already contests. */
+    restrike?: boolean
+    /** T08: a conquest attempt beaten on a contested hex: the contest is over. */
+    broken?: boolean
+    /** T08: the hex is scorched through this day. */
+    scorchedUntil?: ISODate
+    /** T08: the hex is contested through this day. */
+    contestedUntil?: ISODate
+    /** T08: Grand Illusion spared this loss its tribute or its contest. */
+    grandIllusion?: boolean
+    /** T08: the Royal Hunt turned this beast attack into a hunt worth this much. */
+    hunt?: number
   }
   /** The player's daily assault (Ch 6). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number }
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number; wear?: number }
+  /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
+  calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
+  /** A trophy earned in daily combat, for T14 to turn into an item (A-131). */
+  trophy: { hexId: string; source: 'mythic' | 'royalHunt'; lair?: string }
   /** A hex changed hands. */
   hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
   /** A courtship resolved at week close (Ch 6). */
@@ -528,6 +552,61 @@ export interface CampaignState {
   settlement: SettlementState
   /** Wings, Elites, the Sworn and the item stash (T14). Absent means none yet. */
   armory?: ArmoryState
+  /** The threat schedule, the dawn tidings, conquest attempts and contested hexes (T08). Absent means none yet. */
+  combat?: CombatState
+}
+
+// ── Daily combat (T08) ───────────────────────────────────────────────────────
+
+/** The day's one daily threat (Ch 10); conquest attempts come on top of it. */
+export type DailyThreatKind = 'beasts' | 'mythic' | 'raid'
+
+/** One day of the threat schedule: its type and raider, drawn at the week close before it (A-28). */
+export interface ScheduledThreat {
+  date: ISODate
+  kind: DailyThreatKind
+  rival?: RivalId
+}
+
+/** The day's threat as the Herald announces it at dawn: its target and strength are fixed then (A-28). */
+export interface Tiding {
+  date: ISODate
+  kind: DailyThreatKind
+  hexId: string
+  rival?: RivalId
+  /** Exact strength. Screens show it only through `tidings()`, which bands it unless revealed. */
+  strength: number
+  siegeDay: boolean
+}
+
+/** A rival conquest attempt, announced the day before it strikes (Ch 10). T10 plans them. */
+export interface ConquestAttempt {
+  rival: RivalId
+  hexId: string
+  announcedOn: ISODate
+  date: ISODate
+  strength: number
+}
+
+/** A hex a conquest attempt has beaten once: the same force strikes again each day until `until` (Ch 10). */
+export interface ContestedHex {
+  hexId: string
+  rival: RivalId
+  strength: number
+  /** The day the attempt first won. */
+  since: ISODate
+  /** The last day it holds; a loss on this day passes the hex at the next dawn. */
+  until: ISODate
+}
+
+export interface CombatState {
+  /** The coming days' threat types and raiders. */
+  schedule: ScheduledThreat[]
+  /** Tidings fixed at dawn (and foretold days) for days not yet settled. */
+  tidings: Tiding[]
+  /** Conquest attempts announced and not yet struck. */
+  conquests: ConquestAttempt[]
+  contested: ContestedHex[]
 }
 
 // ── Settlement (T06) ─────────────────────────────────────────────────────────

@@ -12,12 +12,13 @@
 import type { Ledger } from '../types'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
 import { borderCampaignWeeks } from './campaign'
+import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { RULES } from './rules'
-import { consistency, pillarScore, realmConsistency, termsOf, weekPillars, type ScoreTerms } from './score'
+import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { closeWeightWeek, toLb, weekMomentum } from './weight'
 import type {
   CampaignState,
@@ -65,6 +66,8 @@ export type WeekPhaseName = (typeof WEEK_PHASE_NAMES)[number]
 export interface PhaseHooks {
   /** Accords paid this call (D-01); T13 turns each into its Respect gain. */
   accordsPaid: AccordPaid[]
+  /** Assaults ordered on a Gate, capital or Lair Mouth this call (T08); T12 raises them as triggers. */
+  grandBattleRequests: GrandBattleRequest[]
 }
 
 export interface PhaseContext {
@@ -232,6 +235,20 @@ const expireTimers: Phase = (state, ctx) => {
   return { ...state, hexes, roster, deals }
 }
 
+/** The day's Valor (Ch 10, A-40) from its snapshot and the week so far; 0 without a snapshot. */
+export function valorOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
+  const snapshot = snapshotOf(state, day)
+  if (!snapshot) return 0
+  return valor(toDayRecord(snapshot), records(state, weekOf(day, weekStartsOn), day), charterOn(state, day).stepPool)
+}
+
+/** Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). */
+const combatPhase: Phase = (state, ctx) => {
+  const result = settleCombat(state, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
+  ctx.hooks.grandBattleRequests.push(...result.grandBattles)
+  return result.state
+}
+
 /** Pays the running contract on its last day; the queued one takes the slot at the next dawn. */
 const contractEnd: Phase = (state, ctx) => {
   const active = state.contracts.active
@@ -287,14 +304,15 @@ const weightPhase: Phase = (state, ctx) => {
   return { ...state, weight: result.weight }
 }
 
-/** Resets garrison damage and keeps the hidden Border Campaign schedule ahead of the campaign. Next week's threats are T08's. */
+/** Resets garrison damage, keeps the hidden Border Campaign schedule ahead of the campaign, and draws next week's threats (T08, A-28). */
 const resetAndSchedule: Phase = (state, ctx) => {
   const hexes = state.hexes.some((h) => h.garrisonDamage !== 0) ? state.hexes.map((h) => (h.garrisonDamage === 0 ? h : { ...h, garrisonDamage: 0 })) : state.hexes
   const ahead = ctx.week + RULES.settlement.borderScheduleAheadWeeks
   const scheduled = state.settlement.borderCampaignWeeks
   const borderWeeks =
     scheduled.length > 0 && scheduled[scheduled.length - 1] >= ahead ? scheduled : borderCampaignWeeks(state.campaign.seed, state.campaign.startDate, ahead)
-  return { ...state, hexes, settlement: { ...state.settlement, borderCampaignWeeks: borderWeeks } }
+  const reset = { ...state, hexes, settlement: { ...state.settlement, borderCampaignWeeks: borderWeeks } }
+  return scheduleThreats(reset, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
 }
 
 /** The day phases. Later tasks replace their entry (T08 `combat`, T12 `grandBattlesAuto`). */
@@ -302,7 +320,7 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
   snapshotInputs,
   contractsAndDaily,
-  combat: noop, // T08
+  combat: combatPhase, // T08
   grandBattlesAuto: noop, // T12
   expireTimers,
   contractEnd
@@ -317,7 +335,7 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   fronts: noop, // T10
   borderCampaigns: noop, // T10
   world: noop, // T13
-  resetAndSchedule // T08 adds next week's threat schedule
+  resetAndSchedule
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────
@@ -349,7 +367,10 @@ function runPhases<N extends string>(state: CampaignState, names: readonly N[], 
   return next
 }
 
-/** Settles one closed day: its day phases, then the week phases when its close is a week close. */
+/**
+ * Settles one closed day: its day phases, then the week phases when its close is a week close,
+ * then the next dawn, which fixes the next day's tidings on the border as it now stands (T08).
+ */
 function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: EventBuffer, hooks: PhaseHooks): CampaignState {
   const weekStartsOn = weekStartsOnOf(state, ledger)
   const week = campaignWeek(state.campaign.startDate, day, weekStartsOn)
@@ -357,6 +378,7 @@ function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: E
   const ctx: PhaseContext = { day, week, weekClose, weekStartsOn, ledger, emit: events.emitter(day), hooks }
   let next = runPhases(state, DAY_PHASE_NAMES, DAY_PHASES, ctx, events)
   if (weekClose) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
+  next = dawn(next, addDays(day, 1), weekStartsOn)
   return { ...next, settledThrough: { day, week } }
 }
 
@@ -485,7 +507,7 @@ function summarize(days: SettledDay[], events: GameEvent[], purseChange: number,
 export function settle(state: CampaignState, ledger: Ledger, now: Date, options: SettleOptions = {}): SettleResult {
   const { timeZone } = state.campaign
   const events = new EventBuffer()
-  const hooks: PhaseHooks = { accordsPaid: [] }
+  const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [] }
   const balanceBefore = balance(state.purse)
   const active = state.campaign.status === 'active'
   let next = active ? correctLastDay(state, ledger, now, events) : state
@@ -505,6 +527,9 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
       })
     }
   }
+
+  // The open day's dawn, if no settled day has brought it yet (the campaign's first day).
+  if (active) next = dawn(next, openDay(now, timeZone), weekStartsOnOf(next, ledger))
 
   let awayDays = 0
   if (options.launch) {
