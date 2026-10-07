@@ -22,13 +22,11 @@ import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { RULES, base } from '../../src/renderer/src/lib/game/rules'
 import type { CampaignState, Deal } from '../../src/renderer/src/lib/game/types'
-import { FOUNDED_AT, TZ, charter, chicago, steadyLedger, withDay } from './fixtures/ledgers'
+import { chicago, steadyLedger, withDay } from './fixtures/ledgers'
 import { allBuildings, realm, withBuildings, withCastle, withCrossings, withGrace } from './support/realm'
 import { START, WEEK6, fight, front, hex, plainHex, withDisposition, withHex, withTiding } from './support/war'
-import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, tolerance = 0.01): void =>
-  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)
 
 /** A building hex: always the player's and never under a conquest attempt. Daily threats parked here stay out of the way. */
 function quietHex(state: CampaignState): string {
@@ -42,9 +40,9 @@ test('Test 3 (E-02): the Ch 10 worked battle gives Army 117.9, Defense 116.31 at
   const strikes = [18 * 1.5, 18 * 1.5, 14 * 1.5, 14 * 1]
   const full = defenseValue({ strikes, armsBonus: 0.1, walls: 20, fortification: 0, rallyFloor: 0.55, valor: 0.97 })
   const poor = defenseValue({ strikes, armsBonus: 0.1, walls: 20, fortification: 0, rallyFloor: 0.55, valor: 0.31 })
-  near(full.army, 117.9)
-  near(full.defense, 116.31)
-  near(poor.defense, 81.29)
+  near(full.army, 117.9, 0.01)
+  near(full.defense, 116.31, 0.01)
+  near(poor.defense, 81.29, 0.01)
   assert.ok(full.defense >= 115, 'a narrow win against strength 115')
   assert.ok(poor.defense < 115, 'a loss against strength 115')
 })
@@ -54,15 +52,15 @@ test('Test 3 (E-02): the same battle from a realm state: Castle III, Barracks, M
   state = withCrossings(state, { barracksMageTower: 2, foundryMageTower: 2 })
   const marches = plainHex(state, 4).id
   const full = defenseFor(state, { hexId: marches, kind: 'raid', rival: 'dwarf', valor: 0.97 })
-  near(full.army, 117.9)
+  near(full.army, 117.9, 0.01)
   // The Battlemages' Brotherhood also brings Warded Steel (+5% rally), which the book's example leaves out:
   // r is 0.60 here, not 0.55. With Warded Steel left out the realm gives the book's numbers exactly.
   const effects = realmEffects(state)
   near(effects.rallyFloor.value, 0.6, 1e-9)
-  near(full.defense, 117.9 * (0.6 + 0.4 * 0.97))
+  near(full.defense, 117.9 * (0.6 + 0.4 * 0.97), 0.01)
   const book = { ...effects, rallyFloor: { ...effects.rallyFloor, value: 0.55 } }
-  near(defenseFor(state, { hexId: marches, kind: 'raid', rival: 'dwarf', valor: 0.97 }, book).defense, 116.31)
-  near(defenseFor(state, { hexId: marches, kind: 'raid', rival: 'dwarf', valor: 0.31 }, book).defense, 81.29)
+  near(defenseFor(state, { hexId: marches, kind: 'raid', rival: 'dwarf', valor: 0.97 }, book).defense, 116.31, 0.01)
+  near(defenseFor(state, { hexId: marches, kind: 'raid', rival: 'dwarf', valor: 0.31 }, book).defense, 81.29, 0.01)
 })
 
 test('Ch 10 matching: Steel and Arcane against Archmage conjurations (weak to Steel, resists Arcane) strikes at ×1.5', () => {
@@ -385,7 +383,7 @@ test('strengthBand: Weaker below 0.8 × Army, Matched to 1.25 ×, Stronger to 2 
 
 test('Test 9 (part): a battle settles once; a correction to yesterday inside the grace window never reruns it', () => {
   const ledger = steadyLedger('2026-09-10', 70)
-  const founded = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
+  const founded = realm(7, ledger)
   const first = settle(founded, ledger, chicago('2026-10-10'))
   const battles = first.state.log.filter((e) => e.kind === 'defense' || e.kind === 'assault' || e.kind === 'hexTransfer')
   assert.equal(battles.filter((e) => e.kind === 'defense').length, 2, 'one daily threat on each of the two days')
@@ -408,7 +406,7 @@ test('Test 9 (part): a battle settles once; a correction to yesterday inside the
 
 test('Settlement: every settled day fights its daily threat, and the open day’s tidings are fixed at its dawn', () => {
   const ledger = steadyLedger('2026-09-10', 70)
-  const founded = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
+  const founded = realm(7, ledger)
   const { state, events } = settle(founded, ledger, chicago('2026-10-15'))
   const days = events.filter((e) => e.kind === 'defense' || e.kind === 'calledOff').map((e) => e.day)
   assert.deepEqual([...new Set(days)], ['2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14'])

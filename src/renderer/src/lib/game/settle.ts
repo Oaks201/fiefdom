@@ -13,7 +13,7 @@ import type { Ledger } from '../types'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
 import { borderCampaignWeeks } from './campaign'
 import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
-import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
+import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
@@ -97,6 +97,12 @@ export function reputationBonus(state: CampaignState): number {
 /** The Respite bank's cap from `realmEffects` (Mage Tower tier, the Healing Springs, the Herb Garden). */
 function respiteCap(state: CampaignState): number {
   return realmEffects(state).respiteBank.value
+}
+
+/** What paying a contract on `date` reads from the realm: the reputation bonus and the pledge's minimum return. */
+function payContext(state: CampaignState, date: ISODate): PayContext {
+  const effects = realmEffects(state)
+  return { date, minPledgeReturn: effects.minPledgeReturn.value, bonus: effects.reputationBonus.value }
 }
 
 function contractsOf(state: CampaignState): LandContract[] {
@@ -252,11 +258,7 @@ const contractEnd: Phase = (state, ctx) => {
   const active = state.contracts.active
   if (!active || active.startDate > ctx.day || active.endDate > ctx.day) return state
   const score = contractScore(state, active, active.endDate, ctx.weekStartsOn)
-  const paid = settleContract(state.contracts, state.purse, score, {
-    date: ctx.day,
-    merchantHallTier: state.buildings.merchantHall,
-    bonus: reputationBonus(state)
-  })
+  const paid = settleContract(state.contracts, state.purse, score, payContext(state, ctx.day))
   ctx.emit('contract', paid.outcome)
   if (paid.accord) ctx.hooks.accordsPaid.push(paid.accord)
   return { ...state, contracts: paid.contracts, purse: paid.purse }
@@ -436,7 +438,7 @@ function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events:
   }
   next = putSnapshot(next, { ...(snapshotOf(next, day) as DaySnapshot), streak: daily.streak, paid })
 
-  const ctx = { merchantHallTier: next.buildings.merchantHall, bonus: reputationBonus(next), date: day }
+  const ctx = payContext(next, day)
   for (const c of next.contracts.history) {
     if (!c.paid || c.startDate > day || day > c.endDate) continue
     const late = lateCorrection(next.contracts, next.purse, c.id, contractScore(next, c, c.endDate, weekStartsOn), ctx)

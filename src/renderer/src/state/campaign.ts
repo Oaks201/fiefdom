@@ -8,6 +8,7 @@ import { settle, type SettleResult, type SettleSummary } from '../lib/game/settl
 import type { CampaignState } from '../lib/game/types'
 import type { Ledger } from '../lib/types'
 import { loadCampaignText, saveCampaignText, saveCampaignTextSync } from './persistence'
+import { debouncedSaver } from './saver'
 import { toast } from './toasts'
 
 interface CampaignStore {
@@ -93,41 +94,5 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
   }
 }))
 
-// ---------------------------------------------------------------------------
-// Saving: debounced, flushed synchronously if the window closes. Mirrors state/store.ts.
-// ---------------------------------------------------------------------------
-let pending: string | null = null
-let timer: ReturnType<typeof setTimeout> | undefined
-let failedOnce = false
-
-function scheduleSave(campaign: CampaignState): void {
-  pending = JSON.stringify(campaign)
-  clearTimeout(timer)
-  timer = setTimeout(() => void flush(), 350)
-}
-
-async function flush(): Promise<void> {
-  if (pending === null) return
-  const json = pending
-  pending = null
-  try {
-    await saveCampaignText(json)
-    failedOnce = false
-  } catch (err) {
-    console.error('Saving the campaign failed', err)
-    if (!failedOnce) toast('The campaign could not be saved. Retrying…', 'error')
-    failedOnce = true
-    if (pending === null) pending = json
-    clearTimeout(timer)
-    timer = setTimeout(() => void flush(), 3000)
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    if (pending !== null) {
-      saveCampaignTextSync(pending)
-      pending = null
-    }
-  })
-}
+// Saving: debounced, flushed synchronously if the window closes, as the ledger is.
+const scheduleSave = debouncedSaver('campaign', saveCampaignText, saveCampaignTextSync)

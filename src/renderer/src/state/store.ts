@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createLedger, LedgerError, normalizeLedger } from '../lib/ledger'
 import type { Ledger } from '../lib/types'
 import { loadLedgerText, saveLedgerText, saveLedgerTextSync } from './persistence'
+import { debouncedSaver } from './saver'
 import { toast } from './toasts'
 
 interface LedgerState {
@@ -52,41 +53,5 @@ export const useLedger = create<LedgerState>((set, get) => ({
   }
 }))
 
-// ---------------------------------------------------------------------------
 // Saving: debounced while you type, flushed synchronously if the window closes.
-// ---------------------------------------------------------------------------
-let pending: string | null = null
-let timer: ReturnType<typeof setTimeout> | undefined
-let failedOnce = false
-
-function scheduleSave(ledger: Ledger): void {
-  pending = JSON.stringify(ledger)
-  clearTimeout(timer)
-  timer = setTimeout(() => void flush(), 350)
-}
-
-async function flush(): Promise<void> {
-  if (pending === null) return
-  const json = pending
-  pending = null
-  try {
-    await saveLedgerText(json)
-    failedOnce = false
-  } catch (err) {
-    console.error('Saving the ledger failed', err)
-    if (!failedOnce) toast('The ledger could not be saved. Retrying…', 'error')
-    failedOnce = true
-    if (pending === null) pending = json
-    clearTimeout(timer)
-    timer = setTimeout(() => void flush(), 3000)
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    if (pending !== null) {
-      saveLedgerTextSync(pending)
-      pending = null
-    }
-  })
-}
+const scheduleSave = debouncedSaver('ledger', saveLedgerText, saveLedgerTextSync)

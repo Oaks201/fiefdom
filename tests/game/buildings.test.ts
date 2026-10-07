@@ -20,8 +20,8 @@ import {
   withMilestones,
   withPurse
 } from './support/realm'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, eps = 1e-9): void => assert.ok(Math.abs(actual - expected) < eps, `${actual} ≠ ${expected}`)
 
 function company(state: CampaignState, id: string) {
   const c = roster(state).find((x) => x.id === id)

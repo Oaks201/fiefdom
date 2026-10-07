@@ -16,11 +16,10 @@ import { RULES, base } from '../../src/renderer/src/lib/game/rules'
 import type { CampaignState, DailyOrders, HexState } from '../../src/renderer/src/lib/game/types'
 import { allBuildings, realm, withArmory, withBuildings, withCastle, withCrossings } from './support/realm'
 import { fight, hex, withHex, withOwner, withTiding } from './support/war'
+import { near } from './support/assert'
 
 const DAY = '2026-10-08'
 
-const near = (actual: number, expected: number, tolerance = 1e-9): void =>
-  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)
 
 /** A neutral ring-`ring` hex the player can reach: one of its inner neighbors is handed to the player. */
 function reachable(state: CampaignState, ring: number, also: (h: HexState) => boolean): { state: CampaignState; target: string } {
