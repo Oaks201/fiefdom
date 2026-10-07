@@ -631,6 +631,16 @@ const RULES_TABLE = {
     marketEveryWeeks: 4, // TUNE (A-147)
     /** The Archmage's first Ritual comes no earlier than this week. */
     firstRitualWeek: 6 // TUNE (A-148)
+  },
+
+  /** T12: the living world's and the endgame's numbers the book leaves open. */
+  worldAi: {
+    /** Bend the knee prices 25% of a treasury estimate: each band's upper edge, and twice the Mighty band's lower edge. */
+    treasuryEstimates: [300, 800, 2_000, 4_000], // TUNE (A-172)
+    /** An offer the world makes (the Goblin buying a hex, keeping a rising village, an envoy's ask, the Grand Auction) stays open this many days. */
+    offerDays: 7, // TUNE (A-171)
+    /** The synodic month, and a known new moon (2000-01-06, 18:14 UTC, 0.76 into the day), for the Wild Hunt's full moon. */
+    moon: { synodicDays: 29.530588853, knownNewMoon: '2000-01-06', knownNewMoonDayShare: 0.76 }
   }
 }
 

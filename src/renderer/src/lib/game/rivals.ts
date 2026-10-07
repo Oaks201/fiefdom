@@ -30,7 +30,7 @@
  */
 import { CODEX } from './codex'
 import { addDays, diffDays, weekOf } from './clock'
-import { COMBAT_HOOKS, armyValue, band, baseArmyValue, defenseFor, effectiveGarrison, planConquest, type Band } from './combat'
+import { COMBAT_HOOKS, armyValue, band, baseArmyValue, defenseFor, effectiveGarrison, planConquest, withinReach, type Band } from './combat'
 import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
@@ -65,6 +65,19 @@ import {
 } from './types'
 
 const SPENDS: readonly RivalSpend[] = ['army', 'expand', 'fortify', 'special']
+
+/**
+ * Hooks for world events that change a rival's turn from outside (T12). Each default changes
+ * nothing; replace an entry, never reorder or remove one. Hooks must be pure.
+ */
+export interface RivalHooks {
+  /** The share of its budget a rival spends on its army this turn (Fear of the Crown: ×1.1). */
+  armyShare(state: CampaignState, rival: RivalId, day: ISODate, share: number): number
+}
+
+export const RIVAL_HOOKS: RivalHooks = {
+  armyShare: (_state, _rival, _day, share) => share
+}
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
@@ -246,6 +259,8 @@ export interface ThreatInput {
   averageRivalPower: number
   /** Rivals resolved so far. */
   resolved: number
+  /** What the rivals' falls add, when known by how each fell (Ch 13, A-167); replaces 15 × resolved. */
+  fallout?: number
   /** The player's hexes touching this rival's land. */
   borderHexes: number
   /** The player took this rival's land in the last 4 weeks. */
@@ -256,7 +271,7 @@ export interface ThreatInput {
 export function threatScore(i: ThreatInput): number {
   const t = RULES.rivals.threat
   const ratio = i.averageRivalPower > 0 ? i.playerPower / i.averageRivalPower : t.ratioCap
-  let value = t.ratioWeight * Math.min(t.ratioCap, ratio) + t.perResolved * i.resolved
+  let value = t.ratioWeight * Math.min(t.ratioCap, ratio) + (i.fallout ?? t.perResolved * i.resolved)
   if (i.borderHexes >= t.border.minHexes) value += t.border.bonus
   if (i.tookLand) value += t.recentLand.bonus
   return Math.min(t.max, value)
@@ -322,6 +337,19 @@ export function sharedBorder(state: CampaignState, rival: RivalId): number {
   return state.hexes.filter((h) => h.owner === 'player' && touches(byId, h.id, rival)).length
 }
 
+/**
+ * What the rivals' falls add to every Threat (Ch 13 "When a rival falls", A-167): +15 for each
+ * conquered, +10 for each abdicated, +5 for each allied; and +10 for the First Fall's Watcher
+ * while its coalition stands.
+ */
+export function falloutThreat(state: CampaignState, rival: RivalId, day: ISODate): number {
+  const f = RULES.world.fallout
+  const by: Record<RivalState['status'], number> = { active: 0, conquered: f.conqueredThreat, abdicated: f.abdicatedThreat, allied: f.alliedThreat }
+  const falls = sum(RIVAL_IDS.map((r) => by[state.rivals[r].status]))
+  const watcher = state.coalitions.some((c) => c.watcher === rival && (c.until === undefined || day <= c.until))
+  return falls + (watcher ? RULES.world.coalitions.watcherThreat : 0)
+}
+
 /** `rival`'s Threat now (Ch 12): its view of the player's Power against the active rivals' average. */
 export function threatOf(state: CampaignState, rival: RivalId, day: ISODate, effects: Effects = realmEffects(state)): number {
   const date = addDays(day, 1)
@@ -331,6 +359,7 @@ export function threatOf(state: CampaignState, rival: RivalId, day: ISODate, eff
     playerPower: playerPower(state, effects),
     averageRivalPower: average,
     resolved: RIVAL_IDS.length - active.length,
+    fallout: falloutThreat(state, rival, day),
     borderHexes: sharedBorder(state, rival),
     tookLand: tookLandFrom(state, rival, day, weeksToDays(RULES.rivals.threat.recentLand.weeks))
   })
@@ -474,7 +503,7 @@ function oneTurn(input: CampaignState, rival: RivalId, w: RivalWeek, effects: Ef
   const spent: Record<RivalSpend, number> = { army: 0, expand: 0, fortify: 0, special: 0 }
 
   // 3. Army.
-  let step: Spending = buyArmy(state, rival, budget * split.army)
+  let step: Spending = buyArmy(state, rival, budget * RIVAL_HOOKS.armyShare(state, rival, w.day, split.army))
   state = step.state
   spent.army = step.spent
 
@@ -840,8 +869,9 @@ function planConquests(input: CampaignState, rival: RivalId, w: RivalWeek, effec
     const offset = int(state.campaign.seed, w.day, `conquest:${rival}:day:${i}`, ai.conquestDays.min, ai.conquestDays.max)
     const date = addDays(w.day, offset)
     const av = armyValue(state, rival, date)
+    const reach = COMBAT_HOOKS.conquestReach(state, rival, date)
     const targets = state.hexes
-      .filter((h) => h.owner === 'player' && h.ring >= RULES.combat.conquestMinRing && h.status !== 'contested' && !targeted.has(h.id) && touches(byId, h.id, rival))
+      .filter((h) => h.owner === 'player' && h.ring >= RULES.combat.conquestMinRing && h.status !== 'contested' && !targeted.has(h.id) && withinReach(state, byId, h.id, rival, reach))
       .map((h) => ({ hex: h, defense: defenseFor(state, { hexId: h.id, kind: 'conquest', rival, valor: w.valor, day: date }, effects).defense }))
       .filter((t) => rules.armyShare * av >= rules.defenseShare * t.defense)
     if (targets.length === 0) break

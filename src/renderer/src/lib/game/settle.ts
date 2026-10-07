@@ -22,7 +22,8 @@ import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './lan
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
-import { EventBuffer } from './state'
+import { EventBuffer, isPlayable } from './state'
+import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { closeWeightWeek, toLb, weekMomentum } from './weight'
 import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, PurseLine, WeekStartsOn } from './types'
@@ -57,7 +58,7 @@ export type WeekPhaseName = (typeof WEEK_PHASE_NAMES)[number]
 
 /** What one phase leaves for a later phase or task during the same call. */
 export interface PhaseHooks {
-  /** Accords paid this call (D-01); T13 turns each into its Respect gain. */
+  /** Accords paid this call (D-01); `contractEnd` has already added each one's Respect (T12). */
   accordsPaid: AccordPaid[]
   /** Assaults ordered on a Gate, capital or Lair Mouth this call, and rare creatures revealed (T08); the combat phase has already announced each (T11). */
   grandBattleRequests: GrandBattleRequest[]
@@ -273,15 +274,20 @@ const combatPhase: Phase = (state, ctx) => {
 /** Every Grand Battle due today and not fought by the close: the Marshal fights it (Ch 11 rule 1, T11). */
 const grandBattlesAuto: Phase = (state, ctx) => grandBattlesDue(state, ctx.day, (battleDate) => readinessValors(state, battleDate), ctx.emit)
 
-/** Pays the running contract on its last day; the queued one takes the slot at the next dawn. */
+/**
+ * Pays the running contract on its last day; the queued one takes the slot at the next dawn. An
+ * Accord's Respect is added the same day, so no `settle` call can lose it (D-01, T12).
+ */
 const contractEnd: Phase = (state, ctx) => {
   const active = state.contracts.active
   if (!active || active.startDate > ctx.day || active.endDate > ctx.day) return state
   const score = contractScore(state, active, active.endDate, ctx.weekStartsOn)
   const paid = settleContract(state.contracts, state.purse, score, payContext(state, ctx.day))
   ctx.emit('contract', paid.outcome)
-  if (paid.accord) ctx.hooks.accordsPaid.push(paid.accord)
-  return { ...state, contracts: paid.contracts, purse: paid.purse }
+  const next = { ...state, contracts: paid.contracts, purse: paid.purse }
+  if (!paid.accord) return next
+  ctx.hooks.accordsPaid.push(paid.accord)
+  return accordPaid(next, paid.accord, ctx.day, ctx.emit)
 }
 
 // ── Week phases ──────────────────────────────────────────────────────────────
@@ -305,7 +311,8 @@ const weeklyIncomePhase: Phase = (input, ctx) => {
       settling: h.village?.settlingUntil !== undefined && h.village.settlingUntil > ctx.day,
       scorched: h.status === 'scorched'
     }))
-  const titheLines = tithes(villages, realmEffects(state).titheMult.value, reputationBonus(state), days)
+  const effects = realmEffects(state)
+  const titheLines = tithes(villages, effects.titheMult.value * effects.titheCut.value, reputationBonus(state), days)
   const purse = postAll(postAll(state.purse, ctx.day, lines), ctx.day, titheLines)
   const snapshot = snapshotOf(state, ctx.day) as DaySnapshot
   const income = postedTotal(lines)
@@ -375,6 +382,16 @@ const frontsPhase: Phase = (state, ctx) => settleFronts(state, rivalWeek(state, 
 /** Border Campaigns in a hidden Border Campaign week, then next week's front states (T10). */
 const borderCampaignsPhase: Phase = (state, ctx) => borderCampaigns(state, rivalWeek(state, ctx))
 
+/** Coalitions, held resolutions and defections, the event deck, Ascendancy and Ultimatums (T12, Ch 13, Ch 14). */
+const worldPhase: Phase = (state, ctx) =>
+  worldWeek(state, {
+    day: ctx.day,
+    week: ctx.week,
+    days: records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).length,
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
+    emit: ctx.emit
+  })
+
 /** Resets garrison damage, keeps the hidden Border Campaign schedule ahead of the campaign, and draws next week's threats (T08, A-28). */
 const resetAndSchedule: Phase = (state, ctx) => {
   const hexes = state.hexes.some((h) => h.garrisonDamage !== 0) ? state.hexes.map((h) => (h.garrisonDamage === 0 ? h : { ...h, garrisonDamage: 0 })) : state.hexes
@@ -397,7 +414,7 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   contractEnd
 }
 
-/** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T13 `world`). */
+/** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
 export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   weeklyIncome: weeklyIncomePhase,
   courtships: courtshipsPhase, // T09
@@ -405,15 +422,19 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   rivalTurn: rivalTurnPhase, // T10
   fronts: frontsPhase, // T10
   borderCampaigns: borderCampaignsPhase, // T10
-  world: noop, // T13
+  world: worldPhase, // T12
   resetAndSchedule
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────
 
+/** Runs `names` in order; the Fall (a lost Siege) stops the rest (Ch 14 rule 6). */
 function runPhases<N extends string>(state: CampaignState, names: readonly N[], phases: Record<N, Phase>, ctx: PhaseContext, events: EventBuffer): CampaignState {
   let next = state
-  for (const name of names) next = events.flush(phases[name](next, ctx))
+  for (const name of names) {
+    next = events.flush(phases[name](next, ctx))
+    if (!isPlayable(next)) break
+  }
   return next
 }
 
@@ -427,8 +448,8 @@ function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: E
   const weekClose = isWeekCloseDay(day, weekStartsOn)
   const ctx: PhaseContext = { day, week, weekClose, weekStartsOn, ledger, emit: events.emitter(day), hooks }
   let next = runPhases(state, DAY_PHASE_NAMES, DAY_PHASES, ctx, events)
-  if (weekClose) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
-  next = dawn(next, addDays(day, 1), weekStartsOn)
+  if (weekClose && isPlayable(next)) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
+  if (isPlayable(next)) next = dawn(next, addDays(day, 1), weekStartsOn)
   return { ...next, settledThrough: { day, week } }
 }
 
@@ -559,11 +580,16 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
   const events = new EventBuffer()
   const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [], warhosts: [] }
   const balanceBefore = balance(state.purse)
-  const active = state.campaign.status === 'active'
-  let next = active ? correctLastDay(state, ledger, now, events) : state
+  let next = isPlayable(state) ? correctLastDay(state, ledger, now, events) : state
+
+  // A launch after 14 or more days away is a return (A-10): no Siege may fall within 7 days of it (Ch 14 rule 7).
+  const today = openDay(now, timeZone)
+  const last = next.settlement.lastLaunch
+  const awayDays = options.launch && last !== undefined ? Math.max(0, diffDays(last, today)) : 0
+  if (awayDays >= RULES.clock.absenceDays) next = { ...next, settlement: { ...next.settlement, returnedOn: today } }
 
   const days: SettledDay[] = []
-  if (active) {
+  if (isPlayable(next)) {
     for (const day of closedDaysSince(next.settledThrough.day, now, timeZone)) {
       const before = balance(next.purse)
       const from = events.all.length
@@ -575,19 +601,15 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
         events: events.all.slice(from),
         purseChange: roundPosting(balance(next.purse) - before)
       })
+      // After the Fall nothing more settles (Ch 14 rule 6).
+      if (!isPlayable(next)) break
     }
   }
 
   // The open day's dawn, if no settled day has brought it yet (the campaign's first day).
-  if (active) next = dawn(next, openDay(now, timeZone))
+  if (isPlayable(next)) next = dawn(next, today)
 
-  let awayDays = 0
-  if (options.launch) {
-    const today = openDay(now, timeZone)
-    const last = next.settlement.lastLaunch
-    awayDays = last === undefined ? 0 : Math.max(0, diffDays(last, today))
-    if (last !== today) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
-  }
+  if (options.launch && last !== today) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
 
   return {
     state: next,

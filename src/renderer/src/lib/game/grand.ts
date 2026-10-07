@@ -21,8 +21,8 @@
  */
 import { grantTrophy, heldItems, nextTrophyFor } from './armory'
 import { CODEX } from './codex'
-import { addDays, campaignWeek, diffDays } from './clock'
-import { baseArmyValue, tagMatch, type GrandBattleRequest } from './combat'
+import { addDays, diffDays } from './clock'
+import { baseArmyValue, scorch, tagMatch, type GrandBattleRequest } from './combat'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { realmEffects } from './effects'
 import { originalVillages } from './land'
@@ -30,7 +30,7 @@ import { hexIndex, neighbors, rivalOfRoad } from './map'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
-import { adjustRespect, EventBuffer, hexOf, openDayOf, patchRival, replaceHex, toPlayer, toRival } from './state'
+import { adjustRespect, EventBuffer, hexOf, isPlayable, openDayOf, patchRival, replaceHex, resolutionAllowed, scaleArmy, toPlayer, toRival, weekOn } from './state'
 import {
   RIVAL_IDS,
   type BattleRoundLog,
@@ -100,10 +100,6 @@ function isRival(owner: Owner): owner is RivalId {
   return owner !== 'player' && owner !== 'neutral'
 }
 
-function weekOn(state: CampaignState, day: ISODate): number {
-  return campaignWeek(state.campaign.startDate, day, state.campaign.weekStartsOn)
-}
-
 // ── Triggers and the queue ───────────────────────────────────────────────────
 
 export interface GrandRequest {
@@ -125,6 +121,10 @@ export interface GrandRequest {
   /** Days of warning for an event battle (T12). */
   warningDays?: number
   eventId?: string
+  /** Companies a side, when an event sets it (Ugrak's Challenge). */
+  limit?: number
+  /** The day it must fall on or after (the Wild Hunt's full moon; the Siege after an absence). */
+  notBefore?: ISODate
 }
 
 export type GrandRefusal =
@@ -137,6 +137,8 @@ export type GrandRefusal =
   | 'retryTooSoon'
   /** The Capital needs that rival's Gate held (Ch 11). */
   | 'gateNotHeld'
+  /** Winning would resolve the rival when Ch 14's pacing forbids it (no rival before week 12, one per 8 weeks; A-168). */
+  | 'pacing'
   /** At most one Incursion per rival every 14 days (A-33). */
   | 'cooldown'
   | 'rivalResolved'
@@ -186,7 +188,7 @@ function gateOf(state: CampaignState, rival: RivalId): HexState | undefined {
 
 /** Why a trigger can't be raised, or null. */
 function announceProblem(state: CampaignState, r: GrandRequest, hex: HexState | undefined): GrandRefusal | null {
-  if (state.campaign.status !== 'active') return 'campaignOver'
+  if (!isPlayable(state)) return 'campaignOver'
   if (!hex) return 'unknownHex'
   if (pendingBattles(state).some((b) => b.hexId === r.hexId)) return 'alreadyAnnounced'
   const lostTooSoon = state.grandBattles.some(
@@ -201,6 +203,7 @@ function announceProblem(state: CampaignState, r: GrandRequest, hex: HexState | 
     case 'capital': {
       if (hex.kind !== 'capital' || !r.rival) return 'notGrandBattleHex'
       if (gateOf(state, r.rival)?.owner !== 'player') return 'gateNotHeld'
+      if (!resolutionAllowed(state, r.announcedOn)) return 'pacing'
       break
     }
     case 'mythicHunt':
@@ -269,7 +272,8 @@ export function announceGrandBattle(state: CampaignState, r: GrandRequest, emit:
     emit('grandBattle', { battleId: id, trigger: r.trigger, hexId: r.hexId, stage: 'refused', reason: 'noHost', ...(r.rival ? { rival: r.rival } : {}) })
     return refused(state, 'noHost')
   }
-  const nominal = addDays(r.announcedOn, warningDays(r.trigger, effects, r.warningDays))
+  const warned = addDays(r.announcedOn, warningDays(r.trigger, effects, r.warningDays))
+  const nominal = r.notBefore && r.notBefore > warned ? r.notBefore : warned
   const battleDate = firstFreeDay(state, nominal)
   const battle: GrandBattle = { id, trigger: r.trigger, hexId: r.hexId, announcedOn: r.announcedOn, battleDate, enemy }
   if (r.rival) battle.rival = r.rival
@@ -279,6 +283,7 @@ export function announceGrandBattle(state: CampaignState, r: GrandRequest, emit:
   if (quarry) battle.quarry = quarry
   if (r.revealed) battle.revealed = true
   if (r.eventId) battle.eventId = r.eventId
+  if (r.limit !== undefined) battle.limit = r.limit
   const facts = { battleId: id, trigger: r.trigger, hexId: r.hexId, battleDate, ...(r.rival ? { rival: r.rival } : {}), ...(quarry ? { quarry } : {}) }
   emit('grandBattle', { ...facts, stage: 'announced' })
   if (battleDate !== nominal) emit('grandBattle', { ...facts, stage: 'queued' })
@@ -364,9 +369,19 @@ export function challenge(state: CampaignState, hexId: string, today: ISODate = 
 
 // ── Preparation ──────────────────────────────────────────────────────────────
 
-/** Companies a battle may field: banners + 2, never more than 6 (Ch 11 "Preparation"). */
-export function companyLimit(effects: Effects): number {
-  return Math.min(effects.banners.value + G.companiesOverBanners, G.maxCompanies)
+/** Companies a battle may field: banners + 2, never more than 6 (Ch 11 "Preparation"), or an event's own limit. */
+export function companyLimit(effects: Effects, battle?: GrandBattle): number {
+  const limit = Math.min(effects.banners.value + G.companiesOverBanners, G.maxCompanies)
+  return battle?.limit !== undefined ? Math.min(limit, battle.limit) : limit
+}
+
+/** An allied rival's company fights in one Grand Battle a month (Ch 14, A-157): whether it already has, in `battle`'s month. */
+export function allyUsed(state: CampaignState, battle: GrandBattle, companyId: string): boolean {
+  if (!companyId.startsWith('ally:')) return false
+  const month = monthOf(state, battle.battleDate)
+  return state.grandBattles.some(
+    (b) => b.id !== battle.id && b.setup !== undefined && monthOf(state, b.battleDate) === month && b.setup.units.some((u) => u.id === companyId)
+  )
 }
 
 /** Readiness R = 0.6 + 0.5 × the average Valor of the last 7 days, never below the Sanctum's floor; the Marshal fights at R − 0.1 (A-161). */
@@ -410,7 +425,7 @@ export function prepare(state: CampaignState, battleId: string, today: ISODate =
   return {
     battle,
     companies: rosterDetail(state, { day: battle.battleDate }, effects).map((e) => ({ company: e.company, weary: e.weary })),
-    limit: companyLimit(effects),
+    limit: companyLimit(effects, battle),
     doctrines: effects.doctrines.map((d) => d.id),
     freeHire: doctrineEffects(battle.doctrine).freeHires > 0,
     canFight: today === battle.battleDate && battle.result === undefined,
@@ -429,10 +444,11 @@ export function formationProblem(state: CampaignState, battle: GrandBattle, form
     if (id === FREE_HIRE) {
       if (!freeHire) return 'noFreeHire'
     } else if (!army.has(id)) return 'unknownCompany'
+    else if (allyUsed(state, battle, id)) return 'allyUsed'
   }
   const fielded = ids.filter((id) => id !== FREE_HIRE).length
   if (fielded === 0) return 'empty'
-  if (fielded > companyLimit(effects)) return 'tooMany'
+  if (fielded > companyLimit(effects, battle)) return 'tooMany'
   return null
 }
 
@@ -488,9 +504,9 @@ function mainFoe(battle: GrandBattle): RivalId | 'mythic' {
  * the hardiest ranged company. With Mercenary Contract the free company takes the first empty slot.
  */
 export function marshalFormation(state: CampaignState, battle: GrandBattle, doctrine: string | undefined, effects: Effects = realmEffects(state)): Record<string, string> {
-  const army = roster(state, { day: battle.battleDate }, effects)
+  const army = roster(state, { day: battle.battleDate }, effects).filter((c) => !allyUsed(state, battle, c.id))
   const matchup = CODEX.matchups[mainFoe(battle)]
-  const chosen = [...army].sort((a, b) => b.power * tagMatch(b.tags, matchup) - a.power * tagMatch(a.tags, matchup)).slice(0, companyLimit(effects))
+  const chosen = [...army].sort((a, b) => b.power * tagMatch(b.tags, matchup) - a.power * tagMatch(a.tags, matchup)).slice(0, companyLimit(effects, battle))
   const health = (c: Company): number => c.power * unitMods(c.id, c.items, c.reach).healthMult
   const melee = chosen.filter((c) => c.reach === 'melee').sort((a, b) => health(b) - health(a))
   const ranged = chosen.filter((c) => c.reach === 'ranged').sort((a, b) => b.power - a.power)
@@ -679,8 +695,31 @@ export function autoResolve(state: CampaignState, battleId: string, day: ISODate
   return settleBattle(next, battleId, field, day, emit, true)
 }
 
+/** The first day a Siege may fall: 7 days after the player came back from 14 or more days away (Ch 14 rule 7, A-10). */
+export function siegeNotBefore(state: CampaignState): ISODate | undefined {
+  const back = state.settlement.returnedOn
+  return back ? addDays(back, RULES.defeat.noSiegeAfterReturnDays) : undefined
+}
+
+/** Moves every Siege due before `siegeNotBefore` to that day: the Ultimatum waits (Ch 14 rule 7). */
+export function holdSieges(state: CampaignState, emit: Emit): CampaignState {
+  const notBefore = siegeNotBefore(state)
+  if (!notBefore) return state
+  let next = state
+  for (const b of pendingBattles(state)) {
+    if (b.trigger !== 'siege' || b.battleDate >= notBefore || b.setup) continue
+    const others = { ...next, grandBattles: next.grandBattles.filter((x) => x.id !== b.id) }
+    const battleDate = firstFreeDay(others, notBefore)
+    next = withBattle(next, { ...b, battleDate })
+    for (const r of b.members ?? (b.rival ? [b.rival] : [])) next = patchRival(next, r, { ultimatumUntil: battleDate })
+    emit('grandBattle', { battleId: b.id, trigger: b.trigger, hexId: b.hexId, stage: 'queued', battleDate, ...(b.rival ? { rival: b.rival } : {}) })
+  }
+  return next
+}
+
 /** Fights every battle due on `day` and not yet fought (the `grandBattlesAuto` phase); a hex one takes can raise an Incursion (A-33). */
-export function grandBattlesDue(state: CampaignState, day: ISODate, valorsFor: (battleDate: ISODate) => readonly number[], emit: Emit): CampaignState {
+export function grandBattlesDue(input: CampaignState, day: ISODate, valorsFor: (battleDate: ISODate) => readonly number[], emit: Emit): CampaignState {
+  const state = holdSieges(input, emit)
   let next = state
   for (const b of pendingBattles(state)) {
     if (b.battleDate <= day) next = autoResolve(next, b.id, day, valorsFor(b.battleDate), emit)
@@ -707,21 +746,16 @@ export interface GrandOutcomeHooks {
   event(state: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome }
 }
 
-/** Scales a rival's companies by `mult` (an army loss or gain shrinks or grows every company alike, A-153). */
-function scaleArmy(state: CampaignState, rival: RivalId, mult: number): CampaignState {
-  const companies = state.rivals[rival].companies.map((c) => ({ ...c, power: c.power * mult }))
-  return patchRival(state, rival, { companies })
-}
-
 function retryFrom(day: ISODate, days: number): ISODate {
   return addDays(day, days)
 }
 
-function postSpoils(state: CampaignState, day: ISODate, amount: number, source: string): CampaignState {
+export function postSpoils(state: CampaignState, day: ISODate, amount: number, source: string): CampaignState {
   return { ...state, purse: post(state.purse, { date: day, kind: 'spoils', amount, source }) }
 }
 
-function postTribute(state: CampaignState, day: ISODate, perRing: number, hex: HexState, source: string): { state: CampaignState; amount: number } {
+/** Tribute of `perRing` × the hex's ring, with the realm's tribute multiplier (Grace II, Oathguard; A-165). */
+export function postTribute(state: CampaignState, day: ISODate, perRing: number, hex: HexState, source: string): { state: CampaignState; amount: number } {
   const amount = perRing * hex.ring * realmEffects(state).tribute.value
   return { state: { ...state, purse: payTribute(state.purse, day, amount, source) }, amount: roundPosting(amount) }
 }
@@ -752,8 +786,7 @@ function loseHex(state: CampaignState, hexId: string, rival: RivalId, day: ISODa
   if (!hex || hex.owner !== 'player') return state
   if (hex.ring <= RULES.land.protectedThroughRing) {
     outcome.hexScorched = hex.id
-    const until = addDays(day, RULES.combat.scorchedDays)
-    return replaceHex(state, { ...hex, status: 'scorched', statusUntil: hex.statusUntil && hex.statusUntil > until ? hex.statusUntil : until })
+    return replaceHex(state, scorch(hex, day))
   }
   emit('hexTransfer', { hexId: hex.id, from: 'player', to: rival, how: 'conquest' })
   outcome.hexLost = hex.id

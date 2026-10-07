@@ -38,11 +38,11 @@ import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
-import { borderHexesOf, claimableBy, hexIndex, nearestTo, touches } from './map'
+import { borderHexesOf, claimableBy, hexDistance, hexIndex, nearestTo, touches } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
-import { adjustRespect, heldHex, inCoalition, openDayOf, toPlayer, toRival } from './state'
+import { adjustRespect, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival } from './state'
 import {
   RIVAL_IDS,
   type CampaignState,
@@ -112,6 +112,8 @@ export interface CombatHooks {
   tidingsHidden(state: CampaignState, date: ISODate): boolean
   /** Whether a day's tidings show no strength band or strength (the Archmage's Veil of Fog, T10). */
   bandsHidden(state: CampaignState, date: ISODate): boolean
+  /** How far from its land a rival's conquest attempt may reach: 1 (touching), 2 under the Deep Call (T12). */
+  conquestReach(state: CampaignState, rival: RivalId, date: ISODate): number
 }
 
 export const COMBAT_HOOKS: CombatHooks = {
@@ -119,7 +121,8 @@ export const COMBAT_HOOKS: CombatHooks = {
   threatStrength: (_state, _threat, strength) => strength,
   raiderWeight: (_state, _rival, _date, weight) => weight,
   tidingsHidden: () => false,
-  bandsHidden: () => false
+  bandsHidden: () => false,
+  conquestReach: () => 1
 }
 
 // ── Reading the state ────────────────────────────────────────────────────────
@@ -376,7 +379,7 @@ function maxForetold(effects: Effects): number {
  * before closes, and once for the open day. Returns the same state when nothing is new.
  */
 export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): CampaignState {
-  if (state.campaign.status !== 'active' || day < state.campaign.startDate) return state
+  if (!isPlayable(state) || day < state.campaign.startDate) return state
   const lastOfWeek = addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
   const next = scheduleThreats(state, day, lastOfWeek)
   const combat = combatOf(next)
@@ -428,7 +431,7 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
   if (!canConquer(state, a.rival, date)) return refuse('blocked')
   if (!hex || hex.owner !== 'player') return refuse('notPlayerHex')
   if (hex.ring < RULES.combat.conquestMinRing) return refuse('innerRing')
-  if (!touches(hexIndex(state.hexes), hex.id, a.rival)) return refuse('notTouching')
+  if (!withinReach(state, hexIndex(state.hexes), hex.id, a.rival, COMBAT_HOOKS.conquestReach(state, a.rival, date))) return refuse('notTouching')
   if (combat.conquests.some((c) => c.rival === a.rival && c.date === date)) return refuse('onePerDay')
   if (hex.status === 'contested' || combat.conquests.some((c) => c.hexId === hex.id && c.date === date)) return refuse('alreadyUnderAttack')
 
@@ -444,6 +447,13 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
   })
   const attempt: ConquestAttempt = { rival: a.rival, hexId: hex.id, announcedOn: a.announcedOn, date, strength }
   return { ok: true, attempt, state: withCombat(state, { ...combat, conquests: [...combat.conquests, attempt] }) }
+}
+
+/** Whether `hexId` lies within `reach` hexes of `rival`'s land: touching at 1, two away at 2 (the Deep Call). */
+export function withinReach(state: CampaignState, byId: ReturnType<typeof hexIndex>, hexId: string, rival: RivalId, reach: number): boolean {
+  if (touches(byId, hexId, rival)) return true
+  if (reach <= 1) return false
+  return state.hexes.some((h) => h.owner === rival && hexDistance(h.id, hexId) <= reach)
 }
 
 // ── Matching, Army, Defense and Assault (Ch 10, Ch 6) ────────────────────────
@@ -1077,7 +1087,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 }
 
 /** Scorches a hex for 3 days after `day` (a contested hex stays contested). */
-function scorch(hex: HexState, day: ISODate): HexState {
+export function scorch(hex: HexState, day: ISODate): HexState {
   if (hex.status === 'contested') return hex
   const until = addDays(day, RULES.combat.scorchedDays)
   return { ...hex, status: 'scorched', statusUntil: hex.status === 'scorched' && hex.statusUntil && hex.statusUntil > until ? hex.statusUntil : until }

@@ -1,6 +1,6 @@
 # Fiefdom game build: task breakdown
 
-The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. T01 to T10 are done. The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
+The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. T01 to T12 are done. The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
 
 | File | What it is |
 | --- | --- |
@@ -58,7 +58,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `rivals.ts` | Benchmark income, the weekly rival turn, Respect, fronts, Border Campaigns | T10 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state | quality pass, 2026-10-07 |
 | `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
-| `world.ts` | Coalitions, events, resolving rivals, Ascendancy, the Siege, victory | T12 |
+| `world.ts`, `world/events.ts` | Resolving rivals, Accords, coalitions, Ascendancy, the Siege, victory, the Chronicle record; the event deck and its effects | T12 |
 | `view/*.ts` | View models for screens | T14 to T16 |
 | `sim/` (repo root) | Headless simulator and tuning report | T13 |
 
@@ -77,7 +77,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | [T09](tasks/T09-influence-trade-fortify.md) | Influence, trade, fortification and reclaiming | 3 The war | T06 T07 | done |
 | [T10](tasks/T10-rivals.md) | Rivals: benchmark economy, weekly turn, Respect, fronts, Border Campaigns | 3 The war | T08 T09 | done |
 | [T11](tasks/T11-grand-battles-and-armory.md) | Grand Battles and the Armory (engine) | 4 Big systems | T07 T08 T10 | done |
-| [T12](tasks/T12-world-and-endgame.md) | The living world and the endgame: coalitions, events, resolving rivals, Ascendancy, the Siege, victory | 4 Big systems | T11 | todo |
+| [T12](tasks/T12-world-and-endgame.md) | The living world and the endgame: coalitions, events, resolving rivals, Ascendancy, the Siege, victory | 4 Big systems | T11 | done |
 | [T13](tasks/T13-simulator.md) | The simulator and the tuning report (report only) | 4 Big systems | T11 T12 | todo |
 | [T14](tasks/T14-campaign-in-the-app.md) | The campaign in the app: shell, founding, Herald, plumbing, Contract and Chronicle | 5 Screens | T06 | todo |
 | [T15](tasks/T15-war-table-screens.md) | The war table: Realm and Diplomacy screens | 5 Screens | T14 | todo |

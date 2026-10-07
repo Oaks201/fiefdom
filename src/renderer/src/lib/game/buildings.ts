@@ -15,6 +15,7 @@ import { balance, roundPosting, spend } from './economy'
 import { milestoneBroken, realmEffects } from './effects'
 import { dominion, rivalOfRoad } from './map'
 import { refreshRoster } from './roster'
+import { isPlayable } from './state'
 import { RULES, byTier } from './rules'
 import { BUILDING_IDS, type BuildingId, type BuildingTier, type CampaignState, type CastleTier, type CrossingId, type CrossingStage, type ISODate, type RivalId } from './types'
 
@@ -60,7 +61,7 @@ function refuse(reason: Refusal, next: number, cost = 0): Offer {
 
 /** The first failing check, or an open offer. Reputation is checked last, after the requirements. */
 function checked(state: CampaignState, next: number, cost: number, requirements: (Refusal | null)[]): Offer {
-  if (state.campaign.status !== 'active') return refuse({ code: 'campaignOver' }, next, cost)
+  if (!isPlayable(state)) return refuse({ code: 'campaignOver' }, next, cost)
   const failed = requirements.find((r) => r !== null)
   if (failed) return refuse(failed, next, cost)
   const have = balance(state.purse)

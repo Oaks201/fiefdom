@@ -18,6 +18,7 @@
 import { CODEX } from './codex'
 import { realmEffects } from './effects'
 import { RULES, byTier } from './rules'
+import { openDayOf } from './state'
 import {
   BUILDING_IDS,
   type BuildingId,
@@ -125,6 +126,16 @@ function bases(state: CampaignState, options: RosterOptions): Base[] {
 
   for (const rival of options.envoys ?? []) out.push(levy(rival, 'envoy'))
 
+  // The Wandering Order serves while its event holds (T12, Appendix C); without a day, on the open day.
+  const day = options.day ?? openDayOf(state)
+  for (const ev of state.worldEvents) {
+    const held = ev.data as { from?: string; until?: string } | null
+    const entry = CODEX.events.find((x) => x.id === ev.id)
+    const power = entry?.effect.companyPower
+    if (typeof power !== 'number' || !held?.from || !held.until || day < held.from || day > held.until) continue
+    out.push({ id: ev.id, name: entry?.name ?? ev.id, source: 'ally', power, tags: entry?.effect.companyTags as Tag[], reach: 'melee' })
+  }
+
   const hired = options.hired ?? 0
   if (hired > 0) {
     const mh = buildingCompany('merchantHall', state.buildings.merchantHall)
@@ -132,7 +143,9 @@ function bases(state: CampaignState, options: RosterOptions): Base[] {
       out.push({ id: `hired:${i}`, name: mh.name, source: 'hired', power: mh.power, tags: [RULES.rivals.hired.tag], reach: RULES.rivals.hired.reach })
     }
   }
-  return out
+  // A company lent to an envoy is away that day (Appendix C "Envoys").
+  const away = new Set((state.world?.lent ?? []).filter((l) => l.day === day).map((l) => l.companyId))
+  return away.size > 0 ? out.filter((b) => !away.has(b.id)) : out
 }
 
 function isWeary(until: ISODate | undefined, day: ISODate | undefined): boolean {
@@ -196,8 +209,14 @@ export function roster(state: CampaignState, options: RosterOptions = {}, effect
 /**
  * Brings `state.roster` up to date with the realm (new tiers, hybrids, the Crownguard, levies),
  * keeping each company's items and Weary date. Single-battle companies are never stored, and
- * the stored power leaves Weary out.
+ * the stored power leaves Weary out. A company that has left (the Wandering Order's term is over)
+ * hands its items back to the stash.
  */
 export function refreshRoster(state: CampaignState): CampaignState {
-  return { ...state, roster: detail(state, {}, realmEffects(state), false).map((e) => e.company) }
+  const roster = detail(state, {}, realmEffects(state), false).map((e) => e.company)
+  const kept = new Set(roster.map((c) => c.id))
+  const returned = state.roster.filter((c) => !kept.has(c.id)).flatMap((c) => c.items)
+  if (returned.length === 0) return { ...state, roster }
+  const armory = state.armory ?? { wings: [], elites: [], stash: [] }
+  return { ...state, roster, armory: { ...armory, stash: [...armory.stash, ...returned] } }
 }

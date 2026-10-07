@@ -107,6 +107,10 @@ export interface HexState {
   road?: BuildingId
   /** Held by mythic beasts (the Lair Mouths, a Summoning). */
   mythic?: boolean
+  /** T12: a fallen rival's capital or realm hex, left in ruins (Ch 13). */
+  ruins?: boolean
+  /** T12: held by the Pretender's rebels (Appendix C): neutral, with their garrison. */
+  rebels?: boolean
 }
 
 export type CompanySource =
@@ -152,6 +156,8 @@ export interface LandContract {
   respiteDates: ISODate[]
   /** What the purse has paid for it so far (after rounding, adjustments included). */
   paid?: { payout: number; pledgeReturn: number }
+  /** T12: an Accord's rival's Respect when it was sealed (D-01's 60 × f(Q) from 75). */
+  respectAtStart?: number
 }
 
 export interface DailyOrders {
@@ -188,6 +194,8 @@ export interface RivalState {
   ascendancyStreak: number
   ultimatumUntil?: ISODate
   humbledUntil?: ISODate
+  /** T12: the day it was resolved (Ch 14), for the pacing of the next. */
+  resolvedOn?: ISODate
   specialFund: number
   /** −3..+3 per front, from this rival's side. */
   frontTracks: Record<string, number>
@@ -226,8 +234,21 @@ export interface RivalMemory {
 export interface Coalition {
   members: RivalId[]
   trigger: 'firstFall' | 'lastAlliance' | 'risingCrown'
+  /** Its last day; open-ended (the Last Alliance) until it ends, when this is set. */
   until?: ISODate
   warChest: number
+  /** T12: the day it formed. */
+  formedOn?: ISODate
+  /** T12: the First Fall's third rival, who stays apart at Threat +10. */
+  watcher?: RivalId
+  /** T12: its Coalition Offensive, once announced. */
+  offensive?: string
+  /** T12: the campaign week a Goblin member last hired mercenaries for its partner. */
+  mercenaryWeek?: number
+  /** T12: how it ended early, if it did. */
+  broken?: 'offensive' | 'buyout' | 'betrayal' | 'resolved' | 'replaced'
+  /** T12: its end has been posted. */
+  over?: boolean
 }
 
 export type Lane = 'left' | 'center' | 'right'
@@ -366,6 +387,8 @@ export interface GrandBattle {
   revealed?: boolean
   /** T11: fixed when the battle begins. */
   setup?: BattleSetup
+  /** T12: companies a side when an event sets it (Ugrak's Challenge: a duel of two). */
+  limit?: number
   /** T11: the day it was fought and what it did, once settled. */
   foughtOn?: ISODate
   outcome?: GrandOutcome
@@ -602,11 +625,11 @@ export interface GameEventMap {
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
   trophy: { hexId: string; source: 'mythic' | 'royalHunt' | 'mythicHunt'; lair?: string; item?: string }
   /** A hex changed hands. */
-  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
+  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
-  deal: { rival: RivalId; deal: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms'; price: number; hexId?: string; target?: RivalId }
+  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. */
@@ -630,7 +653,7 @@ export interface GameEventMap {
     battleId: string
     trigger: string
     hexId: string
-    stage: 'announced' | 'queued' | 'fought' | 'refused'
+    stage: 'announced' | 'queued' | 'fought' | 'refused' | 'cancelled'
     result?: BattleOutcome
     /** T11: the day it is fought; for a queued battle, the day it moved to. */
     battleDate?: ISODate
@@ -643,12 +666,12 @@ export interface GameEventMap {
   }
   /** A coalition formed, broke or ended (Ch 13). */
   coalition: { members: RivalId[]; trigger: Coalition['trigger']; stage: 'formed' | 'broken' | 'ended' }
-  /** A world event fired (Ch 13). */
-  worldEvent: { eventId: string }
+  /** A world event fired (Ch 13); T12 adds when its effect holds and the plain facts screens need. */
+  worldEvent: { eventId: string; from?: ISODate; until?: ISODate; rival?: RivalId; other?: RivalId; hexIds?: string[]; item?: string; outcome?: string }
   /** The Archmage cast a Ritual. */
   ritual: { ritualId: string; until?: ISODate; hexId?: string; companyId?: string }
-  /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). */
-  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' }
+  /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). `until`: the Siege's day; `members`: a coalition's. */
+  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' | 'humbled'; until?: ISODate; members?: RivalId[]; price?: number }
   /** A rival was resolved (Ch 14). */
   rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied' }
   /** The campaign ended (Ch 14). */
@@ -707,7 +730,8 @@ export interface FrontState {
 export interface Deal {
   id: string
   rival: RivalId
-  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms'
+  /** T12 adds `buyout`: a coalition member paid to walk away (Ch 13). */
+  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout'
   madeOn: ISODate
   until?: ISODate
   hexId?: string
@@ -745,6 +769,42 @@ export interface CampaignState {
   armory?: ArmoryState
   /** The threat schedule, the dawn tidings, conquest attempts and contested hexes (T08). Absent means none yet. */
   combat?: CombatState
+  /** What the living world remembers between week closes (T12). Absent means nothing yet. */
+  world?: WorldState
+}
+
+// ── The living world and the endgame (T12) ───────────────────────────────────
+
+/** A resolution waiting for Ch 14's pacing (no rival before week 12, one per 8 weeks). */
+export interface PendingResolution {
+  rival: RivalId
+  how: 'conquered' | 'abdicated' | 'allied'
+  since: ISODate
+}
+
+/** Something the player may take up for a while: the Goblin buying an abdicated hex, keeping a rising village, an envoy's ask. */
+export type WorldOffer =
+  | { kind: 'goblinBuys'; hexId: string; price: number; until: ISODate }
+  | { kind: 'uprising'; hexId: string; price: number; until: ISODate }
+  | { kind: 'envoys'; rival: RivalId; foe: RivalId; until: ISODate }
+
+export interface WorldState {
+  /** Week closes in a row the player's Power stood at 1.5× the average rival's, before any rival was resolved (the Rising Crown). */
+  risingStreak: number
+  /** How many rivals were resolved when the coalition triggers last looked. */
+  resolvedSeen: number
+  /** Week closes in a row each conquered village of the player's has had loyalty under 20 (the Village Uprising). */
+  lowLoyalty: Record<string, number>
+  /** Rivals (or coalitions, by their first member) whose Power last stood above 1.3× the player's: the Herald warns on crossing. */
+  warned: RivalId[]
+  /** The day the player bent the knee (once a campaign). */
+  bentKnee?: ISODate
+  pending: PendingResolution[]
+  offers: WorldOffer[]
+  /** Companies lent to an envoy, away for a day (Appendix C "Envoys"). */
+  lent?: { companyId: string; day: ISODate }[]
+  /** The Grand Auction's lots, open until `until` (Appendix C). Bids are sealed: screens show only the player's. */
+  auction?: { until: ISODate; lots: { hexId: string; bids: Partial<Record<'player' | RivalId, number>> }[] }
 }
 
 // ── Daily combat (T08) ───────────────────────────────────────────────────────
@@ -833,6 +893,8 @@ export interface SettlementState {
   borderCampaignWeeks: number[]
   /** The last day the app was launched (A-10), as the campaign day open then. */
   lastLaunch?: ISODate
+  /** T12: the day the player last came back from 14 or more days away (A-10): no Siege falls within 7 days of it. */
+  returnedOn?: ISODate
 }
 
 // ── Scores, contracts and the purse (T04) ────────────────────────────────────
@@ -910,6 +972,8 @@ export type EffectSourceRef =
   | { kind: 'grace'; level: GraceLevel }
   /** A Weary company, through `until` (Ch 10, A-123). */
   | { kind: 'weary'; until: ISODate }
+  /** A world event in force (Ch 13), by its codex id (T12). */
+  | { kind: 'event'; id: string }
 
 export interface Contribution {
   from: EffectSourceRef
@@ -993,6 +1057,8 @@ export interface Effects {
   reveals: Record<RevealKind, Reveal>
   /** Village tithe multiplier. */
   titheMult: Sourced
+  /** T12: cuts to tithes, multiplied after `titheMult` (the Hungry Winter; reductions multiply, A-126). */
+  titheCut: Sourced
   /** Cost multipliers by what is bought. */
   costs: Record<CostKind, Sourced>
   /** Spoils multiplier by the kind of foe beaten. */

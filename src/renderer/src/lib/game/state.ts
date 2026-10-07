@@ -4,11 +4,58 @@
  * posting events to the log. They hold no rule of their own beyond what their comments cite; they
  * exist so that combat, land, the rivals and settlement don't each keep a copy.
  */
-import { addDays } from './clock'
+import { addDays, campaignWeek } from './clock'
 import { RULES, base } from './rules'
-import type { CampaignState, Emit, GameEvent, GameEventKind, HexState, ISODate, RivalId, RivalState } from './types'
+import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
+
+/**
+ * Whether the campaign still plays: it settles, buys and fights while active and in the Reign
+ * after a victory (Ch 14); only the Fall is final (T12).
+ */
+export function isPlayable(state: CampaignState): boolean {
+  return state.campaign.status !== 'fallen'
+}
+
+/** The campaign week `day` falls in (A-04). */
+export function weekOn(state: CampaignState, day: ISODate): number {
+  return campaignWeek(state.campaign.startDate, day, state.campaign.weekStartsOn)
+}
+
+/**
+ * Every rival resolved so far, in the order they fell, with the day and campaign week (Ch 14). Read
+ * from each rival's `resolvedOn`, so a resolution counts at once, before its event reaches the log.
+ */
+export function resolutionsOf(state: CampaignState): { rival: RivalId; how: Exclude<RivalState['status'], 'active'>; day: ISODate; week: number }[] {
+  const out: { rival: RivalId; how: Exclude<RivalState['status'], 'active'>; day: ISODate; week: number }[] = []
+  for (const rival of RIVAL_IDS) {
+    const r = state.rivals[rival]
+    if (r.status !== 'active' && r.resolvedOn !== undefined) out.push({ rival, how: r.status, day: r.resolvedOn, week: weekOn(state, r.resolvedOn) })
+  }
+  return out.sort((a, b) => a.day.localeCompare(b.day))
+}
+
+/**
+ * Ch 14 pacing: no rival is resolved before week 12, and at most one in any 8 weeks. Whether a
+ * resolution may happen on `day`.
+ */
+export function resolutionAllowed(state: CampaignState, day: ISODate): boolean {
+  const pacing = RULES.world.resolution
+  const week = weekOn(state, day)
+  if (week < pacing.notBeforeWeek) return false
+  const last = resolutionsOf(state).at(-1)
+  return last === undefined || week - last.week >= pacing.oncePerWeeks
+}
+
+/** What the living world remembers (T12), empty until the first week close that needs it. */
+export function worldOf(state: CampaignState): WorldState {
+  return state.world ?? { risingStreak: 0, resolvedSeen: 0, lowLoyalty: {}, warned: [], pending: [], offers: [] }
+}
+
+export function withWorld(state: CampaignState, patch: Partial<WorldState>): CampaignState {
+  return { ...state, world: { ...worldOf(state), ...patch } }
+}
 
 /** The day the player acts on: the open day, the one after the last settled day. */
 export function openDayOf(state: CampaignState): ISODate {
@@ -39,6 +86,11 @@ export function patchRival(state: CampaignState, rival: RivalId, patch: Partial<
   return { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], ...patch } } }
 }
 
+/** Scales a rival's companies by `mult`: an army loss or gain shrinks or grows every company alike (A-153). */
+export function scaleArmy(state: CampaignState, rival: RivalId, mult: number): CampaignState {
+  return patchRival(state, rival, { companies: state.rivals[rival].companies.map((c) => ({ ...c, power: c.power * mult })) })
+}
+
 /** Changes a rival's Respect toward the player by `change`, clamped to 0–100, and posts the change (Ch 12). */
 export function adjustRespect(state: CampaignState, rival: RivalId, change: number, reason: string, emit: Emit): CampaignState {
   const before = state.rivals[rival].respect
@@ -65,6 +117,7 @@ export function heldHex(hex: HexState): HexState {
 export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexState {
   const out: HexState = { ...heldHex(hex), owner: 'player', garrison: 0, garrisonDamage: 0, fortification: 0 }
   delete out.mythic
+  delete out.rebels
   if (hex.village) {
     const full = RULES.influence.loyalty.neutralPerRing * hex.ring
     out.village = settling
@@ -77,6 +130,7 @@ export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexSta
 /** A hex that passes to a rival: its garrison (A-17), a village's loyalty 30 × ring, no fortification (A-136). */
 export function toRival(hex: HexState, rival: RivalId): HexState {
   const out: HexState = { ...heldHex(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
+  delete out.rebels
   if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
   return out
 }

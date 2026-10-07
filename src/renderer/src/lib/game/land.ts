@@ -32,7 +32,7 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
 import { RULES, base, byTier } from './rules'
-import { EventBuffer, adjustRespect, coalitionPartners, hexOf, openDayOf, replaceHex, toPlayer, toRival } from './state'
+import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
 import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
 // ── Refusals and results ─────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ export function bidCheck(state: CampaignState, hexId: string, bid: number): { ok
   const slots = courtshipSlots(state)
   const open = state.courtships.length
   const no = (reason: LandRefusal): { ok: false; reason: LandRefusal; slots: number; open: number } => ({ ok: false, reason, slots, open })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hexOf(state, hexId)) return no({ code: 'unknownHex' })
   if (!claimableBy(state.hexes, hexId, 'player', 'court')) return no({ code: 'notCourtable' })
   if (state.courtships.some((c) => c.hexId === hexId)) return no({ code: 'alreadyCourting' })
@@ -342,6 +342,8 @@ export type DealRefusalCode =
   | 'noFront'
   /** The target is in a coalition with the rival. */
   | 'targetAllied'
+  /** A buy-out needs the rival in a coalition standing against the player (T12). */
+  | 'noCoalition'
   | 'reputation'
 
 export interface DealRefusal {
@@ -452,7 +454,7 @@ function frontBetween(state: CampaignState, a: RivalId, b: RivalId): FrontId | u
 /** The first failing check (requirements before the price), or an allowed offer. */
 function judged(state: CampaignState, offer: Omit<DealOffer, 'allowed' | 'reason'>, checks: (DealRefusal | null)[]): DealOffer {
   const standing: DealRefusal[] = []
-  if (state.campaign.status !== 'active') standing.push(dealRefusal('campaignOver'))
+  if (!isPlayable(state)) standing.push(dealRefusal('campaignOver'))
   if (state.rivals[offer.rival].status !== 'active') standing.push(dealRefusal('rivalResolved'))
   const pays = offer.kind !== 'sellHex'
   const money = pays && !affordable(state, offer.price) ? dealRefusal('reputation', { needed: offer.price, have: balance(state.purse) }) : null
@@ -476,6 +478,7 @@ function respectBelow(state: CampaignState, rival: RivalId, needed: number): Dea
  * - Non-aggression pact: Respect 40; not while one already holds.
  * - Call to arms: Respect 60; the target shares a Rim front with the rival and is not in a
  *   coalition with it; not while the rival already answers one.
+ * - Buy-out (T12, Ch 13): 300 to a coalition member at Respect 40 to walk away, breaking it.
  */
 export function offerDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate = openDayOf(state)): DealOffer {
   const r = state.rivals[rival]
@@ -528,6 +531,10 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
         respectBelow(state, rival, th.callToArms)
       ])
     }
+    case 'buyout': {
+      const buyout = RULES.world.coalitions.buyout
+      return judged(state, offer(buyout.cost), [!inCoalition(state, rival, today) ? dealRefusal('noCoalition') : null, respectBelow(state, rival, buyout.minRespect)])
+    }
   }
 }
 
@@ -546,7 +553,8 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
     ...hexDeals('sellHex', sellable),
     offerDeal(state, rival, { kind: 'truce' }, today),
     offerDeal(state, rival, { kind: 'pact' }, today),
-    ...RIVAL_IDS.filter((x) => x !== rival).map((target) => offerDeal(state, rival, { kind: 'callToArms', target }, today))
+    ...RIVAL_IDS.filter((x) => x !== rival).map((target) => offerDeal(state, rival, { kind: 'callToArms', target }, today)),
+    ...(inCoalition(state, rival, today) ? [offerDeal(state, rival, { kind: 'buyout' }, today)] : [])
   ]
 }
 
@@ -615,6 +623,18 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
       if (front.state !== 'war') emit('front', { front: frontId, state: 'war', track: front.track })
       break
     }
+    case 'buyout': {
+      // The member walks away: its coalition ends today (Ch 13).
+      next = {
+        ...next,
+        coalitions: next.coalitions.map((c) => {
+          if (!c.members.includes(rival) || (c.until !== undefined && c.until < today)) return c
+          emit('coalition', { members: [...c.members], trigger: c.trigger, stage: 'broken' })
+          return { ...c, until: today, broken: 'buyout' as const }
+        })
+      }
+      break
+    }
   }
   emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}) })
   next = events.flush({ ...next, deals: [...next.deals, deal] })
@@ -642,7 +662,7 @@ export function fortificationCost(level: number, ring: number, mult = 1): number
 export function fortifyOffer(state: CampaignState, hexId: string): { ok: boolean; reason?: LandRefusal; next: number; cost: number } {
   const hex = hexOf(state, hexId)
   const no = (reason: LandRefusal, next = 0, cost = 0): { ok: false; reason: LandRefusal; next: number; cost: number } => ({ ok: false, reason, next, cost })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hex) return no({ code: 'unknownHex' })
   if (hex.owner !== 'player') return no({ code: 'notPlayerHex' })
   if (!isClaimableKind(hex)) return no({ code: 'notClaimable' })
@@ -679,7 +699,7 @@ export function reclaimOffer(state: CampaignState, hexId: string, today: ISODate
   const lost = lostOn(state, hexId)
   const at = lost ? { lostOn: lost } : {}
   const no = (reason: LandRefusal, cost = 0): { ok: false; reason: LandRefusal; cost: number; lostOn?: ISODate } => ({ ok: false, reason, cost, ...at })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hex) return no({ code: 'unknownHex' })
   if (state.weight.grace < rules.level) return no({ code: 'grace', needed: rules.level, have: state.weight.grace })
   if (!lost || hex.owner === 'player') return no({ code: 'notLost' })

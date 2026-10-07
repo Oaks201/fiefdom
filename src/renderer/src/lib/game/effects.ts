@@ -14,6 +14,7 @@
  */
 import { CODEX } from './codex'
 import { RULES, byTier } from './rules'
+import { openDayOf } from './state'
 import {
   BUILDING_IDS,
   COST_KINDS,
@@ -167,6 +168,7 @@ export function realmEffects(state: CampaignState): Effects {
     foretell: { threats: sum(), raids: sum(), raidsOnRoad: {}, grandBattles: sum() },
     reveals: Object.fromEntries(REVEAL_KINDS.map((k) => [k, { whom: 'none', sources: [] } as Reveal])) as Record<RevealKind, Reveal>,
     titheMult: sum([{ from: { kind: 'base' }, value: 1 }]),
+    titheCut: product(),
     costs: Object.fromEntries(COST_KINDS.map((k) => [k, product()])) as Record<CostKind, Sourced>,
     spoils: Object.fromEntries(FOES.map((f) => [f, product()])) as Record<Foe, Sourced>,
     tribute: product(),
@@ -250,6 +252,15 @@ export function realmEffects(state: CampaignState): Effects {
 
   // Perks, Wings and realm-wide items.
   for (const g of realmGrants(state)) apply(e, g)
+
+  // World events in force today (T12): the Hungry Winter's tithes.
+  const today = openDayOf(state)
+  for (const ev of state.worldEvents) {
+    const held = ev.data as { from?: string; until?: string } | null
+    if (!held?.from || !held.until || today < held.from || today > held.until) continue
+    const cut = CODEX.events.find((x) => x.id === ev.id)?.effect.titheMult
+    if (typeof cut === 'number') push(e.titheCut, { kind: 'event', id: ev.id }, cut)
+  }
 
   // Orders and Doctrines from what grants them (Appendix C).
   for (const o of CODEX.orders) {
@@ -415,5 +426,7 @@ export function sourceLabel(ref: EffectSourceRef): string {
       return `Grace ${ROMAN[ref.level - 1]}`
     case 'weary':
       return 'Weary'
+    case 'event':
+      return CODEX.events.find((x) => x.id === ref.id)?.name ?? ref.id
   }
 }

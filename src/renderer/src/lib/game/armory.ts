@@ -16,7 +16,7 @@ import { balance, roundPosting, spend } from './economy'
 import { milestoneBroken, realmEffects } from './effects'
 import { RULES } from './rules'
 import { refreshRoster } from './roster'
-import { EventBuffer, openDayOf } from './state'
+import { EventBuffer, isPlayable, openDayOf } from './state'
 import type { ArmoryState, CampaignState, Effects, ISODate, Tag } from './types'
 
 const UNLOCKS = RULES.milestones.unlocks
@@ -76,7 +76,7 @@ function done(next: CampaignState, today: ISODate, cost: number, event: { action
 }
 
 function checkCommon(state: CampaignState, milestone: number): ArmoryRefusal | null {
-  if (state.campaign.status !== 'active') return { code: 'campaignOver' }
+  if (!isPlayable(state)) return { code: 'campaignOver' }
   if (!milestoneBroken(state, milestone)) return { code: 'milestone', index: milestone }
   return null
 }
@@ -135,13 +135,24 @@ export interface ItemOffer {
   cost: number
 }
 
-/** An item's price and whether it can be bought now (Appendix C "Items"). */
+/** The Merchant Caravan's discount on `itemId` on `day` (T12, Appendix C): 0 unless it offers that item then. */
+export function caravanDiscount(state: CampaignState, itemId: string, day: ISODate): number {
+  for (const ev of state.worldEvents) {
+    const held = ev.data as { from?: string; until?: string; item?: string } | null
+    if (ev.id !== 'merchantCaravan' || held?.item !== itemId || !held.from || !held.until || day < held.from || day > held.until) continue
+    const discount = CODEX.events.find((x) => x.id === ev.id)?.effect.discount
+    if (typeof discount === 'number') return discount
+  }
+  return 0
+}
+
+/** An item's price and whether it can be bought now (Appendix C "Items"): the Great Forge and the Merchant Caravan discount it. */
 export function itemOffer(state: CampaignState, itemId: string, effects: Effects = realmEffects(state)): ItemOffer {
   const item = CODEX.items.find((i) => i.id === itemId)
   if (!item) return { ok: false, reason: { code: 'unknown' }, cost: 0 }
   const milestone = rankMilestone(item.rank)
   if (milestone === null || item.cost === null) return { ok: false, reason: { code: 'trophy' }, cost: 0 }
-  const cost = roundPosting(item.cost * effects.costs.items.value)
+  const cost = roundPosting(item.cost * effects.costs.items.value * (1 - caravanDiscount(state, itemId, openDayOf(state))))
   const problem = checkCommon(state, milestone) ?? (isUnique(item.rank) && heldItems(state).includes(itemId) ? { code: 'unique' as const } : null) ?? afford(state, cost)
   return problem ? { ok: false, reason: problem, cost } : { ok: true, cost }
 }
@@ -162,7 +173,7 @@ export function slotsFor(state: CampaignState, companyId: string, effects: Effec
 
 /** Equips an item from the stash on a company within its slots. */
 export function equipItem(state: CampaignState, companyId: string, itemId: string, today: ISODate = openDayOf(state)): ArmoryAction {
-  if (state.campaign.status !== 'active') return no(state, { code: 'campaignOver' })
+  if (!isPlayable(state)) return no(state, { code: 'campaignOver' })
   const fresh = refreshRoster(state)
   const company = fresh.roster.find((c) => c.id === companyId)
   if (!company) return no(state, { code: 'unknownCompany' })
@@ -178,7 +189,7 @@ export function equipItem(state: CampaignState, companyId: string, itemId: strin
 
 /** Takes an item off a company, back to the stash. */
 export function unequipItem(state: CampaignState, companyId: string, itemId: string, today: ISODate = openDayOf(state)): ArmoryAction {
-  if (state.campaign.status !== 'active') return no(state, { code: 'campaignOver' })
+  if (!isPlayable(state)) return no(state, { code: 'campaignOver' })
   const company = state.roster.find((c) => c.id === companyId)
   if (!company) return no(state, { code: 'unknownCompany' })
   const at = company.items.indexOf(itemId)
@@ -193,7 +204,7 @@ export function unequipItem(state: CampaignState, companyId: string, itemId: str
  * carries no more than the usual slots, so no item is left stranded.
  */
 export function setArmorer(state: CampaignState, companyId: string, today: ISODate = openDayOf(state)): ArmoryAction {
-  if (state.campaign.status !== 'active') return no(state, { code: 'campaignOver' })
+  if (!isPlayable(state)) return no(state, { code: 'campaignOver' })
   const effects = realmEffects(state)
   if (effects.extraItemSlots.value <= 0) return no(state, { code: 'noArmorer' })
   if (!refreshRoster(state).roster.some((c) => c.id === companyId)) return no(state, { code: 'unknownCompany' })

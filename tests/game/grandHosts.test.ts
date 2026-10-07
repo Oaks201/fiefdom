@@ -100,17 +100,19 @@ test('Ch 11: warnings are 2, 2, 3 and 2 days (Incursion, Gate, Capital, Mythic H
   assert.deepEqual(['incursion', 'gate', 'capital', 'mythicHunt', 'coalitionOffensive', 'siege'].map((t) => warningDays(t as never, tower)), [3, 3, 4, 3, 4, 15])
 })
 
-test('Ch 11: the Capital only while holding its Gate; one battle per hex at a time', () => {
+test('Ch 11: the Capital only while holding its Gate, and not before Ch 14’s pacing allows a resolution; one battle per hex at a time', () => {
   const state = withArmy(realm(), 'orc', [100])
   const capital = state.hexes.find((h) => h.kind === 'capital' && h.owner === 'orc')!
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
+  const week12 = addDays(START, 7 * 12)
   const c = collector()
-  assert.equal(announceGrandBattle(state, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' }, c.emit).reason, 'gateNotHeld')
+  assert.equal(announceGrandBattle(state, { trigger: 'capital', hexId: capital.id, announcedOn: week12, rival: 'orc' }, c.emit).reason, 'gateNotHeld')
   assert.equal(c.of('grandBattle')[0].stage, 'refused')
   const held = { ...state, hexes: state.hexes.map((h) => (h.id === gate.id ? { ...h, owner: 'player' as const } : h)) }
-  const a = announced(held, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' })
-  assert.equal(addDays(START, 3), a.battle.battleDate)
-  assert.equal(announceGrandBattle(a.state, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' }, c.emit).reason, 'alreadyAnnounced')
+  assert.equal(announceGrandBattle(held, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' }, c.emit).reason, 'pacing', 'no rival is resolved before week 12')
+  const a = announced(held, { trigger: 'capital', hexId: capital.id, announcedOn: week12, rival: 'orc' })
+  assert.equal(addDays(week12, 3), a.battle.battleDate)
+  assert.equal(announceGrandBattle(a.state, { trigger: 'capital', hexId: capital.id, announcedOn: week12, rival: 'orc' }, c.emit).reason, 'alreadyAnnounced')
 })
 
 test('Ch 11: a challenge on a Gate the player borders is announced today', () => {

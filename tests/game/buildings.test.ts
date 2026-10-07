@@ -183,11 +183,13 @@ test('Ch 8 / A-31: Trade Roads makes the next Tier III cost 405; with Guild Char
   assert.equal(castleOffer(withCastle(charters, 1)).cost, 250)
 })
 
-test('Ch 7: a campaign that has ended buys nothing', () => {
+test('Ch 7 / Ch 14: a fallen campaign buys nothing; the Reign after a victory still does', () => {
   const state = withPurse(withDominion(realm(), 'barracks', 8), 500)
+  const fallen = { ...state, campaign: { ...state.campaign, status: 'fallen' as const } }
+  assert.deepEqual(buyTier(fallen, 'barracks', TODAY).reason, { code: 'campaignOver' })
+  assert.deepEqual(buyCastleTier(fallen, TODAY).reason, { code: 'campaignOver' })
   const won = { ...state, campaign: { ...state.campaign, status: 'won' as const } }
-  assert.deepEqual(buyTier(won, 'barracks', TODAY).reason, { code: 'campaignOver' })
-  assert.deepEqual(buyCastleTier(won, TODAY).reason, { code: 'campaignOver' })
+  assert.equal(buyTier(won, 'barracks', TODAY).ok, true)
 })
 
 // ── The roster ───────────────────────────────────────────────────────────────
