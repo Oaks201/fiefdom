@@ -57,7 +57,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `land.ts` | Courtships, trades, fortification, reclaiming | T09 |
 | `rivals.ts` | Benchmark income, the weekly rival turn, Respect, fronts, Border Campaigns | T10 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state | quality pass, 2026-10-07 |
-| `grand.ts`, `armory.ts` | The Grand Battle state machine; items, Wings, Elites, Milestone unlocks | T11 |
+| `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
 | `world.ts` | Coalitions, events, resolving rivals, Ascendancy, the Siege, victory | T12 |
 | `view/*.ts` | View models for screens | T14 to T16 |
 | `sim/` (repo root) | Headless simulator and tuning report | T13 |
@@ -76,7 +76,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | [T08](tasks/T08-daily-combat-and-assault.md) | Daily combat and the daily assault | 3 The war | T06 T07 | done |
 | [T09](tasks/T09-influence-trade-fortify.md) | Influence, trade, fortification and reclaiming | 3 The war | T06 T07 | done |
 | [T10](tasks/T10-rivals.md) | Rivals: benchmark economy, weekly turn, Respect, fronts, Border Campaigns | 3 The war | T08 T09 | done |
-| [T11](tasks/T11-grand-battles-and-armory.md) | Grand Battles and the Armory (engine) | 4 Big systems | T07 T08 T10 | todo |
+| [T11](tasks/T11-grand-battles-and-armory.md) | Grand Battles and the Armory (engine) | 4 Big systems | T07 T08 T10 | done |
 | [T12](tasks/T12-world-and-endgame.md) | The living world and the endgame: coalitions, events, resolving rivals, Ascendancy, the Siege, victory | 4 Big systems | T11 | todo |
 | [T13](tasks/T13-simulator.md) | The simulator and the tuning report (report only) | 4 Big systems | T11 T12 | todo |
 | [T14](tasks/T14-campaign-in-the-app.md) | The campaign in the app: shell, founding, Herald, plumbing, Contract and Chronicle | 5 Screens | T06 | todo |

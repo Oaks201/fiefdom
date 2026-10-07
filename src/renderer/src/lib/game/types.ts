@@ -240,6 +240,20 @@ export interface BattleLogLine {
   to: string
   amount: number
   note?: string
+  /** T11: the hit as dealt, before the target's own multipliers (a Charge, a Brace, Shieldwall); `amount` is what it took. */
+  dealt?: number
+}
+
+/** A slot on the Grand Battle field: a lane and a rank (Ch 11 "Set the formation"). */
+export type SlotKey = `${Lane}:${Rank}`
+
+/** What an Order is aimed at, when it needs a choice: a lane, an enemy company, or an empty slot (T11). */
+export interface OrderTarget {
+  lane?: Lane
+  /** A company's id (an enemy for Bribe, Arcane Ward, Hunter's Mark and Blink Strike). */
+  unit?: string
+  /** An empty own slot (Reserves). */
+  slot?: SlotKey
 }
 
 /** One round of a Grand Battle, enough to replay it (Ch 11 rule 4). T12 extends this. */
@@ -249,11 +263,91 @@ export interface BattleRoundLog {
   order?: string
   swap?: [string, string]
   lines: BattleLogLine[]
+  /** T11: every enemy company's intent this round (a special can differ from its lane's). */
+  unitIntents?: Record<string, Intent>
+  /** T11: the Orders offered this round. */
+  offered?: string[]
+  /** T11: what the Order played was aimed at. */
+  target?: OrderTarget
+  /** T11: every company's health after the round, the routed at 0. */
+  health?: Record<string, number>
+  /** T11: where every company still on the field stands after the round. */
+  slots?: Record<string, SlotKey>
+}
+
+/** What raised a Grand Battle (Ch 11 "What triggers one"; T12 adds the Coalition Offensive, the Siege and events). */
+export type GrandTrigger = 'incursion' | 'gate' | 'capital' | 'mythicHunt' | 'warhost' | 'coalitionOffensive' | 'siege' | 'event'
+
+/** One company on the Grand Battle field as the battle began (T11). */
+export interface FieldUnit {
+  id: string
+  side: 'player' | 'enemy'
+  name: string
+  /** p, fixed for the battle (Weary and items included). */
+  power: number
+  /** Health at the start, H = 4 × p (or the mythic's multiple, A-47) with every health effect. */
+  health: number
+  tags: Tag[]
+  reach: Reach
+  slot: SlotKey
+  /** An enemy's type for matching: its rival, or mythic (A-29). */
+  foe?: RivalId | 'mythic'
+  /** An enemy's codex unit id (host company, commander or mythic). */
+  unit?: string
+  /** A company hired for this battle only (Mercenary Contract, Reserves). */
+  hired?: boolean
+  /** What its items, Elite ability or the Sworn's do on the field, read from the codex when the battle began. */
+  mods?: UnitMods
+}
+
+/** A company's own battle modifiers (T11), resolved from codex effects when the battle begins. */
+export interface UnitMods {
+  /** × on the damage it deals (Stormglass Bolts on a ranged company). */
+  damage?: number
+  /** × on the damage it takes, from one intent or one kind of foe (the Oathsworn, Warding Charms). */
+  taken?: { mult: number; fromIntent?: Intent; against?: Foe }[]
+  /** Its hits also strike the enemy rear in its lane at this share (the Starwardens). */
+  splash?: number
+  /** Its damage ignores the enemy's Brace (the Sappers). */
+  ignoreBrace?: boolean
+  /** Rounds in which it cannot rout (the Sworn: round 1). */
+  noRoutRounds?: number[]
+  /** The share of its starting health it heals at each round's end (the Healer's Satchel). */
+  heal?: number
+  /** The power share it adds to every own company in its lane, itself included (Banner of the Realm). */
+  lanePower?: number
+  /** Mythic specials it shrugs off (a trophy). */
+  immune?: MythicSpecial[]
+  /** A match that replaces its tags' against one kind of foe (Hunter's Nets). */
+  match?: { set: number; against?: Foe }[]
+  /** × on the battle's spoils when it fights (the Gold Cloaks). */
+  spoils?: number
+}
+
+/** What `begin` fixes for the whole battle (T11): replaying from this and the round log rebuilds it exactly. */
+export interface BattleSetup {
+  /** Readiness R for the whole battle, the Marshal's −0.1 and the Herald's Horn included. */
+  readiness: number
+  /** The Marshal fought it (Ch 11 rule 1). */
+  marshal: boolean
+  units: FieldUnit[]
+  /** The Order deck in its seeded order; each round deals the next `offer` (never repeated in a battle). */
+  deck: string[]
+  /** Orders offered a round: 3, 4 with the Leyline Anchor. */
+  offer: number
+  /** The Herald's Horn was sounded (once a month, A-157). */
+  horn?: boolean
+  /** Last Stand: below this share of total health the player's damage is multiplied. */
+  lastStand?: { below: number; mult: number }
+  /** What a company hired by Reserves fields: the Merchant Hall's company (A-19). */
+  hire: { power: number; name: string }
+  /** The stage behind each Crossing Order in the deck (Earthshatter's damage). */
+  orderStages: Record<string, number>
 }
 
 export interface GrandBattle {
   id: string
-  trigger: string
+  trigger: GrandTrigger
   hexId: string
   announcedOn: ISODate
   battleDate: ISODate
@@ -262,6 +356,43 @@ export interface GrandBattle {
   doctrine?: string
   log?: BattleRoundLog[]
   result?: 'rout' | 'victory' | 'defeat'
+  /** T11: the rival whose host it is; for a coalition, its members. */
+  rival?: RivalId
+  members?: RivalId[]
+  /** T11: the power each rival sent, for the Incursion's 40% loss. Hidden: screens never read it. */
+  sent?: Partial<Record<RivalId, number>>
+  /** T11: a Mythic Hunt's quarry (Appendix C), and whether the 8% reveal raised it. */
+  quarry?: string
+  revealed?: boolean
+  /** T11: fixed when the battle begins. */
+  setup?: BattleSetup
+  /** T11: the day it was fought and what it did, once settled. */
+  foughtOn?: ISODate
+  outcome?: GrandOutcome
+  /** T12: an event's id when an event raised it. */
+  eventId?: string
+}
+
+/** What a Grand Battle's result did (Ch 11 "Outcomes"), for the result card. */
+export interface GrandOutcome {
+  spoils?: number
+  tribute?: number
+  reputation?: number
+  respect?: number
+  /** A hex that changed hands: taken by the player, or lost. */
+  hexTaken?: string
+  hexLost?: string
+  /** A hex scorched instead of lost (rings 0 to 2 never pass). */
+  hexScorched?: string
+  trophy?: string
+  /** Companies Weary after routing, through `wearyUntil`. */
+  weary?: string[]
+  wearyUntil?: ISODate
+  /** The share of the rival's army the battle cost or gave it. */
+  armyLoss?: number
+  armyGain?: number
+  /** A retry may be announced from this day (a lost Gate, Capital or Mythic Hunt). */
+  retryFrom?: ISODate
 }
 
 export type PurseEventKind = 'earn' | 'pledge' | 'return' | 'spend' | 'spoils' | 'tribute' | 'tithe' | 'adjust'
@@ -465,11 +596,11 @@ export interface GameEventMap {
     hunt?: number
   }
   /** The player's daily assault (Ch 6). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number; wear?: number }
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
-  /** A trophy earned in daily combat, for T14 to turn into an item (A-131). */
-  trophy: { hexId: string; source: 'mythic' | 'royalHunt'; lair?: string }
+  /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
+  trophy: { hexId: string; source: 'mythic' | 'royalHunt' | 'mythicHunt'; lair?: string; item?: string }
   /** A hex changed hands. */
   hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
@@ -494,8 +625,22 @@ export interface GameEventMap {
   contract: { contractId: string; outcome: 'paid' | 'withdrawn'; score: number; payout: number; pledgeReturn: number }
   /** A Healer check-in fired (Ch 16). */
   healer: { checkIn: string }
-  /** A Grand Battle was announced, queued or fought (Ch 11). */
-  grandBattle: { battleId: string; trigger: string; hexId: string; stage: 'announced' | 'queued' | 'fought'; result?: BattleOutcome }
+  /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */
+  grandBattle: {
+    battleId: string
+    trigger: string
+    hexId: string
+    stage: 'announced' | 'queued' | 'fought' | 'refused'
+    result?: BattleOutcome
+    /** T11: the day it is fought; for a queued battle, the day it moved to. */
+    battleDate?: ISODate
+    rival?: RivalId
+    quarry?: string
+    /** T11: fought by the Marshal at the day's close. */
+    marshal?: boolean
+    /** T11: why a trigger was refused. */
+    reason?: string
+  }
   /** A coalition formed, broke or ended (Ch 13). */
   coalition: { members: RivalId[]; trigger: Coalition['trigger']; stage: 'formed' | 'broken' | 'ended' }
   /** A world event fired (Ch 13). */
@@ -512,6 +657,10 @@ export interface GameEventMap {
   weekClosed: { week: number; income: number }
   /** A ledger correction inside the grace window was taken in (A-02); `adjustment` is what the purse gained. */
   correction: { correctedDay: ISODate; adjustment: number }
+  /** T11: what a broken Milestone opened (Ch 9 unlock table), for the Milestone card. */
+  unlock: { milestone: number; unlocks: string[] }
+  /** T11: an Armory action: an item bought or equipped, a Wing chosen, an Elite recruited or promoted, the Sworn. */
+  armory: { action: 'buy' | 'equip' | 'unequip' | 'wing' | 'recruit' | 'promote' | 'sworn' | 'armorer'; id: string; companyId?: string; cost?: number }
 }
 
 export type GameEventKind = keyof GameEventMap

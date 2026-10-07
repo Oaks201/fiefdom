@@ -93,7 +93,8 @@ export function holdings(r: RivalState): number {
 
 // ── The founding (A-18) ──────────────────────────────────────────────────────
 
-function hostUnits(rival: RivalId): DeepReadonly<HostUnitEntry>[] {
+/** A rival's host companies from its Appendix C list, strongest first (the commander apart). */
+export function hostUnits(rival: RivalId): DeepReadonly<HostUnitEntry>[] {
   const host = CODEX.hosts.find((h) => h.rival === rival)
   if (!host) throw new Error(`The codex has no host for ${rival}`)
   return [...host.companies].sort((a, b) => b.power - a.power)
@@ -110,7 +111,7 @@ function nextCompanyNo(companies: readonly Company[]): number {
 }
 
 /** A company bought from a rival's host list. Host companies carry no tags: they match as their rival's type (Ch 10). */
-function hostCompany(rival: RivalId, unit: DeepReadonly<HostUnitEntry>, n: number): Company {
+export function hostCompany(rival: RivalId, unit: DeepReadonly<HostUnitEntry>, n: number): Company {
   return { id: `${rival}:${unit.id}:${n}`, name: unit.name, source: 'host', power: unit.power, tags: [], reach: unit.reach, items: [] }
 }
 

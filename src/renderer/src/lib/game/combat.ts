@@ -22,8 +22,9 @@
  *   `COMBAT_HOOKS.raiderWeight`. `defenseFor` gives the player's expected defense on a hex.
  *   `armyValue` counts the Goblin's mercenaries; rivals.ts wraps `COMBAT_HOOKS.threatMix` (the
  *   Long Night) and `COMBAT_HOOKS.bandsHidden` (the Veil of Fog).
- * - T12 receives the Gate, capital and Lair Mouth assaults the player ordered as
- *   `GrandBattleRequest`s (settlement puts them in `ctx.hooks.grandBattleRequests`).
+ * - T11 receives the Gate, capital and Lair Mouth assaults the player ordered, and the 8% rare
+ *   creatures revealed on West and East beast dens, as `GrandBattleRequest`s; the combat phase
+ *   announces them at once (grand.ts).
  * - T13 changes the threat mix, threat strength and the Herald's view through `COMBAT_HOOKS`.
  * - Screens read `tidings` and `ordersValidity`, which never show a hidden number.
  *
@@ -31,6 +32,7 @@
  * threat's own date with the labels `threat:type`, `threat:raider`, `threat:target`,
  * `threat:roll` and `conquest:<rival>:roll`.
  */
+import { grantTrophy, heldItems, nextTrophy } from './armory'
 import { CODEX, type Matchup, type MatchupId } from './codex'
 import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
@@ -38,7 +40,7 @@ import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
 import { borderHexesOf, claimableBy, hexIndex, nearestTo, touches } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
-import { pick, roll, weighted } from './rng'
+import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
 import { adjustRespect, heldHex, inCoalition, openDayOf, toPlayer, toRival } from './state'
 import {
@@ -812,12 +814,21 @@ export interface CombatDay {
   emit: Emit
 }
 
-/** An assault order on a hex only a Grand Battle can take, for T12 to raise as a trigger. */
+/** An assault order on a hex only a Grand Battle can take, or a rare creature revealed, for grand.ts to raise as a trigger. */
 export interface GrandBattleRequest {
   hexId: string
   kind: HexKind
   owner: Owner
   day: ISODate
+  /** A rare creature turned at bay on a beast den (Ch 11: 8% of ring 4 to 5 West and East den assaults). */
+  reveal?: boolean
+}
+
+/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, ring 4 or 5, on a lair side (Ch 11). */
+export function isRevealDen(hex: HexState): boolean {
+  const reveal = RULES.grandBattles.mythicReveal
+  const den = (hex.kind === 'road' || hex.kind === 'between') && hex.owner === 'neutral' && !hex.village && !hex.mythic
+  return den && hex.ring >= reveal.minRing && hex.ring <= RULES.land.claimableRings.max && lairSide(hex) !== undefined
 }
 
 export interface CombatOutcome {
@@ -878,6 +889,14 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const falls: ContestedHex[] = []
   let illusions = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.grandIllusion === true)
   let hunts = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.hunt !== undefined)
+  // Trophies granted today (A-156): each unique, so later victories see the earlier ones.
+  const held = heldItems(state)
+  const trophies: string[] = []
+  const trophy = (lair: string | undefined, anyLair: boolean): { item?: string } => {
+    const item = nextTrophy([...held, ...trophies], lair, anyLair)
+    if (item) trophies.push(item)
+    return item ? { item } : {}
+  }
 
   const fee = (c: Company): number => {
     if (c.source === 'hired') return RULES.buildings.merchantHall.hiredBlades.costPerBattle
@@ -931,7 +950,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         const amount = withBonus(effects.royalHunt.reputation, bonus)
         gains.push({ kind: 'spoils', amount, source: `royalHunt:${hex.id}` })
         report.hunt = roundPosting(amount)
-        if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt' })
+        if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt', ...trophy(undefined, true) })
       } else {
         const perRing = outcome === 'rout' ? spoilsRules.routPerRing : spoilsRules.winPerRing
         const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
@@ -942,7 +961,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       if (b.kind === 'mythic') {
         const side = lairSide(hex)
         const lair = side ? CODEX.lairs.find((l) => l.land === side)?.id : undefined
-        emit('trophy', { hexId: hex.id, source: 'mythic', ...(lair ? { lair } : {}) })
+        emit('trophy', { hexId: hex.id, source: 'mythic', ...(lair ? { lair, ...trophy(lair, false) } : {}) })
       }
       if (b.restrike) {
         contested.delete(hex.id)
@@ -996,6 +1015,12 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const wearied = new Set<string>()
   for (const a of validity.assaults) {
     const hex = byId.get(a.target) as HexState
+    if (isRevealDen(hex) && chance(state.campaign.seed, day, `reveal:${hex.id}`, RULES.grandBattles.mythicReveal.chance)) {
+      // A rare creature turns at bay: no assault today, a Mythic Hunt instead (Ch 11).
+      grandBattles.push({ hexId: hex.id, kind: hex.kind, owner: hex.owner, day, reveal: true })
+      emit('assault', { hexId: hex.id, owner: hex.owner, outcome: 'revealed' })
+      continue
+    }
     const { matchup, foe } = garrisonType(hex)
     const pool = army.filter((c) => a.companies.includes(c.id))
     const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
@@ -1033,6 +1058,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   // 4. Spoils, tribute and Respect.
   for (const g of gains) purse = g.kind === 'spoils' ? post(purse, { date: day, ...g }) : payTribute(purse, day, g.amount, g.source)
   for (const r of respect) state = adjustRespect(state, r.rival, r.change, r.reason, emit)
+  for (const item of trophies) state = grantTrophy(state, item)
 
   state = {
     ...state,

@@ -204,6 +204,8 @@ export interface QuarryEntry {
   /** Only an event brings it (the Dragon, the Wild Hunt). */
   eventOnly: boolean
   roster: MythicUnitEntry[]
+  /** The intent each lane shows, by round. The book gives none for quarries (A-158). */
+  intentPattern: Intent[]
   special: MythicSpecial
   specialEffects: Effect[]
 }
@@ -680,6 +682,8 @@ export function validateCodex(codex: Codex = CODEX): string[] {
       positive(`${at} unit ${u.id}`, u.count)
       if (u.healthPerPower !== undefined) positive(`${at} unit ${u.id}`, u.healthPerPower)
     }
+    if (q.intentPattern?.length !== RULES.grandBattles.rounds) fail(at, `needs an intent for each of ${RULES.grandBattles.rounds} rounds`)
+    for (const intent of q.intentPattern ?? []) if (!isOneOf(INTENTS, intent)) fail(at, `unknown intent "${intent}"`)
     effects(at, q.specialEffects, q.roster.map((u) => u.id))
   }
 

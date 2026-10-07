@@ -72,20 +72,64 @@ The battle and Armory screens (T16). Coalitions, the Siege and event battles bey
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] Test 4 (E-03): Knights 21 / 84 in front and Crossbowmen 9 (ranged, Engine) behind them, against an Orc Brute 20 / 80 that Charges, with R = 1.0 and Shieldwall played. The Crossbowmen's hit is 10.8, the Brute ends at **40.25** and the Knights at **69**.
-- [ ] Determinism: the same seed, formation and Orders give the same log hash in three runs, and `replay` reproduces each round's health exactly.
-- [ ] Hosts (A-35): an Orc at AV 100 sends a 60 budget, the Warboss (35) plus Brutes (20); at AV 40 a 24 budget, Brutes only. A week-26 Basilisk has power 90 and health 540.
-- [ ] Spacing: triggers on day 10 and day 12 put the second battle on day 15 or later. Mage Tower IV adds a day to every warning.
-- [ ] Limits: more than banners + 2 companies, or more than 6, is refused. Orders never repeat within a battle; the Leyline Anchor offers 4. Readiness is 1.1 after 7 days of Valor 1.0 and 0.6 after 7 days of 0 (0.7 with the Sanctum). Autoplay uses R − 0.1.
-- [ ] Test 9 (part): an unfought battle auto-resolves at its day's close exactly once. A Warhost raised at a week close is announced and fought even when the next `settle` call comes days later.
-- [ ] Outcomes: an Incursion win cuts the rival's AV by 40% of the host sent, adds 5 Respect and pays 30 × ring; a loss returns the hex. A lost Gate blocks a retry for 14 days. Routed companies are Weary for 3 days and the roster size is unchanged.
-- [ ] Armory gates: each unlock appears at the week close where its Milestone breaks and stays after a weight regain. A rank II item before Milestone 5 is refused; a second item before Milestone 4 is refused; a third needs the Armorer. A second Wing for the same building and wave is refused. An Elite costs 300; rank II needs Milestone 7 and 600.
-- [ ] Item effects: Whetstones (+2) raise the daily Army by 2 × m. Cold Iron Edges lets a Coin-only company strike Archmage conjurations at ×1.5. The Healer's Satchel heals 15% a round, Tower Shields give +20% health, and the Oath-Ring ignores Weary.
-- [ ] Realm effects with sources: the Counting House +25% tithes, Bastions +6 walls, the Siege Park +1 daily assault. Merchant Hall V with the Statue turns a 100 gain into 125 (A-31).
-- [ ] The Bank posts 2% of the purse at a week close, at most 40.
-- [ ] A test walks the codex: every Order, Doctrine, Elite ability, item and mythic special is handled by the interpreter.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] Test 4 (E-03): Knights 21 / 84 in front and Crossbowmen 9 (ranged, Engine) behind them, against an Orc Brute 20 / 80 that Charges, with R = 1.0 and Shieldwall played. The Crossbowmen's hit is 10.8, the Brute ends at **40.25** and the Knights at **69**.
+- [x] Determinism: the same seed, formation and Orders give the same log hash in three runs, and `replay` reproduces each round's health exactly.
+- [x] Hosts (A-35): an Orc at AV 100 sends a 60 budget, the Warboss (35) plus Brutes (20); at AV 40 a 24 budget, Brutes only. A week-26 Basilisk has power 90 and health 540.
+- [x] Spacing: triggers on day 10 and day 12 put the second battle on day 15 or later. Mage Tower IV adds a day to every warning.
+- [x] Limits: more than banners + 2 companies, or more than 6, is refused. Orders never repeat within a battle; the Leyline Anchor offers 4. Readiness is 1.1 after 7 days of Valor 1.0 and 0.6 after 7 days of 0 (0.7 with the Sanctum). Autoplay uses R − 0.1.
+- [x] Test 9 (part): an unfought battle auto-resolves at its day's close exactly once. A Warhost raised at a week close is announced and fought even when the next `settle` call comes days later.
+- [x] Outcomes: an Incursion win cuts the rival's AV by 40% of the host sent, adds 5 Respect and pays 30 × ring; a loss returns the hex. A lost Gate blocks a retry for 14 days. Routed companies are Weary for 3 days and the roster size is unchanged.
+- [x] Armory gates: each unlock appears at the week close where its Milestone breaks and stays after a weight regain. A rank II item before Milestone 5 is refused; a second item before Milestone 4 is refused; a third needs the Armorer. A second Wing for the same building and wave is refused. An Elite costs 300; rank II needs Milestone 7 and 600.
+- [x] Item effects: Whetstones (+2) raise the daily Army by 2 × m. Cold Iron Edges lets a Coin-only company strike Archmage conjurations at ×1.5. The Healer's Satchel heals 15% a round, Tower Shields give +20% health, and the Oath-Ring ignores Weary.
+- [x] Realm effects with sources: the Counting House +25% tithes, Bastions +6 walls, the Siege Park +1 daily assault. Merchant Hall V with the Statue turns a 100 gain into 125 (A-31).
+- [x] The Bank posts 2% of the purse at a week close, at most 40.
+- [x] A test walks the codex: every Order, Doctrine, Elite ability, item and mythic special is handled by the interpreter.
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here: the outcome hooks and `announceGrandBattle` for T12, the battle API and replay format for T16, and the trophy and "once a month" readings.)*
+### Evidence (2026-10-07)
+
+- `npm run typecheck`: clean. `npm test`: 492 tests, 492 pass (59 new in `grand.test.ts`, `grandHosts.test.ts` and `armory.test.ts`). `npm run check:game`: `check:game OK: 27 game files, codex valid, 290 text slots.`
+- Each verification item and its tests:
+  - Test 4: "Test 4 (E-03, D-03): Knights and Crossbowmen against a charging Brute with Shieldwall: hit 10.8, Brute 40.25, Knights 69". The log line keeps the hit as dealt (10.8) and as taken (13.5, the charging Brute's ×1.25).
+  - Determinism: "Ch 11 rule 4: the same seed, formation and Orders give the same log in three runs, and replay rebuilds every round exactly" (a SHA-256 of the log over three runs, with a swap in round 2).
+  - Hosts: "A-35: an Orc at AV 100 sends a 60 budget …", "A-35: passes add one company of each type …", "Ch 11 / A-47: … a week-26 Basilisk has power 90 and health 540".
+  - Spacing: "Ch 11: no two Grand Battles within 5 days: triggers on day 10 and 12 put the second on day 15 or later" (it lands on day 17); "Ch 11: warnings are 2, 2, 3 and 2 days …; Mage Tower IV adds a day to every one".
+  - Limits: "Ch 11: at most banners + 2 companies, never more than 6"; "Ch 11 / Appendix C: 3 Orders a round, never repeated within a battle; the Leyline Anchor offers 4"; "Ch 11: Readiness is 1.1 after 7 days of Valor 1, 0.6 after 7 days of 0, 0.7 with the Sanctum; the Marshal fights at R − 0.1".
+  - Test 9 (part): "Test 9 (part): an unfought battle auto-resolves at its day's close, exactly once"; "Test 9 (part), gap 1: a Warhost raised at a week close is announced, and fought even when the next settle comes days later".
+  - Outcomes: "Ch 11 outcomes: an Incursion won cuts the rival's AV by 40% …", "… an Incursion lost returns the hex …", "… a lost Gate costs 5 × ring tribute and blocks a retry for 14 days …", "Ch 11 rule 2: routed companies are Weary for 3 days and the roster keeps its size", "… a Mythic Hunt won pays 150 and its trophy; a Lair Mouth won seals the lair".
+  - Armory gates: "Ch 9: an unlock appears at the week close where its Milestone breaks, and stays after a weight regain", "Appendix C: items cost their codex price × the Great Forge, gated by rank", "Ch 9: one item slot from Milestone 1, two from Milestone 4; a third needs the Armorer", "Appendix C: Wings at Milestones 2, 5 and 8 …", "Appendix C: an Elite costs 300; rank II needs Milestone 7 and 600 more", "A-21: the Sworn join free …".
+  - Item effects: "Appendix C: Whetstones (+2) raise the daily Army by 2 × m", "… Cold Iron Edges let a Coin-only company strike the Archmage's conjurations at ×1.5", "… Tower Shields give +20% health, the Healer's Satchel heals 15% a round", "Appendix C: the Oath-Ring ignores Weary".
+  - Realm effects: "Appendix C: the Counting House +25% tithes, Bastions +6 walls, the Siege Park +1 daily assault, each with its source"; "A-31: Merchant Hall V with the Statue turns a 100 gain into 125".
+  - The Bank: "Gap 3: the Bank posts 2% of the purse at a week close, at most 40".
+  - The codex walk: "T11: one interpreter handles every Order, Doctrine, Elite ability, the Sworn, item, Wing, host and mythic special" (an unknown kind throws).
+
+### What was built
+
+- **`lib/game/grand/field.ts`** (pure; it never sees `CampaignState`): the field (`LANES`, `SLOTS`, `slotOf`, `laneOf`, `rankOf`), `startField(setup)`, `playRoundOn(field, play)`, `replayField`, `fieldResult`, `shares`, `isOver`, `marshalPlay`, `offeredOn`, `orderNeeds`, `validTargets`, `playProblem`, `plannedIntents`, and `interpret(effect, holder)`, the one interpreter. It is a switch over every `EffectKind`, so a new kind fails to compile and an unknown one throws. The holders are a company (items, an Elite ability, the Sworn's → `UnitMods` and starting health), the battle's start (the Doctrine and `realmEffects().battle` grants such as the Shield Forge), a round (the Order played and its target) and an enemy company in a round (host and quarry specials).
+- **`lib/game/grand/hosts.ts`**: `rivalHost` (A-35), `combinedHost` (coalitions, and a coalition's Siege), `mythicHost` (scaled by 1 + week ÷ 52), `placeHost` (A-159), `hostView` (bands unless `reveals.hostRoster`; never a power otherwise).
+- **`lib/game/grand.ts`**: triggers, the queue, preparation, the battle API, the Marshal and outcomes. **`lib/game/armory.ts`**: unlocks, items, Wings, Elites, the Sworn and trophies.
+- **Settlement:** the combat phase announces Gate, capital and Lair Mouth assaults, the 8% reveal, and Incursions for hexes conquered; the courtships phase raises Incursions for villages courted away; the rival-turn phase announces each Warhost; `grandBattlesAuto` fights every battle due (and raises an Incursion for a hex a battle took); the weekly-income phase posts the Bank's `interest` first, on the purse as the week closes; the weight phase posts an `unlock` event after each `milestone`. `readinessValors(state, day)` in `settle.ts` gives the Valors a battle on `day` reads. `ctx.hooks.grandBattleRequests` and `warhosts` are still filled, for reading only: nothing is lost between `settle` calls any more.
+- **Daily combat:** `isRevealDen` and the reveal in the assault step (label `reveal:<hex>`; the `assault` event's outcome is `revealed`, and the request carries `reveal: true`). Daily mythic victories and the Royal Hunt grant trophies (A-156).
+- **Types:** `SlotKey`, `OrderTarget`, `FieldUnit`, `UnitMods`, `BattleSetup`, `GrandTrigger` and `GrandOutcome` are new. `GrandBattle` gains `rival`, `members`, `sent`, `quarry`, `revealed`, `setup`, `foughtOn`, `outcome` and `eventId`; `BattleRoundLog` gains `unitIntents`, `offered`, `target`, `health` and `slots`; `BattleLogLine` gains `dealt`. Events: `unlock` and `armory` are new; `grandBattle` gains `battleDate`, `rival`, `quarry`, `marshal`, `reason` and the stage `refused`; `trophy` gains `item` and the source `mythicHunt`; `assault` gains the outcome `revealed`.
+- **Codex and rules:** every quarry has an `intentPattern` (A-158), validated like a host's. `RULES.grandBattles.warningDays.warhost` and `RULES.grandBattles.monthWeeks` (A-157) were added. `hostUnits` and `hostCompany` in `rivals.ts` are now exported for the host builder.
+
+### For T12
+
+- **`announceGrandBattle(state, request, emit)`** is the one entry point. A `GrandRequest` takes `trigger`, `hexId` and `announcedOn` (the open day the player first sees it: the day after a close, or today for an action), and as needed `rival`, `members`, `share`, a prebuilt `enemy`, `warningDays` (event battles) and `eventId`. It fixes the host now, puts the battle on the first day at least 5 days from every other, and posts `announced` (and `queued` if it moved) or `refused`. The Coalition Offensive and the Siege already build their hosts (50% of each member's AV; 70%, each member of a coalition sending 70%).
+- **Outcome hooks:** `GRAND_HOOKS.capital`, `.coalitionOffensive`, `.siege` and `.event` receive `(state, battle, { day, won, result, spoilsMult, emit })` and return `{ state, outcome }`. Defaults: a lost Capital raises the rival's AV 10% and sets `retryFrom` (+14 days); a won Capital does nothing (conquer the rival there); a won Offensive pays 40 × ring (break the coalition 2 weeks early there; on a loss pass the outermost border hex); the Siege and events do nothing. Weary companies, Reserves fees and the `fought` event are handled around the hook.
+- **"Once a month"** is `monthOf(state, day)`, a block of `RULES.grandBattles.monthWeeks` campaign weeks (A-157), for the Scrying Pool and the ally's battle.
+- The Siege counts the walls in full as health on the center front (A-164); `begin` does this for any `siege` battle.
+
+### For T16
+
+- **API** (`grand.ts`): `pendingBattles`, `prepare(state, id, today, valors)` (companies with their Weary flag, the limit, the Doctrines on offer, `freeHire`, `canFight`, Readiness), `setFormation(state, id, slot → company id, today)` (refusals `formation:<problem>`: `tooMany`, `duplicate`, `unknownCompany`, `empty`, `noFreeHire`, `badSlot`), `setDoctrine`, `begin(state, id, { today, valors })`, `offeredOrders`, `playRound(state, id, { order, target, swap }, today)`, `result(battle)`, `replay(battle)`, `hostView(state, battle)`, `challenge(state, hexId, today)` (a direct challenge of a bordered Gate, capital or Lair Mouth) and `FREE_HIRE` (Mercenary Contract's slot value). `orderNeeds(orderId)` says whether an Order needs a lane, an enemy company or an empty slot; `validTargets(field, orderId)` lists the choices; `fieldOf(battle)` gives the live field.
+- **Replay format:** a battle is its `setup` plus its `log`. Each `BattleRoundLog` has the lanes' shown `intents`, every enemy's `unitIntents`, the `offered` Orders, the `order` and `target` played, the `swap` (two slot keys), every damage line (`from`, `to`, `amount`, `note`: `spell`, `volley`, `splash`, `barrage`, `poison` or an Order id, and `dealt` when the target's own multipliers changed the hit), and every company's `health` and `slots` after the round. `replay(battle).rounds` rebuilds them from `setup` and the plays, so the health matches the stored log exactly.
+- Later rounds' intents (Foresight, Foreknowledge): `plannedIntents(field, round)` in `grand/field.ts`; `orderMods(id, target, 0).reveal` and `startMods().revealAll` say how far a play or a Doctrine reveals.
+- **Armory** (`armory.ts`): `milestoneUnlocks(index)` (keys of `RULES.milestones.unlocks`, Wing waves as `wings:<n>`), `rankMilestone(rank)` (the Milestone number a locked rank shows), `itemOffer`, `buyItem`, `equipItem`, `unequipItem`, `slotsFor`, `setArmorer`, `chooseWing`, `recruitElite`, `promoteElite`, `swearSworn` and `heldItems`. Each returns `{ ok, reason?, state, cost }` with a refusal code and posts an `armory` event.
+- No text slots were added for Grand Battle results; the Herald already has `herald.grandBattle.warning` and `.queued`.
+
+### Readings raised
+
+A-156 (trophies), A-157 ("once a month"), A-158 (quarry intent patterns), A-159 (where a host stands), A-160 (movement without dice), A-161 (Readiness's 7 days), A-162 (Orders), A-163 (the Marshal), A-164 (the Siege's walls), A-165 (outcomes) and A-166 (Mythic Hunts and the realm's mythic reductions).

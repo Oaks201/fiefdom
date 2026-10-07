@@ -10,12 +10,14 @@
  * entry in `DAY_PHASES` or `WEEK_PHASES` with their own `Phase`; they never reorder the lists.
  */
 import type { Ledger } from '../types'
+import { milestoneUnlocks } from './armory'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
 import { borderCampaignWeeks } from './campaign'
 import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
+import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions } from './grand'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
@@ -57,9 +59,9 @@ export type WeekPhaseName = (typeof WEEK_PHASE_NAMES)[number]
 export interface PhaseHooks {
   /** Accords paid this call (D-01); T13 turns each into its Respect gain. */
   accordsPaid: AccordPaid[]
-  /** Assaults ordered on a Gate, capital or Lair Mouth this call (T08); T12 raises them as triggers. */
+  /** Assaults ordered on a Gate, capital or Lair Mouth this call, and rare creatures revealed (T08); the combat phase has already announced each (T11). */
   grandBattleRequests: GrandBattleRequest[]
-  /** The Orc's Warhosts launched this call (T10); T12 raises each as an Incursion-style Grand Battle. */
+  /** The Orc's Warhosts launched this call (T10); the rival-turn phase has already announced each (T11). */
   warhosts: WarhostRequest[]
 }
 
@@ -242,12 +244,34 @@ export function valorOn(state: CampaignState, day: ISODate, weekStartsOn: WeekSt
   return valor(toDayRecord(snapshot), records(state, weekOf(day, weekStartsOn), day), charterOn(state, day).stepPool)
 }
 
-/** Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). */
+/**
+ * The Valor of the 7 days before `day`, the campaign's own days only: what a Grand Battle fought
+ * on `day` reads its Readiness from (Ch 11, A-161). The battle day's own Valor isn't known until it closes.
+ */
+export function readinessValors(state: CampaignState, day: ISODate): number[] {
+  const { weekStartsOn } = state.campaign
+  const out: number[] = []
+  for (let d = addDays(day, -RULES.grandBattles.readiness.valorDays); d < day; d = addDays(d, 1)) {
+    if (d >= state.campaign.startDate && snapshotOf(state, d)) out.push(valorOn(state, d, weekStartsOn))
+  }
+  return out
+}
+
+/**
+ * Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). Then
+ * the Grand Battles the day raised (T11): assaults on Gates, capitals and Lair Mouths, rare
+ * creatures revealed, and Incursions for hexes conquered, each announced for the next dawn.
+ */
 const combatPhase: Phase = (state, ctx) => {
   const result = settleCombat(state, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
   ctx.hooks.grandBattleRequests.push(...result.grandBattles)
-  return result.state
+  const dawnAfter = addDays(ctx.day, 1)
+  const announced = announceRequests(result.state, result.grandBattles, dawnAfter, ctx.emit)
+  return raiseIncursions(state, announced, dawnAfter, ctx.emit)
 }
+
+/** Every Grand Battle due today and not fought by the close: the Marshal fights it (Ch 11 rule 1, T11). */
+const grandBattlesAuto: Phase = (state, ctx) => grandBattlesDue(state, ctx.day, (battleDate) => readinessValors(state, battleDate), ctx.emit)
 
 /** Pays the running contract on its last day; the queued one takes the slot at the next dawn. */
 const contractEnd: Phase = (state, ctx) => {
@@ -262,8 +286,16 @@ const contractEnd: Phase = (state, ctx) => {
 
 // ── Week phases ──────────────────────────────────────────────────────────────
 
-/** Step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
-const weeklyIncomePhase: Phase = (state, ctx) => {
+/** The Bank's interest (The Bank Wing): 2% of the purse at the week close, at most 40 (T11). */
+function interest(state: CampaignState, day: ISODate): CampaignState {
+  const bank = realmEffects(state).interest
+  const amount = Math.min(bank.cap, bank.rate * balance(state.purse))
+  return amount > 0 ? { ...state, purse: post(state.purse, { date: day, kind: 'earn', amount, source: 'interest' }) } : state
+}
+
+/** The Bank's interest on the purse as the week closes, then step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
+const weeklyIncomePhase: Phase = (input, ctx) => {
+  const state = interest(input, ctx.day)
   const { lines, days } = weekIncome(state, ctx.day, ctx.weekStartsOn)
   const villages = state.hexes
     .filter((h) => h.owner === 'player' && h.village)
@@ -288,7 +320,9 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
  */
 const courtshipsPhase: Phase = (state, ctx) => {
   const week = { day: ctx.day, realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit }
-  return recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
+  const resolved = recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
+  // Villages courted away can raise an Incursion (A-33, T11).
+  return raiseIncursions(state, resolved, addDays(ctx.day, 1), ctx.emit)
 }
 
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
@@ -301,7 +335,10 @@ const weightPhase: Phase = (state, ctx) => {
     qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
     realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)
   })
-  for (const m of result.broken) ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
+  for (const m of result.broken) {
+    ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
+    ctx.emit('unlock', { milestone: m.index, unlocks: milestoneUnlocks(m.index) })
+  }
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
   return { ...state, weight: result.weight }
@@ -323,11 +360,13 @@ function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
   }
 }
 
-/** Each active rival's weekly turn (Ch 12 steps 1 to 8); the Orc's Warhosts go to T12 (T10). */
+/** Each active rival's weekly turn (Ch 12 steps 1 to 8); the Orc's Warhosts are announced at once, Incursion-style (T10, T11, A-151). */
 const rivalTurnPhase: Phase = (state, ctx) => {
   const result = rivalTurn(state, rivalWeek(state, ctx))
   ctx.hooks.warhosts.push(...result.warhosts)
-  return result.state
+  let next = result.state
+  for (const w of result.warhosts) next = announceGrandBattle(next, { trigger: 'warhost', hexId: w.hexId, rival: w.rival, announcedOn: addDays(ctx.day, 1) }, ctx.emit).state
+  return next
 }
 
 /** The week's skirmishes on the Rim fronts at War, war losses, and Peace pulling tracks to 0 (T10). */
@@ -347,13 +386,13 @@ const resetAndSchedule: Phase = (state, ctx) => {
   return scheduleThreats(reset, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
 }
 
-/** The day phases. Later tasks replace their entry (T08 `combat`, T12 `grandBattlesAuto`). */
+/** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
   snapshotInputs,
   contractsAndDaily,
   combat: combatPhase, // T08
-  grandBattlesAuto: noop, // T12
+  grandBattlesAuto, // T11
   expireTimers,
   contractEnd
 }

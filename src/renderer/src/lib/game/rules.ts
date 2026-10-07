@@ -353,7 +353,8 @@ const RULES_TABLE = {
     routShareRatio: 2,
     wearyDaysAfterRout: 3,
     retryDays: { mythicHunt: 7, gate: 14, capital: 14 },
-    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14 },
+    /** The Orc's Warhost is Incursion-style (T10, A-151), so it warns like one. */
+    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14, warhost: 2 },
     /** 8% of assaults on ring 4 to 5 beast hexes in the West or East reveal a rare creature. */
     mythicReveal: { chance: 0.08, minRing: 4 },
     /** Mythic Hunt rosters scale by 1 + week / 52. */
@@ -367,7 +368,9 @@ const RULES_TABLE = {
       mythicHuntWin: { reputation: 150 },
       mythicHuntLoss: { tributePerRing: 5 },
       coalitionWin: { spoilsPerRing: 40, endsEarlyWeeks: 2 }
-    }
+    },
+    /** "Once a month" (the Herald's Horn, the Scrying Pool, an ally's battle) is once per block of 4 campaign weeks. */
+    monthWeeks: 4 // TUNE (A-157)
   },
 
   rivals: {
