@@ -4,7 +4,9 @@
  */
 import { create } from 'zustand'
 import { CampaignError } from '../lib/game/errors'
+import { settle, type SettleResult, type SettleSummary } from '../lib/game/settle'
 import type { CampaignState } from '../lib/game/types'
+import type { Ledger } from '../lib/types'
 import { loadCampaignText, saveCampaignText, saveCampaignTextSync } from './persistence'
 import { toast } from './toasts'
 
@@ -20,6 +22,16 @@ interface CampaignStore {
    * campaign there is nothing to apply it to.
    */
   apply(op: (campaign: CampaignState) => CampaignState): boolean
+  /** Sets a newly founded campaign (from `foundCampaign`) and saves it. */
+  found(campaign: CampaignState): void
+  /**
+   * Settles every closed day up to `now` against the ledger and saves once (T06). Returns the
+   * result, or null with no campaign. A launch records the launch date (A-10).
+   */
+  settleNow(ledger: Ledger, now: Date, options?: { launch?: boolean }): SettleResult | null
+  /** The last settlement's summary when it calls for the Homecoming (A-45); the screen is T16's. */
+  homecoming: SettleSummary | null
+  dismissHomecoming(): void
 }
 
 export const useCampaign = create<CampaignStore>((set, get) => ({
@@ -56,6 +68,28 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
       scheduleSave(next)
     }
     return true
+  },
+
+  found(campaign) {
+    set({ campaign, status: 'ready', error: null })
+    scheduleSave(campaign)
+  },
+
+  settleNow(ledger, now, options) {
+    const { campaign, status } = get()
+    if (status !== 'ready' || campaign === null) return null
+    const result = settle(campaign, ledger, now, options)
+    if (result.state !== campaign) {
+      set({ campaign: result.state })
+      scheduleSave(result.state)
+    }
+    if (result.summary.homecoming) set({ homecoming: result.summary })
+    return result
+  },
+
+  homecoming: null,
+  dismissHomecoming() {
+    set({ homecoming: null })
   }
 }))
 

@@ -590,7 +590,18 @@ const RULES_TABLE = {
   },
 
   /** Weight rules compute in lb (A-05); BMI uses kg and m. */
-  units: { lbPerKg: 2.2046226218, cmPerM: 100 }
+  units: { lbPerKg: 2.2046226218, cmPerM: 100 },
+
+  /** T06: founding and the settlement engine. */
+  settlement: {
+    /** The Border Campaign schedule is fixed this many weeks ahead and extended as weeks pass. */
+    borderScheduleAheadWeeks: 104,
+    /**
+     * Founding snapshots this many days before the start, so the weight trend (28-day too-fast
+     * window), the Healer (21 days) and the burned bootstrap (14 days) can look back from week 1.
+     */
+    preludeDays: 28
+  }
 }
 
 export const RULES = deepFreeze(RULES_TABLE)

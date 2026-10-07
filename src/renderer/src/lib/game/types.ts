@@ -58,6 +58,8 @@ export interface Campaign {
   status: 'active' | 'won' | 'fallen'
   /** The Healer's Dispensation (Ch 9 rule 7); on unless this is false. */
   dispensation?: boolean
+  /** The week start fixed at founding (`settings.weekStartsOn` then). Settlement reads this, not the ledger's current setting. */
+  weekStartsOn?: WeekStartsOn
 }
 
 export interface Charter {
@@ -110,6 +112,8 @@ export type CompanySource =
   | 'ally'
   | 'hired'
   | 'sworn'
+  /** A rival's company, bought from its host list (Appendix C). */
+  | 'host'
 
 export interface Company {
   id: string
@@ -439,6 +443,10 @@ export interface GameEventMap {
   rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied' }
   /** The campaign ended (Ch 14). */
   campaignEnd: { outcome: 'won' | 'fallen' }
+  /** A campaign week closed (T06): its number and the behavior income it paid (tithes not included). */
+  weekClosed: { week: number; income: number }
+  /** A ledger correction inside the grace window was taken in (A-02); `adjustment` is what the purse gained. */
+  correction: { correctedDay: ISODate; adjustment: number }
 }
 
 export type GameEventKind = keyof GameEventMap
@@ -514,6 +522,43 @@ export interface CampaignState {
   log: GameEvent[]
   /** The last campaign day settled, and the campaign week it fell in. */
   settledThrough: { day: ISODate; week: number }
+  /** What settlement keeps for itself (T06). */
+  settlement: SettlementState
+}
+
+// ── Settlement (T06) ─────────────────────────────────────────────────────────
+
+/**
+ * One ledger day's inputs as settlement read them (A-02). Scores and income are computed from
+ * these, never from the ledger, so a ledger edit outside the grace window changes nothing.
+ */
+export interface DaySnapshot {
+  date: ISODate
+  steps?: number
+  /** kcal logged; undefined means no food was logged. */
+  eaten?: number
+  dutiesKept: number
+  dutiesSworn: number
+  /** The day's weigh-in, converted to lb. */
+  weightLb?: number
+  /** Fitbit's total calories burned (A-06). */
+  burned?: number
+  /** The perfect-day streak ending on this day. */
+  streak: number
+  /** What the purse paid for this day's behavior, after rounding: daily, and weekly on a week's last day. */
+  paid?: { daily: number; weekly?: number }
+}
+
+export interface SettlementState {
+  /**
+   * Every settled day's inputs, oldest first, plus the days just before the start that the
+   * weight and Healer windows look back over (snapshotted at founding).
+   */
+  snapshots: DaySnapshot[]
+  /** The hidden Border Campaign weeks (Ch 12), fixed at founding. Never shown. */
+  borderCampaignWeeks: number[]
+  /** The last day the app was launched (A-10), as the campaign day open then. */
+  lastLaunch?: ISODate
 }
 
 // ── Scores, contracts and the purse (T04) ────────────────────────────────────

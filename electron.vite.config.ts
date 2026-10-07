@@ -15,6 +15,8 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    // FIEFDOM_DEV_NOW is dev time travel (A-09); campaignNow() ignores it outside `import.meta.env.DEV`.
+    envPrefix: ['RENDERER_VITE_', 'VITE_', 'FIEFDOM_DEV_'],
     build: {
       minify: true,
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } }
