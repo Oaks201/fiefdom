@@ -26,7 +26,7 @@ Prove the whole game works end to end on placeholders before the owner adds art 
 5. **Performance:** settling 365 missed days takes under 2 s on the development PC (a passive campaign took about 0.2 s on 2026-10-07; re-measure with a playing one). Map hover stays under 16 ms. `campaign.json` stays under 5 MB after 70 weeks (a passive campaign was about 0.46 MB); if it doesn't, compact daily snapshots older than the grace window and the windows the weight rules look back over.
 6. **Data safety:** delete or corrupt `campaign.json` and confirm the newest backup loads; confirm the backups rotate (the newest 30 kept).
 7. **Release:** update `README.md` (the new pages, a short "How the game works" pointing to `docs/game/`, the data files), bump the app version, run `npm run dist`, and install the result on the development PC.
-8. **The handover list,** `docs/game/handover.md`: every open "Raised by agents" entry in `decisions.md`, every owner decision still owed (including A-108's village layout, the reason T03's Test 7 box is unticked), every simulator proposal awaiting a decision, and what A1 to A4 need.
+8. **The handover list,** `docs/game/handover.md`: every open "Raised by agents" entry in `decisions.md`, every owner decision still owed, every simulator proposal awaiting a decision, and what A1 to A4 need.
 
 ## Out of scope
 
