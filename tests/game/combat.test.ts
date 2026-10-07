@@ -358,7 +358,7 @@ test('Hidden stays hidden: tidings band a threat’s strength, and show the numb
   const plain = tidings(state, START)
   assert.equal(plain.threats.length, 1)
   assert.equal(plain.threats[0].strength, undefined)
-  assert.ok(['weaker', 'matched', 'stronger', 'overwhelming'].includes(plain.threats[0].band))
+  assert.ok(['weaker', 'matched', 'stronger', 'overwhelming'].includes(plain.threats[0].band ?? ''))
   assert.equal(JSON.stringify(plain).includes(String(combatOf(state).tidings[0].strength)), false)
   const tower = withBuildings(state, { mageTower: 4 })
   near(tidings(tower, START).threats[0].strength ?? 0, combatOf(state).tidings[0].strength, 1e-9)

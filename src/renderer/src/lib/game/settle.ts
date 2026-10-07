@@ -16,8 +16,9 @@ import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './
 import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
-import { recoverLoyalty, resolveCourtships } from './land'
+import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
+import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { closeWeightWeek, toLb, weekMomentum } from './weight'
@@ -69,6 +70,8 @@ export interface PhaseHooks {
   accordsPaid: AccordPaid[]
   /** Assaults ordered on a Gate, capital or Lair Mouth this call (T08); T12 raises them as triggers. */
   grandBattleRequests: GrandBattleRequest[]
+  /** The Orc's Warhosts launched this call (T10); T12 raises each as an Incursion-style Grand Battle. */
+  warhosts: WarhostRequest[]
 }
 
 export interface PhaseContext {
@@ -287,10 +290,15 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
   return putSnapshot({ ...state, purse }, { ...snapshot, paid: { daily: snapshot.paid?.daily ?? 0, weekly: income } })
 }
 
-/** Courtships resolve at the week's Realm Consistency (Ch 6), then the player's villages recover loyalty (A-22) (T09). */
+/**
+ * Courtships resolve at the week's Realm Consistency (Ch 6): rival bids join the player's and rivals
+ * counter-bid (T10), the player's courtships resolve, then the rival bids nobody else made (T10).
+ * Then the player's villages recover loyalty (A-22) (T09).
+ */
 const courtshipsPhase: Phase = (state, ctx) => {
   const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
-  return recoverLoyalty(resolveCourtships(state, { day: ctx.day, realmConsistency: rc, emit: ctx.emit }))
+  const week = { day: ctx.day, realmConsistency: rc, emit: ctx.emit }
+  return recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
 }
 
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
@@ -310,6 +318,35 @@ const weightPhase: Phase = (state, ctx) => {
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
   return { ...state, weight: result.weight }
 }
+
+/** The week as the rivals see it (T10): its days, pillars and average Valor. */
+function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
+  const from = weekOf(ctx.day, ctx.weekStartsOn)
+  const days = records(state, from, ctx.day)
+  const valors = days.map((d) => valorOn(state, d.date, ctx.weekStartsOn))
+  return {
+    day: ctx.day,
+    week: ctx.week,
+    weekStartsOn: ctx.weekStartsOn,
+    days: days.length,
+    valor: valors.length > 0 ? valors.reduce((s, v) => s + v, 0) / valors.length : 0,
+    habits: { days, pillars: weekPillars(days, currentTerms(state, ctx.day)) },
+    emit: ctx.emit
+  }
+}
+
+/** Each active rival's weekly turn (Ch 12 steps 1 to 8); the Orc's Warhosts go to T12 (T10). */
+const rivalTurnPhase: Phase = (state, ctx) => {
+  const result = rivalTurn(state, rivalWeek(state, ctx))
+  ctx.hooks.warhosts.push(...result.warhosts)
+  return result.state
+}
+
+/** The week's skirmishes on the Rim fronts at War, war losses, and Peace pulling tracks to 0 (T10). */
+const frontsPhase: Phase = (state, ctx) => settleFronts(state, rivalWeek(state, ctx))
+
+/** Border Campaigns in a hidden Border Campaign week, then next week's front states (T10). */
+const borderCampaignsPhase: Phase = (state, ctx) => borderCampaigns(state, rivalWeek(state, ctx))
 
 /** Resets garrison damage, keeps the hidden Border Campaign schedule ahead of the campaign, and draws next week's threats (T08, A-28). */
 const resetAndSchedule: Phase = (state, ctx) => {
@@ -338,9 +375,9 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   weeklyIncome: weeklyIncomePhase,
   courtships: courtshipsPhase, // T09
   weight: weightPhase,
-  rivalTurn: noop, // T10
-  fronts: noop, // T10
-  borderCampaigns: noop, // T10
+  rivalTurn: rivalTurnPhase, // T10
+  fronts: frontsPhase, // T10
+  borderCampaigns: borderCampaignsPhase, // T10
   world: noop, // T13
   resetAndSchedule
 }
@@ -514,7 +551,7 @@ function summarize(days: SettledDay[], events: GameEvent[], purseChange: number,
 export function settle(state: CampaignState, ledger: Ledger, now: Date, options: SettleOptions = {}): SettleResult {
   const { timeZone } = state.campaign
   const events = new EventBuffer()
-  const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [] }
+  const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [], warhosts: [] }
   const balanceBefore = balance(state.purse)
   const active = state.campaign.status === 'active'
   let next = active ? correctLastDay(state, ledger, now, events) : state

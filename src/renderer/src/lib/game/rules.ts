@@ -611,6 +611,23 @@ const RULES_TABLE = {
   effects: {
     /** The Crown's Grace level from which tribute halves and contested hexes hold longer (Ch 9). */
     graceIILevel: 2
+  },
+
+  /** T10: the rival AI's numbers the book leaves open. */
+  rivalAi: {
+    /** A front not drawn to War is at Peace this share of the rest, otherwise Tension. */
+    frontPeaceShareOfRest: 0.5, // TUNE (A-144)
+    /** The Dwarf's level-4 fortification costs this × ring (levels 1 to 3 cost 15 / 35 / 70 × ring). */
+    dwarfLevel4CostPerRing: 120, // TUNE (A-145)
+    /** Each rival at War plans this many conquest attempts a week, striking 2 to 7 days after the close. */
+    conquestPlansPerWeek: 1, // TUNE (A-146)
+    conquestDays: { min: 2, max: 7 },
+    /** Goblin mercenaries cost the power they add (15% of AV) at the hiring rival's army price. */
+    mercenaryCostShare: 1, // TUNE (A-147)
+    /** The Goblin's Market buys at most one hex from another rival every this many weeks. */
+    marketEveryWeeks: 4, // TUNE (A-147)
+    /** The Archmage's first Ritual comes no earlier than this week. */
+    firstRitualWeek: 6 // TUNE (A-148)
   }
 }
 

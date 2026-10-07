@@ -16,6 +16,7 @@
  *   village the rival is a second suitor; on the rival's own village it is the owner's counter-bid.
  *   T10 takes the money from the treasury when it bids; resolution refunds half to a rival that
  *   doesn't end up with the village (`outbidRefundShare`), and a counter-bid is never refunded.
+ *   Rival bids that no player courtship took in resolve in `resolveRivalCourtships`, by the same rules.
  * - T08 and T10 read `blocksRaids`, `blocksConquest` and `raidRateMult`; T10 reads `callToArmsOn`
  *   to hold a front at War, and fortifies rival hexes with `fortificationCost` and `fortificationCap`.
  *
@@ -173,7 +174,7 @@ function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexState {
 }
 
 /** A hex that passes to a rival: its garrison (A-17), a rival village's loyalty 30 × ring, no fortification. */
-function toRival(hex: HexState, rival: RivalId): HexState {
+export function toRival(hex: HexState, rival: RivalId): HexState {
   const out: HexState = { ...plainHeld(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
   if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
   return out
@@ -334,6 +335,51 @@ export function resolveCourtships(state: CampaignState, week: CourtshipWeek): Ca
     }
   }
   return { ...next, purse }
+}
+
+/**
+ * Resolves the village bids rivals placed at their turns (T10, A-25) that no player courtship
+ * took in as a second suitor: each neutral village goes to its highest bidder at Trust 1.0 (ties
+ * in the usual order Orc, Goblin, Dwarf, Archmage) if that Offer reaches its loyalty. As with the
+ * player's bids (A-141), the winner has spent its whole bid and every other bidder gets half back;
+ * a village that holds loses 10% of the highest Offer; a village no longer neutral or no longer
+ * touching the bidder's land is void and refunds in full. Each bid resolves once and is removed.
+ */
+export function resolveRivalCourtships(state: CampaignState, week: CourtshipWeek): CampaignState {
+  const { day, emit } = week
+  const inf = RULES.influence
+  const due = new Map<string, { rival: RivalId; bid: number }[]>()
+  let next: CampaignState = state
+  for (const rival of RIVAL_IDS) {
+    const courting = next.rivals[rival].ai?.courting ?? []
+    if (courting.length === 0) continue
+    for (const c of courting.filter((x) => x.placedOn <= day)) due.set(c.hexId, [...(due.get(c.hexId) ?? []), { rival, bid: c.bid }])
+    const r = next.rivals[rival]
+    next = { ...next, rivals: { ...next.rivals, [rival]: { ...r, ai: { ...r.ai, courting: courting.filter((x) => x.placedOn > day) } } } }
+  }
+  const credit = (rival: RivalId, amount: number): void => {
+    const r = next.rivals[rival]
+    next = { ...next, rivals: { ...next.rivals, [rival]: { ...r, treasury: r.treasury + amount } } }
+  }
+
+  for (const [hexId, bids] of [...due.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const hex = hexOf(next, hexId)
+    const valid = bids.filter((b) => hex?.village && hex.owner === 'neutral' && touchesOwner(next.hexes, hexId, b.rival))
+    for (const b of bids) if (!valid.includes(b)) credit(b.rival, b.bid)
+    if (!hex || !hex.village || valid.length === 0) continue
+    const top = valid.reduce((best, b) => (roundPosting(b.bid) > roundPosting(best.bid) ? b : best))
+    const offer = top.bid * inf.rivalTrust
+    const defects = roundPosting(offer) >= roundPosting(resistance(hex))
+    for (const b of valid) if (!(defects && b === top)) credit(b.rival, b.bid * inf.outbidRefundShare)
+    if (defects) {
+      next = replaceHex(next, toRival(hex, top.rival))
+      emit('hexTransfer', { hexId, from: 'neutral', to: top.rival, how: 'influence' })
+    } else {
+      const after = Math.max(0, hex.village.loyalty - inf.failedBid.loyaltyDropShareOfOffer * offer)
+      next = replaceHex(next, { ...hex, village: { ...hex.village, loyalty: after } })
+    }
+  }
+  return next
 }
 
 /** The player's villages recover 5% of 15 × ring loyalty a week, up to 15 × ring (A-22). */

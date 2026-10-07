@@ -63,18 +63,65 @@ Coalitions, events, Accords, Ascendancy (T13); Grand Battle resolution (T12); sc
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] Test 5: `BI(0.80, 1.7)` = 344.53 ± 0.01.
-- [ ] `b` and `L` by week: week 1 → 0.72 / 1.0; week 3 → 0.72 / 1.4; week 9 → 0.78 / 1.4; week 10 → 0.78 / 1.7; week 21 → 0.82 / 2.0; week 37 → 0.86 / 2.0. Week 40 at Grace III → 0.80. A forced Grace III in week 1 → 0.70 (the floor).
-- [ ] Army cost per power point is 10 at AV 0 and 20 at AV 150.
-- [ ] Determinism: the same seed and state give identical rival states after 10 turns. A 52-week headless run with a passive player (no orders, perfect habits) never produces a negative treasury, never puts a rival in rings 0 to 2, and leaves every rival with AV > 0.
-- [ ] Threat: player Power 1,500 against an average of 1,000, no rivals resolved, bordering on 3 hexes → 40 × 1.5 + 10 = 70 → War.
-- [ ] Peace needs Respect ≥ 50 and 4 quiet weeks. One raid the player defeats in that span keeps it at Tension.
-- [ ] The prized-habit Respect (+4) is paid only in weeks that meet A-38 for that rival.
-- [ ] Test 10 (part): across 300 seeded 70-week runs, no Border Campaign ever targets a Gate, a capital or a player hex, and coalition partners never attack each other. Record the median number of hexes changing hands between rivals (book target: 2 to 6 a campaign) and warn in the output when it falls outside that range.
-- [ ] `rivalView` exposes no number for treasury, AV, benchmark or income unless the Spy Network or Spymaster applies (unit test over all fields).
-- [ ] The rival turn is settled once: re-running `settle` for a week already closed changes nothing (Test 9, part).
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] Test 5: `BI(0.80, 1.7)` = 344.53 ± 0.01.
+- [x] `b` and `L` by week: week 1 → 0.72 / 1.0; week 3 → 0.72 / 1.4; week 9 → 0.78 / 1.4; week 10 → 0.78 / 1.7; week 21 → 0.82 / 2.0; week 37 → 0.86 / 2.0. Week 40 at Grace III → 0.80. A forced Grace III in week 1 → 0.70 (the floor).
+- [x] Army cost per power point is 10 at AV 0 and 20 at AV 150.
+- [x] Determinism: the same seed and state give identical rival states after 10 turns. A 52-week headless run with a passive player (no orders, perfect habits) never produces a negative treasury, never puts a rival in rings 0 to 2, and leaves every rival with AV > 0.
+- [x] Threat: player Power 1,500 against an average of 1,000, no rivals resolved, bordering on 3 hexes → 40 × 1.5 + 10 = 70 → War.
+- [x] Peace needs Respect ≥ 50 and 4 quiet weeks. One raid the player defeats in that span keeps it at Tension.
+- [x] The prized-habit Respect (+4) is paid only in weeks that meet A-38 for that rival.
+- [x] Test 10 (part): across 300 seeded 70-week runs, no Border Campaign ever targets a Gate, a capital or a player hex, and coalition partners never attack each other. Record the median number of hexes changing hands between rivals (book target: 2 to 6 a campaign) and warn in the output when it falls outside that range.
+- [x] `rivalView` exposes no number for treasury, AV, benchmark or income unless the Spy Network or Spymaster applies (unit test over all fields).
+- [x] The rival turn is settled once: re-running `settle` for a week already closed changes nothing (Test 9, part).
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here.)*
+**Done, 2026-10-07.** `npm run typecheck`, `npm test` (433 tests, 0 failures) and `npm run check:game` pass.
+
+### What was built
+
+- `lib/game/rivals.ts`: `initRivals` (A-18, now called by `foundCampaign`); the benchmark (`benchmarkConsistency`, `benchmarkContractMultiplier`, `benchmarkIncome`, `rivalIncome`); Power, Threat and disposition (`power`, `playerPower`, `rivalPower`, `threatScore`, `threatOf`, `dispositionFor`, `hostileAct`, `tookLandFrom`); Respect (`adjustRespect`, `respectEffects`, `prizedWeek`); the weekly turn (`rivalTurn`, with army purchases, expansion, fortification, the four specials, disposition and conquest planning); `rivalBidsAtClose` (step 8 and the second suitor); the fronts (`settleFronts`, `drawFronts`, `frontWarChance`); Border Campaigns (`borderCampaigns`, `borderCampaignTarget`); and `rivalView` with `treasuryBand` and `armyBand`.
+- `settle.ts`: the `rivalTurn`, `fronts` and `borderCampaigns` week phases are filled; the `courtships` phase now runs `rivalBidsAtClose`, then `resolveCourtships`, then `resolveRivalCourtships`. `PhaseHooks.warhosts` collects the Orc's Warhosts for T12.
+- `land.ts`: `resolveRivalCourtships` (rival bids no player bid met, by A-141's rules); `toRival` is exported.
+- `combat.ts`: `armyValue(state, rival, date?)` counts the Goblin's mercenaries (`baseArmyValue` doesn't); a new `COMBAT_HOOKS.bandsHidden` hook for the Veil of Fog, so `ThreatNotice.band` is now optional. rivals.ts wraps `threatMix` (the Long Night) and `bandsHidden` when it loads.
+- `types.ts`: `RivalState.ai` (`RivalMemory`: pending village bids, the rumor, mercenaries, ritual timers, the Market's last week) and optional `until`, `hexId` and `companyId` on the `ritual` event. `rules.ts`: a new `rivalAi` block of TUNE numbers.
+
+### For later tasks
+
+- **T12**: read `ctx.hooks.warhosts` (`WarhostRequest`: rival, hexId, day) and raise each as an Incursion-style Grand Battle. The Orc's fund has already reset. `rivalPower`, `playerArmyValue` and `respectEffects` are ready for hosts and outcomes; Incursion Respect (+5) is T12's to post with `adjustRespect`.
+- **T13**: coalitions are read from `state.coalitions` (War toward the player, raids ×1.25, partners never at War on their front and never attacking each other in Border Campaigns). Ascendancy can use `rivalPower` and `playerPower`. `tidingsHidden` is still free for events.
+- **T19**: `rivalView` is the only thing a screen should read about a rival. Rumors are `herald.rumor.*` text ids.
+
+### Decisions raised
+
+A-144 to A-155 in decisions.md. The main ones: rival village bids wait for the next week close so they meet the player's bids, and counter-bids are placed there (A-152); skirmishes settle at the week close, so Emboldened and Humbled act on next week's raids (A-153); one conquest attempt a rival a week (A-146); the Market and Ritual details (A-147, A-148); the Dwarf's level-4 cost (A-145).
+
+### Evidence
+
+- Test 5: `Test 5: BI(0.80, 1.7) = 344.53` (rivals.test.ts).
+- b and L, Grace and the floor: `Ch 12: b and L by week …` and `Ch 12: Grace II lowers b 3 points and Grace III 6 …`.
+- Army cost: `Ch 12: each point of army power costs 10 at AV 0 and 20 at AV 150`.
+- Determinism and the 52-week passive run: `Ch 12 determinism: the same seed and state give identical rival states after 10 turns` and `Ch 12 determinism and safety: a 52-week run with a passive player …` (full `settle`, seed 3).
+- Threat: `Ch 12 Threat: player Power 1,500 against an average of 1,000 … → 70 → War`.
+- Peace: `Ch 12: Peace needs Respect ≥ 50 and 4 quiet weeks; one raid the player defeats in that span keeps the rival at Tension`.
+- Prized habits: `A-38: the prized-habit Respect (+4) is paid only in weeks that meet each rival’s habit`.
+- Test 10 (part): `Test 10 (part): across 300 seeded 70-week runs …` (fronts.test.ts) runs the rival phases headless (`tests/game/support/rival-sim.ts`) with 12 player hexes and a standing coalition in every third run. Its output:
+
+  ```
+  # Border Campaigns: 1778 fought over 300 campaigns; median hexes taken per campaign 1 (book target 2 to 6)
+  # Goblin Market purchases between rivals: median 10 per campaign
+  # WARNING: the median of 1 hexes changing hands by Border Campaign is outside the book's 2 to 6 (report for the owner; D-02)
+  ```
+
+- `rivalView`: `Ch 12 hidden stays hidden: rivalView shows no number but Respect unless the Spy Network or the Spymaster reveals it` walks every field.
+- Test 9 (part): `Test 9 (part): the rival turn is settled once — settling again for a week already closed changes nothing`.
+
+### Tuning notes for the owner (report only, D-02)
+
+- **Border Campaigns take too little land.** Most of the ~6 a campaign fail: ring-5 garrisons (200 × the rival's multiplier, plus fortification, up to level 4 for the Dwarf) beat 0.5 × AV for most of the campaign. The median of 1 hex is below the book's 2 to 6. The levers are the attack share (0.5), rival army growth, or the garrison multipliers (A-17).
+- **The Goblin's Market moves more land than Border Campaigns** (median 10 hexes a campaign, mostly bought from the Orc). `RULES.rivalAi.marketEveryWeeks` is the lever.
+- **Special funds pile up.** With the player passive, the Orc's Warhost has no target until the player holds a hex in rings 1 to 5. The Archmage saves 30% of its budget but spends only 400 every 6 weeks, so its fund reaches several thousand by week 50. Both count toward Power (A-154), which matters for T13's Ascendancy.
+- With a passive player whose purse only grows, every rival's Threat reaches 80 (the 2× cap) by about week 8, so all four sit at War. T11's player AI will show whether that holds for a player who spends.
+- `fronts.test.ts` takes about 24 s, mostly the 300 headless runs, which roughly doubles `npm test`'s wall time.
+

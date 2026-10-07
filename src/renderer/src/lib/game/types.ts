@@ -185,6 +185,36 @@ export interface RivalState {
   specialFund: number
   /** −3..+3 per front, from this rival's side. */
   frontTracks: Record<string, number>
+  /** What the rival AI remembers between turns (T10). Hidden: screens never read it. */
+  ai?: RivalMemory
+}
+
+/** Where a rival's turn spent its budget (Ch 12 step 2). */
+export type RivalSpend = 'army' | 'expand' | 'fortify' | 'special'
+
+/** A village bid a rival placed at its turn; it resolves at the next week close, with the player's bids (A-25, A-141). */
+export interface RivalCourtship {
+  hexId: string
+  bid: number
+  placedOn: ISODate
+}
+
+/** T10: a rival's memory between turns. Every number in it is hidden. */
+export interface RivalMemory {
+  /** Village bids waiting for the next week close. */
+  courting?: RivalCourtship[]
+  /** What its last turn spent most on, for the Herald's rumors. */
+  rumor?: RivalSpend
+  /** Goblin mercenaries hired for this rival: +15% AV through this day. */
+  mercenariesUntil?: ISODate
+  /** The Archmage: Rituals cast so far, and the campaign week of the last one. */
+  ritualsCast?: number
+  lastRitualWeek?: number
+  /** The Archmage's Long Night and Veil of Fog hold through these days. */
+  longNightUntil?: ISODate
+  veilUntil?: ISODate
+  /** The Goblin: the campaign week of its last Market purchase. */
+  marketWeek?: number
 }
 
 export interface Coalition {
@@ -462,7 +492,7 @@ export interface GameEventMap {
   /** A world event fired (Ch 13). */
   worldEvent: { eventId: string }
   /** The Archmage cast a Ritual. */
-  ritual: { ritualId: string }
+  ritual: { ritualId: string; until?: ISODate; hexId?: string; companyId?: string }
   /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). */
   ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' }
   /** A rival was resolved (Ch 14). */
