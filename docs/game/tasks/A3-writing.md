@@ -2,7 +2,7 @@
 
 | Phase | Depends on | Unblocks | Who |
 | --- | --- | --- | --- |
-| 7 Assets | T01 (the catalog), T16 (the checker); best after T21 | The game's voice | The owner and co-writers (book Ch 17: written by people, not AI) |
+| 7 Assets | T01 (the catalog), T14 (the checker); best after T17 | The game's voice | The owner and co-writers (book Ch 17: written by people, not AI) |
 
 ## Goal
 

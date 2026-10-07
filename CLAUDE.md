@@ -15,4 +15,5 @@ Fiefdom is an Electron + React 19 + TypeScript habit ledger (see `README.md`) th
 - Never invent story or flavor text. Narrative strings go through the text catalog with plain-fact placeholders.
 - Never show hidden values (the rival benchmark, rival income, event criteria) as numbers in the UI.
 - Health records in `ledger.json` are never destroyed or rewritten by game code.
-- Before finishing: `npm run typecheck`, `npm test`, and `npm run check:game` once it exists.
+- Reuse the shared helpers (`types.ts` id lists, `map.ts` hex queries, `state.ts`) instead of writing private copies; see Conventions in `docs/game/README.md`.
+- Before finishing: `npm run typecheck`, `npm test` and `npm run check:game`.
