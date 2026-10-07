@@ -20,6 +20,8 @@
  * Interfaces for later tasks:
  * - T10 announces conquest attempts with `planConquest` and may weigh raiders through
  *   `COMBAT_HOOKS.raiderWeight`. `defenseFor` gives the player's expected defense on a hex.
+ *   `armyValue` counts the Goblin's mercenaries; rivals.ts wraps `COMBAT_HOOKS.threatMix` (the
+ *   Long Night) and `COMBAT_HOOKS.bandsHidden` (the Veil of Fog).
  * - T12 receives the Gate, capital and Lair Mouth assaults the player ordered as
  *   `GrandBattleRequest`s (settlement puts them in `ctx.hooks.grandBattleRequests`).
  * - T13 changes the threat mix, threat strength and the Herald's view through `COMBAT_HOOKS`.
@@ -108,13 +110,16 @@ export interface CombatHooks {
   raiderWeight(state: CampaignState, rival: RivalId, date: ISODate, weight: number): number
   /** Whether the Herald's tidings for a day are hidden (Veil of Fog). */
   tidingsHidden(state: CampaignState, date: ISODate): boolean
+  /** Whether a day's tidings show no strength band or strength (the Archmage's Veil of Fog, T10). */
+  bandsHidden(state: CampaignState, date: ISODate): boolean
 }
 
 export const COMBAT_HOOKS: CombatHooks = {
   threatMix: (_state, _date, mix) => mix,
   threatStrength: (_state, _threat, strength) => strength,
   raiderWeight: (_state, _rival, _date, weight) => weight,
-  tidingsHidden: () => false
+  tidingsHidden: () => false,
+  bandsHidden: () => false
 }
 
 // ── Reading the state ────────────────────────────────────────────────────────
@@ -136,9 +141,19 @@ function weekNumber(state: CampaignState, date: ISODate, weekStartsOn: WeekStart
   return campaignWeek(state.campaign.startDate, date, weekStartsOn)
 }
 
-/** The rival's Army value: the sum of its companies' power (Ch 12). */
-export function armyValue(state: CampaignState, rival: RivalId): number {
+/** The power the rival's companies add up to, before any hired help (Ch 12): what its army purchases are priced on. */
+export function baseArmyValue(state: CampaignState, rival: RivalId): number {
   return state.rivals[rival].companies.reduce((sum, c) => sum + c.power, 0)
+}
+
+/**
+ * The rival's Army value on `date` (Ch 12): its companies' power, +15% while the Goblin's
+ * mercenaries serve it (T10). `date` defaults to the open day.
+ */
+export function armyValue(state: CampaignState, rival: RivalId, date: ISODate = addDays(state.settledThrough.day, 1)): number {
+  const until = state.rivals[rival].ai?.mercenariesUntil
+  const hired = until !== undefined && date <= until ? RULES.rivals.special.goblinMercenaries.armyBonus : 0
+  return baseArmyValue(state, rival) * (1 + hired)
 }
 
 /** An Accord with this rival runs on `date`: it makes no raids or conquest attempts (Ch 14). */
@@ -280,11 +295,11 @@ export function threatStrength(state: CampaignState, effects: Effects, t: Threat
       break
     case 'raid': {
       const rival = needRival(t)
-      value = Math.max(s.raidBase * b, s.raidArmy * armyValue(state, rival) * RULES.combat.temper[rival]) * raidMult(state, effects, rival, t.date)
+      value = Math.max(s.raidBase * b, s.raidArmy * armyValue(state, rival, t.date) * RULES.combat.temper[rival]) * raidMult(state, effects, rival, t.date)
       break
     }
     case 'conquest':
-      value = Math.max(s.conquestBase * b, s.conquestArmy * armyValue(state, needRival(t)))
+      value = Math.max(s.conquestBase * b, s.conquestArmy * armyValue(state, needRival(t), t.date))
       break
   }
   value *= (1 + t.roll) * earlyGraceMult(t.week)
@@ -759,8 +774,9 @@ export interface ThreatNotice {
   date: ISODate
   hexId: string
   rival?: RivalId
-  band: StrengthBand
-  /** Only with Mage Tower IV or the Spy Network (`reveals.threatStrength`). */
+  /** Absent under the Veil of Fog (T10). */
+  band?: StrengthBand
+  /** Only with Mage Tower IV or the Spy Network (`reveals.threatStrength`), and never under the Veil of Fog. */
   strength?: number
   siegeDay: boolean
   /** A conquest attempt striking a hex it already contests. */
@@ -785,7 +801,8 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
   if (COMBAT_HOOKS.tidingsHidden(state, date)) return { date, hidden: true, threats: [] }
   const effects = realmEffects(state)
   const combat = combatOf(state)
-  const exact = effects.reveals.threatStrength.whom !== 'none'
+  const veiled = COMBAT_HOOKS.bandsHidden(state, date)
+  const exact = effects.reveals.threatStrength.whom !== 'none' && !veiled
   const ahead = Math.max(0, diffDays(today, date))
   const notice = (t: { kind: ThreatKind; hexId: string; rival?: RivalId; strength: number }, siegeDay: boolean, restrike: boolean): ThreatNotice => {
     const { army } = defenseFor(state, { hexId: t.hexId, kind: t.kind, rival: t.rival, valor: 1, day: date }, effects)
@@ -794,7 +811,7 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
       date,
       hexId: t.hexId,
       ...(t.rival ? { rival: t.rival } : {}),
-      band: strengthBand(t.strength, army),
+      ...(veiled ? {} : { band: strengthBand(t.strength, army) }),
       ...(exact ? { strength: t.strength } : {}),
       siegeDay,
       restrike

@@ -3,7 +3,7 @@
  *
  * `foundCampaign` builds the whole starting state: the map, the purse with its founding grant,
  * four buildings at Tier I and Castle I with their four companies, the Milestones, Grace 0, the
- * rivals (a placeholder T10 replaces), and the hidden Border Campaign weeks. The campaign starts at
+ * rivals (T10's `initRivals`), and the hidden Border Campaign weeks. The campaign starts at
  * the dawn after founding, so `settledThrough` is the founding day itself and nothing settles
  * until that day has closed.
  */
@@ -18,6 +18,7 @@ import { CampaignError } from './errors'
 import { snapshotDay, toHealerDay, weighInsOf } from './ledgerDays'
 import { buildMap, fronts as rimFronts } from './map'
 import { int } from './rng'
+import { initRivals } from './rivals'
 import { RULES, byTier } from './rules'
 import { checkGoal, clampPaceCap, currentWeight, healerRange, initialWeightState, toLb, trend } from './weight'
 import type {
@@ -30,8 +31,6 @@ import type {
   FrontId,
   FrontState,
   ISODate,
-  RivalId,
-  RivalState,
   WeekStartsOn
 } from './types'
 
@@ -58,8 +57,6 @@ export interface FoundingInput {
   /** Confirmed medical supervision lets the calorie limit sit below the floor (Ch 4, Ch 16). */
   medicalSupervision?: boolean
 }
-
-const RIVALS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
 
 // ── The hidden Border Campaign schedule (Ch 12) ──────────────────────────────
 
@@ -97,58 +94,6 @@ export function foundingRoster(): Company[] {
       items: []
     }
   })
-}
-
-/**
- * A rival's starting army (A-18): about 40 power, bought from its own host list strongest
- * affordable first. Host companies carry no tags; they match as their rival's type (Ch 10).
- */
-function startingArmy(rival: RivalId): Company[] {
-  const host = CODEX.hosts.find((h) => h.rival === rival)
-  if (!host) throw new Error(`The codex has no host for ${rival}`)
-  const units = [...host.companies].sort((a, b) => b.power - a.power)
-  const army: Company[] = []
-  let budget = RULES.rivals.start.armyPower
-  for (;;) {
-    const unit = units.find((u) => u.power <= budget)
-    if (!unit) break
-    army.push({ id: `${rival}:${unit.id}:${army.length + 1}`, name: unit.name, source: 'host', power: unit.power, tags: [], reach: unit.reach, items: [] })
-    budget -= unit.power
-  }
-  return army
-}
-
-/**
- * The rivals at the founding, with A-18's defaults: treasury 150, an army of about 40 power,
- * Respect 20, Tension toward the player, Peace with each neighbor and every front track at 0.
- * Threat is computed at the first week close. T10 replaces this with `initRivals`.
- */
-export function foundingRivals(): Record<RivalId, RivalState> {
-  const start = RULES.rivals.start
-  const rim = rimFronts()
-  const out = {} as Record<RivalId, RivalState>
-  for (const rival of RIVALS) {
-    const mine = rim.filter((f) => f.rivals.includes(rival))
-    const disposition: RivalState['disposition'] = { player: start.disposition }
-    const frontTracks: RivalState['frontTracks'] = {}
-    for (const f of mine) {
-      disposition[f.rivals[0] === rival ? f.rivals[1] : f.rivals[0]] = 'peace'
-      frontTracks[f.front] = start.frontTrack
-    }
-    out[rival] = {
-      rival,
-      treasury: start.treasury,
-      companies: startingArmy(rival),
-      respect: start.respect,
-      threat: 0,
-      disposition,
-      status: 'active',
-      ascendancyStreak: 0,
-      specialFund: 0,
-      frontTracks
-    }
-  }
-  return out
 }
 
 /** Every Rim front at Peace with its track at 0 (A-18). */
@@ -222,13 +167,14 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     ...(input.sex !== undefined ? { sex: input.sex } : {}),
     ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {})
   }
+  const hexes = buildMap(seed)
   const buildings = {} as Record<BuildingId, 1>
   for (const b of CODEX.buildings) buildings[b.id] = 1
 
   return {
     campaign,
     charter: { ...input.charter, duties: [...input.charter.duties], calorieFloor: healer.floor },
-    hexes: buildMap(seed),
+    hexes,
     buildings,
     castleTier: 1,
     crossings: {},
@@ -236,7 +182,7 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     contracts: { history: [], respiteBank: 0 },
     purse: foundingPurse(today),
     weight: { ...initialWeightState(startLb, goalLb), healerFloor: healer.floor },
-    rivals: foundingRivals(),
+    rivals: initRivals(seed, hexes),
     fronts: foundingFronts(),
     courtships: [],
     deals: [],
