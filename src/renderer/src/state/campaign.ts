@@ -3,6 +3,7 @@
  * operations, and saved the way the ledger is. No game rules live here.
  */
 import { create } from 'zustand'
+import { settleViolations } from '../lib/game/dev/invariants'
 import { CampaignError } from '../lib/game/errors'
 import { settle, type SettleResult, type SettleSummary } from '../lib/game/settle'
 import type { CampaignState } from '../lib/game/types'
@@ -110,6 +111,7 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
     const { campaign, status } = get()
     if (status !== 'ready' || campaign === null) return null
     const result = settle(campaign, ledger, now, options)
+    if (import.meta.env.DEV) assertInvariants(campaign, result.state, ledger, now)
     if (result.state !== campaign) {
       set({ campaign: result.state })
       scheduleSave(result.state)
@@ -123,6 +125,19 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
     set({ homecoming: null })
   }
 }))
+
+/**
+ * Development builds only (T17): Ch 15's invariants and Tests 9 and 10 after every settlement. A
+ * broken one logs the campaign's seed and throws before the result is kept or saved, so the run
+ * stops where it broke. The dev scenarios' purse changes (`dev:` sources, A-181) are allowed.
+ */
+function assertInvariants(before: CampaignState, after: CampaignState, ledger: Ledger, now: Date): void {
+  const broken = settleViolations({ before, after, ledger, now, resettle: true, extraSources: ['dev'] })
+  if (broken.length === 0) return
+  const message = `Campaign invariant broken (seed ${before.campaign.seed}, now ${now.toISOString()}): ${broken.join('; ')}`
+  console.error(message)
+  throw new Error(message)
+}
 
 // Saving: debounced, flushed synchronously if the window closes, as the ledger is.
 const scheduleSave = debouncedSaver('campaign', saveCampaignText, saveCampaignTextSync)
