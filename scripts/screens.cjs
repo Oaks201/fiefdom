@@ -12,8 +12,9 @@
 // --scenario  a JSON list of steps: { "name": "...", "eval": "<JS run in the page>", "wait": ms,
 //          "shot": false }. The JS may use top-level await. A step may also move the real pointer:
 //          "mouse": "<JS giving [[x, y], …] in viewport pixels>", with "mouseDelay" ms between
-//          moves (T15's hover measurement). Without a scenario, the script shoots every tab the
-//          top bar shows.
+//          moves (T15's hover measurement), or press and hold it: "hold": "<JS giving [x, y]>",
+//          "holdMs": ms (T16's hold-to-confirm buttons). Without a scenario, the script shoots every
+//          tab the top bar shows.
 // --format jpeg  smaller files (quality 70), for screenshots kept in the repo.
 // --dev    run the development build (`electron-vite dev`) instead of the built app, so the
 //          dev-only tools (time travel, A-09) are there to drive: `window.fiefdomDev`.
@@ -137,6 +138,14 @@ async function main() {
             await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
             await sleep(step.mouseDelay ?? 30)
           }
+        }
+        if (step.hold) {
+          const [x, y] = await evaluate(cdp, step.hold)
+          await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+          await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1 })
+          await sleep(step.holdMs ?? 1200)
+          await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1 })
+          await sleep(300)
         }
         const value = step.eval ? await evaluate(cdp, step.eval) : undefined
         if (step.log) console.log(`${step.name}: ${JSON.stringify(value)}`)

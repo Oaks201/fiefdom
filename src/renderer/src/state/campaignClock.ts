@@ -10,7 +10,7 @@
  */
 import { create } from 'zustand'
 import { openDay } from '../lib/game/clock'
-import { lbTo } from '../lib/game/weight'
+import { momentsFor } from '../lib/game/view/endgame'
 import type { ISODate } from '../lib/game/types'
 import { useCampaign } from './campaign'
 import { useHealth } from './health'
@@ -70,18 +70,9 @@ function runSettle(launch: boolean): void {
   const now = campaignNow()
   try {
     const result = useCampaign.getState().settleNow(useLedger.getState().ledger, now, { launch })
-    // A Milestone broken at a week close gets its big-moment card (Ch 17). T16 adds the others.
-    for (const e of result?.events ?? []) {
-      if (e.kind !== 'milestone') continue
-      useMoments.getState().show({
-        id: e.id,
-        slot: `milestone.${e.index}`,
-        titleId: 'herald.milestone',
-        bodyId: `milestones.m${e.index}`,
-        facts: { index: e.index, mark: Math.round(lbTo(e.mark, campaign.campaign.unit) * 10) / 10, unit: campaign.campaign.unit, date: e.day },
-        sound: 'milestone'
-      })
-    }
+    // The big moments a settlement raises (Ch 17): Milestones, Grand Battles the Marshal fought and
+    // decisive ones, coalitions, Ultimatums, victory and the Fall.
+    if (result) useMoments.getState().showAll(momentsFor(result.state, result.events))
   } catch (err) {
     console.error('Settling the campaign failed', err)
   }

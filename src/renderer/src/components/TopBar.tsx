@@ -1,5 +1,6 @@
 import type { IconType } from 'react-icons'
-import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
+import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
+import { battleNotices } from '../lib/game/view/battle'
 import { pagesFor, topBarView } from '../lib/game/view/shell'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { contractStatus } from '../lib/contracts'
@@ -37,6 +38,7 @@ export function TopBar(): React.JSX.Element {
   const campaignToday = useCampaignToday()
   const tabs = pagesFor(campaign).map((id) => ({ id, ...TAB_INFO[id] }))
   const bar = campaign && campaignToday ? topBarView(campaign, campaignToday) : null
+  const battle = campaign && campaignToday ? battleNotices(campaign, campaignToday)[0] : undefined
 
   const open = openContract(ledger)
   const status = open ? contractStatus(open, today) : null
@@ -105,6 +107,18 @@ export function TopBar(): React.JSX.Element {
 
       <div className="purse">
         <div className="tools">
+          {battle && (
+            <button
+              type="button"
+              className={`tool tool--battle ${battle.today ? 'has-alert' : ''}`}
+              aria-label={battle.label}
+              title={`${battle.label}: ${battle.today ? 'fight now' : 'prepare'}`}
+              onClick={() => useUI.getState().openBattle(battle.battleId)}
+            >
+              <GiCrossedSwords aria-hidden="true" />
+              {battle.today && <span className="tool__alert">!</span>}
+            </button>
+          )}
           <button
             type="button"
             className={`tool ${music ? '' : 'is-off'}`}

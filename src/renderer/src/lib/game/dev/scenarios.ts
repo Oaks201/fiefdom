@@ -12,6 +12,8 @@ import { combatOf } from '../combat'
 import { addDays } from '../clock'
 import { balance, post } from '../economy'
 import { realmEffects } from '../effects'
+import { milestoneUnlocks } from '../armory'
+import { CODEX } from '../codex'
 import { announceGrandBattle, type GrandRequest } from '../grand'
 import { dominionOf, hexIndex, touches } from '../map'
 import { refreshRoster } from '../roster'
@@ -105,13 +107,21 @@ function hostOf(rival: (typeof RIVAL_IDS)[number], powers: readonly number[]): C
   return powers.map((power, i) => ({ id: `${rival}:brutes:${i + 1}`, name: 'Brutes', source: 'host', power, tags: [], reach: 'melee', items: [] }))
 }
 
+/** A Siege of the Crown fought today with `host`: the one an Ultimatum announced, brought forward, or a new one. */
+function siegeToday(state: CampaignState, today: ISODate, host: Company[]): CampaignState {
+  const pending = state.grandBattles.find((b) => b.trigger === 'siege' && b.result === undefined && !b.setup)
+  if (!pending) return announce(state, { trigger: 'siege', hexId: castleHex(state).id, announcedOn: today, rival: 'orc' }, today, today, host)
+  return { ...state, grandBattles: state.grandBattles.map((b) => (b.id === pending.id ? { ...b, battleDate: today, enemy: host } : b)) }
+}
+
 function castleHex(state: CampaignState): HexState {
   return state.hexes.find((h) => h.kind === 'castle') as HexState
 }
 
-/** The player's outermost hex beyond the castle (the castle when there is none). */
+/** The player's outermost hex beyond the castle with no battle pending on it (the castle when there is none). */
 function borderHex(state: CampaignState): HexState {
-  return state.hexes.filter((h) => h.owner === 'player' && h.kind !== 'castle').sort((a, b) => b.ring - a.ring)[0] ?? castleHex(state)
+  const busy = new Set(state.grandBattles.filter((b) => b.result === undefined).map((b) => b.hexId))
+  return state.hexes.filter((h) => h.owner === 'player' && h.kind !== 'castle' && !busy.has(h.id)).sort((a, b) => b.ring - a.ring)[0] ?? castleHex(state)
 }
 
 export const DEV_SCENARIOS: readonly DevScenario[] = [
@@ -179,6 +189,37 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     title: '+1,000 reputation',
     detail: 'Enough to try every purchase.',
     apply: (state, today) => withPurse(state, balance(state.purse) + RICH_PURSE, today, 'rich')
+  },
+  {
+    id: 'milestone',
+    title: 'Break the next Milestone',
+    detail: 'Its card shows once, listing only what it opens; the Armory opens with Milestone 1.',
+    apply: (input, today) => {
+      const next = input.weight.milestones.find((m) => m.brokenOn === undefined)
+      if (!next) return input
+      const week = input.settledThrough.week
+      const state: CampaignState = {
+        ...input,
+        weight: { ...input.weight, milestones: input.weight.milestones.map((m) => (m.index === next.index ? { ...m, brokenOn: today, brokenWeek: week } : m)) }
+      }
+      const events = new EventBuffer()
+      const emit = events.emitter(today)
+      emit('milestone', { index: next.index, mark: next.mark, byDispensation: false })
+      emit('unlock', { milestone: next.index, unlocks: milestoneUnlocks(next.index) })
+      return events.flush(refreshRoster(state))
+    }
+  },
+  {
+    id: 'accordReady',
+    title: 'Castle III and the Orc at Respect 60',
+    detail: 'Accord talks are open: propose one with a contract running (refused, D-01), then with the slot free (sealed).',
+    apply: (input) => patchRival({ ...input, castleTier: Math.max(input.castleTier, RULES.contracts.accord.castleTier) as CampaignState['castleTier'] }, 'orc', { respect: Math.max(input.rivals.orc.respect, RULES.respect.thresholds.accordTalks), disposition: { ...input.rivals.orc.disposition, player: 'tension' } })
+  },
+  {
+    id: 'crowdedRoster',
+    title: 'A crowded roster: every Crossing at stage I',
+    detail: 'Ten companies for two banners: a Grand Battle fields at most four, and the formation refuses a fifth with its reason.',
+    apply: (input) => refreshRoster({ ...atLeast(input, Object.fromEntries(BUILDING_IDS.map((b) => [b, 2]))), crossings: Object.fromEntries(CODEX.crossings.map((x) => [x.id, Math.max(input.crossings[x.id] ?? 0, 1)])) })
   },
   {
     id: 'workedExchange',
@@ -253,13 +294,13 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     id: 'siegeWin',
     title: 'The Siege of the Crown today, against a small host',
     detail: 'Win it and the Orc is Humbled.',
-    apply: (state, today) => announce(state, { trigger: 'siege', hexId: castleHex(state).id, announcedOn: today, rival: 'orc' }, today, today, hostOf('orc', WEAK_HOST))
+    apply: (state, today) => siegeToday(state, today, hostOf('orc', WEAK_HOST))
   },
   {
     id: 'siegeLose',
     title: 'The Siege of the Crown today, against an overwhelming host',
     detail: 'Lose it and the realm falls: the Fall screen, told plainly.',
-    apply: (state, today) => announce(state, { trigger: 'siege', hexId: castleHex(state).id, announcedOn: today, rival: 'orc' }, today, today, hostOf('orc', STRONG_HOST))
+    apply: (state, today) => siegeToday(state, today, hostOf('orc', STRONG_HOST))
   },
   {
     id: 'victory',

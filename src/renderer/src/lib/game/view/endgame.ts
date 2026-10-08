@@ -213,10 +213,12 @@ export interface MomentSpec {
 /**
  * The cards the events of a settlement (or a player action) raise, in order: each Milestone broken
  * with only its own unlocks; each Grand Battle the Marshal fought (with its replay) and each
- * decisive one; a coalition formed; an Ultimatum; victory or the Fall with the record.
+ * decisive one; a coalition formed; an Ultimatum; and last, victory or the Fall with the record.
  */
 export function momentsFor(state: CampaignState, events: readonly GameEvent[]): MomentSpec[] {
   const out: MomentSpec[] = []
+  // The campaign's end comes last, after the battle that decided it.
+  const endings: MomentSpec[] = []
   for (const e of events) {
     switch (e.kind) {
       case 'milestone': {
@@ -254,12 +256,12 @@ export function momentsFor(state: CampaignState, events: readonly GameEvent[]): 
       case 'campaignEnd': {
         const view = endgameView(state)
         if (!view) break
-        out.push({ id: e.id, slot: view.slot, titleId: view.textId, facts: recordFacts(state).facts, sound: view.status === 'won' ? 'victory' : 'fall', lines: [...view.record, ...view.rivals.map((r) => `${r.name}: ${r.fate}`)] })
+        endings.push({ id: e.id, slot: view.slot, titleId: view.textId, facts: recordFacts(state).facts, sound: view.status === 'won' ? 'victory' : 'fall', lines: [...view.record, ...view.rivals.map((r) => `${r.name}: ${r.fate}`)] })
         break
       }
       default:
         break
     }
   }
-  return out
+  return [...out, ...endings]
 }

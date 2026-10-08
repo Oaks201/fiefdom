@@ -1,8 +1,10 @@
 import type { IconType } from 'react-icons'
 import { GiCrossedSwords, GiHornInternal, GiScrollQuill, GiSwordClash, GiSpeaker } from 'react-icons/gi'
 import type { ISODate } from '../../lib/game/types'
+import { battleNotices } from '../../lib/game/view/battle'
 import { heraldView, type HeraldSection } from '../../lib/game/view/shell'
 import { useCampaignState } from '../../state/campaignHooks'
+import { useUI } from '../../state/ui'
 
 const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
   { id: 'threat', title: 'Today’s threats', icon: GiCrossedSwords },
@@ -21,6 +23,7 @@ export function Herald({ today, compact = false }: { today: ISODate; compact?: b
   const campaign = useCampaignState()
   if (!campaign) return null
   const view = heraldView(campaign, today)
+  const notices = battleNotices(campaign, today)
   return (
     <section className={`panel herald ${compact ? 'herald--compact' : ''}`} aria-label="The Herald">
       <header className="panel__head">
@@ -29,6 +32,18 @@ export function Herald({ today, compact = false }: { today: ISODate; compact?: b
         </h3>
         <span className="panel__aside">Dawn tidings</span>
       </header>
+      {notices.length > 0 && (
+        <ul className="herald__battles" aria-label="Grand Battles">
+          {notices.map((n) => (
+            <li key={n.battleId} className={`herald__battle ${n.today ? 'is-today' : ''}`}>
+              <GiHornInternal aria-hidden="true" /> <span>{n.label}</span>
+              <button type="button" className={`btn btn--small ${n.today ? 'btn--primary' : ''}`} onClick={() => useUI.getState().openBattle(n.battleId)}>
+                {n.today ? 'Fight now' : 'Prepare'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {view.hidden ? (
         <p className="muted">A fog lies over the land; the Herald has no tidings today.</p>
       ) : view.lines.length === 0 ? (

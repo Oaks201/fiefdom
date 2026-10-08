@@ -43,6 +43,14 @@ function pct(share: number): string {
   return `${Math.round(share * PERCENT)}%`
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] // rules-ok: month names for display
+
+/** A day as the screens print it ("Oct 13"). */
+export function shortDay(day: ISODate): string {
+  const [, m, d] = day.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${d}`
+}
+
 // ── Words for the field ──────────────────────────────────────────────────────
 
 const TRIGGER_NAMES: Record<GrandTrigger, string> = {
@@ -285,16 +293,21 @@ export interface HostWords {
   rivals: string
 }
 
-const SIZE_WORDS: Record<string, string> = { weaker: 'a small', matched: 'a host matched with your own:', stronger: 'a large', overwhelming: 'an overwhelming' }
+const SIZE_WORDS: Record<string, string> = { weaker: 'a small host', matched: 'a host matched with your own', stronger: 'a large host', overwhelming: 'an overwhelming host' }
+const STRONGEST_WORDS: Record<string, string> = {
+  weaker: 'no company stronger than your best',
+  matched: 'its best company a match for yours',
+  stronger: 'its best company stronger than yours',
+  overwhelming: 'its best company far stronger than yours'
+}
 
 /** The enemy host in words (Ch 11 "Preparation"): bands, or the full roster when revealed. */
 export function hostWords(view: HostView): HostWords {
   const kinds = [view.melee ? 'melee' : null, view.ranged ? 'ranged' : null].filter(Boolean).join(' and ')
-  const size = view.size === 'matched' ? 'A host matched with your own' : `${capital(SIZE_WORDS[view.size])} host`
-  const strongest = view.strongest === 'weaker' ? 'no company stronger than your best' : view.strongest === 'matched' ? 'its best company matched with yours' : `its best company ${view.strongest} than yours`
   const quarry = view.quarry ? CODEX.quarries.find((q) => q.id === view.quarry)?.name : undefined
+  const size = quarry ? SIZE_WORDS[view.size] : capital(SIZE_WORDS[view.size])
   return {
-    text: `${quarry ? `${quarry}: ` : ''}${size}, ${kinds || 'of some kind'}, ${strongest}${view.commander ? ', with its commander' : ''}.`,
+    text: `${quarry ? `${quarry}: ` : ''}${size}, ${kinds ? `${kinds} companies` : 'of some kind'}, ${STRONGEST_WORDS[view.strongest]}${view.commander ? ', with its commander' : ''}.`,
     revealed: view.revealed,
     ...(view.roster ? { roster: view.roster.map((c) => ({ name: c.name, power: c.power, reach: c.reach })) } : {}),
     ...(quarry ? { quarry } : {}),
@@ -451,6 +464,9 @@ export interface LaneIntent {
 export interface LogLine {
   from: string
   to: string
+  /** The companies' ids (several can share a name). */
+  fromId: string
+  toId: string
   amount: number
   /** What made it (`spell`, `volley`, an Order's name …). */
   note?: string
@@ -524,7 +540,7 @@ function roundView(field: Field, r: { round: number; order?: string; target?: Or
     ...(label ? { target: label } : {}),
     ...(r.swap ? { swap: r.swap } : {}),
     intents: { ...r.intents },
-    lines: r.lines.map((l) => ({ from: unitName(field, l.from), to: unitName(field, l.to), amount: l.amount, ...(l.note ? { note: CODEX.orders.find((o) => o.id === l.note)?.name ?? l.note } : {}), ...(l.dealt !== undefined ? { dealt: l.dealt } : {}) }))
+    lines: r.lines.map((l) => ({ from: unitName(field, l.from), to: unitName(field, l.to), fromId: l.from, toId: l.to, amount: l.amount, ...(l.note ? { note: CODEX.orders.find((o) => o.id === l.note)?.name ?? l.note } : {}), ...(l.dealt !== undefined ? { dealt: l.dealt } : {}) }))
   }
 }
 
@@ -693,8 +709,8 @@ export function resultView(state: CampaignState, battleId: string): ResultView |
   if (o.trophy) lines.push(`Trophy: ${CODEX.items.find((i) => i.id === o.trophy)?.name ?? o.trophy}`)
   if (o.armyLoss) lines.push(`${who ?? 'The enemy'}’s army −${pct(o.armyLoss)}`)
   if (o.armyGain) lines.push(`${who ?? 'The enemy'}’s army +${pct(o.armyGain)}`)
-  if (o.weary?.length) lines.push(`Weary through ${o.wearyUntil ?? 'a few days'}: ${o.weary.map((id) => roster.get(id) ?? id).join(', ')}`)
-  if (o.retryFrom) lines.push(`It can be fought again from ${o.retryFrom}`)
+  if (o.weary?.length) lines.push(`Weary through ${o.wearyUntil ? shortDay(o.wearyUntil) : 'a few days'}: ${o.weary.map((id) => roster.get(id) ?? id).join(', ')}`)
+  if (o.retryFrom) lines.push(`It can be fought again from ${shortDay(o.retryFrom)}`)
   if (battle.trigger === 'siege' && done.result !== 'defeat') lines.push(`${who ?? 'The besieger'} is Humbled`)
   const won = done.result !== 'defeat'
   return {

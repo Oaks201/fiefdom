@@ -16,16 +16,23 @@ export interface Moment {
   facts?: TextFacts
   /** A sound id from audio/sfx.ts, played when the card opens. */
   sound?: string
+  /** Plain lines under the words: what a Milestone opens, what a battle did, the record (T16). */
+  lines?: string[]
+  /** A second button: watch a battle's replay (T16). */
+  action?: { label: string; battleId: string }
 }
 
 interface MomentStore {
   queue: Moment[]
   show(moment: Moment): void
+  /** Queues several at once, in order (each once). */
+  showAll(moments: readonly Moment[]): void
   dismiss(): void
 }
 
 export const useMoments = create<MomentStore>((set) => ({
   queue: [],
   show: (moment) => set((s) => (s.queue.some((m) => m.id === moment.id) ? s : { queue: [...s.queue, moment] })),
+  showAll: (moments) => set((s) => ({ queue: [...s.queue, ...moments.filter((m, i) => !s.queue.some((q) => q.id === m.id) && moments.findIndex((x) => x.id === m.id) === i)] })),
   dismiss: () => set((s) => ({ queue: s.queue.slice(1) }))
 }))

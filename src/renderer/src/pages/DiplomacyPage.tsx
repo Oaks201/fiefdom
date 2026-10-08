@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Courtships } from '../components/diplomacy/Courtships'
+import { AccordPanel, CoalitionBanners, EndgameRecord, UltimatumBanners } from '../components/endgame/Endgame'
 import { DealsList } from '../components/diplomacy/DealsList'
 import { RivalCourt } from '../components/diplomacy/RivalCourt'
 import type { RivalId } from '../lib/game/types'
@@ -8,8 +9,9 @@ import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useUI } from '../state/ui'
 
 /**
- * Diplomacy (T15): the four rival courts, the deals the chosen court will strike, and the
- * courtships. The endgame (Accords, coalitions, the Ultimatum) joins in T16.
+ * Diplomacy (T15, T16): the four rival courts, the Accord and the deals the chosen court will
+ * strike, and the courtships; above them the endgame: an Ultimatum, a coalition, and after the
+ * campaign ends its record.
  */
 export function DiplomacyPage(): React.JSX.Element | null {
   const campaign = useCampaignState()
@@ -31,13 +33,19 @@ export function DiplomacyPage(): React.JSX.Element | null {
         <h1 className="page-title">Diplomacy</h1>
         <p className="page-sub">The four rival courts: who they are, how they regard you, what they will deal on, and the villages you court.</p>
       </header>
+      <EndgameRecord campaign={campaign} />
+      <UltimatumBanners campaign={campaign} today={today} />
+      <CoalitionBanners campaign={campaign} today={today} />
       <div className="courts">
         {panels.map((p) => (
           <RivalCourt key={p.rival} panel={p} selected={p.rival === rival} onSelect={() => setRival(p.rival)} />
         ))}
       </div>
       <div className="diplomacy-cols">
-        <DealsList campaign={campaign} today={today} rival={rival} highlight={focus?.rival === rival ? focus.hexId : undefined} />
+        <div className="diplomacy-court">
+          {campaign.rivals[rival].status === 'active' && <AccordPanel campaign={campaign} today={today} rival={rival} />}
+          <DealsList campaign={campaign} today={today} rival={rival} highlight={focus?.rival === rival ? focus.hexId : undefined} />
+        </div>
         <Courtships campaign={campaign} today={today} />
       </div>
     </div>

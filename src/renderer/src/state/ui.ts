@@ -15,6 +15,8 @@ interface UIState {
   settingsOpen: boolean
   /** The founding wizard (T14). */
   foundingOpen: boolean
+  /** The Grand Battle screen (T16): a route over the page, not a tab; `replay` plays a fought battle back. */
+  battle: { id: string; replay: boolean } | null
   /** The rival court Diplomacy shows first, and a hex to offer from it (T15: the hex panel's "buy"). */
   rivalFocus: { rival: RivalId; hexId?: string } | null
   go(page: Page): void
@@ -23,6 +25,8 @@ interface UIState {
   setProfileOpen(open: boolean): void
   setSettingsOpen(open: boolean): void
   setFoundingOpen(open: boolean): void
+  openBattle(id: string, replay?: boolean): void
+  closeBattle(): void
   /** Opens Diplomacy at `rival`'s court, with `hexId` picked out in its deals. */
   goDiplomacy(rival: RivalId, hexId?: string): void
   setRivalFocus(focus: { rival: RivalId; hexId?: string } | null): void
@@ -38,7 +42,10 @@ export const useUI = create<UIState>((set) => ({
   settingsOpen: false,
   foundingOpen: false,
   rivalFocus: null,
-  go: (page) => set({ page }),
+  battle: null,
+  go: (page) => set({ page, battle: null }),
+  openBattle: (id, replay = false) => set({ battle: { id, replay } }),
+  closeBattle: () => set({ battle: null }),
   setDate: (date) => set({ date }),
   openArchive: (archiveId) => set({ archiveId }),
   setProfileOpen: (profileOpen) => set({ profileOpen }),

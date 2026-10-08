@@ -359,6 +359,129 @@
   color: var(--forest);
 }
 
+/* -- The endgame (T16) ------------------------------------------------------ */
+.diplomacy-court {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ultimatum,
+.coalition-banner {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 20px;
+  border-radius: 12px;
+}
+
+.ultimatum {
+  background: rgba(45, 87, 166, 0.08);
+  border: 2px solid rgba(45, 87, 166, 0.45);
+  border-left: 8px solid var(--royal);
+}
+
+.ultimatum__icon,
+.coalition-banner__icon {
+  flex: none;
+  font-size: 42px;
+  color: var(--royal);
+}
+
+.ultimatum__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ultimatum__body p {
+  margin: 0;
+}
+
+.ultimatum__title {
+  margin: 0;
+  font: 700 22px var(--font-caps);
+  color: var(--ink-blue);
+}
+
+.ultimatum__lifts {
+  color: var(--ink-2);
+}
+
+.ultimatum__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.coalition-banner {
+  background: rgba(139, 30, 26, 0.07);
+  border: 2px solid rgba(139, 30, 26, 0.35);
+  border-left: 8px solid var(--crimson);
+}
+
+.coalition-banner__icon {
+  color: var(--crimson);
+}
+
+.coalition-banner__text {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.coalition-banner__offensive {
+  margin: 4px 0 0;
+}
+
+.coalition-banner__buyouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accord p {
+  margin: 0 0 10px;
+}
+
+.accord__why {
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+.endgame {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.endgame--won {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 3px rgba(201, 150, 46, 0.35);
+}
+
+.endgame__title {
+  margin: 0 0 8px;
+  font: 700 22px var(--font-caps);
+  color: var(--ink);
+}
+
+.endgame__record,
+.endgame__rivals {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.endgame__reign {
+  margin: 0;
+  font-style: italic;
+}
+
 @media (max-width: 1280px) {
   .diplomacy-cols {
     grid-template-columns: 1fr;

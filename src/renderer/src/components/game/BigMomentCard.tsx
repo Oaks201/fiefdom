@@ -4,6 +4,7 @@ import { sfx } from '../../audio'
 import { SFX_NAMES, type SfxName } from '../../audio/sfx'
 import { useMoments } from '../../state/moments'
 import { useText } from '../../state/text'
+import { useUI } from '../../state/ui'
 import { GameArt } from './GameArt'
 
 /**
@@ -37,9 +38,30 @@ export function BigMomentCard(): React.JSX.Element | null {
         <div className="moment__words">
           <h2 className="moment__title">{text(moment.titleId, moment.facts)}</h2>
           {moment.bodyId && <p className="moment__body">{text(moment.bodyId, moment.facts)}</p>}
-          <button type="button" className="btn btn--primary" onClick={dismiss} data-autofocus>
-            Continue
-          </button>
+          {moment.lines && moment.lines.length > 0 && (
+            <ul className="moment__lines">
+              {moment.lines.map((l, i) => (
+                <li key={i}>{l}</li>
+              ))}
+            </ul>
+          )}
+          <div className="moment__actions">
+            {moment.action && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  useUI.getState().openBattle(moment.action?.battleId ?? '', true)
+                  dismiss()
+                }}
+              >
+                {moment.action.label}
+              </button>
+            )}
+            <button type="button" className="btn btn--primary" onClick={dismiss} data-autofocus>
+              Continue
+            </button>
+          </div>
         </div>
       </div>
     </div>,

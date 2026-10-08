@@ -12,6 +12,8 @@ import './styles/terms.css'
 import './styles/game.css'
 import './styles/realm.css'
 import './styles/diplomacy.css'
+import './styles/battle.css'
+import './styles/armory.css'
 
 import App from './App'
 

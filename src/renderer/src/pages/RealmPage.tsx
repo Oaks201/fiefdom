@@ -1,4 +1,5 @@
 import { Profiler, useState, type ProfilerOnRenderCallback } from 'react'
+import { EndgameRecord } from '../components/endgame/Endgame'
 import { Herald } from '../components/game/Herald'
 import { BuildingsPanel, CrossingsPanel, RosterPanel } from '../components/realm/BuildingsPanel'
 import { HexMap, MapLegend } from '../components/realm/HexMap'
@@ -35,6 +36,7 @@ export function RealmPage(): React.JSX.Element | null {
         <h1 className="page-title">The Realm</h1>
         <p className="page-sub">Your lands, the rivals’ borders and the wilds between. Choose a hex to see what it holds and what can be done there.</p>
       </header>
+      <EndgameRecord campaign={campaign} />
       <div className="realm-board">
         <div className="realm-board__map">
           <HexMap campaign={campaign} today={today} selected={selected} onSelect={setSelected} />

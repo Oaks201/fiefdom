@@ -12,6 +12,7 @@ import { Homecoming } from './components/game/Homecoming'
 import { pagesFor } from './lib/game/view/shell'
 import { ArchivePage } from './pages/ArchivePage'
 import { ArmoryPage } from './pages/ArmoryPage'
+import { BattlePage } from './pages/BattlePage'
 import { DiplomacyPage } from './pages/DiplomacyPage'
 import { RealmPage } from './pages/RealmPage'
 import { ChroniclePage } from './pages/ChroniclePage'
@@ -32,6 +33,7 @@ export default function App(): React.JSX.Element {
   const error = useLedger((s) => s.error)
   const load = useLedger((s) => s.load)
   const page = useUI((s) => s.page)
+  const battle = useUI((s) => s.battle)
   const campaignStatus = useCampaign((s) => s.status)
   const hasCampaign = useCampaign((s) => s.campaign !== null)
 
@@ -54,7 +56,7 @@ export default function App(): React.JSX.Element {
   // A new page starts at its top, whatever the last one was scrolled to.
   useEffect(() => {
     document.querySelector('.desk__main')?.scrollTo({ top: 0 })
-  }, [page])
+  }, [page, battle?.id, battle?.replay])
 
   // A page that no longer exists (no campaign) falls back to the Chronicle.
   useEffect(() => {
@@ -114,15 +116,16 @@ export default function App(): React.JSX.Element {
         <>
           <TopBar />
           <main className="desk__main">
-            <div className={`sheet page page--${page}`} key={page}>
+            <div className={`sheet page page--${battle && hasCampaign ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : page}>
               <div className="sheet__paper" aria-hidden="true" />
               <div className="page__content">
-                {page === 'chronicle' && <ChroniclePage />}
-                {page === 'contract' && <ContractPage />}
-                {page === 'archive' && <ArchivePage />}
-                {page === 'realm' && hasCampaign && <RealmPage />}
-                {page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
-                {page === 'armory' && hasCampaign && <ArmoryPage />}
+                {battle && hasCampaign && <BattlePage />}
+                {!(battle && hasCampaign) && page === 'chronicle' && <ChroniclePage />}
+                {!(battle && hasCampaign) && page === 'contract' && <ContractPage />}
+                {!(battle && hasCampaign) && page === 'archive' && <ArchivePage />}
+                {!(battle && hasCampaign) && page === 'realm' && hasCampaign && <RealmPage />}
+                {!(battle && hasCampaign) && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
+                {!(battle && hasCampaign) && page === 'armory' && hasCampaign && <ArmoryPage />}
               </div>
             </div>
           </main>

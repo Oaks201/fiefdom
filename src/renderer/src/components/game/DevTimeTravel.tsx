@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { applyScenario, DEV_SCENARIOS } from '../../lib/game/dev/scenarios'
+import { momentsFor } from '../../lib/game/view/endgame'
 import { campaignNow, campaignToday, devAdvanceDays, useDevClock } from '../../state/campaignClock'
 import { useCampaign } from '../../state/campaign'
+import { useMoments } from '../../state/moments'
 import { textProgress } from '../../state/text'
 import { toast } from '../../state/toasts'
 import './DevTimeTravel.css'
@@ -10,8 +12,14 @@ import './DevTimeTravel.css'
 function loadScenario(id: string): boolean {
   const scenario = DEV_SCENARIOS.find((s) => s.id === id)
   if (!scenario) return false
+  const before = useCampaign.getState().campaign?.log.length ?? 0
   const done = useCampaign.getState().apply((s) => applyScenario(s, id, campaignToday(s.campaign.timeZone)) ?? s)
-  if (done) toast(`Scenario: ${scenario.title}.`, 'success')
+  const after = useCampaign.getState().campaign
+  if (done && after) {
+    toast(`Scenario: ${scenario.title}.`, 'success')
+    // What the scenario posted raises its cards, as a settlement's events would.
+    useMoments.getState().showAll(momentsFor(after, after.log.slice(before)))
+  }
   return done
 }
 
