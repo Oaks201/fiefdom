@@ -139,7 +139,7 @@ function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
 }
 
 /** Realm Consistency at `day`'s close: Q over the last 28 settled campaign days (A-39). */
-function realmConsistencyOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
+export function realmConsistencyOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
   return realmConsistency(records(state, state.campaign.startDate, day), currentTerms(state, day), weekStartsOn)
 }
 

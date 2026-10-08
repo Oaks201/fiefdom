@@ -1,5 +1,7 @@
 import type { IconType } from 'react-icons'
-import { GiBookshelf, GiCandleFlame, GiCog, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled } from 'react-icons/gi'
+import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
+import { pagesFor, topBarView } from '../lib/game/view/shell'
+import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { contractStatus } from '../lib/contracts'
 import { formatAgo } from '../lib/format'
 import { openContract, setSound } from '../lib/ledger'
@@ -11,11 +13,16 @@ import { useUI, type Page } from '../state/ui'
 import { AnimatedNumber } from './AnimatedNumber'
 import { WaxSeal } from './WaxSeal'
 
-const TABS: Array<{ id: Page; label: string; icon: IconType }> = [
-  { id: 'chronicle', label: 'Chronicle', icon: GiQuillInk },
-  { id: 'contract', label: 'Contract', icon: GiScrollUnfurled },
-  { id: 'archive', label: 'Archive', icon: GiBookshelf }
-]
+const TAB_INFO: Record<Page, { label: string; icon: IconType }> = {
+  chronicle: { label: 'Chronicle', icon: GiQuillInk },
+  contract: { label: 'Contract', icon: GiScrollUnfurled },
+  archive: { label: 'Archive', icon: GiBookshelf },
+  realm: { label: 'Realm', icon: GiTreasureMap },
+  diplomacy: { label: 'Diplomacy', icon: GiShakingHands },
+  armory: { label: 'Armory', icon: GiAnvilImpact }
+}
+
+const NUMERALS = ['I', 'II', 'III']
 
 export function TopBar(): React.JSX.Element {
   const page = useUI((s) => s.page)
@@ -26,14 +33,24 @@ export function TopBar(): React.JSX.Element {
   const ledger = useLedgerData()
   const today = useToday()
   const rep = useReputation()
+  const campaign = useCampaignState()
+  const campaignToday = useCampaignToday()
+  const tabs = pagesFor(campaign).map((id) => ({ id, ...TAB_INFO[id] }))
+  const bar = campaign && campaignToday ? topBarView(campaign, campaignToday) : null
 
   const open = openContract(ledger)
   const status = open ? contractStatus(open, today) : null
-  const contractBadge = !open
-    ? { text: '!', title: 'No contract is in force' }
-    : status === 'awaiting' || (status === 'active' && open.endDate === today)
-      ? { text: '⚖', title: 'Your final weigh-in is due' }
+  const contractBadge = campaign
+    ? !campaign.contracts.active && !campaign.contracts.queued
+      ? { text: '!', title: 'No contract is in force' }
       : null
+    : !open
+      ? { text: '!', title: 'No contract is in force' }
+      : status === 'awaiting' || (status === 'active' && open.endDate === today)
+        ? { text: '⚖', title: 'Your final weigh-in is due' }
+        : null
+  const campaignStreak = campaign ? (campaign.settlement.snapshots.find((s) => s.date === campaign.settledThrough.day)?.streak ?? 0) : 0
+  const streak = campaign ? campaignStreak : rep.currentStreak
 
   const profile = ledger.profile
   const music = ledger.settings.sound.music
@@ -65,8 +82,8 @@ export function TopBar(): React.JSX.Element {
         </span>
       </button>
 
-      <nav className="tabs" aria-label="Pages">
-        {TABS.map(({ id, label, icon: Icon }, i) => (
+      <nav className={`tabs ${tabs.length > 3 ? 'tabs--campaign' : ''}`} aria-label="Pages">
+        {tabs.map(({ id, label, icon: Icon }, i) => (
           <button
             key={id}
             type="button"
@@ -76,7 +93,7 @@ export function TopBar(): React.JSX.Element {
             title={`${label} (Ctrl+${i + 1})`}
           >
             <Icon className="tab__icon" aria-hidden="true" />
-            <span>{label}</span>
+            <span className="tab__label">{label}</span>
             {id === 'contract' && contractBadge && (
               <span className="tab__badge" title={contractBadge.title}>
                 {contractBadge.text}
@@ -114,11 +131,24 @@ export function TopBar(): React.JSX.Element {
             <GiCog aria-hidden="true" />
           </button>
         </div>
-        <div className={`streak ${rep.currentStreak > 0 ? 'streak--lit' : ''}`} title={`Perfect-day streak (best: ${rep.bestStreak})`}>
+        <div className={`streak ${streak > 0 ? 'streak--lit' : ''}`} title={campaign ? 'Perfect-day streak' : `Perfect-day streak (best: ${rep.bestStreak})`}>
           <GiCandleFlame className="streak__icon" aria-hidden="true" />
-          <span className="streak__count">{rep.currentStreak}</span>
-          <span className="streak__label">{rep.currentStreak === 1 ? 'day' : 'days'}</span>
+          <span className="streak__count">{streak}</span>
+          <span className="streak__label">{streak === 1 ? 'day' : 'days'}</span>
         </div>
+        {bar ? (
+          <div className="reputation reputation--campaign" title={`${bar.grace.text} Realm Consistency over the last 28 days: ${bar.realmConsistencyPercent}%.`}>
+            <WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />
+            <span className="reputation__text">
+              <span className="reputation__value">
+                <AnimatedNumber value={bar.purse} />
+              </span>
+              <span className="reputation__label">
+                Purse · {bar.realmConsistencyPercent}% · Grace {bar.grace.level === 0 ? 'none' : NUMERALS[bar.grace.level - 1]}
+              </span>
+            </span>
+          </div>
+        ) : (
         <div
           className="reputation"
           title={`Reputation — ${rep.fromDays.toLocaleString('en-US')} from days, ${rep.fromContracts.toLocaleString('en-US')} from contracts (bonuses and wagers, less stakes)`}
@@ -131,6 +161,7 @@ export function TopBar(): React.JSX.Element {
             <span className="reputation__label">Reputation</span>
           </span>
         </div>
+        )}
       </div>
     </header>
   )

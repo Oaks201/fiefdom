@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { CampaignContract } from '../components/campaign/CampaignContract'
+import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { GiFire, GiReceiveMoney } from 'react-icons/gi'
 import { BurnDialog } from '../components/contract/BurnDialog'
 import { ContractDocument } from '../components/contract/ContractDocument'
@@ -17,9 +19,26 @@ import { useLedgerData } from '../state/hooks'
 export function ContractPage(): React.JSX.Element {
   const ledger = useLedgerData()
   const today = useToday()
+  const campaign = useCampaignState()
+  const campaignToday = useCampaignToday()
   const [justSealed, setJustSealed] = useState<string | null>(null)
   const [closedId, setClosedId] = useState<string | null>(null)
   const [burning, setBurning] = useState<Contract | null>(null)
+
+  // Once a campaign is founded, its own contracts take the page; the ledger's stay in the Archive (A-07).
+  if (campaign && campaignToday) {
+    return (
+      <div className="contract-page">
+        <header className="page-head">
+          <h1 className="page-title">The Contract</h1>
+          <p className="page-sub">
+            From a single day to a month, sealed in wax. It begins at the next dawn and pays at its end by how well its terms were kept; a longer one pays more for each day.
+          </p>
+        </header>
+        <CampaignContract campaign={campaign} today={campaignToday} />
+      </div>
+    )
+  }
   const open = openContract(ledger)
   // a fresh draft whenever a contract is sealed, closed or burned
   const draftKey = ledger.contracts.map((c) => `${c.id}${c.closedAt ? '+' : ''}${c.burnedAt ? '†' : ''}`).join()

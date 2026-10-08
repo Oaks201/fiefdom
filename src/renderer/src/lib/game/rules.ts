@@ -563,7 +563,9 @@ const RULES_TABLE = {
       mifflin: { perKg: 10, perCm: 6.25, perYear: 5, male: 5, female: -161 }
     },
     /** A rough patch (Ch 16 "Illness and travel"): this many low-scoring days in a row. */
-    roughPatchDays: 3 // TUNE (A-120)
+    roughPatchDays: 3, // TUNE (A-120)
+    /** A low-scoring day, for the rough patch: its duties, food and steps average below this (T14). */
+    roughDayBelow: 0.5 // TUNE (A-179)
   },
 
   armory: {

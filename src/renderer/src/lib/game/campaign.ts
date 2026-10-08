@@ -20,7 +20,7 @@ import { buildMap, fronts as rimFronts } from './map'
 import { int } from './rng'
 import { initRivals } from './rivals'
 import { RULES, byTier } from './rules'
-import { checkGoal, clampPaceCap, currentWeight, healerRange, initialWeightState, toLb, trend } from './weight'
+import { checkGoal, clampPaceCap, currentWeight, healerRange, initialWeightState, toLb, trend, type HealerRange } from './weight'
 import type {
   BuildingId,
   Campaign,
@@ -114,6 +114,32 @@ function zoneDay(now: Date, timeZone: string): ISODate {
 }
 
 /**
+ * The Healer's founding range (A-125): the floor the founding Charter is checked against, from the
+ * ledger's last 28 days (logs, else Fitbit burned, else Mifflin–St Jeor, else 1,200). The founding
+ * wizard shows it while the player types the calorie limit.
+ */
+export function foundingHealer(input: Omit<FoundingInput, 'charter'> & { charter?: Charter }, now: Date): { range: HealerRange; prelude: DaySnapshot[]; today: ISODate; startDate: ISODate } {
+  const { ledger } = input
+  const unit = input.unit ?? ledger.settings.unit
+  const today = zoneDay(now, input.timeZone)
+  const startDate = nextDawnDay(now, input.timeZone)
+  const charter = input.charter ?? { stepPool: 0, calorieLimit: 0, duties: [] }
+  // The days the weight and Healer windows look back over, founding day included.
+  const prelude: DaySnapshot[] = []
+  for (let back = RULES.settlement.preludeDays; back >= 1; back--) {
+    prelude.push(snapshotDay(ledger, addDays(startDate, -back), charter))
+  }
+  const weighIns = weighInsOf(prelude)
+  const range = healerRange(prelude.map(toHealerDay), today, trend(weighIns, today), {
+    sex: input.sex,
+    birthYear: input.birthYear,
+    heightCm: input.heightCm,
+    weightLb: currentWeight(weighIns, today) ?? (input.startWeight > 0 ? toLb(input.startWeight, unit) : null)
+  })
+  return { range, prelude, today, startDate }
+}
+
+/**
  * Founds a campaign at `now`. It starts at the next dawn in `timeZone` (A-04). Throws a
  * CampaignError, ready to show, while a legacy contract is open, upcoming or awaiting its
  * weigh-in (A-07), for a goal the Healer refuses, or for a Charter outside its ranges (including
@@ -127,8 +153,7 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
   const unit = input.unit ?? ledger.settings.unit
   checkGoal(input.goalWeight, unit, input.heightCm)
 
-  const today = zoneDay(now, input.timeZone)
-  const startDate = nextDawnDay(now, input.timeZone)
+  const { range: healer, prelude, today, startDate } = foundingHealer(input, now)
   const weekStartsOn = input.weekStartsOn ?? ledger.settings.weekStartsOn
   const seed = input.seed ?? hashSeed(now.toISOString())
   const startLb = toLb(input.startWeight, unit)
@@ -136,18 +161,6 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
   const pace = RULES.momentum.targetPace
   const targetPace = Math.min(clampPaceCap(input.targetPace ?? pace.capLb), pace.ceilingShareOfWeight * startLb)
 
-  // The days the weight and Healer windows look back over, founding day included.
-  const prelude: DaySnapshot[] = []
-  for (let back = RULES.settlement.preludeDays; back >= 1; back--) {
-    prelude.push(snapshotDay(ledger, addDays(startDate, -back), input.charter))
-  }
-  const weighIns = weighInsOf(prelude)
-  const healer = healerRange(prelude.map(toHealerDay), today, trend(weighIns, today), {
-    sex: input.sex,
-    birthYear: input.birthYear,
-    heightCm: input.heightCm,
-    weightLb: currentWeight(weighIns, today) ?? startLb
-  })
   const charterErrors = validateCharter(input.charter, { floor: healer.floor, medicalSupervision: input.medicalSupervision })
   if (charterErrors.length > 0) throw new CampaignError(charterErrors.join(' '))
 
@@ -165,7 +178,8 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     weekStartsOn,
     ...(input.heightCm !== undefined ? { heightCm: input.heightCm } : {}),
     ...(input.sex !== undefined ? { sex: input.sex } : {}),
-    ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {})
+    ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {}),
+    ...(input.medicalSupervision ? { medicalSupervision: true } : {})
   }
   const hexes = buildMap(seed)
   const buildings = {} as Record<BuildingId, 1>

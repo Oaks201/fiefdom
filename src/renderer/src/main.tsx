@@ -9,6 +9,7 @@ import './styles/chronicle.css'
 import './styles/contract.css'
 import './styles/archive.css'
 import './styles/terms.css'
+import './styles/game.css'
 
 import App from './App'
 

@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { GiScrollUnfurled, GiScales } from 'react-icons/gi'
 import { CalendarButton } from '../components/chronicle/MonthCalendar'
-import { DayLedger } from '../components/chronicle/DayLedger'
+import { DayLedger, WeightField } from '../components/chronicle/DayLedger'
+import { CampaignWeek, HealerCards, ValorPanel, WeighInBanner } from '../components/campaign/ChronicleCampaign'
+import { MilestonePanel } from '../components/campaign/MilestonePanel'
+import { Herald } from '../components/game/Herald'
+import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { DutyList } from '../components/chronicle/DutyList'
 import { Tally } from '../components/chronicle/Tally'
 import { WeekStrip } from '../components/chronicle/WeekStrip'
@@ -18,6 +22,8 @@ export function ChroniclePage(): React.JSX.Element {
   const setDate = useUI((s) => s.setDate)
   const go = useUI((s) => s.go)
   const ledger = useLedgerData()
+  const campaign = useCampaignState()
+  const campaignToday = useCampaignToday()
   const date = rawDate > today ? today : rawDate
   const weekStartsOn = ledger.settings.weekStartsOn
 
@@ -64,7 +70,21 @@ export function ChroniclePage(): React.JSX.Element {
   const open = openContract(ledger)
   const status = open ? contractStatus(open, today) : null
   let banner: React.JSX.Element | null = null
-  if (date === today) {
+  const running = campaign?.contracts.active
+  const covering = campaign ? [...campaign.contracts.history, ...(running ? [running] : [])].find((c) => c.startDate <= date && date <= c.endDate) : undefined
+  if (campaign && date === today) {
+    if (!running && !campaign.contracts.queued) {
+      banner = (
+        <div className="banner">
+          <GiScrollUnfurled className="banner__icon" aria-hidden="true" />
+          <span>No contract is in force. Duties, steps and calories still earn their daily and weekly reputation; a contract adds its payout.</span>
+          <button type="button" className="btn btn--small" onClick={() => go('contract')}>
+            Seal a contract
+          </button>
+        </div>
+      )
+    }
+  } else if (date === today) {
     if (!open) {
       banner = (
         <div className="banner">
@@ -109,7 +129,15 @@ export function ChroniclePage(): React.JSX.Element {
           <div className="daynav__eyebrow">{relative ?? ' '}</div>
           <h1 className="daynav__date">{formatLong(date, today)}</h1>
           <div className="daynav__sub">
-            {contract ? (
+            {campaign ? (
+              covering ? (
+                <>
+                  Day {diffDays(covering.startDate, date) + 1} of {covering.termDays + covering.respiteDays} under the {covering.kind === 'accord' ? 'Accord' : 'contract'} of {formatShort(covering.startDate)}
+                </>
+              ) : (
+                'No contract binds this day'
+              )
+            ) : contract ? (
               <>
                 Day {dayOfContract} of 7 under the contract of {formatShort(contract.startDate)}
               </>
@@ -141,16 +169,38 @@ export function ChroniclePage(): React.JSX.Element {
       </div>
 
       {banner}
+      {campaign && campaignToday && date === today && <WeighInBanner campaign={campaign} ledger={ledger} today={date} />}
 
       <div className="chronicle__tallies">
         <Tally metric="steps" date={date} inputRef={stepsRef} />
         <Tally key={calorieMetric} metric={calorieMetric} date={date} inputRef={caloriesRef} />
       </div>
 
+      {campaign && date >= campaign.campaign.startDate && <CampaignWeek campaign={campaign} ledger={ledger} date={date} />}
+
       <div className="chronicle__lower">
         <DutyList date={date} today={today} newDutyRef={newDutyRef} />
-        <DayLedger date={date} today={today} />
+        {campaign && date >= campaign.campaign.startDate ? (
+          <div className="chronicle__side">
+            <ValorPanel campaign={campaign} ledger={ledger} date={date} today={today} />
+            <section className="panel">
+              <WeightField date={date} today={today} />
+            </section>
+          </div>
+        ) : (
+          <DayLedger date={date} today={today} />
+        )}
       </div>
+
+      {campaign && campaignToday && (
+        <div className="chronicle__realm">
+          <div className="chronicle__realm-main">
+            {date === today && <HealerCards campaign={campaign} ledger={ledger} today={campaignToday} />}
+            {date === today && <Herald today={campaignToday} />}
+          </div>
+          <MilestonePanel campaign={campaign} ledger={ledger} today={campaignToday} />
+        </div>
+      )}
 
       <footer className="shortcuts" aria-label="Keyboard shortcuts">
         <span>

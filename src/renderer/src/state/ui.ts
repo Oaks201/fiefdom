@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { todayISO, type ISODate } from '../lib/dates'
 
-export type Page = 'chronicle' | 'contract' | 'archive'
+/** The pages; the Realm, Diplomacy and Armory appear only once a campaign is founded (T14). */
+export type Page = 'chronicle' | 'contract' | 'archive' | 'realm' | 'diplomacy' | 'armory'
 
 interface UIState {
   page: Page
@@ -11,11 +12,14 @@ interface UIState {
   archiveId: string | null
   profileOpen: boolean
   settingsOpen: boolean
+  /** The founding wizard (T14). */
+  foundingOpen: boolean
   go(page: Page): void
   setDate(date: ISODate): void
   openArchive(id: string | null): void
   setProfileOpen(open: boolean): void
   setSettingsOpen(open: boolean): void
+  setFoundingOpen(open: boolean): void
   /** jump to a day in the Chronicle from anywhere */
   showDay(date: ISODate): void
 }
@@ -26,11 +30,13 @@ export const useUI = create<UIState>((set) => ({
   archiveId: null,
   profileOpen: false,
   settingsOpen: false,
+  foundingOpen: false,
   go: (page) => set({ page }),
   setDate: (date) => set({ date }),
   openArchive: (archiveId) => set({ archiveId }),
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setFoundingOpen: (foundingOpen) => set({ foundingOpen }),
   showDay: (date) => set({ page: 'chronicle', date, archiveId: null })
 }))
 

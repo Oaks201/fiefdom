@@ -16,7 +16,8 @@ import { foundCampaign } from '../../../src/renderer/src/lib/game/campaign'
 import { addDays, campaignWeek, isWeekCloseDay } from '../../../src/renderer/src/lib/game/clock'
 import { CODEX } from '../../../src/renderer/src/lib/game/codex'
 import { armyValue, assaultValue, effectiveGarrison, setOrders } from '../../../src/renderer/src/lib/game/combat'
-import { availableLengths, seal } from '../../../src/renderer/src/lib/game/contracts'
+import { sealContract } from '../../../src/renderer/src/lib/game/contractActions'
+import { availableLengths } from '../../../src/renderer/src/lib/game/contracts'
 import { balance } from '../../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../../src/renderer/src/lib/game/effects'
 import { makeDeal, placeBid, resistance, trust } from '../../../src/renderer/src/lib/game/land'
@@ -98,18 +99,11 @@ function buyWhatItCan(input: CampaignState, today: ISODate): CampaignState {
 
 let contractSeq = 0
 
-function sealContract(state: CampaignState, today: ISODate): CampaignState {
+function sealLongest(state: CampaignState, today: ISODate): CampaignState {
   if (state.contracts.active || state.contracts.queued) return state
-  const effects = realmEffects(state)
-  const lengths = availableLengths({ buildings: state.buildings, castleTier: state.castleTier })
-  const termDays = Math.max(...lengths)
-  const sealed = seal(
-    state.contracts,
-    state.purse,
-    { id: `drive-${(contractSeq += 1)}`, termDays, charter: state.charter, pledge: 0 },
-    { today, buildings: state.buildings, castleTier: state.castleTier, pledgeCapMult: effects.pledgeCap.value, floor: state.weight.healerFloor ?? 0 }
-  )
-  return { ...state, contracts: sealed.contracts, purse: sealed.purse }
+  const termDays = Math.max(...availableLengths({ buildings: state.buildings, castleTier: state.castleTier }))
+  const sealed = sealContract(state, { id: `drive-${(contractSeq += 1)}`, termDays }, today)
+  return sealed.ok ? sealed.state : state
 }
 
 function court(input: CampaignState, today: ISODate): CampaignState {
@@ -175,7 +169,7 @@ function act(input: CampaignState, today: ISODate, o: DriveOptions): CampaignSta
   if (weekStart) {
     state = buyWhatItCan(state, today)
     if (o.policy === 'diplomat') state = diplomacy(state, today)
-    state = sealContract(state, today)
+    state = sealLongest(state, today)
     state = court(state, today)
   }
   return orders(state, today, o.habits === 'steady' ? 0.9 : 0.4)

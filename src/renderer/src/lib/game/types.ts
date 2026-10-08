@@ -66,6 +66,8 @@ export interface Campaign {
   dispensation?: boolean
   /** The week start fixed at founding (`settings.weekStartsOn` then). Every rule reads this, never the ledger's current setting. */
   weekStartsOn: WeekStartsOn
+  /** T14: medical supervision confirmed at founding: every later Charter check lets the limit sit below the floor (Ch 4, Ch 16). */
+  medicalSupervision?: boolean
 }
 
 export interface Charter {
@@ -646,6 +648,12 @@ export interface GameEventMap {
   grace: { from: GraceLevel; to: GraceLevel }
   /** A contract was paid or withdrawn (Ch 4). */
   contract: { contractId: string; outcome: 'paid' | 'withdrawn'; score: number; payout: number; pledgeReturn: number }
+  /** T14: a contract (or an Accord) was sealed; it starts on `startDate`. */
+  contractSealed: { contractId: string; contractKind: LandContract['kind']; termDays: number; pledge: number; startDate: ISODate; endDate: ISODate; rival?: RivalId }
+  /** T14: a Respite day was spent on `day`; the contract now ends on `endDate`. */
+  respite: { contractId: string; day: ISODate; endDate: ISODate }
+  /** T14: the Charter was revised between contracts. */
+  charter: { stepPool: number; calorieLimit: number; duties: string[] }
   /** A Healer check-in fired (Ch 16). */
   healer: { checkIn: string }
   /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */

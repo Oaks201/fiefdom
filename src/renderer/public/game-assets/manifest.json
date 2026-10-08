@@ -1,0 +1,2042 @@
+{
+  "hex.castle": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.building": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wild": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.den": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.road": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.gate": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lairMouth": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.capital": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.realm": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lair": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.ruins": {
+    "file": null,
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.overlay.contested": {
+    "file": null,
+    "kind": "overlay",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.overlay.scorched": {
+    "file": null,
+    "kind": "overlay",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "building.barracks.1": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.barracks.2": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.barracks.3": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.barracks.4": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.barracks.5": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.merchantHall.1": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.merchantHall.2": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.merchantHall.3": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.merchantHall.4": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.merchantHall.5": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.mageTower.1": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.mageTower.2": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.mageTower.3": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.mageTower.4": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.mageTower.5": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.foundry.1": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.foundry.2": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.foundry.3": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.foundry.4": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "building.foundry.5": {
+    "file": null,
+    "kind": "building",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "castle.1": {
+    "file": null,
+    "kind": "castle",
+    "size": [
+      768,
+      768
+    ]
+  },
+  "castle.2": {
+    "file": null,
+    "kind": "castle",
+    "size": [
+      768,
+      768
+    ]
+  },
+  "castle.3": {
+    "file": null,
+    "kind": "castle",
+    "size": [
+      768,
+      768
+    ]
+  },
+  "castle.4": {
+    "file": null,
+    "kind": "castle",
+    "size": [
+      768,
+      768
+    ]
+  },
+  "castle.5": {
+    "file": null,
+    "kind": "castle",
+    "size": [
+      768,
+      768
+    ]
+  },
+  "rival.orc.calm": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.orc.angry": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.orc.humbled": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.goblin.calm": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.goblin.angry": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.goblin.humbled": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.archmage.calm": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.archmage.angry": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.archmage.humbled": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.dwarf.calm": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.dwarf.angry": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "rival.dwarf.humbled": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
+  "company.militia.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.militia.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.menAtArms.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.menAtArms.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.pikemen.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.pikemen.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.knights.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.knights.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.champions.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.champions.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.watchmen.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.watchmen.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.sellswords.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.sellswords.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.caravanGuard.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.caravanGuard.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.freeLances.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.freeLances.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.gildedHost.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.gildedHost.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.hedgeWardens.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.hedgeWardens.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.acolytes.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.acolytes.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.wardens.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.wardens.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.magi.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.magi.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.archmagi.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.archmagi.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.palisadeCrew.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.palisadeCrew.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.crossbowmen.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.crossbowmen.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ballistaCrew.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ballistaCrew.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.trebuchetBattery.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.trebuchetBattery.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ironColossus.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ironColossus.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.crownguard.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.crownguard.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ironclads.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ironclads.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.cataphracts.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.cataphracts.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ironLegion.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ironLegion.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.spellblades.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.spellblades.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.battlemages.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.battlemages.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.knightsOfTheVeil.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.knightsOfTheVeil.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.beastcatchers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.beastcatchers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.rangers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.rangers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.royalHunt.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.royalHunt.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.clayGolems.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.clayGolems.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.runeGolems.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.runeGolems.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.runeforgedTitans.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.runeforgedTitans.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.warWagons.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.warWagons.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.bombardBattery.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.bombardBattery.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.dragonfireBattery.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.dragonfireBattery.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.alchemists.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.alchemists.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.illusionists.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.illusionists.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.shadowCourt.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.shadowCourt.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ugraksWarboss.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ugraksWarboss.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.grunts.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.grunts.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.wolfRiders.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.wolfRiders.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.shamans.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.shamans.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.brutes.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.brutes.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.goldenGuard.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.goldenGuard.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.sneaks.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.sneaks.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.slingers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.slingers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.trapSetters.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.trapSetters.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.hiredOgres.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.hiredOgres.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.anvilGuard.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.anvilGuard.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.thunderers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.thunderers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.ironbreakers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.ironbreakers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.runePriests.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.runePriests.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.hammerers.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.hammerers.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.emrysEcho.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.emrysEcho.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.wisps.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.wisps.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.apprentices.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.apprentices.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.shadowHounds.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.shadowHounds.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.stoneSentinels.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.stoneSentinels.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.sworn.token": {
+    "file": null,
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.sworn.portrait": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.oathsworn": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.goldCloaks": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.starwardens": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.sappers": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.wyvern": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.matriarch": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.basilisk": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.dragon": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.griffin": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.manticore": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.huntLord": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "portrait.hound": {
+    "file": null,
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "item.whetstones": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.towerShields": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.coldIronEdges": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.luckyCoin": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.runeChalk": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.powderKegs": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.bannerOfTheRealm": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.healersSatchel": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.huntersNets": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.wardingCharms": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.dragonbonePlate": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.stormglassBolts": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.oathRing": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.heraldsHorn": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.unbrokenBanner": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.gildedLedger": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.starglassOrb": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.anvilHeart": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.wyvernScaleCloak": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.basiliskEye": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.griffinFeather": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.manticoreBarb": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "item.dragonsHeart": {
+    "file": null,
+    "kind": "item",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "banner.player": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "banner.orc": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "banner.goblin": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "banner.dwarf": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "banner.archmage": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "banner.neutral": {
+    "file": null,
+    "kind": "banner",
+    "size": [
+      256,
+      512
+    ]
+  },
+  "event.ugraksChallenge": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.grandAuction": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.deepCall": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.beastSurge": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.hungryWinter": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.dragonWakes": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.wildHunt": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.pretender": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.fearOfTheCrown": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.villageUprising": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.wanderingOrder": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.merchantCaravan": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.lostHeir": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "event.envoys": {
+    "file": null,
+    "kind": "event",
+    "size": [
+      768,
+      512
+    ]
+  },
+  "milestone.1": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.2": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.3": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.4": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.5": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.6": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.7": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.8": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.9": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "milestone.10": {
+    "file": null,
+    "kind": "milestone",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.grandBattleWon": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.grandBattleLost": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.coalition": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.ultimatum": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.victory": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "moment.fall": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "ui.frame": {
+    "file": null,
+    "kind": "frame",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "ui.button": {
+    "file": null,
+    "kind": "button",
+    "size": [
+      256,
+      64
+    ]
+  },
+  "ui.parchment": {
+    "file": null,
+    "kind": "parchment",
+    "size": [
+      1024,
+      1024
+    ]
+  },
+  "ui.seal": {
+    "file": null,
+    "kind": "seal",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "ui.icon.purse": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.respect": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.valor": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.grace": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.steps": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.calories": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.duties": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  },
+  "ui.icon.weight": {
+    "file": null,
+    "kind": "icon",
+    "size": [
+      64,
+      64
+    ]
+  }
+}

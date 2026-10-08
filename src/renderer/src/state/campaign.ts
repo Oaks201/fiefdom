@@ -23,6 +23,11 @@ interface CampaignStore {
    * campaign there is nothing to apply it to.
    */
   apply(op: (campaign: CampaignState) => CampaignState): boolean
+  /**
+   * Runs a player action that answers `{ ok, reason?, state }` (the contract, land, deal, world and
+   * Armory actions). A refusal is shown as a notice; returns whether it was done.
+   */
+  act(op: (campaign: CampaignState) => { ok: boolean; reason?: string | { code: string }; state: CampaignState }): boolean
   /** Sets a newly founded campaign (from `foundCampaign`) and saves it. */
   found(campaign: CampaignState): void
   /**
@@ -67,6 +72,31 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
     if (next !== campaign) {
       set({ campaign: next })
       scheduleSave(next)
+    }
+    return true
+  },
+
+  act(op) {
+    const { campaign, status } = get()
+    if (status !== 'ready' || campaign === null) return false
+    let done: ReturnType<typeof op>
+    try {
+      done = op(campaign)
+    } catch (err) {
+      if (err instanceof CampaignError) {
+        toast(err.message, 'error')
+        return false
+      }
+      throw err
+    }
+    if (!done.ok) {
+      const reason = done.reason
+      toast(typeof reason === 'string' ? reason : reason ? `Refused: ${reason.code}` : 'That cannot be done now.', 'error')
+      return false
+    }
+    if (done.state !== campaign) {
+      set({ campaign: done.state })
+      scheduleSave(done.state)
     }
     return true
   },

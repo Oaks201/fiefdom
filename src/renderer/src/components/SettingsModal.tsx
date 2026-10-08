@@ -10,6 +10,7 @@ import { useLedger } from '../state/store'
 import { useUI } from '../state/ui'
 import { FitbitSettings } from './FitbitSettings'
 import { Modal } from './Modal'
+import { useCampaign } from '../state/campaign'
 import { Switch } from './Switch'
 
 interface SoundRowProps {
@@ -59,6 +60,9 @@ export function SettingsModal(): React.JSX.Element {
   const ledger = useLedgerData()
   const apply = useLedger((s) => s.apply)
   const { sound, unit, weekStartsOn } = ledger.settings
+  const campaign = useCampaign((s) => s.campaign)
+  const campaignReady = useCampaign((s) => s.status === 'ready')
+  const setFoundingOpen = useUI((s) => s.setFoundingOpen)
   const [dataDir, setDataDir] = useState<string | null>(null)
 
   useEffect(() => {
@@ -146,6 +150,25 @@ export function SettingsModal(): React.JSX.Element {
         </div>
         <p className="settings__note">A contract keeps the unit it was sealed with.</p>
       </section>
+
+      {campaignReady && !campaign && (
+        <section className="settings__section">
+          <h3 className="settings__heading">The campaign</h3>
+          <p className="settings__note">
+            Found a realm on top of the ledger: contracts of any length, a purse, rivals, and Milestones on your weight journey. The ledger stays as it is.{' '}
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                setOpen(false)
+                setFoundingOpen(true)
+              }}
+            >
+              Found a campaign…
+            </button>
+          </p>
+        </section>
+      )}
 
       {isDesktop && (
         <section className="settings__section">

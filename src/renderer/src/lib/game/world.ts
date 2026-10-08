@@ -20,10 +20,10 @@
  */
 import { CODEX } from './codex'
 import { addDays, diffDays } from './clock'
-import { accordRespectGain, payoutCurve, seal, type AccordPaid } from './contracts'
+import { sealContract } from './contractActions'
+import { accordRespectGain, payoutCurve, type AccordPaid } from './contracts'
 import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
-import { CampaignError } from './errors'
 import { GRAND_HOOKS, announceGrandBattle, firstFreeDay, pendingBattles, siegeNotBefore, type OutcomeContext } from './grand'
 import { defectionTally, sellPrice } from './land'
 import { borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches } from './map'
@@ -48,7 +48,7 @@ import {
   withWorld,
   worldOf
 } from './state'
-import { RIVAL_IDS, type CampaignState, type Coalition, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type LandContract, type RivalId, type RivalState } from './types'
+import { RIVAL_IDS, type CampaignState, type Coalition, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type RivalState } from './types'
 import { eventInForce, eventsWeek } from './world/events'
 
 export { auctionBid, eventHint, eventInForce, keepVillage, lendToEnvoy, nextFullMoon, type WorldAction } from './world/events'
@@ -226,20 +226,8 @@ export function accordGate(state: CampaignState, rival: RivalId, today: ISODate 
 export function sealAccord(state: CampaignState, rival: RivalId, req: { id: string; pledge?: number }, today: ISODate = openDayOf(state)): { ok: boolean; reason?: string; state: CampaignState } {
   const gate = accordGate(state, rival, today)
   if (!gate.ok) return { ok: false, reason: gate.reason, state }
-  try {
-    const sealed = seal(
-      state.contracts,
-      state.purse,
-      { id: req.id, termDays: RULES.contracts.accord.days, charter: state.charter, pledge: req.pledge ?? 0, kind: 'accord', rival },
-      { today, buildings: state.buildings, castleTier: state.castleTier, pledgeCapMult: realmEffects(state).pledgeCap.value, floor: state.weight.healerFloor ?? 0 }
-    )
-    const contract: LandContract = { ...sealed.contract, respectAtStart: state.rivals[rival].respect }
-    const contracts = sealed.contracts.active?.id === contract.id ? { ...sealed.contracts, active: contract } : { ...sealed.contracts, queued: contract }
-    return { ok: true, state: { ...state, contracts, purse: sealed.purse } }
-  } catch (e) {
-    if (e instanceof CampaignError) return { ok: false, reason: e.message, state }
-    throw e
-  }
+  const sealed = sealContract(state, { id: req.id, termDays: RULES.contracts.accord.days, pledge: req.pledge ?? 0, kind: 'accord', rival }, today)
+  return sealed.ok ? { ok: true, state: sealed.state } : { ok: false, reason: sealed.reason, state }
 }
 
 /** D-01's Respect gain for an Accord at score curve f(Q), from the Respect recorded at its seal. */
