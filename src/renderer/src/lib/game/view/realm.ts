@@ -32,7 +32,7 @@ import {
   type RivalId,
   type ThreatKind
 } from '../types'
-import { amount, buyRefusalLabel, grandRefusalLabel, landRefusalLabel, orderProblemLabel, requirementLines } from './refusals'
+import { amount, buyRefusalLabel, factor, grandRefusalLabel, landRefusalLabel, orderProblemLabel, requirementLines } from './refusals'
 import { realmConsistencyNow, rivalName } from './shell'
 
 const SQRT3 = Math.sqrt(3) // rules-ok: geometry, the width of a pointy-top hex
@@ -330,7 +330,7 @@ export function effectLabel(field: string, value: number | boolean | string): st
     case 'hiredBlades':
       return 'Hired blades for the daily defense'
     case 'pledgeCap':
-      return `Pledge cap ×${amount(n)}`
+      return `Pledge cap ×${factor(n)}`
     case 'minPledgeReturn':
       return `At least ${pct(n)} of every pledge returns`
     case 'courtshipSlots':
@@ -360,7 +360,7 @@ export function effectLabel(field: string, value: number | boolean | string): st
     case 'tribute':
       return `Tribute on a lost battle −${pct(1 - n)}`
     case 'spoils.beast':
-      return `Spoils from beasts ×${amount(n)}`
+      return `Spoils from beasts ×${factor(n)}`
     case 'royalHunt':
       return 'One beast attack a week becomes a hunt'
     case 'costs.tiers':
@@ -622,7 +622,7 @@ const SOURCE_NAMES: Record<CompanySource, string> = {
 }
 
 /** The art slot of a roster company: its current unit line's token (`company.<unit>.token`), an Elite's portrait, a levy's banner. */
-function artOf(state: CampaignState, id: string, source: CompanySource): string {
+export function companyArt(state: CampaignState, id: string, source: CompanySource): string {
   if (source === 'building') {
     const unit = CODEX.companies.find((c) => c.source === 'building' && c.building === id && c.tier === state.buildings[id as BuildingId])
     return `company.${unit?.id ?? id}.token`
@@ -650,7 +650,7 @@ export function rosterView(state: CampaignState, today: ISODate = openDayOf(stat
   return rosterDetail(state, { day: today }, effects).map((e) => ({
     id: e.company.id,
     name: e.company.name,
-    art: artOf(state, e.company.id, e.company.source),
+    art: companyArt(state, e.company.id, e.company.source),
     source: e.company.source,
     origin: originOf(e.company.id, e.company.source),
     power: e.company.power,
@@ -663,7 +663,7 @@ export function rosterView(state: CampaignState, today: ISODate = openDayOf(stat
     sources: [
       ...e.parts.adds.map((s) => ({ label: sourceLabel(s.from), effect: `+${amount(s.value)}` })),
       ...e.parts.shares.map((s) => ({ label: sourceLabel(s.from), effect: `+${pct(s.value)}` })),
-      ...e.parts.cuts.map((s) => ({ label: sourceLabel(s.from), effect: s.value < 1 ? `−${pct(1 - s.value)}` : `×${amount(s.value)}` }))
+      ...e.parts.cuts.map((s) => ({ label: sourceLabel(s.from), effect: s.value < 1 ? `−${pct(1 - s.value)}` : `×${factor(s.value)}` }))
     ]
   }))
 }

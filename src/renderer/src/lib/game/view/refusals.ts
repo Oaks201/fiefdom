@@ -4,6 +4,7 @@
  * labels, not story text (A-46); deal refusals have their own catalog slots
  * (`herald.deal.refused.*`) and are not worded here.
  */
+import type { ArmoryRefusal } from '../armory'
 import type { Refusal, Requirement } from '../buildings'
 import { CODEX } from '../codex'
 import type { OrderProblem } from '../combat'
@@ -18,6 +19,13 @@ const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 /** A number as the screens print it: thousands separated, at most one decimal. */
 export function amount(n: number): string {
   return nf.format(n)
+}
+
+const nf2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+
+/** A multiplier or share as the rules state it, to two decimals (×1.25). */
+export function factor(n: number): string {
+  return nf2.format(n)
 }
 
 /** The purse as the player sees it: whole, rounded down (A-11). */
@@ -169,5 +177,47 @@ export function grandRefusalLabel(code: GrandRefusal): string {
       return 'No host stands there to fight.'
     default:
       return 'It cannot be done now.'
+  }
+}
+
+/** Why an Armory action is refused (T16). */
+export function armoryRefusalLabel(r: ArmoryRefusal): string {
+  switch (r.code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'milestone':
+      return `It opens at Milestone ${r.index}.`
+    case 'unknown':
+      return 'There is no such thing in the Armory.'
+    case 'trophy':
+      return 'Trophies are won in Mythic Hunts, never sold.'
+    case 'unique':
+      return 'Only one can be held.'
+    case 'reputation':
+      return `It costs ${amount(r.needed)}; the purse holds ${purse(r.have)}.`
+    case 'notInStash':
+      return 'That item is not in the stash.'
+    case 'unknownCompany':
+      return 'That company is not on the roster.'
+    case 'slots':
+      return `Every item slot is full (${r.slots}).`
+    case 'notEquipped':
+      return 'That company does not carry it.'
+    case 'wingTaken':
+      return 'The other Wing of this pair was chosen, for good.'
+    case 'alreadyChosen':
+      return 'This Wing is already built.'
+    case 'recruited':
+      return 'Already recruited.'
+    case 'notRecruited':
+      return 'Recruit it first.'
+    case 'maxRank':
+      return 'Already at rank II.'
+    case 'swornDone':
+      return 'The Sworn have already taken their oath.'
+    case 'tags':
+      return `Choose exactly ${r.count} different tags.`
+    case 'noArmorer':
+      return 'The third slot needs the Armorer Wing.'
   }
 }

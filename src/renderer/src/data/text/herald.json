@@ -238,5 +238,21 @@
   "herald.deal.refused.reputation": {
     "template": "This deal costs {needed}.",
     "final": null
+  },
+  "herald.grandBattle.rout": {
+    "template": "Grand Battle ({battle}) at hex {hex}: won in a rout.",
+    "final": null
+  },
+  "herald.grandBattle.victory": {
+    "template": "Grand Battle ({battle}) at hex {hex}: won.",
+    "final": null
+  },
+  "herald.grandBattle.defeat": {
+    "template": "Grand Battle ({battle}) at hex {hex}: lost.",
+    "final": null
+  },
+  "herald.reign": {
+    "template": "The Reign: the campaign was won in week {week}, and the realm goes on.",
+    "final": null
   }
 }

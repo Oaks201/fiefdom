@@ -11,11 +11,13 @@
 import { combatOf } from '../combat'
 import { addDays } from '../clock'
 import { balance, post } from '../economy'
+import { realmEffects } from '../effects'
+import { announceGrandBattle, type GrandRequest } from '../grand'
 import { dominionOf, hexIndex, touches } from '../map'
 import { refreshRoster } from '../roster'
-import { base } from '../rules'
-import { hexOf, patchRival, replaceHex, toPlayer } from '../state'
-import { BUILDING_IDS, type BuildingId, type BuildingTier, type CampaignState, type HexState, type ISODate } from '../types'
+import { RULES, base } from '../rules'
+import { EventBuffer, hexOf, patchRival, replaceHex, toPlayer } from '../state'
+import { BUILDING_IDS, RIVAL_IDS, type BuildingId, type BuildingTier, type CampaignState, type Company, type FieldUnit, type GrandBattle, type HexState, type ISODate } from '../types'
 
 export interface DevScenario {
   id: string
@@ -35,6 +37,10 @@ const RICH_PURSE = 1_000 // rules-ok: dev scenario
 const MARCHES = 4 // rules-ok: dev scenario, ring 4 touches the rivals' Marches
 const WILDWOOD = 3 // rules-ok: dev scenario, conquest attempts strike ring 3 and beyond
 const SCORCH_DAYS = 3 // rules-ok: dev scenario, a lost defense scorches for 3 days (Ch 10)
+// The Ch 11 worked exchange (E-03): Knights (21) and Crossbowmen (9) against a charging Brute (20).
+const E03 = { knights: 21, crossbowmen: 9, brute: 20, health: 4 } // rules-ok: dev scenario, the book's worked example
+const WEAK_HOST = [4] // rules-ok: dev scenario, a Siege the realm wins
+const STRONG_HOST = [60, 60, 60, 60, 60, 60] // rules-ok: dev scenario, a Siege the realm loses
 
 /** Sets the purse to exactly `amount`, with a dev source. */
 function withPurse(state: CampaignState, amount: number, today: ISODate, id: string): CampaignState {
@@ -73,6 +79,39 @@ function growDominion(input: CampaignState, building: BuildingId, target: number
     state = grant(state, options[0].h.id, today)
   }
   return state
+}
+
+/** Raises buildings to at least these tiers and refreshes the roster. */
+function atLeast(state: CampaignState, tiers: Partial<Record<BuildingId, number>>): CampaignState {
+  const buildings = { ...state.buildings }
+  for (const [b, t] of Object.entries(tiers) as [BuildingId, number][]) buildings[b] = Math.max(buildings[b], t) as BuildingTier
+  return refreshRoster({ ...state, buildings })
+}
+
+/** Announces a Grand Battle as the engine would, posting its events; `onDay` moves it to that day, `enemy` replaces its host. */
+function announce(state: CampaignState, r: GrandRequest, today: ISODate, onDay?: ISODate, enemy?: Company[]): CampaignState {
+  const events = new EventBuffer()
+  const done = announceGrandBattle(state, r, events.emitter(today))
+  let next = events.flush(done.state)
+  if (done.ok && done.battle && (onDay || enemy)) {
+    const id = done.battle.id
+    next = { ...next, grandBattles: next.grandBattles.map((b) => (b.id === id ? { ...b, ...(onDay ? { battleDate: onDay } : {}), ...(enemy ? { enemy } : {}) } : b)) }
+  }
+  return next
+}
+
+/** A host of plain Brutes of the given powers, from `rival`'s line (dev only). */
+function hostOf(rival: (typeof RIVAL_IDS)[number], powers: readonly number[]): Company[] {
+  return powers.map((power, i) => ({ id: `${rival}:brutes:${i + 1}`, name: 'Brutes', source: 'host', power, tags: [], reach: 'melee', items: [] }))
+}
+
+function castleHex(state: CampaignState): HexState {
+  return state.hexes.find((h) => h.kind === 'castle') as HexState
+}
+
+/** The player's outermost hex beyond the castle (the castle when there is none). */
+function borderHex(state: CampaignState): HexState {
+  return state.hexes.filter((h) => h.owner === 'player' && h.kind !== 'castle').sort((a, b) => b.ring - a.ring)[0] ?? castleHex(state)
 }
 
 export const DEV_SCENARIOS: readonly DevScenario[] = [
@@ -140,6 +179,105 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     title: '+1,000 reputation',
     detail: 'Enough to try every purchase.',
     apply: (state, today) => withPurse(state, balance(state.purse) + RICH_PURSE, today, 'rich')
+  },
+  {
+    id: 'workedExchange',
+    title: 'The Ch 11 worked exchange (E-03), today',
+    detail: 'Knights and Crossbowmen against a charging Brute at Readiness 1.0. Play Shieldwall: after round 1 the Brute stands at 40.25 and the Knights at 69.',
+    apply: (input, today) => {
+      const state = atLeast(input, { barracks: 4, foundry: 2 }) // rules-ok: dev scenario, Knights and Crossbowmen
+      const units: FieldUnit[] = [
+        { id: 'barracks', side: 'player', name: 'Knights', power: E03.knights, health: E03.health * E03.knights, tags: ['steel'], reach: 'melee', slot: 'center:front' },
+        { id: 'foundry', side: 'player', name: 'Crossbowmen', power: E03.crossbowmen, health: E03.health * E03.crossbowmen, tags: ['engine'], reach: 'ranged', slot: 'center:rear' },
+        { id: 'orc:brutes:1', side: 'enemy', name: 'Brutes', power: E03.brute, health: E03.health * E03.brute, tags: [], reach: 'melee', slot: 'center:front', foe: 'orc', unit: 'brutes' }
+      ]
+      const rest = realmEffects(state).orders.map((o) => o.id).filter((id) => id !== 'shieldwall')
+      const battle: GrandBattle = {
+        id: `gb-${state.grandBattles.length + 1}`,
+        trigger: 'warhost',
+        hexId: borderHex(state).id,
+        announcedOn: addDays(today, -2), // rules-ok: dev scenario, announced two days ago
+        battleDate: today,
+        enemy: hostOf('orc', [E03.brute]),
+        rival: 'orc',
+        formation: { 'center:front': 'barracks', 'center:rear': 'foundry' },
+        setup: { readiness: 1, marshal: false, units, deck: ['shieldwall', ...rest], offer: RULES.grandBattles.ordersOffered, hire: { power: E03.crossbowmen, name: 'Sellswords' }, orderStages: {} },
+        log: []
+      }
+      return { ...state, grandBattles: [...state.grandBattles, battle] }
+    }
+  },
+  {
+    id: 'incursion',
+    title: 'An Orc Incursion, in 2 days',
+    detail: 'Leave it unfought: at its day’s close the Marshal fights it, and the next launch shows the result with its replay.',
+    apply: (state, today) => announce(state, { trigger: 'incursion', hexId: borderHex(state).id, announcedOn: today, rival: 'orc' }, today)
+  },
+  {
+    id: 'mythicHunt',
+    title: 'A Mythic Hunt at a Lair Mouth, today',
+    detail: 'Fight it by hand from the Herald’s “Fight now”.',
+    apply: (state, today) => {
+      const mouth = state.hexes.find((h) => h.kind === 'lairMouth' && h.owner !== 'player') as HexState
+      return announce(atLeast(state, { mageTower: 2, foundry: 2 }), { trigger: 'mythicHunt', hexId: mouth.id, announcedOn: today }, today, today)
+    }
+  },
+  {
+    id: 'risingCrown',
+    title: 'The Rising Crown: Orc and Goblin ally against you',
+    detail: 'A coalition forms today: its card, and the banner on the Diplomacy page.',
+    apply: (input, today) => {
+      const members = ['orc', 'goblin'] as const
+      let state = input
+      for (const r of members) state = patchRival(state, r, { disposition: { ...state.rivals[r].disposition, player: 'war' } })
+      const until = addDays(today, RULES.world.coalitions.risingCrown.weeks * RULES.clock.daysPerWeek - 1)
+      state = { ...state, coalitions: [...state.coalitions, { members: [...members], trigger: 'risingCrown', until, warChest: 0, formedOn: today }] }
+      const events = new EventBuffer()
+      events.emitter(today)('coalition', { members: [...members], trigger: 'risingCrown', stage: 'formed' })
+      return events.flush(state)
+    }
+  },
+  {
+    id: 'ultimatum',
+    title: 'An Ultimatum from the Orc: the Siege in 14 days',
+    detail: 'The calm banner on Diplomacy, its countdown, and bending the knee once (a second try is refused).',
+    apply: (input, today) => {
+      const state = announce(input, { trigger: 'siege', hexId: castleHex(input).id, announcedOn: today, rival: 'orc' }, today)
+      const siege = state.grandBattles.filter((b) => b.trigger === 'siege').at(-1) as GrandBattle
+      const events = new EventBuffer()
+      events.emitter(today)('ascendancy', { rival: 'orc', stage: 'ultimatum', until: siege.battleDate })
+      return events.flush(patchRival(state, 'orc', { ultimatumUntil: siege.battleDate }))
+    }
+  },
+  {
+    id: 'siegeWin',
+    title: 'The Siege of the Crown today, against a small host',
+    detail: 'Win it and the Orc is Humbled.',
+    apply: (state, today) => announce(state, { trigger: 'siege', hexId: castleHex(state).id, announcedOn: today, rival: 'orc' }, today, today, hostOf('orc', WEAK_HOST))
+  },
+  {
+    id: 'siegeLose',
+    title: 'The Siege of the Crown today, against an overwhelming host',
+    detail: 'Lose it and the realm falls: the Fall screen, told plainly.',
+    apply: (state, today) => announce(state, { trigger: 'siege', hexId: castleHex(state).id, announcedOn: today, rival: 'orc' }, today, today, hostOf('orc', STRONG_HOST))
+  },
+  {
+    id: 'victory',
+    title: 'Every rival resolved: victory',
+    detail: 'The victory card and record, then the Reign goes on.',
+    apply: (input, today) => {
+      let state: CampaignState = { ...input, castleTier: 5, campaign: { ...input.campaign, status: 'won' } } // rules-ok: dev scenario, the High Throne
+      const events = new EventBuffer()
+      const emit = events.emitter(today)
+      const how = ['conquered', 'abdicated', 'allied', 'conquered'] as const
+      RIVAL_IDS.forEach((r, i) => {
+        if (state.rivals[r].status !== 'active') return
+        state = patchRival(state, r, { status: how[i], resolvedOn: today })
+        emit('rivalResolved', { rival: r, how: how[i] })
+      })
+      emit('campaignEnd', { outcome: 'won' })
+      return events.flush(state)
+    }
   }
 ]
 
