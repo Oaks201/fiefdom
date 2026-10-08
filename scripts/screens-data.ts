@@ -7,8 +7,14 @@
  * writes <root>/fresh (a ledger, no campaign: the ledger-only app and the founding wizard),
  * <root>/campaign (a campaign five weeks in, with a paid contract, one running and a Milestone
  * broken), <root>/homecoming (the same campaign, last opened 20 days ago and settled 6 days
- * ago, so the Homecoming opens at launch) and <root>/devflow (a ledger with three weeks logged
- * ahead, for driving dev time travel). Sound is off in each, so the screenshots run quietly.
+ * ago, so the Homecoming opens at launch), <root>/devflow (a ledger with three weeks logged
+ * ahead, for driving dev time travel) and <root>/devcampaign (the five-week campaign with three
+ * weeks logged ahead, for the T15 checks with time travel and the scenario loader). Sound is off
+ * in each, so the screenshots run quietly.
+ *
+ * <root>/midgame (T15) is different: 16 weeks of a steady, greedy player from the test driver,
+ * on its fixed dates (founded 2026-10-07 in Chicago). Open it with the dev build and the
+ * FIEFDOM_DEV_NOW this script prints, so the app's "now" is the driven campaign's open day.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,6 +25,7 @@ import { settle } from '../src/renderer/src/lib/game/settle'
 import type { CampaignState } from '../src/renderer/src/lib/game/types'
 import { createLedger } from '../src/renderer/src/lib/ledger'
 import type { Ledger } from '../src/renderer/src/lib/types'
+import { driveCampaign, habitLedger } from '../tests/game/support/campaign-driver'
 
 const root = process.argv[2]
 if (!root) {
@@ -91,3 +98,15 @@ write(path.join(root, 'fresh'), ledgerFor(30))
 write(path.join(root, 'devflow'), ledgerFor(30, 21))
 write(path.join(root, 'campaign'), ledger, campaignThrough(ledger, today, today))
 write(path.join(root, 'homecoming'), ledger, campaignThrough(ledger, addDays(today, -6), addDays(today, -20)))
+const ahead = ledgerFor(64, 21)
+write(path.join(root, 'devcampaign'), ahead, campaignThrough(ahead, today, today))
+
+// The mid-game map: the test driver's steady, greedy player, 16 weeks in, on fixed dates.
+const MIDGAME_WEEKS = 16
+const midgame = driveCampaign({ seed: 3, weeks: MIDGAME_WEEKS, habits: 'steady', policy: 'greedy' }).state
+const midLedger = habitLedger(3, 'steady', MIDGAME_WEEKS * 7 + 7)
+midLedger.profile = { title: 'Lord', name: 'Rich', holding: 'Ashford' }
+midLedger.settings = { ...midLedger.settings, sound: { music: false, musicVolume: 0, effects: false, effectsVolume: 0 } }
+const midOpen = addDays(midgame.settledThrough.day, 1)
+write(path.join(root, 'midgame'), midLedger, { ...midgame, settlement: { ...midgame.settlement, lastLaunch: midOpen } })
+console.log(`midgame: FIEFDOM_DEV_NOW=${new Date(dayCloseInstant(midgame.settledThrough.day, midgame.campaign.timeZone).getTime() + 8 * 3_600_000).toISOString()}`)

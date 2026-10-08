@@ -1,12 +1,27 @@
 import { useState } from 'react'
-import { campaignNow, devAdvanceDays, useDevClock } from '../../state/campaignClock'
+import { applyScenario, DEV_SCENARIOS } from '../../lib/game/dev/scenarios'
+import { campaignNow, campaignToday, devAdvanceDays, useDevClock } from '../../state/campaignClock'
 import { useCampaign } from '../../state/campaign'
 import { textProgress } from '../../state/text'
+import { toast } from '../../state/toasts'
 import './DevTimeTravel.css'
+
+/** Development only (T15 gap 3): applies a prepared scenario to the open campaign; the app saves it. */
+function loadScenario(id: string): boolean {
+  const scenario = DEV_SCENARIOS.find((s) => s.id === id)
+  if (!scenario) return false
+  const done = useCampaign.getState().apply((s) => applyScenario(s, id, campaignToday(s.campaign.timeZone)) ?? s)
+  if (done) toast(`Scenario: ${scenario.title}.`, 'success')
+  return done
+}
+
+// Scripts (scripts/screens.cjs) load scenarios the same way. This module exists only in dev builds.
+if (window.fiefdomDev) window.fiefdomDev.scenario = loadScenario
 
 /**
  * Development builds only (A-09): moves the campaign's "now" a day or a week and settles, shows
- * FIEFDOM_DEV_NOW, and counts the text catalog's placeholder and written slots. App.tsx loads it
+ * FIEFDOM_DEV_NOW, loads prepared scenarios (T15 gap 3), and counts the text catalog's
+ * placeholder and written slots. App.tsx loads it
  * only under `import.meta.env.DEV`, so production builds never contain it and no player can reach it.
  */
 export default function DevTimeTravel(): React.JSX.Element {
@@ -39,6 +54,18 @@ export default function DevTimeTravel(): React.JSX.Element {
               +1 week
             </button>
           </div>
+          <details className="dev-travel__scenarios">
+            <summary>Scenarios</summary>
+            <ul>
+              {DEV_SCENARIOS.map((s) => (
+                <li key={s.id}>
+                  <button type="button" className="btn btn--small" onClick={() => loadScenario(s.id)} disabled={!campaign} title={s.detail}>
+                    {s.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
           <table className="dev-travel__text">
             <caption>Story text: written / placeholder</caption>
             <tbody>

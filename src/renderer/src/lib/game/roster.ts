@@ -49,6 +49,8 @@ export interface RosterEntry {
   weary: boolean
   /** What moved power off its base: additions, then shares, then reductions (each its own value). */
   sources: Contribution[]
+  /** The same sources by how they act: flat power added, shares of power added, and multipliers. */
+  parts: { adds: Contribution[]; shares: Contribution[]; cuts: Contribution[] }
 }
 
 interface Base {
@@ -192,7 +194,7 @@ function detail(state: CampaignState, options: RosterOptions, effects: Effects, 
     const power = (b.power + total(adds)) * (1 + total(shares)) * cuts.reduce((t, c) => t * c.value, 1)
     const company: Company = { id: b.id, name: b.name, source: b.source, power, tags: [...tags], reach: b.reach, items }
     if (prior?.wearyUntil) company.wearyUntil = prior.wearyUntil
-    return { company, basePower: b.power, weary, sources: [...adds, ...shares, ...cuts] }
+    return { company, basePower: b.power, weary, sources: [...adds, ...shares, ...cuts], parts: { adds, shares, cuts } }
   })
 }
 

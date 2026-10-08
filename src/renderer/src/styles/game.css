@@ -711,39 +711,14 @@
 }
 
 /* -- Page shells ---------------------------------------------------------- */
-.game-page__cols {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
-  gap: 24px;
-  align-items: start;
-}
-
 .game-page__art {
   display: flex;
   justify-content: center;
 }
 
-.rival-shells {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rival-shells li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font: 700 17px var(--font-caps);
-}
-
 @media (max-width: 1100px) {
   .campaign-contract__cols,
-  .chronicle__realm,
-  .game-page__cols {
+  .chronicle__realm {
     grid-template-columns: 1fr;
   }
 

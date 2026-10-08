@@ -12,9 +12,41 @@ export const OWNER_COLORS: Record<Owner, { fill: string; edge: string; text: str
   neutral: { fill: '#8a7a66', edge: '#4d4234', text: '#fbf4e6' }
 }
 
+/** Placeholder fills for the map's terrain and overlays (Ch 17's hex set), until the art exists. */
+const TERRAIN_TONES: Record<string, string> = {
+  'hex.castle': '#a8a090',
+  'hex.building': '#bba882',
+  'hex.wild': '#86a058',
+  'hex.den': '#5e7c40',
+  'hex.village': '#dcc07a',
+  'hex.road': '#ab9a7e',
+  'hex.gate': '#948b7c',
+  'hex.lairMouth': '#62526a',
+  'hex.capital': '#8e7c69',
+  'hex.realm': '#9d8d77',
+  'hex.lair': '#4b3e54',
+  'hex.battlefield': '#8d6c4f',
+  'hex.ruins': '#7c756b'
+}
+
+const OVERLAY_TONES: Record<string, { fill: string; opacity: number }> = {
+  'hex.overlay.contested': { fill: '#e0761f', opacity: 0.38 },
+  'hex.overlay.scorched': { fill: '#1d140e', opacity: 0.55 }
+}
+
+/** Where a slot sits inside an SVG (the map): drawn as SVG there, in the parent's units. */
+export interface SvgPlace {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 interface GameArtProps {
   /** The slot id in the manifest (`hex.village`, `rival.orc.calm`, `item.whetstones`, …). */
   slot: string
+  /** Draw inside an SVG at this box instead of as an HTML element. A hex placeholder there is a plain terrain fill. */
+  place?: SvgPlace
   /** The owner whose banner color a placeholder takes. */
   owner?: Owner
   /** What the placeholder's letters stand for; defaults to the slot's last part. */
@@ -51,7 +83,7 @@ const DEFAULT_SIZE: Record<Look, [number, number]> = { hex: [222, 256], token: [
  * owner's banner color, a lettered token, a banner, or initials on a parchment card). A missing
  * file, or one that fails to load, falls back to the placeholder and never throws.
  */
-export function GameArt({ slot, owner = 'neutral', label, width, className, title }: GameArtProps): React.JSX.Element {
+export function GameArt({ slot, owner = 'neutral', label, width, className, title, place }: GameArtProps): React.JSX.Element {
   const entry = useArt((s) => s.slots[slot])
   const load = useArt((s) => s.load)
   const [broken, setBroken] = useState<string | null>(null)
@@ -64,6 +96,21 @@ export function GameArt({ slot, owner = 'neutral', label, width, className, titl
   const url = artUrl(entry)
   const classes = `game-art game-art--${look} ${className ?? ''}`
 
+  if (place) {
+    if (url && broken !== url) {
+      return <image className={classes} href={url} x={place.x} y={place.y} width={place.width} height={place.height} preserveAspectRatio="xMidYMid meet" onError={() => setBroken(url)} />
+    }
+    const hexPoints = `${w / 2},0 ${w},${h / 4} ${w},${(3 * h) / 4} ${w / 2},${h} 0,${(3 * h) / 4} 0,${h / 4}`
+    const overlay = OVERLAY_TONES[slot]
+    if (look === 'hex') {
+      return (
+        <svg className={`${classes} game-art--placeholder-svg`} x={place.x} y={place.y} width={place.width} height={place.height} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" data-slot={slot}>
+          <polygon points={hexPoints} fill={overlay?.fill ?? TERRAIN_TONES[slot] ?? OWNER_COLORS[owner].fill} fillOpacity={overlay?.opacity ?? 1} />
+        </svg>
+      )
+    }
+  }
+
   if (url && broken !== url) {
     return <img className={classes} src={url} width={shownWidth} height={shownHeight} alt={title ?? ''} title={title} onError={() => setBroken(url)} draggable={false} />
   }
@@ -71,7 +118,14 @@ export function GameArt({ slot, owner = 'neutral', label, width, className, titl
   const color = OWNER_COLORS[owner]
   const letters = initials(label ?? slot.split('.').filter((p) => !/^\d+$/.test(p) && p !== 'token' && p !== 'portrait').pop() ?? slot)
   return (
-    <svg className={`${classes} game-art--placeholder`} width={shownWidth} height={shownHeight} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={title ?? label ?? slot} data-slot={slot}>
+    <svg
+      className={`${classes} game-art--placeholder`}
+      {...(place ? { x: place.x, y: place.y, width: place.width, height: place.height } : { width: shownWidth, height: shownHeight })}
+      viewBox={`0 0 ${w} ${h}`}
+      role="img"
+      aria-label={title ?? label ?? slot}
+      data-slot={slot}
+    >
       {title && <title>{title}</title>}
       {look === 'hex' && (
         <>

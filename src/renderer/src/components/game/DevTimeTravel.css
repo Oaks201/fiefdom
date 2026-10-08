@@ -50,3 +50,28 @@
   color: #c9b7dc;
 }
 
+
+.dev-travel__scenarios {
+  margin: 6px 0 8px;
+}
+
+.dev-travel__scenarios summary {
+  cursor: pointer;
+  color: #c9b7dc;
+}
+
+.dev-travel__scenarios ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-travel__scenarios .btn {
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12px;
+}

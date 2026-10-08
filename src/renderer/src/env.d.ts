@@ -5,8 +5,8 @@ declare global {
   interface Window {
     /** Present only inside the Electron app (see src/preload). */
     fiefdom?: FiefdomBridge
-    /** Development builds only (A-09): campaign time travel, from the devtools console. */
-    fiefdomDev?: { advanceDays(days: number): void; now(): Date }
+    /** Development builds only (A-09): campaign time travel and prepared scenarios (T15), from the devtools console. */
+    fiefdomDev?: { advanceDays(days: number): void; now(): Date; scenario?(id: string): boolean }
   }
 
   interface ImportMetaEnv {

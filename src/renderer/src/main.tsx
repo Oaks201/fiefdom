@@ -10,6 +10,8 @@ import './styles/contract.css'
 import './styles/archive.css'
 import './styles/terms.css'
 import './styles/game.css'
+import './styles/realm.css'
+import './styles/diplomacy.css'
 
 import App from './App'
 

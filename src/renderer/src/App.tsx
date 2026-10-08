@@ -51,6 +51,11 @@ export default function App(): React.JSX.Element {
     []
   )
 
+  // A new page starts at its top, whatever the last one was scrolled to.
+  useEffect(() => {
+    document.querySelector('.desk__main')?.scrollTo({ top: 0 })
+  }, [page])
+
   // A page that no longer exists (no campaign) falls back to the Chronicle.
   useEffect(() => {
     if (!hasCampaign && (page === 'realm' || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')

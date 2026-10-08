@@ -1,0 +1,794 @@
+/* ==========================================================================
+   The Realm (T15): the tilted hex map, the hex panel, the day's orders, the
+   buildings and castle, the Crossings and the roster.
+   ========================================================================== */
+
+/* The war table pages use the wider desk. */
+.page--realm,
+.page--diplomacy {
+  max-width: 1560px;
+}
+
+.realm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.realm-page .page-head {
+  margin-bottom: 0;
+}
+
+.realm-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.realm-board__map {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.realm-board__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.realm-hint {
+  margin: 0;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+/* -- The map ------------------------------------------------------------- */
+.hexmap {
+  position: relative;
+}
+
+.hexmap__board {
+  padding: 14px 10px 0;
+  perspective: 1500px;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(255, 244, 214, 0.35), transparent 70%),
+    linear-gradient(160deg, #8a6236, #5e3d1d);
+  border: 3px solid #4a2c12;
+  border-radius: 18px;
+  box-shadow:
+    inset 0 0 0 3px rgba(242, 210, 123, 0.45),
+    inset 0 6px 18px rgba(0, 0, 0, 0.35),
+    0 6px 14px rgba(40, 22, 8, 0.35);
+}
+
+.hexmap__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Tilted like a tabletop, hinged at its top edge; the board closes up under the foreshortened map. */
+  transform: rotateX(18deg);
+  transform-origin: 50% 0;
+  margin-bottom: -3%;
+  will-change: transform;
+  user-select: none;
+}
+
+.hex {
+  cursor: pointer;
+}
+
+.hex--battlefield,
+.hex--lair,
+.hex--realm {
+  cursor: default;
+}
+
+.hex__edge {
+  stroke: rgba(42, 26, 12, 0.4);
+  stroke-width: 0.035;
+}
+
+.hex__hover {
+  fill: #fff6dc;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+
+.hex:hover .hex__hover {
+  opacity: 0.3;
+}
+
+.hexmap__selected {
+  fill: none;
+  stroke: #fff3c4;
+  stroke-width: 0.12;
+  pointer-events: none;
+  filter: drop-shadow(0 0 0.12px #2a1a0c);
+}
+
+.hex__num {
+  font: 700 0.3px ui-sans-serif, system-ui, sans-serif;
+  fill: #2a1a0c;
+  pointer-events: none;
+}
+
+.hex__days {
+  font: 800 0.34px ui-sans-serif, system-ui, sans-serif;
+  fill: #fff4d6;
+  stroke: #2a1a0c;
+  stroke-width: 0.09;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.hex__track {
+  font: 800 0.38px ui-sans-serif, system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.hex__front--peace .hex__track {
+  opacity: 0.55;
+}
+
+.hex__mark {
+  pointer-events: none;
+}
+
+.hexmap__tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 340px;
+  padding: 5px 10px;
+  font: 600 14px/1.3 ui-sans-serif, system-ui, sans-serif;
+  color: #fbf4e6;
+  white-space: nowrap;
+  background: rgba(34, 20, 8, 0.92);
+  border: 1px solid #c9962e;
+  border-radius: 6px;
+  transform: translate(-50%, calc(-100% - 6px));
+  pointer-events: none;
+}
+
+.hexmap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 18px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.hexmap__owners,
+.hexmap__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hexmap__owners li,
+.hexmap__marks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hexmap__swatch {
+  width: 14px;
+  height: 14px;
+  border: 2px solid;
+  border-radius: 3px;
+}
+
+/* -- The hex panel -------------------------------------------------------- */
+.hex-panel__what {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.owner-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  font: 700 13px/1.6 var(--font-caps);
+  color: #fbf4e6;
+  border-radius: 999px;
+}
+
+.owner-badge--player {
+  background: #b8322a;
+}
+
+.owner-badge--orc {
+  background: #7d1414;
+}
+
+.owner-badge--goblin {
+  color: #2a1a05;
+  background: #c79a2a;
+}
+
+.owner-badge--dwarf {
+  background: #9c6430;
+}
+
+.owner-badge--archmage {
+  background: #6b3fa0;
+}
+
+.owner-badge--neutral {
+  background: #8a7a66;
+}
+
+.facts {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.facts dt {
+  color: var(--ink-3);
+}
+
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.hex-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.hex-action .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hex-action__why {
+  margin: 3px 0 0;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+/* -- Bids ----------------------------------------------------------------- */
+.bid-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(45, 87, 166, 0.06);
+  border: 1px solid rgba(45, 87, 166, 0.25);
+  border-radius: 10px;
+}
+
+.bid-form__offer {
+  margin: 0;
+  font-size: 15px;
+}
+
+.bid-form__offer .ok {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.bid-form__offer .short {
+  color: var(--ink-3);
+}
+
+.bid-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+/* -- The day's orders ----------------------------------------------------- */
+.orders__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 13px ui-sans-serif, system-ui, sans-serif;
+  color: var(--gold-deep);
+  white-space: nowrap;
+}
+
+.orders__clock.is-locked {
+  color: var(--crimson);
+}
+
+.orders.is-locked .orders__companies,
+.orders.is-locked .orders__assaults {
+  opacity: 0.7;
+}
+
+.orders__state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.orders__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.orders__assaults {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.assault-slot .field__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assault-slot.goes-out .field__box select {
+  border-color: var(--crimson);
+}
+
+.assault-slot p {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+
+.orders__companies {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.orders__companies th {
+  padding: 2px 4px;
+  font: 700 12px var(--font-caps);
+  color: var(--ink-3);
+  text-align: left;
+}
+
+.orders__companies td {
+  padding: 4px;
+  border-top: 1px solid var(--rule-soft);
+  vertical-align: middle;
+}
+
+.orders__companies tr.is-assault td:first-child {
+  box-shadow: inset 3px 0 0 var(--crimson-hi);
+}
+
+.orders__name {
+  display: block;
+  font-weight: 700;
+}
+
+.tags {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-transform: capitalize;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font: 700 11px/1.6 ui-sans-serif, system-ui, sans-serif;
+  border-radius: 999px;
+}
+
+.tag--weary {
+  color: #fff4d6;
+  background: #8a7a66;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.orders__field {
+  text-align: center;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.segmented button {
+  padding: 3px 9px;
+  font: 700 13px var(--font-caps);
+  color: var(--ink-2);
+  background: rgba(255, 249, 232, 0.5);
+  border: 0;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.segmented button.is-on {
+  color: #fff4d8;
+  background: linear-gradient(#8b5a2b, #5a3418);
+}
+
+.segmented button:disabled {
+  cursor: default;
+}
+
+.orders__banners {
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.orders__banners .link {
+  margin-left: 6px;
+}
+
+.orders__help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.orders__hired input {
+  width: 56px;
+  margin-left: 6px;
+}
+
+.orders__estimate {
+  padding: 10px 12px;
+  background: rgba(201, 150, 46, 0.08);
+  border: 1px dashed rgba(122, 82, 16, 0.4);
+  border-radius: 10px;
+}
+
+.orders__estimate h4 {
+  margin: 0;
+  font: 700 15px var(--font-caps);
+}
+
+.orders__estimate .muted {
+  margin: 2px 0 6px;
+  font-size: 13px;
+}
+
+.orders__estimate ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+}
+
+.orders__problems {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--crimson);
+}
+
+/* -- The lower tabs ------------------------------------------------------- */
+.realm-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--rule);
+}
+
+.realm-tab {
+  padding: 7px 16px 6px;
+  font: 700 17px var(--font-caps);
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.realm-tab.is-on {
+  color: var(--crimson);
+  border-bottom-color: var(--crimson);
+}
+
+/* -- Buildings, the castle and the Crossings -------------------------------- */
+.buildings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.buildings__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.building-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 249, 232, 0.45);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.building-card .game-art {
+  flex: none;
+}
+
+.building-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.building-card__body p {
+  margin: 0;
+}
+
+.building-card__name,
+.crossing-card__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font: 700 19px var(--font-caps);
+  color: var(--crimson);
+}
+
+.tier {
+  font: 700 13px var(--font-caps);
+  color: var(--gold-deep);
+}
+
+.company-line .tags {
+  margin-left: 4px;
+}
+
+.dominion summary {
+  cursor: pointer;
+}
+
+.dominion ul {
+  margin: 4px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  columns: 2;
+}
+
+.gives {
+  margin: 2px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.gives-empty {
+  margin: 0;
+  font-size: 14px;
+}
+
+.next-step {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 252, 242, 0.55);
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+}
+
+.next-step__title {
+  margin: 0 0 4px;
+  font: 700 15px var(--font-caps);
+}
+
+.next-step__title .gives {
+  font: 400 14px var(--font-body);
+}
+
+.requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.requirements li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.requirements .is-met {
+  color: var(--forest);
+}
+
+.requirements .is-unmet {
+  color: var(--crimson);
+}
+
+.next-step__why {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.crownguard {
+  margin: 0;
+  font-size: 16px;
+}
+
+.crossings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.crossing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: rgba(255, 249, 232, 0.35);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.crossing-card.is-raised {
+  background: rgba(255, 249, 232, 0.6);
+  border-color: var(--gold-deep);
+}
+
+.crossing-card p {
+  margin: 0;
+}
+
+.stage-pips {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.stage-pips span {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--gold-deep);
+  border-radius: 50%;
+}
+
+.stage-pips span.is-on {
+  background: var(--gold);
+}
+
+.perks {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.perks .is-active {
+  color: var(--ink);
+}
+
+/* -- The roster ------------------------------------------------------------ */
+.roster__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.roster__table th {
+  padding: 4px 6px;
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+  text-align: left;
+  border-bottom: 2px solid var(--rule);
+}
+
+.roster__table td {
+  padding: 6px;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: middle;
+}
+
+.roster__table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roster__table tr.is-weary {
+  color: var(--ink-3);
+}
+
+.roster__sources {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1280px) {
+  .realm-board {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .facts div {
+    grid-template-columns: 120px 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .realm-board {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+  }
+
+  .realm-board .panel {
+    padding: 12px 12px 14px;
+  }
+
+  .orders__companies {
+    font-size: 14px;
+  }
+
+  .orders__companies th:nth-child(2),
+  .orders__companies td:nth-child(2) {
+    display: none;
+  }
+
+  .segmented button {
+    padding: 3px 6px;
+  }
+
+  .hexmap__legend {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 860px) {
+  .realm-board {
+    grid-template-columns: 1fr;
+  }
+
+  .realm-board__map {
+    position: static;
+  }
+}

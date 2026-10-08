@@ -602,8 +602,8 @@ export interface RosterCompany {
   weary: boolean
   wearyUntil?: ISODate
   items: { id: string; name: string }[]
-  /** Where its power comes from, in plain labels, beyond its base. */
-  sources: { label: string; value: number }[]
+  /** Where its power comes from beyond its base, each with what it does ("+2", "+10%", "−20%"). */
+  sources: { label: string; effect: string }[]
 }
 
 const SOURCE_NAMES: Record<CompanySource, string> = {
@@ -640,7 +640,11 @@ export function rosterView(state: CampaignState, today: ISODate = openDayOf(stat
     weary: e.weary,
     ...(e.company.wearyUntil ? { wearyUntil: e.company.wearyUntil } : {}),
     items: e.company.items.map((id) => ({ id, name: CODEX.items.find((i) => i.id === id)?.name ?? id })),
-    sources: e.sources.map((s) => ({ label: sourceLabel(s.from), value: s.value }))
+    sources: [
+      ...e.parts.adds.map((s) => ({ label: sourceLabel(s.from), effect: `+${amount(s.value)}` })),
+      ...e.parts.shares.map((s) => ({ label: sourceLabel(s.from), effect: `+${pct(s.value)}` })),
+      ...e.parts.cuts.map((s) => ({ label: sourceLabel(s.from), effect: s.value < 1 ? `−${pct(1 - s.value)}` : `×${amount(s.value)}` }))
+    ]
   }))
 }
 

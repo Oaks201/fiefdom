@@ -10,8 +10,10 @@
 //          scratch copy: the app saves into it. `npx tsx scripts/screens-data.ts <root>` makes some.
 // --out    where the PNGs go, named <step>-<width>x<height>.png.
 // --scenario  a JSON list of steps: { "name": "...", "eval": "<JS run in the page>", "wait": ms,
-//          "shot": false }. The JS may use top-level await. Without a scenario, the script shoots
-//          every tab the top bar shows.
+//          "shot": false }. The JS may use top-level await. A step may also move the real pointer:
+//          "mouse": "<JS giving [[x, y], …] in viewport pixels>", with "mouseDelay" ms between
+//          moves (T15's hover measurement). Without a scenario, the script shoots every tab the
+//          top bar shows.
 // --format jpeg  smaller files (quality 70), for screenshots kept in the repo.
 // --dev    run the development build (`electron-vite dev`) instead of the built app, so the
 //          dev-only tools (time travel, A-09) are there to drive: `window.fiefdomDev`.
@@ -130,6 +132,12 @@ async function main() {
       await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
       await sleep(400)
       for (const step of steps) {
+        if (step.mouse) {
+          for (const [x, y] of await evaluate(cdp, step.mouse)) {
+            await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+            await sleep(step.mouseDelay ?? 30)
+          }
+        }
         const value = step.eval ? await evaluate(cdp, step.eval) : undefined
         if (step.log) console.log(`${step.name}: ${JSON.stringify(value)}`)
         await sleep(step.wait ?? 600)

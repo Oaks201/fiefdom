@@ -1,0 +1,372 @@
+/* ==========================================================================
+   Diplomacy (T15): the four rival courts, their Respect, the deals and the
+   courtships.
+   ========================================================================== */
+
+.diplomacy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.diplomacy-page .page-head {
+  margin-bottom: 0;
+}
+
+.courts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.court {
+  --court: #8a7a66;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(255, 249, 232, 0.45);
+  border: 1px solid var(--rule);
+  border-top: 5px solid var(--court);
+  border-radius: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.court--orc {
+  --court: #7d1414;
+}
+
+.court--goblin {
+  --court: #c79a2a;
+}
+
+.court--dwarf {
+  --court: #9c6430;
+}
+
+.court--archmage {
+  --court: #6b3fa0;
+}
+
+.court.is-selected {
+  box-shadow: 0 0 0 3px var(--court), 0 6px 14px rgba(40, 22, 8, 0.25);
+}
+
+.court.is-resolved {
+  opacity: 0.85;
+}
+
+.court__pick {
+  flex: none;
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.court__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.court__ruler {
+  margin: 0;
+  font: 700 22px var(--font-caps);
+  color: var(--court);
+}
+
+.court--goblin .court__ruler {
+  color: #8a6512;
+}
+
+.court__who,
+.court__standing {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.disposition,
+.court__status {
+  display: inline-block;
+  padding: 1px 10px;
+  font: 700 13px/1.6 var(--font-caps);
+  border-radius: 999px;
+}
+
+.disposition--peace {
+  color: #fff;
+  background: var(--forest);
+}
+
+.disposition--tension {
+  color: #2a1a05;
+  background: #e2b24a;
+}
+
+.disposition--war {
+  color: #fff;
+  background: var(--crimson);
+}
+
+.court__status {
+  color: #fff;
+  background: #6b5a46;
+}
+
+.court__greeting {
+  margin: 2px 0;
+  padding: 6px 10px;
+  font-style: italic;
+  color: var(--ink);
+  background: rgba(255, 252, 242, 0.6);
+  border-left: 3px solid var(--court);
+  border-radius: 4px;
+}
+
+.respect__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font: 700 14px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.respect__head strong {
+  font: 700 18px ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink);
+}
+
+.respect__bar {
+  position: relative;
+  height: 12px;
+  margin: 4px 0 18px;
+  background: rgba(92, 58, 24, 0.14);
+  border-radius: 6px;
+}
+
+.respect__bar::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+  border-radius: 6px;
+}
+
+.respect__mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--ink-3);
+  transform: translateX(-1px);
+}
+
+.respect__mark.is-reached {
+  background: var(--ink);
+}
+
+.respect__at {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  font: 700 11px ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-3);
+  transform: translateX(-50%);
+}
+
+.respect__opens {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.respect__opens li.is-reached {
+  color: var(--ink);
+}
+
+.respect__opens strong {
+  display: inline-block;
+  min-width: 22px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.court__strength {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 2px 0 0;
+}
+
+.court__strength dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 12px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.court__strength dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.court__exact {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.court__rumors,
+.court__fronts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.court__rumors li {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.front--war {
+  color: var(--crimson);
+}
+
+.diplomacy-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* -- Deals ---------------------------------------------------------------- */
+.court-reply {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 252, 242, 0.7);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.court-reply blockquote {
+  margin: 0;
+  font-style: italic;
+}
+
+.deals__table,
+.courtships__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.deals__table th,
+.courtships__table th {
+  padding: 3px 6px;
+  font: 700 12px var(--font-caps);
+  color: var(--ink-3);
+  text-align: left;
+  border-bottom: 2px solid var(--rule);
+}
+
+.deals__table td,
+.courtships__table td {
+  padding: 6px;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+
+.deals__table tr.is-shut td:not(.deals__act) {
+  color: var(--ink-3);
+}
+
+.deals__table tr.is-highlight td {
+  background: rgba(201, 150, 46, 0.18);
+}
+
+.deals__needs,
+.deals__does {
+  max-width: 230px;
+}
+
+.deals__act {
+  width: 170px;
+}
+
+.deals__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.deals__why {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+/* -- Courtships ------------------------------------------------------------- */
+.courtships__when {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.courtships__new {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.courtships__past {
+  margin: 12px 0 4px;
+  font: 700 14px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.courtships__results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.courtships__results li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.result__day {
+  display: inline-block;
+  min-width: 56px;
+  color: var(--ink-3);
+}
+
+.result--defected {
+  color: var(--forest);
+}
+
+@media (max-width: 1280px) {
+  .diplomacy-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .courts {
+    grid-template-columns: 1fr;
+  }
+}
