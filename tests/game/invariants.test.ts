@@ -36,7 +36,7 @@ async function drive(all: DriveOptions[]): Promise<RunAudit[]> {
       .map(
         (chunk) =>
           new Promise<RunAudit[]>((resolve, reject) => {
-            const worker = new Worker(path.join(__dirname, 'support', 'drive-worker.ts'), { workerData: chunk, execArgv: ['--import', 'tsx'] })
+            const worker = new Worker(path.join(__dirname, 'support', 'drive-worker.cjs'), { workerData: chunk })
             worker.once('message', (audits: RunAudit[]) => resolve(audits))
             worker.once('error', reject)
             worker.once('exit', (code) => (code === 0 ? undefined : reject(new Error(`A driver worker exited with code ${code}`))))

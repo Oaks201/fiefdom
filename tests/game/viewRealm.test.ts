@@ -18,7 +18,7 @@ import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
-import { HEX_WIDTH, buildingsView, castleView, crossingsView, effectLines, hexLayout, hexPanel, mapView, rosterView, suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
+import { HEX_WIDTH, buildingsView, castleView, companyArt, crossingsView, effectLines, hexLayout, hexPanel, mapView, rosterView, suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
@@ -231,6 +231,14 @@ test('T15: the estimate at the day’s own Valor gives the outcome the close the
   const assault = settled.events.find((e) => e.kind === 'assault')
   assert.ok(assault && assault.kind === 'assault')
   assert.equal(estimate.assaults[0].outcome, assault.outcome === 'revealed' ? estimate.assaults[0].outcome : assault.outcome)
+})
+
+test('Convention 8 / A-19: hired blades wear the Merchant Hall’s current company token, a slot in the art manifest', () => {
+  const state = withBuildings(realm(), { merchantHall: 3 })
+  const art = companyArt(state, 'hired:0', 'hired')
+  assert.equal(art, companyArt(state, 'merchantHall', 'building'))
+  assert.equal(art, 'company.caravanGuard.token')
+  assert.ok(Object.keys(manifest).includes(art))
 })
 
 test('Convention 8: every art slot the Realm and Diplomacy views name is in the art manifest', () => {

@@ -60,8 +60,8 @@ async function pageTarget(port, tries = 240) {
   throw new Error('The app did not open a page to debug.')
 }
 
-/** A tiny CDP client: send(method, params) resolves with the result. */
-function connect(url) {
+/** A tiny CDP client: send(method, params) resolves with the result; `onEvent` gets every event the page sends. */
+function connect(url, onEvent) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url)
     let next = 1
@@ -73,7 +73,7 @@ function connect(url) {
         waiting.delete(msg.id)
         if (msg.error) fail(new Error(`${msg.error.message} (${msg.error.code})`))
         else ok(msg.result)
-      }
+      } else if (msg.method && onEvent) onEvent(msg)
     }
     ws.onerror = () => reject(new Error('Could not connect to the app.'))
     ws.onopen = () =>
@@ -106,15 +106,40 @@ async function defaultScenario(cdp) {
   }))
 }
 
+/**
+ * Launches the app against `data` with its own user-data folder, debuggable on `port`: the built
+ * app, or with `dev` the development build (electron-vite dev). `env` adds environment variables;
+ * `stdio` is passed to spawn. Running as root on Linux (a container) needs Chromium's --no-sandbox.
+ */
+function launch({ data, port, dev = false, env = {}, stdio = 'ignore', userData }) {
+  const electron = require(path.join(ROOT, 'node_modules', 'electron'))
+  const flags = [`--user-data-dir=${userData}`, ...(process.platform === 'linux' && process.getuid?.() === 0 ? ['--no-sandbox'] : [])]
+  const fullEnv = { ...process.env, FIEFDOM_DATA_DIR: path.resolve(data), ELECTRON_ENABLE_LOGGING: '0', ...env }
+  // Its own process group outside Windows, so stop() ends the dev server's Electron along with it.
+  const options = { cwd: ROOT, env: fullEnv, stdio, detached: process.platform !== 'win32' }
+  return dev
+    ? spawn(process.execPath, [path.join(ROOT, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js'), 'dev', '--remoteDebuggingPort', String(port), '--', ...flags], options)
+    : spawn(electron, ['.', `--remote-debugging-port=${port}`, ...flags], options)
+}
+
+/** Ends the app and, for the dev server, the Electron it started. */
+async function stop(app) {
+  if (process.platform === 'win32') spawn('taskkill', ['/pid', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
+  else {
+    try {
+      process.kill(-app.pid, 'SIGTERM')
+    } catch {
+      app.kill()
+    }
+  }
+  await sleep(500)
+}
+
 async function main() {
   const o = args()
-  const electron = require(path.join(ROOT, 'node_modules', 'electron'))
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'fiefdom-screens-'))
   fs.mkdirSync(o.out, { recursive: true })
-  const env = { ...process.env, FIEFDOM_DATA_DIR: path.resolve(o.data), ELECTRON_ENABLE_LOGGING: '0' }
-  const app = 'dev' in o
-    ? spawn(process.execPath, [path.join(ROOT, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js'), 'dev', '--remoteDebuggingPort', o.port, '--', `--user-data-dir=${userData}`], { cwd: ROOT, env, stdio: 'ignore' })
-    : spawn(electron, ['.', `--remote-debugging-port=${o.port}`, `--user-data-dir=${userData}`], { cwd: ROOT, env, stdio: 'ignore' })
+  const app = launch({ data: o.data, port: o.port, dev: 'dev' in o, userData })
   let cdp
   try {
     const target = await pageTarget(o.port)
@@ -161,14 +186,17 @@ async function main() {
   } finally {
     cdp?.close()
     // The dev server starts Electron as a child: end the whole tree.
-    if (process.platform === 'win32') spawn('taskkill', ['/pid', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
-    else app.kill()
-    await sleep(500)
+    await stop(app)
     fs.rmSync(userData, { recursive: true, force: true })
   }
 }
 
-main().catch((err) => {
-  console.error(err.message)
-  process.exit(1)
-})
+// scripts/campaign-e2e.cjs (T17) drives the app with the same pieces.
+module.exports = { ROOT, connect, evaluate, launch, pageTarget, sleep, stop }
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err.message)
+    process.exit(1)
+  })
+}

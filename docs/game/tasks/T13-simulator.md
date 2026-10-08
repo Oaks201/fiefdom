@@ -62,17 +62,56 @@ Changing any value in `rules.ts` or any TUNE number: that is the owner's call. E
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] The full run (6 profiles × 2 policies × 300 campaigns × 70 weeks, plus the sweeps) finishes in under 60 minutes on the development PC; record the time in the report.
-- [ ] Determinism: the same arguments twice give byte-identical CSVs (put the hashes in the hand-off notes).
-- [ ] The income check reproduces each Ch 15 figure within ±3%, or the report names the formula responsible and leaves it unchanged.
-- [ ] Every row of the Ch 15 targets table appears in the report as hit or miss, with its value and interval.
-- [ ] The invariants ran in every campaign; the report states zero violations, or lists each with its seed so it can be reproduced as a failing test.
-- [ ] The sweep tables cover every lever in the Ch 15 levers table.
-- [ ] `git diff main -- src/renderer/src/lib/game/rules.ts` is empty (D-02).
-- [ ] `sim/` imports nothing from React, the DOM or Electron (`grep -rE "react|electron" sim/` finds nothing).
-- [ ] The report ends with the owner's decision list.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] The full run (6 profiles × 2 policies × 300 campaigns × 70 weeks, plus the sweeps) finishes in under 60 minutes on the development PC; record the time in the report. (48 min 17 s in a 4-core cloud container; timing it on the development PC is the owner's step, `handover.md` §1.)
+- [x] Determinism: the same arguments twice give byte-identical CSVs (put the hashes in the hand-off notes).
+- [x] The income check reproduces each Ch 15 figure within ±3%, or the report names the formula responsible and leaves it unchanged.
+- [x] Every row of the Ch 15 targets table appears in the report as hit or miss, with its value and interval.
+- [x] The invariants ran in every campaign; the report states zero violations, or lists each with its seed so it can be reproduced as a failing test.
+- [x] The sweep tables cover every lever in the Ch 15 levers table.
+- [x] `git diff main -- src/renderer/src/lib/game/rules.ts` is empty (D-02).
+- [x] `sim/` imports nothing from React, the DOM or Electron (`grep -rE "react|electron" sim/` finds nothing).
+- [x] The report ends with the owner's decision list.
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here: the run time, the CSV hashes, and anything the owner must decide.)*
+### Evidence (2026-10-08)
+
+- **The full run** (`npm run sim`: 6,260 campaigns) took **48 min 17 s** on 4 worker threads in a Linux cloud container (4 × Xeon @ 2.10 GHz, Node 22.22), with nothing else running; an earlier full run, sharing the machine with other work, took 83 min 47 s. Not timed on the development PC (`docs/game/handover.md` §1).
+- **Invariants:** checked every simulated day in all 6,260 campaigns; **zero violations**. (The first full run reported 20, all from two checks that were wrong and are fixed with tests in T17: a Border Campaign on a hex a rival had taken from the player earlier the same day, and Momentum under a too-fast trend, where Ch 5 rule 6 holds only Mw at half.)
+- **Determinism:** the two full runs gave byte-identical `targets.csv`, `income_by_week.csv`, `hexes_by_month.csv`, `spend.csv`, `resolutions.csv` and `sweeps.csv`; `runs.csv` was identical in every row and column but `violations`, the one thing the invariant fix changed. `--report-only` from the stored results rebuilds the same bytes, and `npm run sim -- --quick` run twice with the same arguments gave byte-identical CSVs (the reports differ only in the time line). The committed CSVs, sha256:
+
+  | File | sha256 |
+  | --- | --- |
+  | `runs.csv` | `0c7ddb26e932782349cac3710ea4d67dd3c25cae1e18859869dbc08645ca0f55` |
+  | `targets.csv` | `99b75e2a13f32622608b319a259f9f206a075e69dec1d6ffa9ce16cabecbb230` |
+  | `income_by_week.csv` | `6db99a72ef2f319d4d8b6113b00fbe0b62c9486497c8d74ca70ac549876c4115` |
+  | `hexes_by_month.csv` | `0f2032f0503d5876226b0ee319bcbbd01f53365b707ddc259aef528d7dc8fd1f` |
+  | `spend.csv` | `fe14a09b5d473fe7cc75084b322c76f6c1260629d48161965a0e71722f99c938` |
+  | `resolutions.csv` | `ffed36541ae5f2d3c696449bf2c618a8dbb9be7c12268b2fb57fdecffb16673d` |
+  | `sweeps.csv` | `2bf2259965046417478cb4c02eeb5b2c2aacb7800af9f0f72fcf72efe11bbb03` |
+
+- **`git diff origin/master -- src/renderer/src/lib/game/rules.ts`** is empty (D-02; the default branch is `master`); every lever was changed in memory only, by `sim/overrides.ts`, and each worker checks its loaded `RULES` carries the variant before it runs a campaign.
+- **`grep -rE "react|electron" sim/`** finds nothing.
+- **Tests:** `tests/game/sim.test.ts` (2 campaigns × 8 weeks, the rules hook in a worker, the report built twice byte for byte) runs in about 3 s.
+
+### What was built
+
+- `sim/run.ts` (`npm run sim`; `--quick`, `--report-only`, and `--runs`, `--push-runs`, `--income-runs`, `--sweep-runs`, `--workers` to scale it), `sim/worker.ts` and `sim/worker.cjs`, `sim/overrides.ts`, `sim/report.ts`; `sim/campaign.ts`, `sim/policy.ts`, `sim/ledgerGen.ts` and `sim/profiles.ts` were begun before this task and finished here. The report is `docs/game/sim/report.md`; its CSVs are in `docs/game/sim/data/`.
+- **The run:** 300 campaigns per profile for greedy and smarter (3,600), 50 per profile for a third policy, push (300), 50 per profile for the income check under the book's conditions (200, 48 weeks), and every Ch 15 lever plus A-17 and A-18 at −20, −10, +10 and +20%, 30 campaigns each for Steadfast and Committed (2,160): 6,260 campaigns. Seeds 1 to N in every group, so sweeps compare paired seeds. A campaign stops at its victory or Fall.
+- **Rules overrides:** tsx loads this repo's TypeScript as CommonJS, so the hook wraps `Module.prototype._compile` (where `require` hands over each file) instead of an ESM `module.register` loader, which `require` never consults; it rewrites `deepFreeze(RULES_TABLE)` in memory and fails loudly if that line ever changes.
+- **The player AI was wrong in three ways when this task began, and is fixed:** the greedy player sent its two strongest companies, which no garrison type let win, so it never assaulted (it now sends the companies the engine's own fielding picks for that garrison); it only challenged a Gate or capital at the Weaker or Matched band, so the fourth rival was never resolved (it now challenges at any band short of Overwhelming: a host is 60% of AV, so even a Stronger rival sends one the player's best can meet); and it retried a resolved rival's capital forever. The smarter player never sealed an Accord, because the greedy contract routine kept the slot full (it now lets the slot empty, D-01).
+- **The push policy** (not in the book): greedy plus Ch 6's repeated push, assaulting a hex the week's repulses can wear down. Added because without it a Committed player sits on its founding land for months, and with it every profile wins.
+- **The invariants** are the shared `lib/game/dev/invariants.ts` (T17), checked every simulated day.
+
+### What the owner should know
+
+- **Steadfast is close; the rest of the curve isn't.** Greedy: Perfect wins in week 48 (target 36 to 40), Steadfast in 51 (44 to 48) with 98% won and none lost; Committed wins only 41% within 70 weeks (target 60 to 75%) and never loses (target 20 to 35%); Wavering and Casual hit their targets.
+- **The land deadlock decides the middle of the curve.** Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. A greedy Committed player holds its founding land until month 9 (Steadfast: month 3), its purse filling with nothing to buy.
+- **The repeated push breaks the curve the other way.** Assaulting the same den again and again (Ch 6's 25% wear) takes it within days: with it Committed wins 96%, Wavering 88% and Casual 94%, and nobody falls. Whether a player discovers it decides more than any lever in the sweeps.
+- **The income check misses by 9 to 18%** for every profile, and the report names the formula: the contract payout's `L`. The book's estimate takes the benchmark's contract schedule (7-day contracts from week 3, 30-day from week 21); a Steadfast player's first 30-day contract comes in week 38, a Committed player's in week 44, because the longer contracts need tiers and castle tiers that need land. Steadfast's Momentum is also 692 below the book's full Momentum, from its weight noise and plateaus.
+- **Skill is worth 4% (Steadfast) and −2% (Committed)** for the smarter policy, against a target of 10 to 20%: Truces, Accords and buy-outs barely move finishing time. The push is worth 16% and 30%.
+- **The sweeps are noisy** (30 campaigns a cell, about ±9 points on a share). No single lever brings all three of Committed's measures into range: a few steps (army cost scale −20%, army cost per power +20%, `b` −20%) lift its win share to 60 to 63%, but its median win week stays at 64 to 67 and its losses near zero. The ranked proposals are those steps.
+- **Also found:** Border Campaigns take 0 hexes a campaign (book 2 to 6; T10 saw the same); a Steadfast player's first trophy arrives in week 2 (A-156 asked); 2% of resolved rivals defect under A-143's literal reading, which T13 kept (`decisions.md`).
+- **The owner's decisions** are listed at the end of the report and in `docs/game/handover.md`.
+

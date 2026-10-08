@@ -4,6 +4,7 @@
  * unrevealed treasury or army) reaches a screen.
  */
 import { test } from 'node:test'
+import { t } from '../../src/renderer/src/lib/game/text'
 import assert from 'node:assert/strict'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
@@ -35,7 +36,7 @@ test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consiste
   const bar = topBarView(state)
   assert.equal(bar.purse, 100)
   assert.equal(bar.realmConsistency, 0)
-  assert.deepEqual(bar.grace, { level: 0, textId: 'herald.grace.0', text: "The Crown's Grace: none." })
+  assert.deepEqual(bar.grace, { level: 0, textId: 'herald.grace.0', text: t('herald.grace.0') })
   const later = settle(state, LEDGER, chicago(addDays(START, 14))).state
   const view = topBarView(later)
   assert.ok(view.realmConsistency > 0.9)

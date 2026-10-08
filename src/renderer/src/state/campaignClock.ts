@@ -5,8 +5,9 @@
  * next launch.
  *
  * Development builds can move "now" (A-09): `FIEFDOM_DEV_NOW` fixes the starting instant, and
- * `devAdvanceDays` (also on `window.fiefdomDev`) moves it forward and settles. Both are compiled
- * out of production builds and never reachable by the player.
+ * `devAdvanceDays` (also on `window.fiefdomDev`) moves it forward and settles; scripts can read the
+ * campaign with `window.fiefdomDev.campaign()`. All are compiled out of production builds and never
+ * reachable by the player.
  */
 import { create } from 'zustand'
 import { openDay } from '../lib/game/clock'
@@ -123,5 +124,5 @@ export function campaignToday(timeZone: string): ISODate {
 }
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  window.fiefdomDev = { advanceDays: devAdvanceDays, now: campaignNow }
+  window.fiefdomDev = { advanceDays: devAdvanceDays, now: campaignNow, campaign: () => useCampaign.getState().campaign }
 }

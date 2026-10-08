@@ -621,8 +621,13 @@ const SOURCE_NAMES: Record<CompanySource, string> = {
   envoy: 'Envoy'
 }
 
-/** The art slot of a roster company: its current unit line's token (`company.<unit>.token`), an Elite's portrait, a levy's banner. */
+/**
+ * The art slot of a roster company: its current unit line's token (`company.<unit>.token`), an Elite's
+ * portrait, a levy's banner. Hired blades wear the Merchant Hall's current company, whose power they
+ * have (A-19), as they do on the Grand Battle field.
+ */
 export function companyArt(state: CampaignState, id: string, source: CompanySource): string {
+  if (source === 'hired') return companyArt(state, 'merchantHall', 'building')
   if (source === 'building') {
     const unit = CODEX.companies.find((c) => c.source === 'building' && c.building === id && c.tier === state.buildings[id as BuildingId])
     return `company.${unit?.id ?? id}.token`

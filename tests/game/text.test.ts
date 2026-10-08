@@ -18,11 +18,11 @@ test('the catalog is well formed', () => {
   assert.deepEqual(validateCatalog(), [])
 })
 
-test('Ch 17: Healer check-ins, one per Ch 16 guardrail (13), all unapproved', () => {
+test('Ch 17: Healer check-ins, one per Ch 16 guardrail (13), each with its approval flag (false until the owner reads it)', () => {
   const ids = textIds('healer')
   assert.equal(ids.length, 13)
   assert.deepEqual(ids, HEALER_CHECK_INS.map((id) => `healer.${id}`))
-  for (const entry of Object.values(TEXT_SOURCES['healer.json'])) assert.equal(entry.approved, false)
+  for (const entry of Object.values(TEXT_SOURCES['healer.json'])) assert.equal(typeof entry.approved, 'boolean')
 })
 
 test('Ch 17: 10 Milestone unlocks', () => {
@@ -74,25 +74,30 @@ test('every slot the codex needs exists', () => {
   assert.deepEqual(requiredTextIds().filter((id) => !hasText(id)), [])
 })
 
-test('A3: on a clean checkout every slot is a placeholder, and t() shows its template', () => {
+test('A3: t() shows each slot’s template until its final is written (and, for the Healer, approved), then the final', () => {
+  // Written lines (task A3) land in the catalog over time, so this holds on a clean checkout and after.
   for (const file of Object.values(TEXT_SOURCES)) {
     for (const [id, entry] of Object.entries(file)) {
-      assert.equal(entry.final, null, id)
-      assert.equal(t(id), entry.template, id)
+      const shown = entry.final !== null && entry.approved !== false ? entry.final : entry.template
+      assert.equal(t(id), shown, id)
     }
   }
 })
 
+// These use their own entries, so they hold whatever the owner has written into the catalog (A3).
+const PLACEHOLDERS = new Map<string, TextEntry>([
+  ['rivals.orc.surrenderHex', { template: 'Orc: hex {hex} ceded to you.', final: null }],
+  ['battle.raid.victory', { template: '{rival} raid on hex {hex}: held. Spoils {spoils}.', final: null }]
+])
+
 test('t() returns the template, filled with facts, when final is null', () => {
-  assert.equal(t('rivals.orc.surrenderHex', { hex: '3-4' }), 'Orc: hex 3-4 ceded to you.')
-  assert.equal(
-    t('battle.raid.victory', { rival: 'Ugrak', hex: '3-4', spoils: 12 }),
-    'Ugrak raid on hex 3-4: held. Spoils 12.'
-  )
+  const tt = makeT(PLACEHOLDERS)
+  assert.equal(tt('rivals.orc.surrenderHex', { hex: '3-4' }), 'Orc: hex 3-4 ceded to you.')
+  assert.equal(tt('battle.raid.victory', { rival: 'Ugrak', hex: '3-4', spoils: 12 }), 'Ugrak raid on hex 3-4: held. Spoils 12.')
 })
 
 test('t() leaves a placeholder visible when its fact is missing', () => {
-  assert.equal(t('rivals.orc.surrenderHex'), 'Orc: hex {hex} ceded to you.')
+  assert.equal(makeT(PLACEHOLDERS)('rivals.orc.surrenderHex'), 'Orc: hex {hex} ceded to you.')
 })
 
 test('t() returns final when someone has written it', () => {

@@ -16,7 +16,7 @@ Give the new game moments their own sounds, in the same tavern style as the exis
 ## Steps
 
 1. For each game sound id, make or source a short effect in the existing style (see `docs/sound-design.md` and `scripts/generate-sfx.py`).
-2. Save it beside the existing effects in `src/renderer/src/assets/audio/sfx/` with the id as the file name, and register it the way the existing effects are registered in `audio/sfx.ts`.
+2. Save it as a WAV beside the existing effects in `src/renderer/src/assets/audio/sfx/`, named after its id (`victory.wav`); add variations as `victory-2.wav`, `victory-3.wav` and the app picks one at random, never the same twice running. No code changes: `audio/sfx.ts` finds every `<id>.wav` and `<id>-<n>.wav` when the app is built (T17 note, 2026-10-08: earlier text said to register each file in code, which isn't needed). Restart `npm run dev` to hear a new file; the installed app needs `npm run dist` and a reinstall.
 3. Check the volume against the existing effects and the music, using the in-app Settings sliders.
 
 ## Verification

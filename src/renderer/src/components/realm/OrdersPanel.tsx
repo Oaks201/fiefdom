@@ -32,6 +32,28 @@ function useNow(): Date {
   return now
 }
 
+/** Whether the day's orders are locked, checked once a second; the panel re-renders only when it changes. */
+function useLocked(campaign: CampaignState, today: ISODate): boolean {
+  const [locked, setLocked] = useState(() => ordersLock(campaign, today, campaignNow()).locked)
+  useEffect(() => {
+    const check = (): void => setLocked(ordersLock(campaign, today, campaignNow()).locked)
+    check()
+    const id = setInterval(check, 1_000)
+    return () => clearInterval(id)
+  }, [campaign, today])
+  return locked
+}
+
+/** The countdown to the 04:00 lock: the only part of the panel that changes every second. */
+function OrdersClock({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
+  const lock = ordersLock(campaign, today, useNow())
+  return (
+    <span className={`orders__clock ${lock.locked ? 'is-locked' : ''}`} title={`They lock at the day’s close, ${new Date(lock.locksAt).toLocaleString()}`}>
+      <GiHourglass aria-hidden="true" /> {lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
+    </span>
+  )
+}
+
 /**
  * The day's orders (Ch 2 rule 2, Ch 6, Ch 10, A-36): the assault targets and who goes, who
  * defends, hired blades and envoys, the Marshal's default and yesterday's orders, the countdown to
@@ -41,10 +63,9 @@ function useNow(): Date {
 export function OrdersPanel({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
   const apply = useCampaign((s) => s.apply)
   const ledger = useLedger((s) => s.ledger)
-  const now = useNow()
+  const locked = useLocked(campaign, today)
   const valor = useMemo(() => liveValor(campaign, ledger, today), [campaign, ledger, today])
   const view = useMemo(() => ordersView(campaign, valor, today), [campaign, valor, today])
-  const lock = ordersLock(campaign, today, now)
   const names = new Map(view.companies.map((c) => [c.id, c.name]))
   const name = (id: string): string => names.get(id) ?? (id.startsWith('hired') ? 'Hired blades' : id.startsWith('envoy:') ? `${rivalName(id.slice(6) as RivalId)}’s envoy` : id)
 
@@ -57,17 +78,15 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
   }
 
   return (
-    <section className={`panel orders ${lock.locked ? 'is-locked' : ''}`} aria-label="The day’s orders">
+    <section className={`panel orders ${locked ? 'is-locked' : ''}`} aria-label="The day’s orders">
       <header className="panel__head">
         <h3 className="panel__title">
           <GiScrollUnfurled aria-hidden="true" /> The day’s orders
         </h3>
-        <span className={`orders__clock ${lock.locked ? 'is-locked' : ''}`} title={`They lock at the day’s close, ${new Date(lock.locksAt).toLocaleString()}`}>
-          <GiHourglass aria-hidden="true" /> {lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
-        </span>
+        <OrdersClock campaign={campaign} today={today} />
       </header>
 
-      {lock.locked && <p className="banner">These orders are locked; they settle with the day.</p>}
+      {locked && <p className="banner">These orders are locked; they settle with the day.</p>}
 
       <p className="orders__state">
         {view.allDefend ? (
@@ -82,13 +101,13 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
       </p>
 
       <div className="orders__quick">
-        <button type="button" className="btn btn--small btn--ghost" disabled={lock.locked} onClick={() => store(marshalOrders(today))} title="Every company defends; the Marshal fields the best for each battle">
+        <button type="button" className="btn btn--small btn--ghost" disabled={locked} onClick={() => store(marshalOrders(today))} title="Every company defends; the Marshal fields the best for each battle">
           Use the Marshal’s choice
         </button>
         <button
           type="button"
           className="btn btn--small btn--ghost"
-          disabled={lock.locked || !view.canRepeat}
+          disabled={locked || !view.canRepeat}
           onClick={() => {
             store(repeatYesterday(campaign, today))
             sfx('stamp')
@@ -100,7 +119,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
 
       <div className="orders__assaults">
         {view.assaults.map((slot) => (
-          <AssaultSlot key={slot.index} view={view} slot={slot} locked={lock.locked} onTarget={(hexId) => store(withTarget(view.orders, today, hexId || undefined, slot.index))} />
+          <AssaultSlot key={slot.index} view={view} slot={slot} locked={locked} onTarget={(hexId) => store(withTarget(view.orders, today, hexId || undefined, slot.index))} />
         ))}
       </div>
 
@@ -124,7 +143,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
               <td className="num">{amount(c.power)}</td>
               <td>
                 <div className="segmented" role="radiogroup" aria-label={`${c.name} goes to`}>
-                  <button type="button" role="radio" aria-checked={c.pool === 'defense'} className={c.pool === 'defense' ? 'is-on' : ''} disabled={lock.locked} onClick={() => store(...unpack(moveCompany(campaign, view.orders, today, c.id, 'defense')))}>
+                  <button type="button" role="radio" aria-checked={c.pool === 'defense'} className={c.pool === 'defense' ? 'is-on' : ''} disabled={locked} onClick={() => store(...unpack(moveCompany(campaign, view.orders, today, c.id, 'defense')))}>
                     Defend
                   </button>
                   {view.assaults.map((slot) => (
@@ -134,7 +153,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
                       role="radio"
                       aria-checked={c.assault === slot.index}
                       className={c.assault === slot.index ? 'is-on' : ''}
-                      disabled={lock.locked}
+                      disabled={locked}
                       onClick={() => store(...unpack(moveCompany(campaign, view.orders, today, c.id, 'assault', slot.index)))}
                     >
                       {view.assaults.length > 1 ? `Assault ${slot.index + 1}` : 'Assault'}
@@ -143,7 +162,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
                 </div>
               </td>
               <td className="orders__field">
-                <input type="checkbox" checked={c.defender} disabled={lock.locked || c.pool === 'assault'} onChange={() => store(...unpack(toggleDefender(campaign, view.orders, today, c.id)))} aria-label={`Field ${c.name} on defense`} />
+                <input type="checkbox" checked={c.defender} disabled={locked || c.pool === 'assault'} onChange={() => store(...unpack(toggleDefender(campaign, view.orders, today, c.id)))} aria-label={`Field ${c.name} on defense`} />
               </td>
             </tr>
           ))}
@@ -153,7 +172,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         Banners: each assault fields up to {view.banners.assault}; each defense up to {view.banners.defense}.{' '}
         {view.override ? `You field ${view.override.map(name).join(', ')} on defense.` : 'The Marshal fields the best defenders for each battle.'}
         {view.override && (
-          <button type="button" className="link" disabled={lock.locked} onClick={() => store(withOverride(view.orders, today))}>
+          <button type="button" className="link" disabled={locked} onClick={() => store(withOverride(view.orders, today))}>
             Let the Marshal choose
           </button>
         )}
@@ -164,7 +183,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
           {view.hired.available && (
             <label className="orders__hired">
               Hired blades ({view.hired.costEach} a battle):
-              <input type="number" min={0} max={9} value={view.hired.count} disabled={lock.locked} onChange={(e) => store(withHelp(view.orders, today, { hired: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} />
+              <input type="number" min={0} max={9} value={view.hired.count} disabled={locked} onChange={(e) => store(withHelp(view.orders, today, { hired: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} />
             </label>
           )}
           {view.envoys.some((e) => e.available) && (
@@ -176,7 +195,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
                     key={e.rival}
                     type="button"
                     className={`chip ${e.chosen ? 'is-on' : ''}`}
-                    disabled={lock.locked}
+                    disabled={locked}
                     onClick={() => store(withHelp(view.orders, today, { envoys: e.chosen ? view.envoys.filter((x) => x.chosen && x.rival !== e.rival).map((x) => x.rival) : [...view.envoys.filter((x) => x.chosen).map((x) => x.rival), e.rival] }))}
                   >
                     {rivalName(e.rival)}’s envoy ({e.costEach} a battle)

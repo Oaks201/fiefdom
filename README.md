@@ -1,6 +1,6 @@
 # Fiefdom
 
-A medieval habit ledger. You are a minor noble granted a modest holding; keeping your word — a weekly contract and a roll of daily duties — earns **reputation**, the currency your holding will one day run on. This first part is the ledger itself; the game comes later.
+A medieval habit ledger. You are a minor noble granted a modest holding; keeping your word — a weekly contract and a roll of daily duties — earns **reputation**, the currency your holding runs on. Found a **campaign** and that reputation builds a realm: buildings, an army, villages won over, four rivals to resolve, and weight Milestones that open the Armory. See [How the game works](#how-the-game-works).
 
 ![The Chronicle](docs/tavern-preview.png)
 
@@ -22,7 +22,7 @@ A medieval habit ledger. You are a minor noble granted a modest holding; keeping
    npm run dist
    ```
 
-   This builds `dist/Fiefdom-Setup-0.1.0.exe`. Run it once to install. The installer isn't code-signed, so Windows may say it's from an unknown publisher — choose **More info → Run anyway**.
+   This builds `dist/Fiefdom-Setup-0.2.0.exe`. Run it once to install. The installer isn't code-signed, so Windows may say it's from an unknown publisher — choose **More info → Run anyway**.
 
 | Script              | What it does                                                        |
 | ------------------- | ------------------------------------------------------------------- |
@@ -31,10 +31,17 @@ A medieval habit ledger. You are a minor noble granted a modest holding; keeping
 | `npm start`         | Run the compiled app from `out/`                                    |
 | `npm run dist`      | Build the Windows installer into `dist/`                             |
 | `npm run dist:dir`  | Build an unpacked app for the current OS (quick packaging check)     |
-| `npm test`          | Run the tests (rules, contracts, wagers, saving, Fitbit sync)       |
+| `npm test`          | Run the tests (rules, contracts, wagers, saving, Fitbit sync, the game) |
 | `npm run typecheck` | Type-check everything                                               |
+| `npm run check:game` | Check the game's ground rules: no stray numbers, no real time or randomness in `lib/game`, a valid codex and text catalog |
+| `npm run assets:check` / `npm run text:check` | Report which art slots and story texts are still placeholders |
+| `npm run sim`       | The game simulator: thousands of seeded campaigns and the tuning report in `docs/game/sim/` (about an hour) |
+| `npm run screens`   | Screenshots of the built app (`scripts/screens.cjs`)                |
+| `node scripts/campaign-e2e.cjs` | A 52-week campaign played through the development build, with screenshots (under `xvfb-run` on Linux) |
 
-## The three pages
+## The pages
+
+The ledger has three pages. Founding a campaign (**Settings → Found a campaign…**) adds three more, **the Realm**, **Diplomacy** and **the Armory** (`Ctrl`+`4` to `6`), and a Battle screen for Grand Battles.
 
 **The Chronicle** — one day at a time. Type your steps and the calories you eat into the big tallies (typing replaces the number; `+1200` adds to it; the chips add common amounts). The calorie tally is a budget: it shows how much of the day's limit is left, and turns red when you go over. With [Fitbit connected](#fitbit), the numbers fill in on their own. Below is the roll of **daily duties**: yes/no habits you check off with a wax seal. Step back through past days with the arrows, the week strip or the calendar, and edit them freely. The ledger on the right shows what the day earned and what's still missing for a perfect day.
 
@@ -58,9 +65,21 @@ Closed contracts are graded by their daily goals — steps, calories and each sw
 
 Contracts sealed before the calorie limit existed keep their original terms: they still count calories *burned*, swore no duties (so they don't lock the roll), and are graded on their 14 goals.
 
+## How the game works
+
+A campaign turns the ledger into a strategy game played a few minutes a day. Its days close at 04:00; the app settles everything that happened since it last ran when it opens (and at 04:00 while it stays open). There are no notifications and no background process.
+
+- **Contracts of the Realm** replace the weekly contract once a campaign exists: 1 to 30 days, scored on steps, calories and duties, paying more the longer and steadier they are. Legacy contracts stay readable in the Archive.
+- **The Realm** is a map of 127 hexes around your castle. Reputation buys building tiers and Crossings; your companies defend the border and assault one hex a day; villages can be courted with bids.
+- **Four rivals** grow on a hidden benchmark of their own. Each is resolved by conquest (its Gate, then its capital, in Grand Battles), by winning its villages away, or by an Accord. Resolve all four to win.
+- **Weight** is counted gently: Momentum pays for steady loss up to a safe pace and never more; ten Milestones open the Armory, Wings and Elite companies; the Crown's Grace rewards steadiness.
+- **Losing** is possible only after week 36, only to a rival that out-grows you for a month, and only by losing a final siege after 14 days' warning. Your inner rings can never be taken.
+
+The design lives in [`docs/game/`](docs/game/README.md): the design book, the owner's decisions, the task list, the [guardrail audit](docs/game/guardrail-audit.md) and the [simulator's tuning report](docs/game/sim/report.md). Art and story text are placeholders until the owner's asset tasks (A1 to A4) replace them.
+
 ## Reputation
 
-Reputation is never stored — it's recalculated from the ledger (`src/renderer/src/lib/reputation.ts`), so editing a past day simply re-tells history.
+Reputation in the ledger (before a campaign, and in the Archive) is never stored — it's recalculated from the ledger (`src/renderer/src/lib/reputation.ts`), so editing a past day simply re-tells history.
 
 | Earned for                                                        | Reputation   |
 | ----------------------------------------------------------------- | ------------ |
@@ -111,6 +130,7 @@ Open **Settings** (the cog in the top bar) to turn the music and the sound effec
 | `N`                          | add a duty (when none are sworn) |
 | `↑` `↓` in a tally           | ±100 steps or ±10 kcal (Shift ×10) |
 | `Ctrl`+`1` / `2` / `3`       | switch pages (anywhere)        |
+| `Ctrl`+`4` / `5` / `6`       | the Realm, Diplomacy, the Armory (with a campaign) |
 | `M`                          | pause / resume the music (anywhere) |
 | `Ctrl`+`=` / `-` / `0`, `F11` | zoom, fullscreen              |
 
@@ -118,15 +138,17 @@ Drag a duty up or down to reorder it. Removing a duty takes it off the roll from
 
 ## Your data
 
-Everything is saved to one file on your computer:
+Everything is saved on your computer:
 
 ```
-%APPDATA%\Fiefdom\ledger.json
-%APPDATA%\Fiefdom\backups\ledger-YYYY-MM-DD.json   (one per day, last 30 kept)
-%APPDATA%\Fiefdom\health.json                       (the Fitbit connection, encrypted — only if you connect)
+%APPDATA%\Fiefdom\ledger.json                        (your days, duties, weigh-ins and legacy contracts)
+%APPDATA%\Fiefdom\campaign.json                      (the campaign, once founded; game code never writes ledger.json)
+%APPDATA%\Fiefdom\backups\ledger-YYYY-MM-DD.json     (one per day, last 30 kept)
+%APPDATA%\Fiefdom\backups\campaign-YYYY-MM-DD.json   (one per day, last 30 kept)
+%APPDATA%\Fiefdom\health.json                        (the Fitbit connection, encrypted — only if you connect)
 ```
 
-Nothing leaves your computer except the requests Fitbit sync makes to Google. Writes are atomic (a crash can't leave a half-written file), and if the ledger is ever damaged the app falls back to the newest good backup. `npm run dev` and the installed app share the same ledger. To experiment without touching it, point the app at another folder (PowerShell):
+Nothing leaves your computer except the requests Fitbit sync makes to Google. Writes are atomic (a crash can't leave a half-written file), and if the ledger or the campaign is ever damaged or deleted the app falls back to the newest good backup (keeping a damaged copy beside it). `npm run dev` and the installed app share the same ledger. To experiment without touching it, point the app at another folder (PowerShell):
 
 ```
 $env:FIEFDOM_DATA_DIR = "C:\temp\fiefdom-test"; npm run dev
@@ -144,14 +166,17 @@ src/
   shared/          Types shared by both sides of the bridge
   renderer/src/
     lib/           Pure rules, no UI: dates, ledger operations, contracts, reputation
+    lib/game/      The campaign's rules: pure, deterministic, every number in rules.ts or the codex
     audio/         Sound-effect playback, live hold textures, reverb, and soundtrack player
     assets/audio/  The bundled Innfolk Mirth soundtrack and original tavern SFX
     assets/art/    Painted tavern desk and parchment textures
     state/         Stores: the ledger (+ saving), UI, clock, notices, Fitbit sync
     components/    Wax seals, hold-to-confirm, dialogs, desk props, chronicle/contract/archive parts
-    pages/         Chronicle, Contract, Archive
+    pages/         Chronicle, Contract, Archive, Realm, Diplomacy, Armory, Battle
+    data/          The game's codex and text catalog (JSON)
     styles/        Desk, parchment and component styles
-tests/             Node test runner tests for the rules, the ledger file and Fitbit sync (against a fake Google)
+tests/             Node test runner tests for the rules, the ledger file, Fitbit sync (against a fake Google) and the game
+sim/               The headless game simulator and its tuning report (npm run sim)
 ```
 
 The rules in `lib/` are plain functions that take a ledger and return a new one, so the game can reuse them as they are. When reputation becomes spendable, record purchases as their own entries and subtract them from `computeReputation(...).total`.

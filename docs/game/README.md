@@ -1,6 +1,6 @@
 # Fiefdom game build: task breakdown
 
-The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. T01 to T12 and T14 to T16 are done. The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
+The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. All 17 AI tasks are done; what the owner still has to decide or do, and what the asset tasks need, is in [handover.md](handover.md). The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
 
 | File | What it is |
 | --- | --- |
@@ -62,7 +62,8 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `contractActions.ts` | The player's contract actions on the whole campaign: seal, withdraw, Respite, revise the Charter | T14 |
 | `view/*.ts` | View models for screens: `shell.ts`, `contract.ts`, `chronicle.ts` (T14); `realm.ts`, `orders.ts`, `diplomacy.ts`, `refusals.ts` (T15); `battle.ts`, `armory.ts`, `endgame.ts` (T16) | T14 to T16 |
 | `dev/` | Development only: `mapAscii.ts` (T03), the scenario loader `scenarios.ts` (T15) | T03, T15 |
-| `sim/` (repo root) | Headless simulator and tuning report | T13 |
+| `sim/` (repo root) | Headless simulator and tuning report (`npm run sim`, `docs/game/sim/report.md`) | T13 |
+| `dev/invariants.ts` | The runtime invariants checked after every settlement in development builds and every simulated day | T17 |
 
 ## Tasks
 
@@ -80,11 +81,11 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | [T10](tasks/T10-rivals.md) | Rivals: benchmark economy, weekly turn, Respect, fronts, Border Campaigns | 3 The war | T08 T09 | done |
 | [T11](tasks/T11-grand-battles-and-armory.md) | Grand Battles and the Armory (engine) | 4 Big systems | T07 T08 T10 | done |
 | [T12](tasks/T12-world-and-endgame.md) | The living world and the endgame: coalitions, events, resolving rivals, Ascendancy, the Siege, victory | 4 Big systems | T11 | done |
-| [T13](tasks/T13-simulator.md) | The simulator and the tuning report (report only) | 4 Big systems | T11 T12 | todo |
+| [T13](tasks/T13-simulator.md) | The simulator and the tuning report (report only) | 4 Big systems | T11 T12 | done |
 | [T14](tasks/T14-campaign-in-the-app.md) | The campaign in the app: shell, founding, Herald, plumbing, Contract and Chronicle | 5 Screens | T06 | done |
 | [T15](tasks/T15-war-table-screens.md) | The war table: Realm and Diplomacy screens | 5 Screens | T14 | done |
 | [T16](tasks/T16-battle-armory-endgame-screens.md) | Battle, Armory and endgame screens | 5 Screens | T11 T12 T14 T15 | done |
-| [T17](tasks/T17-integration-qa-release.md) | Integration QA, guardrail audit and release | 6 Release | T11–T16 | todo |
+| [T17](tasks/T17-integration-qa-release.md) | Integration QA, guardrail audit and release | 6 Release | T11–T16 | done |
 | [A1](tasks/A1-art-style-sheet.md) | Art direction and style sheet | 7 Assets (owner) | — (any time) | todo |
 | [A2](tasks/A2-art-production.md) | Produce and drop in the art | 7 Assets (owner) | T14, A1 | todo |
 | [A3](tasks/A3-writing.md) | Write the story text | 7 Assets (owner) | T01, T14 | todo |
