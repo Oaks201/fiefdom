@@ -592,6 +592,8 @@ export function crownguardView(state: CampaignState): { power: number; needsTier
 export interface RosterCompany {
   id: string
   name: string
+  /** Its art slot: the unit line's token, an Elite's portrait, or a rival's banner for its levies. */
+  art: string
   source: CompanySource
   /** Where it comes from, in plain words ("Barracks", "Barracks + Foundry", "Ugrak's vassals"). */
   origin: string
@@ -619,6 +621,23 @@ const SOURCE_NAMES: Record<CompanySource, string> = {
   envoy: 'Envoy'
 }
 
+/** The art slot of a roster company: its current unit line's token (`company.<unit>.token`), an Elite's portrait, a levy's banner. */
+function artOf(state: CampaignState, id: string, source: CompanySource): string {
+  if (source === 'building') {
+    const unit = CODEX.companies.find((c) => c.source === 'building' && c.building === id && c.tier === state.buildings[id as BuildingId])
+    return `company.${unit?.id ?? id}.token`
+  }
+  if (source === 'crossing') {
+    const crossing = CODEX.crossings.find((x) => x.id === id)
+    const hybrid = crossing?.hybrids.find((h) => h.stage === state.crossings[id as CrossingId])
+    return `company.${hybrid?.id ?? id}.token`
+  }
+  if (source === 'elite') return `portrait.${id}`
+  const [, rival] = id.split(':')
+  if ((source === 'vassal' || source === 'ally' || source === 'envoy') && rival) return `banner.${rival}`
+  return `company.${id}.token`
+}
+
 function originOf(id: string, source: CompanySource): string {
   if (source === 'building') return CODEX.buildings.find((b) => b.id === id)?.name ?? SOURCE_NAMES.building
   if (source === 'crossing') return CODEX.crossings.find((x) => x.id === id)?.name ?? SOURCE_NAMES.crossing
@@ -631,6 +650,7 @@ export function rosterView(state: CampaignState, today: ISODate = openDayOf(stat
   return rosterDetail(state, { day: today }, effects).map((e) => ({
     id: e.company.id,
     name: e.company.name,
+    art: artOf(state, e.company.id, e.company.source),
     source: e.company.source,
     origin: originOf(e.company.id, e.company.source),
     power: e.company.power,

@@ -1,6 +1,6 @@
 # Fiefdom game build: task breakdown
 
-The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. T01 to T12 and T14 are done. The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
+The campaign layer in the design book is split into **17 AI tasks across 6 phases**, plus **4 asset tasks the owner does last**. T01 to T12, T14 and T15 are done. The remaining seven (T11 to T17) were re-planned on 2026-10-07 as coarser tasks that start from the code as it now stands; at most two run in parallel, and the [waves](#waves) table shows which.
 
 | File | What it is |
 | --- | --- |
@@ -60,7 +60,8 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
 | `world.ts`, `world/events.ts` | Resolving rivals, Accords, coalitions, Ascendancy, the Siege, victory, the Chronicle record; the event deck and its effects | T12 |
 | `contractActions.ts` | The player's contract actions on the whole campaign: seal, withdraw, Respite, revise the Charter | T14 |
-| `view/*.ts` | View models for screens: `shell.ts`, `contract.ts`, `chronicle.ts` (T14); the war table and the big moments (T15, T16) | T14 to T16 |
+| `view/*.ts` | View models for screens: `shell.ts`, `contract.ts`, `chronicle.ts` (T14); `realm.ts`, `orders.ts`, `diplomacy.ts`, `refusals.ts` (T15); the big moments (T16) | T14 to T16 |
+| `dev/` | Development only: `mapAscii.ts` (T03), the scenario loader `scenarios.ts` (T15) | T03, T15 |
 | `sim/` (repo root) | Headless simulator and tuning report | T13 |
 
 ## Tasks
@@ -81,7 +82,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | [T12](tasks/T12-world-and-endgame.md) | The living world and the endgame: coalitions, events, resolving rivals, Ascendancy, the Siege, victory | 4 Big systems | T11 | done |
 | [T13](tasks/T13-simulator.md) | The simulator and the tuning report (report only) | 4 Big systems | T11 T12 | todo |
 | [T14](tasks/T14-campaign-in-the-app.md) | The campaign in the app: shell, founding, Herald, plumbing, Contract and Chronicle | 5 Screens | T06 | done |
-| [T15](tasks/T15-war-table-screens.md) | The war table: Realm and Diplomacy screens | 5 Screens | T14 | todo |
+| [T15](tasks/T15-war-table-screens.md) | The war table: Realm and Diplomacy screens | 5 Screens | T14 | done |
 | [T16](tasks/T16-battle-armory-endgame-screens.md) | Battle, Armory and endgame screens | 5 Screens | T11 T12 T14 T15 | todo |
 | [T17](tasks/T17-integration-qa-release.md) | Integration QA, guardrail audit and release | 6 Release | T11–T16 | todo |
 | [A1](tasks/A1-art-style-sheet.md) | Art direction and style sheet | 7 Assets (owner) | — (any time) | todo |

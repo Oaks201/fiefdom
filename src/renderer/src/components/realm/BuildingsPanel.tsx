@@ -216,7 +216,7 @@ export function RosterPanel({ campaign, today }: { campaign: CampaignState; toda
           {roster.map((c) => (
             <tr key={c.id} className={c.weary ? 'is-weary' : ''}>
               <td>
-                <GameArt slot={`company.${c.id.split(':')[0]}.token`} owner="player" width={28} label={c.name} className="roster__token" />
+                <GameArt slot={c.art} owner="player" width={28} label={c.name} className="roster__token" />
                 <strong>{c.name}</strong>
                 {c.weary && <span className="tag tag--weary">Weary{c.wearyUntil ? ` through ${c.wearyUntil.slice(5)}` : ''}</span>}
               </td>

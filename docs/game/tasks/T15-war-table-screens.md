@@ -64,16 +64,45 @@ Accords, coalitions, the Ultimatum and the endgame cards (T16); the battle and A
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] Layout: no two of the 127 hex centers are closer than the hex width × 0.9.
-- [ ] Every action the hex panel offers matches the engine: for 200 seeded hexes in a mid-game state, "available" equals the engine's check returning ok.
-- [ ] Orders: you can't assign more companies than the banners allow; after the 04:00 lock (dev clock) the panel is read-only; with no orders the preview says every company defends.
-- [ ] Hidden values: across every rival and every state of a 70-week `settle`-driven trace, the Diplomacy view model holds no exact treasury, AV, income or benchmark unless the Spy Network or Spymaster applies (scan values against the true numbers).
-- [ ] Every deal shown as available is accepted by `makeDeal`; every unavailable one shows the engine's reason text id.
-- [ ] Manual, with dev time travel and the scenario loader: buy Barracks Tier II and see the company change in the roster; set an assault on an adjacent beast den, advance a day, and see the hex change owner with spoils in the purse; lose a defense and see the scorched overlay for 3 days; raise Respect with the Goblin to 25 and buy a hex; court a neutral village and see it defect at the week close.
-- [ ] Hovering across the map stays under 16 ms per commit (React Profiler; attach the measurement).
-- [ ] Screenshots at 1024×768 and 1920×1080: the founding map, a mid-game map with contested and scorched hexes, the orders panel, the buildings panel, the four rival panels, the deals list and the courtships list.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] Layout: no two of the 127 hex centers are closer than the hex width × 0.9.
+- [x] Every action the hex panel offers matches the engine: for 200 seeded hexes in a mid-game state, "available" equals the engine's check returning ok.
+- [x] Orders: you can't assign more companies than the banners allow; after the 04:00 lock (dev clock) the panel is read-only; with no orders the preview says every company defends.
+- [x] Hidden values: across every rival and every state of a 70-week `settle`-driven trace, the Diplomacy view model holds no exact treasury, AV, income or benchmark unless the Spy Network or Spymaster applies (scan values against the true numbers).
+- [x] Every deal shown as available is accepted by `makeDeal`; every unavailable one shows the engine's reason text id.
+- [x] Manual, with dev time travel and the scenario loader: buy Barracks Tier II and see the company change in the roster; set an assault on an adjacent beast den, advance a day, and see the hex change owner with spoils in the purse; lose a defense and see the scorched overlay for 3 days; raise Respect with the Goblin to 25 and buy a hex; court a neutral village and see it defect at the week close.
+- [x] Hovering across the map stays under 16 ms per commit (React Profiler; attach the measurement).
+- [x] Screenshots at 1024×768 and 1920×1080: the founding map, a mid-game map with contested and scorched hexes, the orders panel, the buildings panel, the four rival panels, the deals list and the courtships list.
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here: the view models T16 extends for the endgame, and the scenario loader's states.)*
+### Evidence (2026-10-07)
+
+- `npm run typecheck`: clean. `npm test`: 594 tests, 594 pass (new: `viewRealm.test.ts` 11, `viewDiplomacy.test.ts` 7, `devScenarios.test.ts` 6). `npm run check:game`: `check:game OK: 38 game files, codex valid, 293 text slots.`
+- **Layout:** "T15: no two of the 127 hex centers are closer than the hex width × 0.9; neighbors are one width apart" (the least distance is exactly the width, √3).
+- **The hex panel matches the engine:** "T15: every action the hex panel offers matches the engine, for 200 seeded hexes in mid-game states" (two 16-week driven campaigns, 100 shuffled hexes each; every action's `available` equals `challenge`, `ordersValidity`, `bidCheck`, `offerDeal`, `fortifyOffer` or `reclaimOffer`, and every closed one carries a reason).
+- **Orders:** "Ch 2 rule 2 / A-36: no more companies than the banners allow; read-only after the 04:00 lock; with no orders every company defends" and "A-36 / Ch 10: companies sent before a target is named still defend; a second assault needs Castle IV and its own target; chosen defenders stop at the banners". "T15: the estimate at the day's own Valor gives the outcome the close then gives".
+- **Hidden values:** "Convention 6: across every day of a 70-week settled trace, rival panels hold no exact treasury, AV, income or benchmark unless the Spy Network applies": 490 settled days × 4 rivals; an unrevealed panel holds no number at all beyond Respect, its marks and the front tracks (numbers written in its text included); with the Spy Network exactly `treasury` and `army` appear.
+- **Deals:** "Ch 6: every deal shown as available is accepted by makeDeal; every unavailable one carries the engine's reason text id" (two driven campaigns at Respect 10, 30, 55 and 70).
+- **Manual, in the dev app** (`scripts/screens.cjs --dev` on the `devcampaign` data, with the scenario loader and `fiefdomDev.advanceDays`; values read off the page):
+  1. Scenario *barracksII*: the Barracks card listed "Dominion 8 (8 now)" and "150 reputation" as met; Raise turned Militia into Men-at-Arms in the roster and the purse went 160 → 10.
+  2. Scenario *armyReady*: assault on hex 1-3 (a Hearth den, garrison 13.5) with three companies; the estimate read "26.6 against garrison 13.5, taken in a rout". After +1 day the hex was the player's, the Herald said "Assault on hex 1-3: taken in a rout. Spoils 6.3." and the purse went 300 → 314.
+  3. Scenario *contestedScorched*: the scorched hex read 3d, then 2d, 1d, and was clear on the 4th day; the contested hex showed its torch and 2d.
+  4. Scenario *goblinTrade*: Skivvet's deals offered "Buy hex 5-5" for 450; striking it showed "Goblin: Buy hex 5-5 agreed for 450." and Respect went 47 → 49.
+  5. Scenario *courtship*: a bid of 26 on hex 2-2 (Offer 31.0 against 30); after +1 day (the week close) the courtships list read "Hex 2-2, bid 26: defected to you" and the map showed the hex as the player's.
+  The same five flows run headlessly in `devScenarios.test.ts` ("T15 manual 1" to "5").
+- **Hover:** the dev build's React Profiler (around the whole Realm page) recorded 134 commits while the real pointer (CDP `Input.dispatchMouseEvent`) swept all 127 hexes at 1920×1080: **max 3.3 ms, p95 2.2 ms, mean 0.19 ms**. Hover lives in its own store (`useMapHover`), so a hover re-renders only the tooltip; each hex is memoized on its own facts.
+- **Screenshots** at 1024×768 and 1920×1080 in `docs/game/screens/t15/`: `founding-map`, `midgame-map` (16 driven weeks, a contested and a scorched hex, the contested hex's panel and an assault target), `orders`, `buildings`, `rivals` (the four courts), `deals` (Skivvet's, with the Spy Network showing exact treasuries and armies) and `courtships` (an open bid and the bid form).
+
+### For T16
+
+- **View models:** `view/realm.ts` (`mapView`, `hexPanel`, `buildingsView`, `castleView`, `crossingsView`, `crownguardView`, `rosterView`, `effectLines`/`effectLabel`, `trustNow`, `suggestedBid`, `ownerName`, `buildingName`), `view/orders.ts` (`ordersView`, `ordersLock`, `assaultTargets`, and the pure builders `marshalOrders`, `repeatYesterday`, `withTarget`, `moveCompany`, `toggleDefender`, `withHelp`), `view/diplomacy.ts` (`rivalPanel(s)`, `respectMarks`, `moodOf`, `dealsView`, `dealName`, `dealReaction`, `courtableVillages`, `courtshipsView`) and `view/refusals.ts` (plain words for land, purchase, order and Grand Battle refusals; `requirementLines`).
+- **The endgame in Diplomacy:** `pages/DiplomacyPage.tsx` renders the courts, `DealsList` and `Courtships`; add the Accord, coalition and Ultimatum banners above the courts. A coalition member's `buyout` already shows in its deals list (from `availableDeals`). `rivalPanel`'s greeting uses `fall`, `allied`, `warning` or `greeting`; `accordOffered` and `ultimatum` are free for T16's banners.
+- **Grand Battles:** the hex panel offers "Call a Grand Battle" (`challenge`) on Gates, capitals and Lair Mouths, and the map marks announced battles (`MapHex.battle`, a horn). The battle route and the Herald notice are T16's.
+- **Plumbing added:** `<GameArt place={…}>` draws a slot inside an SVG (a hex placeholder there is a plain terrain fill); `useUI.goDiplomacy(rival, hexId?)` opens a court with a hex picked out; roster companies carry their art slot (`RosterCompany.art`); `rosterDetail` exposes `parts` (adds, shares, cuts).
+- **The scenario loader (gap 3):** `lib/game/dev/scenarios.ts`, in the DEV panel (Scenarios) and as `window.fiefdomDev.scenario(id)`; only `DevTimeTravel` imports it, so production builds don't contain it. States: `barracksII` (160 reputation, Dominion 8 on the Barracks), `armyReady` (every building at Tier II, Castle II, 300 reputation), `contestedScorched` (the Barracks road to ring 3, the Orc at War contesting the ring-3 hex until tomorrow, the ring-2 hex scorched for 3 days), `goblinTrade` (Goblin Respect 25, your land touching its March, 600 reputation), `courtship` (a neutral village beside your land, 300 reputation) and `rich` (+1,000). Add one by appending to `DEV_SCENARIOS`.
+- **Scripts:** `scripts/screens.cjs` steps may move the real pointer (`"mouse": "<JS giving [[x, y], …]>"`). `scripts/screens-data.ts` also writes `founded` (a campaign founded yesterday evening), `devcampaign` (five weeks in, three weeks logged ahead) and `midgame` (the test driver's 16 weeks on fixed dates; run the dev build with the `FIEFDOM_DEV_NOW` it prints). In dev builds the Realm page records each commit's duration in `window.__fiefdomCommits`.
+
+### Readings raised
+
+A-181 (garrisons shown exactly, the Marshal's choice, assaults without a target, chosen defenders, the suggested bid, the estimate, portrait moods and greetings, dev scenario purse sources).

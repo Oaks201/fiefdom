@@ -305,6 +305,14 @@
 }
 
 /* -- The day's orders ----------------------------------------------------- */
+.orders .panel__head {
+  flex-wrap: wrap;
+}
+
+.orders .panel__title {
+  white-space: nowrap;
+}
+
 .orders__clock {
   display: inline-flex;
   align-items: center;

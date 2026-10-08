@@ -22,6 +22,8 @@ import { HEX_WIDTH, buildingsView, castleView, crossingsView, effectLines, hexLa
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
+import manifest from '../../src/renderer/public/game-assets/manifest.json'
+import { rivalPanels } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { realm, withBuildings, withCastle, withCrossings, withDominion, withPurse } from './support/realm'
 
 /** A mid-game realm: 16 weeks of a steady, greedy player, settled day by day. */
@@ -229,4 +231,21 @@ test('T15: the estimate at the day’s own Valor gives the outcome the close the
   const assault = settled.events.find((e) => e.kind === 'assault')
   assert.ok(assault && assault.kind === 'assault')
   assert.equal(estimate.assaults[0].outcome, assault.outcome === 'revealed' ? estimate.assaults[0].outcome : assault.outcome)
+})
+
+test('Convention 8: every art slot the Realm and Diplomacy views name is in the art manifest', () => {
+  const slots = new Set(Object.keys(manifest))
+  for (const seed of [3, 4]) {
+    const state = midGame(seed)
+    const named = [
+      ...mapView(state).map((h) => h.slot),
+      ...buildingsView(state).map((b) => b.slot),
+      castleView(state).slot,
+      ...rosterView(state).map((c) => c.art),
+      ...rivalPanels(state).map((p) => p.portrait),
+      'hex.overlay.contested',
+      'hex.overlay.scorched'
+    ]
+    for (const slot of named) assert.ok(slots.has(slot), `${slot} is in the manifest`)
+  }
 })

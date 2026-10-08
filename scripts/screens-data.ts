@@ -9,8 +9,9 @@
  * broken), <root>/homecoming (the same campaign, last opened 20 days ago and settled 6 days
  * ago, so the Homecoming opens at launch), <root>/devflow (a ledger with three weeks logged
  * ahead, for driving dev time travel) and <root>/devcampaign (the five-week campaign with three
- * weeks logged ahead, for the T15 checks with time travel and the scenario loader). Sound is off
- * in each, so the screenshots run quietly.
+ * weeks logged ahead, for the T15 checks with time travel and the scenario loader) and
+ * <root>/founded (a campaign founded yesterday evening: the founding map). Sound is off in each,
+ * so the screenshots run quietly.
  *
  * <root>/midgame (T15) is different: 16 weeks of a steady, greedy player from the test driver,
  * on its fixed dates (founded 2026-10-07 in Chicago). Open it with the dev build and the
@@ -98,6 +99,9 @@ write(path.join(root, 'fresh'), ledgerFor(30))
 write(path.join(root, 'devflow'), ledgerFor(30, 21))
 write(path.join(root, 'campaign'), ledger, campaignThrough(ledger, today, today))
 write(path.join(root, 'homecoming'), ledger, campaignThrough(ledger, addDays(today, -6), addDays(today, -20)))
+const yesterdayEvening = new Date(dayCloseInstant(addDays(today, -2), zone).getTime() + 16 * 3_600_000)
+const foundingLedger = ledgerFor(30)
+write(path.join(root, 'founded'), foundingLedger, { ...foundCampaign({ startWeight: 217, goalWeight: 168, charter: { stepPool: 50_000, calorieLimit: 2_000, duties: ['Read', 'Stretch', 'Drink water'] }, timeZone: zone, seed: 20261007, ledger: foundingLedger }, yesterdayEvening) })
 const ahead = ledgerFor(64, 21)
 write(path.join(root, 'devcampaign'), ahead, campaignThrough(ahead, today, today))
 
