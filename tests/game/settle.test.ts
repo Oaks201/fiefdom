@@ -68,6 +68,15 @@ test('Test 9 (core): settle twice with the same now gives a deep-equal state and
   }
 })
 
+test('Test 9: a clock set back to a day already settled changes nothing, the last launch included', () => {
+  const settled = settle(found(LEDGER), LEDGER, chicago('2026-10-20', 600), { launch: true }).state
+  for (const back of [chicago('2026-10-19', 600), chicago('2026-10-13', 600), chicago('2026-10-08', 600)]) {
+    const again = settle(settled, LEDGER, back, { launch: true })
+    assert.deepEqual(again.state, settled)
+    assert.equal(again.events.length, 0)
+  }
+})
+
 test('Test 9: 30 days settled one call per day equal one catch-up call over the same 30 days', () => {
   let start = sealOn(found(LEDGER), '2026-10-07', 3, 'c1', 20)
   start = sealOn(start, '2026-10-07', 3, 'c2')

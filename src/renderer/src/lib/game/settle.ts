@@ -606,10 +606,11 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
     }
   }
 
-  // The open day's dawn, if no settled day has brought it yet (the campaign's first day).
-  if (isPlayable(next)) next = dawn(next, today)
+  // The open day's dawn, if no settled day has brought it yet (the campaign's first day). A clock
+  // set back to a day already settled brings no dawn, and never moves the last launch back.
+  if (isPlayable(next) && today > next.settledThrough.day) next = dawn(next, today)
 
-  if (options.launch && last !== today) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
+  if (options.launch && (last === undefined || today > last)) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
 
   return {
     state: next,
