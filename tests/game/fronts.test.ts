@@ -7,11 +7,10 @@ import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import { borderCampaignTarget, borderCampaigns, drawFronts, frontWarChance, settleFronts, type RivalWeek } from '../../src/renderer/src/lib/game/rivals'
 import type { CampaignState, Coalition, FrontId, GameEvent, RivalId } from '../../src/renderer/src/lib/game/types'
 import { realm } from './support/realm'
-import { eventsOf, founded, simulateRivals } from './support/rival-sim'
+import { eventsOf, simulateRivals } from './support/rival-sim'
 import { hex, withOwner } from './support/war'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, tolerance = 1e-9): void =>
-  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)
 
 function week(day: string, n: number, events: GameEvent[] = []): RivalWeek {
   return {
@@ -139,12 +138,12 @@ test('A-26: a rival at war with another rival raids the player half as often', (
   near(war, calm / 2)
 })
 
-test('Ch 12: coalition partners are never at War on their front', () => {
+test('Ch 13: while a coalition stands, its members’ shared front is at Peace', () => {
   const coalition: Coalition = { members: ['orc', 'goblin'], trigger: 'risingCrown', warChest: 0 }
   let state = { ...realm(), coalitions: [coalition] }
   for (let i = 0; i < 60; i++) {
     state = drawFronts(state, week(addDays(SUNDAY, 7 * i), 6 + i))
-    assert.notEqual(state.fronts.north.state, 'war')
+    assert.equal(state.fronts.north.state, 'peace')
   }
 })
 
@@ -223,7 +222,7 @@ test('Test 10 (part): across 300 seeded 70-week runs no Border Campaign targets 
       ['goblin', 'dwarf']
     ]
     const coalitions: Coalition[] = seed % 3 === 0 ? [{ members: pairs[seed % 4], trigger: 'risingCrown', warChest: 0 }] : []
-    const start = founded(seed)
+    const start = realm(seed)
     const kinds = new Map(start.hexes.map((h) => [h.id, h.kind]))
     const run = simulateRivals(start, 70, { playerHexes: 12, coalitions })
     for (const w of run.weeks) {

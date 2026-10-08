@@ -8,6 +8,7 @@ import { settle, type SettleResult, type SettleSummary } from '../lib/game/settl
 import type { CampaignState } from '../lib/game/types'
 import type { Ledger } from '../lib/types'
 import { loadCampaignText, saveCampaignText, saveCampaignTextSync } from './persistence'
+import { debouncedSaver } from './saver'
 import { toast } from './toasts'
 
 interface CampaignStore {
@@ -22,6 +23,11 @@ interface CampaignStore {
    * campaign there is nothing to apply it to.
    */
   apply(op: (campaign: CampaignState) => CampaignState): boolean
+  /**
+   * Runs a player action that answers `{ ok, reason?, state }` (the contract, land, deal, world and
+   * Armory actions). A refusal is shown as a notice; returns whether it was done.
+   */
+  act(op: (campaign: CampaignState) => { ok: boolean; reason?: string | { code: string }; state: CampaignState }): boolean
   /** Sets a newly founded campaign (from `foundCampaign`) and saves it. */
   found(campaign: CampaignState): void
   /**
@@ -70,6 +76,31 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
     return true
   },
 
+  act(op) {
+    const { campaign, status } = get()
+    if (status !== 'ready' || campaign === null) return false
+    let done: ReturnType<typeof op>
+    try {
+      done = op(campaign)
+    } catch (err) {
+      if (err instanceof CampaignError) {
+        toast(err.message, 'error')
+        return false
+      }
+      throw err
+    }
+    if (!done.ok) {
+      const reason = done.reason
+      toast(typeof reason === 'string' ? reason : reason ? `Refused: ${reason.code}` : 'That cannot be done now.', 'error')
+      return false
+    }
+    if (done.state !== campaign) {
+      set({ campaign: done.state })
+      scheduleSave(done.state)
+    }
+    return true
+  },
+
   found(campaign) {
     set({ campaign, status: 'ready', error: null })
     scheduleSave(campaign)
@@ -93,41 +124,5 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
   }
 }))
 
-// ---------------------------------------------------------------------------
-// Saving: debounced, flushed synchronously if the window closes. Mirrors state/store.ts.
-// ---------------------------------------------------------------------------
-let pending: string | null = null
-let timer: ReturnType<typeof setTimeout> | undefined
-let failedOnce = false
-
-function scheduleSave(campaign: CampaignState): void {
-  pending = JSON.stringify(campaign)
-  clearTimeout(timer)
-  timer = setTimeout(() => void flush(), 350)
-}
-
-async function flush(): Promise<void> {
-  if (pending === null) return
-  const json = pending
-  pending = null
-  try {
-    await saveCampaignText(json)
-    failedOnce = false
-  } catch (err) {
-    console.error('Saving the campaign failed', err)
-    if (!failedOnce) toast('The campaign could not be saved. Retrying…', 'error')
-    failedOnce = true
-    if (pending === null) pending = json
-    clearTimeout(timer)
-    timer = setTimeout(() => void flush(), 3000)
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    if (pending !== null) {
-      saveCampaignTextSync(pending)
-      pending = null
-    }
-  })
-}
+// Saving: debounced, flushed synchronously if the window closes, as the ledger is.
+const scheduleSave = debouncedSaver('campaign', saveCampaignText, saveCampaignTextSync)

@@ -4,12 +4,14 @@
  * Steward's Counsel.
  *
  * The legacy weekly contracts in `lib/contracts.ts` stay as they are; this is the campaign's own.
- * Every function is pure: it takes the contracts and purse slices and returns new ones.
+ * Every function is pure: it takes the contracts and purse slices and returns new ones. What the
+ * realm changes (the pledge cap, the pledge's minimum return, the reputation bonus, the Respite
+ * bank's cap) comes in from `realmEffects`, which alone knows where each bonus comes from.
  */
 import { addDays, diffDays } from './clock'
 import { CampaignError } from './errors'
 import { balance, post, roundPosting, withBonus } from './economy'
-import { RULES, byTier, lengthMultiplier } from './rules'
+import { RULES, lengthMultiplier } from './rules'
 import type {
   BuildingId,
   BuildingTier,
@@ -37,11 +39,9 @@ export function contractPayout(days: number, score: number): number {
   return RULES.contracts.payoutPerDay * days * lengthMultiplier(days) * payoutCurve(score)
 }
 
-/** Pledge × 2 × f(Q); at least half the pledge back from Merchant Hall IV. */
-export function pledgeReturn(pledge: number, score: number, merchantHallTier: number): number {
-  const { minPledgeReturn } = RULES.buildings.merchantHall
-  const floor = merchantHallTier >= minPledgeReturn.tier ? pledge * minPledgeReturn.share : 0
-  return Math.max(floor, pledge * RULES.contracts.pledge.returnMultiplier * payoutCurve(score))
+/** Pledge × 2 × f(Q), never less than `minShare` of the pledge (half from Merchant Hall IV: `realmEffects().minPledgeReturn`). */
+export function pledgeReturn(pledge: number, score: number, minShare: number): number {
+  return Math.max(pledge * minShare, pledge * RULES.contracts.pledge.returnMultiplier * payoutCurve(score))
 }
 
 /** Withdrawal pays 10 × daysElapsed × 1.0 × f(Q), before the reputation bonus. */
@@ -75,10 +75,9 @@ export function availableLengths(progress: Progress): ContractTerm[] {
     .map((l) => l.days as ContractTerm)
 }
 
-/** The pledge cap: 10 × days, ×1.5 at Merchant Hall III, never more than the purse. */
-export function pledgeCap(days: number, merchantHallTier: number, purseBalance: number): number {
-  const { pledgeCap: mh } = RULES.buildings.merchantHall
-  const cap = RULES.contracts.pledge.capPerDay * days * (merchantHallTier >= mh.tier ? mh.mult : 1)
+/** The pledge cap: 10 × days × `capMult` (×1.5 from Merchant Hall III: `realmEffects().pledgeCap`), never more than the purse. */
+export function pledgeCap(days: number, capMult: number, purseBalance: number): number {
+  const cap = RULES.contracts.pledge.capPerDay * days * capMult
   return Math.max(0, Math.min(cap, purseBalance))
 }
 
@@ -122,7 +121,8 @@ export interface SealRequest {
 export interface SealContext extends Progress, CharterLimits {
   /** The open campaign day; the contract starts at the next dawn. */
   today: ISODate
-  merchantHallTier: number
+  /** The pledge cap's multiplier, `realmEffects().pledgeCap`. */
+  pledgeCapMult: number
 }
 
 /**
@@ -151,8 +151,8 @@ export function seal(
   const held = balance(purse)
   if (!Number.isFinite(pledge) || pledge < 0) throw new CampaignError('A pledge cannot be negative.')
   if (pledge > held) throw new CampaignError(`The purse holds ${held}; the pledge is ${pledge}.`)
-  if (pledge > pledgeCap(req.termDays, ctx.merchantHallTier, held))
-    throw new CampaignError(`A ${req.termDays}-day contract takes a pledge of at most ${pledgeCap(req.termDays, ctx.merchantHallTier, held)}.`)
+  const cap = pledgeCap(req.termDays, ctx.pledgeCapMult, held)
+  if (pledge > cap) throw new CampaignError(`A ${req.termDays}-day contract takes a pledge of at most ${cap}.`)
 
   const nextDawn = addDays(ctx.today, 1)
   const afterActive = contracts.active ? addDays(contracts.active.endDate, 1) : nextDawn
@@ -180,7 +180,8 @@ export function seal(
 export interface PayContext {
   /** The day the payment is posted. */
   date: ISODate
-  merchantHallTier: number
+  /** The share of a pledge that always comes back, `realmEffects().minPledgeReturn`. */
+  minPledgeReturn: number
   /** The realm's reputation bonus from effects; it applies to the payout, not the pledge's return. */
   bonus: number
 }
@@ -195,7 +196,7 @@ export function proceeds(contract: LandContract, score: number, ctx: Omit<PayCon
   }
   return {
     payout: roundPosting(withBonus(contractPayout(contract.termDays, score), ctx.bonus)),
-    pledgeReturn: roundPosting(pledgeReturn(contract.pledge, score, ctx.merchantHallTier))
+    pledgeReturn: roundPosting(pledgeReturn(contract.pledge, score, ctx.minPledgeReturn))
   }
 }
 
@@ -324,15 +325,9 @@ export function accordRespectGain(curve: number, respectAtStart: number): number
 
 // ── Respite ──────────────────────────────────────────────────────────────────
 
-/** The base Respite bank by Mage Tower tier (4, 5 at III, 6 at V), +1 with the Healing Springs. */
-export function respiteBankCap(mageTowerTier: number, healingSprings: boolean): number {
-  const r = RULES.respite
-  return byTier(r.bankByMageTowerTier, mageTowerTier) + (healingSprings ? r.healingSpringsBonus : 0)
-}
-
 /**
- * Banks one Respite day for every 7 days played, up to `cap` (from effects). Call once per
- * settled day with the campaign's days played so far.
+ * Banks one Respite day for every 7 days played, up to `cap` (`realmEffects().respiteBank`). Call
+ * once per settled day with the campaign's days played so far.
  */
 export function earnRespite(contracts: ContractsState, daysPlayed: number, cap: number): ContractsState {
   const earned = daysPlayed > 0 && daysPlayed % RULES.respite.earnEveryDays === 0

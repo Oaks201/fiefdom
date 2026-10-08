@@ -17,8 +17,9 @@
  *   T10 takes the money from the treasury when it bids; resolution refunds half to a rival that
  *   doesn't end up with the village (`outbidRefundShare`), and a counter-bid is never refunded.
  *   Rival bids that no player courtship took in resolve in `resolveRivalCourtships`, by the same rules.
- * - T08 and T10 read `blocksRaids`, `blocksConquest` and `raidRateMult`; T10 reads `callToArmsOn`
- *   to hold a front at War, and fortifies rival hexes with `fortificationCost` and `fortificationCap`.
+ * - T08 and T10 read `blocksRaids`, `blocksConquest` (both include a running Accord) and
+ *   `raidRateMult`; T10 reads `callToArmsOn` to hold a front at War, and fortifies rival hexes with
+ *   `fortificationCost` and `fortificationCap`.
  *
  * Player actions taken outside settlement (bids, deals, fortifying, reclaiming) post their events
  * straight to `state.log`, dated the day they are taken. Refusals are codes with plain facts; deal
@@ -31,24 +32,8 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
 import { RULES, base, byTier } from './rules'
-import type {
-  CampaignState,
-  Courtship,
-  Deal,
-  Effects,
-  FrontId,
-  GameEvent,
-  GameEventKind,
-  GameEventMap,
-  HexState,
-  ISODate,
-  Owner,
-  RivalId
-} from './types'
-
-const RIVAL_IDS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
-
-export type Emit = <K extends GameEventKind>(kind: K, payload: GameEventMap[K]) => void
+import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
+import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
 // ── Refusals and results ─────────────────────────────────────────────────────
 
@@ -94,19 +79,6 @@ function refused(state: CampaignState, reason: LandRefusal, cost = 0): LandActio
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
-/** The day the player acts on: the open day, the one after the last settled day. */
-export function openDayOf(state: CampaignState): ISODate {
-  return addDays(state.settledThrough.day, 1)
-}
-
-function hexOf(state: CampaignState, id: string): HexState | undefined {
-  return state.hexes.find((h) => h.id === id)
-}
-
-function replaceHex(state: CampaignState, hex: HexState): CampaignState {
-  return { ...state, hexes: state.hexes.map((h) => (h.id === hex.id ? hex : h)) }
-}
-
 function isRival(owner: Owner): owner is RivalId {
   return owner !== 'player' && owner !== 'neutral'
 }
@@ -120,64 +92,9 @@ function reputationShort(state: CampaignState, amount: number): LandRefusal | nu
   return affordable(state, amount) ? null : { code: 'reputation', needed: amount, have: balance(state.purse) }
 }
 
-/** Collects events during a player action, then posts them to the log dated `day`. */
-function collector(): { emit: Emit; flush: (state: CampaignState, day: ISODate) => CampaignState } {
-  const pending: { kind: GameEventKind; payload: object }[] = []
-  return {
-    emit: (kind, payload) => void pending.push({ kind, payload }),
-    flush: (state, day) => {
-      if (pending.length === 0) return state
-      const at = state.log.length
-      const events = pending.map(({ kind, payload }, i) => ({ id: `ev-${at + i + 1}`, day, kind, ...payload }) as GameEvent)
-      return { ...state, log: [...state.log, ...events] }
-    }
-  }
-}
-
-function changeRespect(state: CampaignState, rival: RivalId, change: number, reason: string, emit: Emit): CampaignState {
-  const r = state.rivals[rival]
-  const after = Math.min(RULES.respect.max, Math.max(RULES.respect.min, r.respect + change))
-  if (after === r.respect) return state
-  emit('respect', { rival, change: after - r.respect, reason })
-  return { ...state, rivals: { ...state.rivals, [rival]: { ...r, respect: after } } }
-}
-
 /** A village's full loyalty to the player: 15 × ring (A-22). */
 function fullLoyalty(ring: number): number {
   return RULES.influence.loyalty.neutralPerRing * ring
-}
-
-function plainHeld(hex: HexState): HexState {
-  const out: HexState = { ...hex, status: 'held' }
-  delete out.statusUntil
-  return out
-}
-
-/**
- * A hex that comes to the player without a battle: ungarrisoned and unfortified. A village that
- * defected or was bought is at full loyalty (A-22); a reclaimed one comes back as after a
- * conquest, at half loyalty and Settling for 4 weeks (A-139).
- */
-function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexState {
-  const out: HexState = { ...plainHeld(hex), owner: 'player', garrison: 0, garrisonDamage: 0, fortification: 0 }
-  delete out.mythic
-  if (hex.village) {
-    const full = fullLoyalty(hex.ring)
-    out.village = settling
-      ? {
-          loyalty: RULES.land.villageLoyalty.afterConquestShare * full,
-          settlingUntil: addDays(day, RULES.land.settling.weeks * RULES.clock.daysPerWeek)
-        }
-      : { loyalty: full }
-  }
-  return out
-}
-
-/** A hex that passes to a rival: its garrison (A-17), a rival village's loyalty 30 × ring, no fortification. */
-export function toRival(hex: HexState, rival: RivalId): HexState {
-  const out: HexState = { ...plainHeld(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
-  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
-  return out
 }
 
 // ── Courtships (Ch 6 "Influence") ────────────────────────────────────────────
@@ -209,7 +126,7 @@ export function bidCheck(state: CampaignState, hexId: string, bid: number): { ok
   const slots = courtshipSlots(state)
   const open = state.courtships.length
   const no = (reason: LandRefusal): { ok: false; reason: LandRefusal; slots: number; open: number } => ({ ok: false, reason, slots, open })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hexOf(state, hexId)) return no({ code: 'unknownHex' })
   if (!claimableBy(state.hexes, hexId, 'player', 'court')) return no({ code: 'notCourtable' })
   if (state.courtships.some((c) => c.hexId === hexId)) return no({ code: 'alreadyCourting' })
@@ -321,7 +238,7 @@ export function resolveCourtships(state: CampaignState, week: CourtshipWeek): Ca
     if (winner === 'player') {
       next = replaceHex(next, toPlayer(hex, day, false))
       emit('hexTransfer', { hexId: hex.id, from: owner, to: 'player', how: 'influence' })
-      if (isRival(owner)) next = changeRespect(next, owner, RULES.respect.change.villageCourted, 'villageCourted', emit)
+      if (isRival(owner)) next = adjustRespect(next, owner, RULES.respect.change.villageCourted, 'villageCourted', emit)
       emit('courtship', { hexId: hex.id, outcome: 'defected', bid: c.bid, winner: 'player' })
     } else if (winner !== undefined && isRival(winner)) {
       next = replaceHex(next, toRival(hex, winner))
@@ -425,6 +342,8 @@ export type DealRefusalCode =
   | 'noFront'
   /** The target is in a coalition with the rival. */
   | 'targetAllied'
+  /** A buy-out needs the rival in a coalition standing against the player (T12). */
+  | 'noCoalition'
   | 'reputation'
 
 export interface DealRefusal {
@@ -460,14 +379,20 @@ function inForce(state: CampaignState, rival: RivalId, kind: DealKind, day: ISOD
   return state.deals.some((d) => d.rival === rival && d.kind === kind && d.madeOn <= day && (d.until === undefined || day <= d.until))
 }
 
-/** A Truce with `rival` holds on `day`: no raids from it (Ch 6). */
-export function blocksRaids(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  return inForce(state, rival, 'truce', day)
+/** An Accord with `rival` runs on `day`: the contract in the slot is one (Ch 14, D-01). */
+function accordOn(state: CampaignState, rival: RivalId, day: ISODate): boolean {
+  const c = state.contracts.active
+  return c !== undefined && c.kind === 'accord' && c.rival === rival && c.startDate <= day && day <= c.endDate
 }
 
-/** A Truce or a non-aggression pact with `rival` holds on `day`: no conquest attempts from it (Ch 6). */
+/** A Truce (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no raids from it. */
+export function blocksRaids(state: CampaignState, rival: RivalId, day: ISODate): boolean {
+  return inForce(state, rival, 'truce', day) || accordOn(state, rival, day)
+}
+
+/** A Truce, a non-aggression pact (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no conquest attempts from it. */
 export function blocksConquest(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  return inForce(state, rival, 'truce', day) || inForce(state, rival, 'pact', day)
+  return blocksRaids(state, rival, day) || inForce(state, rival, 'pact', day)
 }
 
 /** A non-aggression pact halves a rival's raid rate (Ch 6): the multiplier on its raider weight. */
@@ -482,8 +407,8 @@ export function callToArmsOn(state: CampaignState, day: ISODate): { rival: Rival
     .map((d) => ({ rival: d.rival, target: d.target as RivalId, until: d.until as ISODate }))
 }
 
-/** 50 × ring × greed, ×1.5 for a village: a hex's trade price before any discount. */
-function tradeValue(rival: RivalId, hex: HexState): number {
+/** 50 × ring × greed (the holder's), ×1.5 for a village: a hex's trade price before any discount. */
+export function tradeValue(rival: RivalId, hex: HexState): number {
   const t = RULES.trade
   return t.hexPricePerRing * hex.ring * t.greed[rival] * (hex.village ? t.villageMult : 1)
 }
@@ -526,14 +451,10 @@ function frontBetween(state: CampaignState, a: RivalId, b: RivalId): FrontId | u
   return Object.values(state.fronts).find((f) => f.rivals.includes(a) && f.rivals.includes(b))?.front
 }
 
-function inCoalitionTogether(state: CampaignState, a: RivalId, b: RivalId, today: ISODate): boolean {
-  return state.coalitions.some((c) => c.members.includes(a) && c.members.includes(b) && (c.until === undefined || today <= c.until))
-}
-
 /** The first failing check (requirements before the price), or an allowed offer. */
 function judged(state: CampaignState, offer: Omit<DealOffer, 'allowed' | 'reason'>, checks: (DealRefusal | null)[]): DealOffer {
   const standing: DealRefusal[] = []
-  if (state.campaign.status !== 'active') standing.push(dealRefusal('campaignOver'))
+  if (!isPlayable(state)) standing.push(dealRefusal('campaignOver'))
   if (state.rivals[offer.rival].status !== 'active') standing.push(dealRefusal('rivalResolved'))
   const pays = offer.kind !== 'sellHex'
   const money = pays && !affordable(state, offer.price) ? dealRefusal('reputation', { needed: offer.price, have: balance(state.purse) }) : null
@@ -557,6 +478,7 @@ function respectBelow(state: CampaignState, rival: RivalId, needed: number): Dea
  * - Non-aggression pact: Respect 40; not while one already holds.
  * - Call to arms: Respect 60; the target shares a Rim front with the rival and is not in a
  *   coalition with it; not while the rival already answers one.
+ * - Buy-out (T12, Ch 13): 300 to a coalition member at Respect 40 to walk away, breaking it.
  */
 export function offerDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate = openDayOf(state)): DealOffer {
   const r = state.rivals[rival]
@@ -604,10 +526,14 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
       return judged(state, offer(t.callToArms.cost), [
         !valid ? dealRefusal('noTarget') : null,
         valid && !frontBetween(state, rival, target) ? dealRefusal('noFront') : null,
-        valid && inCoalitionTogether(state, rival, target, today) ? dealRefusal('targetAllied') : null,
+        valid && coalitionPartners(state, rival, target, today) ? dealRefusal('targetAllied') : null,
         inForce(state, rival, 'callToArms', today) ? dealRefusal('inForce') : null,
         respectBelow(state, rival, th.callToArms)
       ])
+    }
+    case 'buyout': {
+      const buyout = RULES.world.coalitions.buyout
+      return judged(state, offer(buyout.cost), [!inCoalition(state, rival, today) ? dealRefusal('noCoalition') : null, respectBelow(state, rival, buyout.minRespect)])
     }
   }
 }
@@ -627,7 +553,8 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
     ...hexDeals('sellHex', sellable),
     offerDeal(state, rival, { kind: 'truce' }, today),
     offerDeal(state, rival, { kind: 'pact' }, today),
-    ...RIVAL_IDS.filter((x) => x !== rival).map((target) => offerDeal(state, rival, { kind: 'callToArms', target }, today))
+    ...RIVAL_IDS.filter((x) => x !== rival).map((target) => offerDeal(state, rival, { kind: 'callToArms', target }, today)),
+    ...(inCoalition(state, rival, today) ? [offerDeal(state, rival, { kind: 'buyout' }, today)] : [])
   ]
 }
 
@@ -640,7 +567,8 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
 export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate = openDayOf(state)): LandAction & { deal?: Deal; refusal?: DealRefusal } {
   const offer = offerDeal(state, rival, request, today)
   if (!offer.allowed) return { ok: false, state, cost: offer.price, ...(offer.reason ? { refusal: offer.reason } : {}) }
-  const { emit, flush } = collector()
+  const events = new EventBuffer()
+  const emit = events.emitter(today)
   const t = RULES.trade
   const source = `deal:${request.kind}:${rival}${request.hexId ? `:${request.hexId}` : ''}${request.target ? `:${request.target}` : ''}`
   const dealNo = state.log.filter((e) => e.kind === 'deal').length + 1
@@ -659,19 +587,19 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
       const hex = hexOf(next, request.hexId as string) as HexState
       next = replaceHex(next, toPlayer(hex, today, false))
       emit('hexTransfer', { hexId: hex.id, from: rival, to: 'player', how: 'trade' })
-      next = changeRespect(next, rival, RULES.respect.change.tradeOrTruce, 'trade', emit)
+      next = adjustRespect(next, rival, RULES.respect.change.tradeOrTruce, 'trade', emit)
       break
     }
     case 'sellHex': {
       const hex = hexOf(next, request.hexId as string) as HexState
       next = replaceHex(next, toRival(hex, rival))
       emit('hexTransfer', { hexId: hex.id, from: 'player', to: rival, how: 'trade' })
-      next = changeRespect(next, rival, RULES.respect.change.hexSold, 'hexSold', emit)
+      next = adjustRespect(next, rival, RULES.respect.change.hexSold, 'hexSold', emit)
       break
     }
     case 'truce':
       deal.until = lasting(t.truce.days)
-      next = changeRespect(next, rival, RULES.respect.change.tradeOrTruce, 'truce', emit)
+      next = adjustRespect(next, rival, RULES.respect.change.tradeOrTruce, 'truce', emit)
       break
     case 'pact':
       deal.until = lasting(t.pact.days)
@@ -695,9 +623,21 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
       if (front.state !== 'war') emit('front', { front: frontId, state: 'war', track: front.track })
       break
     }
+    case 'buyout': {
+      // The member walks away: its coalition ends today (Ch 13).
+      next = {
+        ...next,
+        coalitions: next.coalitions.map((c) => {
+          if (!c.members.includes(rival) || (c.until !== undefined && c.until < today)) return c
+          emit('coalition', { members: [...c.members], trigger: c.trigger, stage: 'broken' })
+          return { ...c, until: today, broken: 'buyout' as const }
+        })
+      }
+      break
+    }
   }
   emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}) })
-  next = flush({ ...next, deals: [...next.deals, deal] }, today)
+  next = events.flush({ ...next, deals: [...next.deals, deal] })
   return { ok: true, state: next, cost: offer.price, deal }
 }
 
@@ -706,6 +646,11 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
 /** The highest fortification level `owner` can reach on its own hexes: 3, the Dwarf 4. */
 export function fortificationCap(owner: Owner): number {
   return owner === 'dwarf' ? RULES.land.dwarfFortificationMax : RULES.land.fortificationMax
+}
+
+/** F, what a hex's fortification adds to its garrison or defense: level × 0.25 × base(ring) (Ch 6, Ch 10). */
+export function fortificationValue(hex: Pick<HexState, 'fortification' | 'ring'>): number {
+  return hex.fortification * RULES.land.garrison.fortificationPerLevel * base(hex.ring)
 }
 
 /** What raising a ring-`ring` hex to `level` (1 to 3) costs: 15 / 35 / 70 × ring, × `mult` (the Kilns 0.75). */
@@ -717,7 +662,7 @@ export function fortificationCost(level: number, ring: number, mult = 1): number
 export function fortifyOffer(state: CampaignState, hexId: string): { ok: boolean; reason?: LandRefusal; next: number; cost: number } {
   const hex = hexOf(state, hexId)
   const no = (reason: LandRefusal, next = 0, cost = 0): { ok: false; reason: LandRefusal; next: number; cost: number } => ({ ok: false, reason, next, cost })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hex) return no({ code: 'unknownHex' })
   if (hex.owner !== 'player') return no({ code: 'notPlayerHex' })
   if (!isClaimableKind(hex)) return no({ code: 'notClaimable' })
@@ -754,7 +699,7 @@ export function reclaimOffer(state: CampaignState, hexId: string, today: ISODate
   const lost = lostOn(state, hexId)
   const at = lost ? { lostOn: lost } : {}
   const no = (reason: LandRefusal, cost = 0): { ok: false; reason: LandRefusal; cost: number; lostOn?: ISODate } => ({ ok: false, reason, cost, ...at })
-  if (state.campaign.status !== 'active') return no({ code: 'campaignOver' })
+  if (!isPlayable(state)) return no({ code: 'campaignOver' })
   if (!hex) return no({ code: 'unknownHex' })
   if (state.weight.grace < rules.level) return no({ code: 'grace', needed: rules.level, have: state.weight.grace })
   if (!lost || hex.owner === 'player') return no({ code: 'notLost' })
@@ -762,8 +707,7 @@ export function reclaimOffer(state: CampaignState, hexId: string, today: ISODate
   if (ago > rules.windowDays) return no({ code: 'tooLate', needed: rules.windowDays, have: ago })
   if (!isClaimableKind(hex)) return no({ code: 'notClaimable' })
   if (!touchesOwner(state.hexes, hexId, 'player')) return no({ code: 'notTouching' })
-  const strength = hex.garrison + hex.fortification * RULES.land.garrison.fortificationPerLevel * base(hex.ring)
-  const cost = rules.garrisonShare * strength
+  const cost = rules.garrisonShare * (hex.garrison + fortificationValue(hex))
   const short = reputationShort(state, cost)
   if (short) return no(short, cost)
   return { ok: true, cost, ...at }
@@ -777,11 +721,11 @@ export function reclaim(state: CampaignState, hexId: string, today: ISODate = op
   const offer = reclaimOffer(state, hexId, today)
   if (!offer.ok) return refused(state, offer.reason as LandRefusal, offer.cost)
   const hex = hexOf(state, hexId) as HexState
-  const { emit, flush } = collector()
+  const events = new EventBuffer()
   let next: CampaignState = { ...state, purse: spend(state.purse, today, offer.cost, `reclaim:${hexId}`) }
   next = replaceHex(next, toPlayer(hex, today, true))
-  emit('hexTransfer', { hexId, from: hex.owner, to: 'player', how: 'reclaim' })
-  return { ok: true, cost: offer.cost, state: flush(next, today) }
+  events.emitter(today)('hexTransfer', { hexId, from: hex.owner, to: 'player', how: 'reclaim' })
+  return { ok: true, cost: offer.cost, state: events.flush(next) }
 }
 
 // ── The defection tally (Ch 14, for T13) ─────────────────────────────────────

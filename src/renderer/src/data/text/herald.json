@@ -111,6 +111,14 @@
     "template": "{rival}'s siege is delayed until {date}.",
     "final": null
   },
+  "herald.ascendancy.humbled": {
+    "template": "{rival} is Humbled until {date}.",
+    "final": null
+  },
+  "herald.offer.goblinBuys": {
+    "template": "The Goblin offers {price} for hex {hex}, until {date}.",
+    "final": null
+  },
   "herald.ritual.longNight": {
     "template": "The Archmage cast the Long Night: mythic threats come more often until {date}.",
     "final": null
@@ -223,8 +231,28 @@
     "template": "{rival} and {target} are in a coalition.",
     "final": null
   },
+  "herald.deal.refused.noCoalition": {
+    "template": "{rival} stands in no coalition against you.",
+    "final": null
+  },
   "herald.deal.refused.reputation": {
     "template": "This deal costs {needed}.",
+    "final": null
+  },
+  "herald.grandBattle.rout": {
+    "template": "Grand Battle ({battle}) at hex {hex}: won in a rout.",
+    "final": null
+  },
+  "herald.grandBattle.victory": {
+    "template": "Grand Battle ({battle}) at hex {hex}: won.",
+    "final": null
+  },
+  "herald.grandBattle.defeat": {
+    "template": "Grand Battle ({battle}) at hex {hex}: lost.",
+    "final": null
+  },
+  "herald.reign": {
+    "template": "The Reign: the campaign was won in week {week}, and the realm goes on.",
     "final": null
   }
 }

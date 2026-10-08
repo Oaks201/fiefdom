@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { applySoundSettings, initAudio, sfx } from './audio'
 import { DeskProps } from './components/DeskProps'
 import { FloatLayer, Toasts } from './components/Overlays'
@@ -6,7 +6,15 @@ import { ProfileModal } from './components/ProfileModal'
 import { SettingsModal } from './components/SettingsModal'
 import { SvgDefs } from './components/SvgDefs'
 import { TopBar } from './components/TopBar'
+import { BigMomentCard } from './components/game/BigMomentCard'
+import { FoundingWizard } from './components/game/FoundingWizard'
+import { Homecoming } from './components/game/Homecoming'
+import { pagesFor } from './lib/game/view/shell'
 import { ArchivePage } from './pages/ArchivePage'
+import { ArmoryPage } from './pages/ArmoryPage'
+import { BattlePage } from './pages/BattlePage'
+import { DiplomacyPage } from './pages/DiplomacyPage'
+import { RealmPage } from './pages/RealmPage'
 import { ChroniclePage } from './pages/ChroniclePage'
 import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
@@ -17,14 +25,17 @@ import { startCampaignClock } from './state/campaignClock'
 import { useLedger } from './state/store'
 import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 
-const PAGES: Page[] = ['chronicle', 'contract', 'archive']
+// Development builds only (A-09): the time-travel panel. Production builds drop this import entirely.
+const DevTimeTravel = import.meta.env.DEV ? lazy(() => import('./components/game/DevTimeTravel')) : null
 
 export default function App(): React.JSX.Element {
   const status = useLedger((s) => s.status)
   const error = useLedger((s) => s.error)
   const load = useLedger((s) => s.load)
   const page = useUI((s) => s.page)
+  const battle = useUI((s) => s.battle)
   const campaignStatus = useCampaign((s) => s.status)
+  const hasCampaign = useCampaign((s) => s.campaign !== null)
 
   useEffect(() => {
     void load()
@@ -42,7 +53,17 @@ export default function App(): React.JSX.Element {
     []
   )
 
-  // Ctrl+1/2/3 switch pages from anywhere; M pauses or resumes the music.
+  // A new page starts at its top, whatever the last one was scrolled to.
+  useEffect(() => {
+    document.querySelector('.desk__main')?.scrollTo({ top: 0 })
+  }, [page, battle?.id, battle?.replay])
+
+  // A page that no longer exists (no campaign) falls back to the Chronicle.
+  useEffect(() => {
+    if (!hasCampaign && (page === 'realm' || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
+  }, [hasCampaign, page])
+
+  // Ctrl+1 to 6 switch pages from anywhere (the campaign's pages once one is founded); M pauses or resumes the music.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e) && !isDialogOpen()) {
@@ -51,10 +72,11 @@ export default function App(): React.JSX.Element {
         return
       }
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return
-      const i = ['1', '2', '3'].indexOf(e.key)
-      if (i >= 0 && !isDialogOpen()) {
+      const order: Page[] = pagesFor(useCampaign.getState().campaign)
+      const i = ['1', '2', '3', '4', '5', '6'].indexOf(e.key)
+      if (i >= 0 && i < order.length && !isDialogOpen()) {
         e.preventDefault()
-        useUI.getState().go(PAGES[i])
+        useUI.getState().go(order[i])
       }
     }
     window.addEventListener('keydown', onKey)
@@ -94,17 +116,29 @@ export default function App(): React.JSX.Element {
         <>
           <TopBar />
           <main className="desk__main">
-            <div className={`sheet page page--${page}`} key={page}>
+            <div className={`sheet page page--${battle && hasCampaign ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : page}>
               <div className="sheet__paper" aria-hidden="true" />
               <div className="page__content">
-                {page === 'chronicle' && <ChroniclePage />}
-                {page === 'contract' && <ContractPage />}
-                {page === 'archive' && <ArchivePage />}
+                {battle && hasCampaign && <BattlePage />}
+                {!(battle && hasCampaign) && page === 'chronicle' && <ChroniclePage />}
+                {!(battle && hasCampaign) && page === 'contract' && <ContractPage />}
+                {!(battle && hasCampaign) && page === 'archive' && <ArchivePage />}
+                {!(battle && hasCampaign) && page === 'realm' && hasCampaign && <RealmPage />}
+                {!(battle && hasCampaign) && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
+                {!(battle && hasCampaign) && page === 'armory' && hasCampaign && <ArmoryPage />}
               </div>
             </div>
           </main>
           <ProfileModal />
           <SettingsModal />
+          <FoundingWizard />
+          <Homecoming />
+          <BigMomentCard />
+          {DevTimeTravel && (
+            <Suspense fallback={null}>
+              <DevTimeTravel />
+            </Suspense>
+          )}
         </>
       ) : status === 'error' ? (
         <div className="boot">

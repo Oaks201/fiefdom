@@ -17,13 +17,17 @@ import type {
   GraceLevel,
   HexState
 } from '../../../src/renderer/src/lib/game/types'
+import type { Ledger } from '../../../src/renderer/src/lib/types'
 import { FOUNDED_AT, TZ, charter, emptyLedger } from '../fixtures/ledgers'
 
 export const TODAY = '2026-10-08'
 
-/** A fresh campaign: Tier I everywhere, Castle I, a purse of 100, no land beyond the castle. */
-export function realm(): CampaignState {
-  return foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger: emptyLedger() }, FOUNDED_AT)
+/**
+ * A fresh campaign founded at FOUNDED_AT for 217 → 168 lb: Tier I everywhere, Castle I, a purse of
+ * 100, no land beyond the castle. `ledger` is the one founding reads (and settlement will).
+ */
+export function realm(seed = 7, ledger: Ledger = emptyLedger()): CampaignState {
+  return foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed, ledger }, FOUNDED_AT)
 }
 
 export function withBuildings(state: CampaignState, tiers: Partial<Record<BuildingId, number>>): CampaignState {

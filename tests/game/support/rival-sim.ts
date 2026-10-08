@@ -3,14 +3,12 @@
  * week phases (courtship bids, the rival turn, the fronts and Border Campaigns) with a passive
  * player keeping every habit. Daily combat is skipped, so many long runs stay fast.
  */
-import { foundCampaign } from '../../../src/renderer/src/lib/game/campaign'
 import { addDays, isWeekCloseDay } from '../../../src/renderer/src/lib/game/clock'
 import { resolveCourtships, resolveRivalCourtships } from '../../../src/renderer/src/lib/game/land'
 import { isClaimableKind } from '../../../src/renderer/src/lib/game/map'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek } from '../../../src/renderer/src/lib/game/rivals'
 import { shuffle } from '../../../src/renderer/src/lib/game/rng'
 import type { CampaignState, Coalition, DayRecord, GameEvent, GameEventKind, GameEventMap } from '../../../src/renderer/src/lib/game/types'
-import { FOUNDED_AT, TZ, charter, emptyLedger } from '../fixtures/ledgers'
 
 export interface SimOptions {
   /** Neutral hexes in rings 2 to 4 handed to the player at the start (seeded). */
@@ -31,10 +29,6 @@ export interface SimRun {
   state: CampaignState
   weeks: SimWeek[]
   events: GameEvent[]
-}
-
-export function founded(seed: number): CampaignState {
-  return foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed, ledger: emptyLedger() }, FOUNDED_AT)
 }
 
 function perfectDay(date: string): DayRecord {

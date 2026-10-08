@@ -1,0 +1,779 @@
+/* ==========================================================================
+   The Grand Battle (T16): preparation, the 3-lane field, Order cards, the
+   result and the replay. Desktop only: below 1024 px a notice replaces it.
+   ========================================================================== */
+
+.page--battle {
+  max-width: 1400px;
+}
+
+.battle-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.battle-page__head {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.battle-page__head .page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.battle-page__back {
+  position: absolute;
+  left: 0;
+  top: 8px;
+}
+
+.battle-narrow {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .battle-narrow {
+    display: flex;
+  }
+
+  .battle-wide {
+    display: none;
+  }
+}
+
+/* -- Preparation ---------------------------------------------------------- */
+.prep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.prep__formation {
+  grid-row: span 2;
+}
+
+.prep__host-text {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.prep__roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.prep__roster td {
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.prep__readiness {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  font-weight: 700;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.panel__aside.is-over {
+  color: var(--crimson);
+}
+
+.prep__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.prep__row {
+  display: grid;
+  grid-template-columns: 50px repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.prep__slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 62px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(255, 249, 232, 0.45);
+  border: 2px dashed var(--rule);
+  border-radius: 10px;
+}
+
+.prep__slot.is-filled {
+  background: rgba(184, 50, 42, 0.08);
+  border-style: solid;
+  border-color: rgba(184, 50, 42, 0.45);
+}
+
+.prep__slot.is-selected,
+.prep__company.is-selected {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+
+.prep__slot-name {
+  font: 700 11px var(--font-caps);
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.prep__clear {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 18px;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.prep__problem {
+  margin: 0 0 8px;
+}
+
+.prep__companies {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prep__company {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 14px;
+  background: rgba(255, 249, 232, 0.55);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.prep__company.is-placed {
+  border-color: rgba(184, 50, 42, 0.5);
+  background: rgba(184, 50, 42, 0.06);
+}
+
+.prep__where {
+  margin-left: auto;
+  font: 700 11px var(--font-caps);
+  color: var(--crimson);
+  white-space: nowrap;
+}
+
+.prep__items {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.prep__doctrines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doctrine {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(255, 249, 232, 0.45);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.doctrine span {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.doctrine.is-on {
+  border-color: var(--crimson);
+  box-shadow: inset 0 0 0 2px var(--crimson);
+}
+
+.prep__begin {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+}
+
+.btn--big {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 26px;
+  font-size: 20px;
+}
+
+/* -- The field ------------------------------------------------------------ */
+.battle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.battle__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+}
+
+.battle__round {
+  margin: 0;
+  font: 700 24px var(--font-caps);
+  color: var(--crimson);
+}
+
+.battle__readiness {
+  font: 700 15px ui-sans-serif, system-ui, sans-serif;
+  color: var(--gold-deep);
+}
+
+.shares {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  font: 600 14px ui-sans-serif, system-ui, sans-serif;
+}
+
+.shares__side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shares__bar {
+  position: relative;
+  width: 110px;
+  height: 10px;
+  background: rgba(92, 58, 24, 0.15);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.shares__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  transition: width 0.6s ease-out;
+}
+
+.shares__bar--player::after {
+  background: linear-gradient(90deg, #8b1e1a, #d0473d);
+}
+
+.shares__bar--enemy::after {
+  background: linear-gradient(90deg, #3a2a1c, #6b5a46);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255, 240, 205, 0.25), transparent 75%),
+    linear-gradient(180deg, #6f8a4a, #55703a 48%, #4b6533 52%, #6a8446);
+  border: 3px solid #3d2a14;
+  border-radius: 16px;
+  box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.field__row,
+.field__lanes {
+  display: grid;
+  grid-template-columns: 56px repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.field__rank {
+  align-self: center;
+  font: 700 11px var(--font-caps);
+  color: #f3e7c8;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.field__lanes {
+  margin: 4px 0;
+}
+
+.lane-intent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 10px;
+  font: 700 14px var(--font-caps);
+  color: #fbf2dc;
+  background: rgba(30, 18, 8, 0.55);
+  border: 1px solid rgba(242, 210, 123, 0.4);
+  border-radius: 999px;
+  cursor: help;
+}
+
+.lane-intent__lane {
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.lane-intent__what {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lane-intent--charge {
+  background: rgba(139, 30, 26, 0.85);
+}
+
+.lane-intent--spell {
+  background: rgba(107, 63, 160, 0.85);
+}
+
+.lane-intent--volley {
+  background: rgba(156, 100, 48, 0.85);
+}
+
+.lane-intent--brace {
+  background: rgba(47, 87, 116, 0.85);
+}
+
+.slot {
+  min-height: 84px;
+}
+
+.slot--empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 84px;
+  font: 700 12px var(--font-caps);
+  color: rgba(251, 242, 220, 0.6);
+  background: rgba(20, 14, 6, 0.18);
+  border: 2px dashed rgba(251, 242, 220, 0.25);
+  border-radius: 10px;
+}
+
+.slot--empty:disabled {
+  cursor: default;
+}
+
+.slot--empty.is-selected {
+  border-color: var(--gold-hi);
+}
+
+.slot.is-aimable .unit {
+  box-shadow: 0 0 0 3px var(--gold-hi);
+  cursor: crosshair;
+}
+
+.unit {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 84px;
+  padding: 8px;
+  text-align: left;
+  background: #f6ecd3;
+  border: 2px solid #8a7a66;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.unit:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.unit--player {
+  border-color: #b8322a;
+}
+
+.unit--enemy {
+  border-color: #3a2a1c;
+  background: #efe3c6;
+}
+
+.unit.is-selected {
+  box-shadow: 0 0 0 3px var(--gold-hi);
+}
+
+.unit.is-routed {
+  opacity: 0.45;
+}
+
+.unit__token {
+  flex: none;
+}
+
+.unit__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.unit__name {
+  font: 700 15px var(--font-caps);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font: 600 12px ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-3);
+  text-transform: capitalize;
+}
+
+.unit__power {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.unit__health {
+  position: relative;
+  display: block;
+  height: 16px;
+  background: rgba(92, 58, 24, 0.18);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.unit__health::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--hp, 1) * 100%);
+  background: linear-gradient(90deg, #2f7440, #5aa86b);
+  transition: width 0.7s ease-out;
+}
+
+.unit--enemy .unit__health::before {
+  background: linear-gradient(90deg, #7d1414, #b8322a);
+}
+
+.unit__hp {
+  position: relative;
+  display: block;
+  font: 700 11px/16px ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+.unit__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.chip-mini {
+  padding: 0 6px;
+  font: 700 10px/1.6 ui-sans-serif, system-ui, sans-serif;
+  color: #fff;
+  background: #6b5a46;
+  border-radius: 999px;
+}
+
+.chip-mini--petrified {
+  background: #5c6670;
+}
+
+.chip-mini--poisoned {
+  background: #2f7440;
+}
+
+.chip-mini--hired {
+  background: #c79a2a;
+  color: #2a1a05;
+}
+
+.unit__intent {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-size: 17px;
+  color: #fbf2dc;
+  background: #3a2a1c;
+  border: 2px solid #c9962e;
+  border-radius: 50%;
+  cursor: help;
+}
+
+.float-dmg {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  font: 800 22px ui-sans-serif, system-ui, sans-serif;
+  color: #ffefc2;
+  text-shadow:
+    0 0 2px #8b1e1a,
+    0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: float-up 1.5s ease-out forwards;
+}
+
+.float-dmg--inline {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin-left: 8px;
+  font-size: 16px;
+}
+
+@keyframes float-up {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.15);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -46px) scale(1);
+  }
+}
+
+.field__routed {
+  font: 600 13px ui-sans-serif, system-ui, sans-serif;
+  color: #fbf2dc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.battle__later {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* -- Orders --------------------------------------------------------------- */
+.orders-hand h4,
+.round-log h4 {
+  margin: 0 0 6px;
+  font: 700 15px var(--font-caps);
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.orders-hand__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.order-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 92px;
+  padding: 10px 12px;
+  text-align: left;
+  background: linear-gradient(180deg, #fbf3dd, #ecdcb4);
+  border: 2px solid #8b5a2b;
+  border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(40, 22, 8, 0.25);
+  transition: transform 0.12s;
+}
+
+.order-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.order-card.is-on {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 3px var(--gold), 0 6px 10px rgba(40, 22, 8, 0.3);
+  transform: translateY(-4px);
+}
+
+.order-card__name {
+  font: 700 17px var(--font-caps);
+  color: var(--crimson);
+}
+
+.order-card__text {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.orders-hand__targets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.battle__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.round-log ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.round-log > ol > li {
+  padding: 6px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.round-log ul {
+  margin: 2px 0 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Result and replay ----------------------------------------------------- */
+.battle-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.battle-result__card {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.battle-result__card.is-won {
+  border-color: var(--gold-deep);
+}
+
+.battle-result__title {
+  margin: 0 0 6px;
+  font: 700 26px var(--font-caps);
+  color: var(--crimson);
+}
+
+.battle-result__lines {
+  margin: 6px 0 10px;
+  padding-left: 20px;
+}
+
+.battle-result__actions,
+.replay__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.replay {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.replay__speeds {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.replay__where {
+  font: 700 14px var(--font-caps);
+  color: var(--ink-2);
+}
+
+.replay__back {
+  margin-left: auto;
+}
+
+/* -- The Herald's battle notice and the top bar's ------------------------------ */
+.herald__battles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.herald__battle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: rgba(217, 132, 36, 0.12);
+  border: 1px solid rgba(217, 132, 36, 0.45);
+  border-radius: 8px;
+}
+
+.herald__battle span {
+  flex: 1;
+}
+
+.herald__battle.is-today {
+  background: rgba(184, 50, 42, 0.12);
+  border-color: rgba(184, 50, 42, 0.5);
+}
+
+.tool--battle {
+  color: #ffd38a;
+}
+
+/* -- Big-moment card lines and actions ---------------------------------------- */
+.moment__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+.moment__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+@media (max-width: 1280px) {
+  .prep {
+    grid-template-columns: 1fr;
+  }
+
+  .prep__formation {
+    grid-row: auto;
+  }
+}

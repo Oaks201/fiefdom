@@ -64,7 +64,7 @@ Changing owners over time (T08, T09, T10), fortification purchases (T09), drawin
 ## Verification
 
 - [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] Test 7 (E-06): 127 hexes; 86 claimable; 12 rival-held at the founding (3 per rival: a Gate and two March hexes); 74 neutral claimable; 30 villages (12 rival plus 18 seeded, split 4/6/8 by ring); no seeded village touches another village; 4 capitals, 8 realm hexes, 6 lair hexes, 18 battlefields (3/3/6/6 by front); 2 Lair Mouths.
+- [x] Test 7 (E-06, read with A-108): 127 hexes; 86 claimable; 12 rival-held at the founding (3 per rival: a Gate and two March hexes); 74 neutral claimable; 30 villages (12 rival plus 18 seeded, split 4/6/8 by ring); no seeded village touches a rival village or a village in its own ring, and at most 2 pairs touch across rings; 4 capitals, 8 realm hexes, 6 lair hexes, 18 battlefields (3/3/6/6 by front); 2 Lair Mouths.
 - [x] Between-land counts per ring match k − 1 / k − 1 / 2k − 1 / 2k − 1 for k = 1 to 5.
 - [x] Dominion available through rings 1 to 5 is 1, 13, 40, 88 and 163 for **every** building.
 - [x] At the founding the player's Dominion is 0 for all four buildings. After the player takes the W wild hex, the Barracks and the Mage Tower each have Dominion 1.
@@ -74,11 +74,13 @@ Changing owners over time (T08, T09, T10), fortification purchases (T09), drawin
 
 ## Hand-off notes
 
-### Owner decision needed: village adjacency (A-108)
+### Village adjacency (A-108, decided 2026-10-07)
 
-The Test 7 box above is left unticked on purpose. Every count in it holds, but "no seeded village touches another village" can't hold together with the 4/6/8 split on this map. An exhaustive search finds **no** placement of 18 mutually apart villages split 4/6/8 in rings 2 to 4, even ignoring the rival villages. With the rival villages untouched, ring 4 has room for exactly 8, and those 8 leave ring 3 room for only 4.
+Decided 2026-10-07: the reading below stands, so the Test 7 box is now ticked against it. No code changed.
 
-Reading used until you decide (A-108): the counts stay, no seeded village touches a rival village or a village in its own ring, and at most 2 pairs of seeded villages touch across neighboring rings, which is the fewest that fits. That allows 41 layouts, and every one keeps the credit spread within 1. The 2 is `RULES.map.villageSeeding.maxTouchingPairs` (TUNE). If you'd rather keep villages fully apart, 4/4/8 (28 villages) fits. That means changing `RULES.map.seededVillages` and the Test 7 counts.
+The Test 7 box was first left unticked on purpose. Every count in it holds, but "no seeded village touches another village" can't hold together with the 4/6/8 split on this map. An exhaustive search finds **no** placement of 18 mutually apart villages split 4/6/8 in rings 2 to 4, even ignoring the rival villages. With the rival villages untouched, ring 4 has room for exactly 8, and those 8 leave ring 3 room for only 4.
+
+The reading (A-108): the counts stay, no seeded village touches a rival village or a village in its own ring, and at most 2 pairs of seeded villages touch across neighboring rings, which is the fewest that fits. That allows 41 layouts, and every one keeps the credit spread within 1. The 2 is `RULES.map.villageSeeding.maxTouchingPairs` (TUNE). If you'd rather keep villages fully apart, 4/4/8 (28 villages) fits. That means changing `RULES.map.seededVillages` and the Test 7 counts.
 
 ### Evidence
 

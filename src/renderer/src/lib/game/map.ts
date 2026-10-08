@@ -13,7 +13,7 @@
 import { CODEX } from './codex'
 import { RULES, base } from './rules'
 import { stream } from './rng'
-import type { BuildingId, FrontId, HexKind, HexState, ISODate, Land, Owner, RivalId } from './types'
+import { RIVAL_IDS, type BuildingId, type FrontId, type HexKind, type HexState, type ISODate, type Land, type Owner, type RivalId } from './types'
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
@@ -64,9 +64,6 @@ export const LAND_BUILDINGS: Readonly<Record<Land, readonly [BuildingId, Buildin
   west: ['barracks', 'mageTower'],
   east: ['merchantHall', 'foundry']
 })
-
-export const BUILDING_IDS: readonly BuildingId[] = ['barracks', 'merchantHall', 'mageTower', 'foundry']
-const RIVAL_IDS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
 
 /** The map's radius: ring 6 is the Rim. */
 export const MAP_RADIUS = RULES.map.radius
@@ -162,7 +159,8 @@ interface Slot {
   rivalVillage?: boolean
 }
 
-function rivalOfRoad(road: BuildingId): RivalId {
+/** The rival at the end of a building's road (Barracks → Orc, Merchant Hall → Goblin, …). */
+export function rivalOfRoad(road: BuildingId): RivalId {
   const entry = CODEX.rivals.find((rv) => rv.road === road)
   if (!entry) throw new Error(`No rival on the ${road} road`)
   return entry.id
@@ -382,7 +380,10 @@ export function buildMap(seed: number): HexState[] {
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-function index(hexes: readonly HexState[]): Map<string, HexState> {
+/** The hexes by id, for the queries below when a caller asks many of them at once. */
+export type HexIndex = ReadonlyMap<string, HexState>
+
+export function hexIndex(hexes: readonly HexState[]): HexIndex {
   return new Map(hexes.map((h) => [h.id, h]))
 }
 
@@ -393,9 +394,20 @@ function find(hexes: readonly HexState[], id: string): HexState {
 }
 
 /** Whether any hex touching `id` belongs to `owner`. */
-export function touchesOwner(hexes: readonly HexState[], id: string, owner: Owner): boolean {
-  const byId = index(hexes)
+export function touches(byId: HexIndex, id: string, owner: Owner): boolean {
   return neighbors(id).some((n) => byId.get(n)?.owner === owner)
+}
+
+/** `touches` for a one-off question. */
+export function touchesOwner(hexes: readonly HexState[], id: string, owner: Owner): boolean {
+  return touches(hexIndex(hexes), id, owner)
+}
+
+function onBorder(byId: HexIndex, hex: HexState): boolean {
+  return neighbors(hex.id).some((n) => {
+    const other = byId.get(n)
+    return other !== undefined && other.owner !== hex.owner
+  })
 }
 
 /**
@@ -403,33 +415,60 @@ export function touchesOwner(hexes: readonly HexState[], id: string, owner: Owne
  * holds (or nobody does). Callers that need a ring limit, such as threat targeting, apply it.
  */
 export function isBorderHex(hexes: readonly HexState[], id: string, owner: Owner): boolean {
-  const byId = index(hexes)
+  const byId = hexIndex(hexes)
   const hex = byId.get(id)
-  if (!hex || hex.owner !== owner) return false
-  return neighbors(id).some((n) => {
-    const other = byId.get(n)
-    return other !== undefined && other.owner !== owner
-  })
+  return hex !== undefined && hex.owner === owner && onBorder(byId, hex)
+}
+
+/** Every border hex `owner` holds, in map order. */
+export function borderHexesOf(hexes: readonly HexState[], owner: Owner): HexState[] {
+  const byId = hexIndex(hexes)
+  return hexes.filter((h) => h.owner === owner && onBorder(byId, h))
 }
 
 /** The ids of every border hex `owner` holds, in map order. */
 export function borderHexes(hexes: readonly HexState[], owner: Owner): string[] {
-  return hexes.filter((h) => h.owner === owner && isBorderHex(hexes, h.id, owner)).map((h) => h.id)
+  return borderHexesOf(hexes, owner).map((h) => h.id)
+}
+
+/** The hexes of `from` nearest (by hex distance) to any of `to`: one, or several when tied. Empty when `to` is. */
+export function nearestTo(from: readonly HexState[], to: readonly (string | Axial)[]): HexState[] {
+  if (to.length === 0) return []
+  const distance = (h: HexState): number => Math.min(...to.map((t) => hexDistance(h, t)))
+  const nearest = Math.min(...from.map(distance))
+  return from.filter((h) => distance(h) === nearest)
 }
 
 /**
- * Dominion (Ch 3 rule 3): each road hex `owner` holds in rings 1 to 5 gives its building
- * 2 × ring; each between-land hex gives ring to each of its two buildings. The castle and the
- * buildings give 0.
+ * What one hex gives each building in Dominion, whoever holds it (Ch 3 rule 3): a road hex in rings
+ * 1 to 5 gives its building 2 × ring; a between-land hex gives ring to each of its two buildings.
+ * The castle, the buildings and the Rim give nothing.
  */
+export function dominionOf(hex: Pick<HexState, 'ring' | 'kind' | 'road' | 'land'>): Partial<Record<BuildingId, number>> {
+  if (!isClaimableKind(hex)) return {}
+  if (hex.road) return { [hex.road]: RULES.map.dominion.roadPerRing * hex.ring }
+  if (!hex.land) return {}
+  const out: Partial<Record<BuildingId, number>> = {}
+  for (const b of LAND_BUILDINGS[hex.land]) out[b] = RULES.map.dominion.betweenPerRing * hex.ring
+  return out
+}
+
+/** Dominion (Ch 3 rule 3): what every hex `owner` holds gives each building (`dominionOf`), summed. */
 export function dominion(hexes: readonly HexState[], owner: Owner): Record<BuildingId, number> {
   const out: Record<BuildingId, number> = { barracks: 0, merchantHall: 0, mageTower: 0, foundry: 0 }
   for (const h of hexes) {
-    if (h.owner !== owner || !isClaimableKind(h)) continue
-    if (h.road) out[h.road] += RULES.map.dominion.roadPerRing * h.ring
-    else if (h.land) for (const b of LAND_BUILDINGS[h.land]) out[b] += RULES.map.dominion.betweenPerRing * h.ring
+    if (h.owner !== owner) continue
+    for (const [b, v] of Object.entries(dominionOf(h)) as [BuildingId, number][]) out[b] += v
   }
   return out
+}
+
+/** Where `building`'s Dominion comes from: each hex `owner` holds that gives it some, with how much, in map order. */
+export function dominionSources(hexes: readonly HexState[], owner: Owner, building: BuildingId): { hexId: string; value: number }[] {
+  return hexes.flatMap((h) => {
+    const value = h.owner === owner ? dominionOf(h)[building] : undefined
+    return value ? [{ hexId: h.id, value }] : []
+  })
 }
 
 export type ClaimMethod = 'assault' | 'court' | 'buy' | 'rivalExpand'

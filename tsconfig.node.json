@@ -3,10 +3,15 @@
     "composite": true,
     "outDir": "./node_modules/.tmp/tsc-node",
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node", "electron-vite/node"],
+    "types": [
+      "node",
+      "electron-vite/node"
+    ],
     "strict": true,
     "isolatedModules": true,
     "skipLibCheck": true,
@@ -21,6 +26,7 @@
     "src/preload/**/*",
     "src/shared/**/*",
     "src/renderer/src/lib/**/*",
-    "tests/**/*"
+    "tests/**/*",
+    "sim/**/*"
   ]
 }

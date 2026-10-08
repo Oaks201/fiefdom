@@ -10,31 +10,23 @@
  * entry in `DAY_PHASES` or `WEEK_PHASES` with their own `Phase`; they never reorder the lists.
  */
 import type { Ledger } from '../types'
+import { milestoneUnlocks } from './armory'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
 import { borderCampaignWeeks } from './campaign'
 import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
-import { earnRespite, lateCorrection, settleContract, type AccordPaid } from './contracts'
+import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
+import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions } from './grand'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
+import { EventBuffer, isPlayable } from './state'
+import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { closeWeightWeek, toLb, weekMomentum } from './weight'
-import type {
-  CampaignState,
-  Charter,
-  DayRecord,
-  DaySnapshot,
-  GameEvent,
-  GameEventKind,
-  GameEventMap,
-  ISODate,
-  LandContract,
-  PurseLine,
-  WeekStartsOn
-} from './types'
+import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, PurseLine, WeekStartsOn } from './types'
 
 // ── The phase registry ───────────────────────────────────────────────────────
 
@@ -66,11 +58,11 @@ export type WeekPhaseName = (typeof WEEK_PHASE_NAMES)[number]
 
 /** What one phase leaves for a later phase or task during the same call. */
 export interface PhaseHooks {
-  /** Accords paid this call (D-01); T13 turns each into its Respect gain. */
+  /** Accords paid this call (D-01); `contractEnd` has already added each one's Respect (T12). */
   accordsPaid: AccordPaid[]
-  /** Assaults ordered on a Gate, capital or Lair Mouth this call (T08); T12 raises them as triggers. */
+  /** Assaults ordered on a Gate, capital or Lair Mouth this call, and rare creatures revealed (T08); the combat phase has already announced each (T11). */
   grandBattleRequests: GrandBattleRequest[]
-  /** The Orc's Warhosts launched this call (T10); T12 raises each as an Incursion-style Grand Battle. */
+  /** The Orc's Warhosts launched this call (T10); the rival-turn phase has already announced each (T11). */
   warhosts: WarhostRequest[]
 }
 
@@ -85,7 +77,7 @@ export interface PhaseContext {
   /** The ledger, for phases that read a day's inputs. Scores read `state.settlement.snapshots`. */
   readonly ledger: Ledger
   /** Posts a game event, dated `day`. It reaches `state.log` when the phase returns. */
-  emit<K extends GameEventKind>(kind: K, payload: GameEventMap[K]): void
+  readonly emit: Emit
   readonly hooks: PhaseHooks
 }
 
@@ -96,10 +88,6 @@ const noop: Phase = (state) => state
 
 // ── Reading the state ────────────────────────────────────────────────────────
 
-export function weekStartsOnOf(state: CampaignState, ledger: Ledger): WeekStartsOn {
-  return state.campaign.weekStartsOn ?? ledger.settings.weekStartsOn
-}
-
 /** The realm's reputation bonus rate: every source in `realmEffects` (Merchant Hall, Statue, items), added (A-31). */
 export function reputationBonus(state: CampaignState): number {
   return realmEffects(state).reputationBonus.value
@@ -108,6 +96,12 @@ export function reputationBonus(state: CampaignState): number {
 /** The Respite bank's cap from `realmEffects` (Mage Tower tier, the Healing Springs, the Herb Garden). */
 function respiteCap(state: CampaignState): number {
   return realmEffects(state).respiteBank.value
+}
+
+/** What paying a contract on `date` reads from the realm: the reputation bonus and the pledge's minimum return. */
+function payContext(state: CampaignState, date: ISODate): PayContext {
+  const effects = realmEffects(state)
+  return { date, minPledgeReturn: effects.minPledgeReturn.value, bonus: effects.reputationBonus.value }
 }
 
 function contractsOf(state: CampaignState): LandContract[] {
@@ -139,9 +133,14 @@ function records(state: CampaignState, from: ISODate, to: ISODate): DayRecord[] 
   return snapshotsBetween(state.settlement.snapshots, start, to).map(toDayRecord)
 }
 
-/** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor. */
+/** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor (A-124). */
 function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
   return termsOf(charterOn(state, day), state.weight.healerFloor)
+}
+
+/** Realm Consistency at `day`'s close: Q over the last 28 settled campaign days (A-39). */
+export function realmConsistencyOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
+  return realmConsistency(records(state, state.campaign.startDate, day), currentTerms(state, day), weekStartsOn)
 }
 
 /** A contract's Q over its days through `through`, without its Respite days, by its sealed terms. */
@@ -169,8 +168,8 @@ function dailyLines(state: CampaignState, snapshot: DaySnapshot): { lines: Purse
   return { lines: income.lines, streak: income.streak }
 }
 
-/** The week ending `day`: its pillars, q_w and the behavior income it pays (steps, calories, flawless, Momentum). */
-function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number } {
+/** The week ending `day`: its campaign days, q_w and the behavior income it pays (steps, calories, flawless, Momentum). */
+function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number; days: number } {
   const days = records(state, weekOf(day, weekStartsOn), day)
   const pillars = weekPillars(days, currentTerms(state, day))
   const qw = pillarScore(pillars)
@@ -183,7 +182,7 @@ function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStarts
     cap: campaign.targetPace
   })
   const lines = weeklyIncome({ ...pillars, momentum: momentum.m, days: days.length }, reputationBonus(state))
-  return { lines, qw }
+  return { lines, qw, days: days.length }
 }
 
 // ── Day phases ───────────────────────────────────────────────────────────────
@@ -246,34 +245,64 @@ export function valorOn(state: CampaignState, day: ISODate, weekStartsOn: WeekSt
   return valor(toDayRecord(snapshot), records(state, weekOf(day, weekStartsOn), day), charterOn(state, day).stepPool)
 }
 
-/** Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). */
+/**
+ * The Valor of the 7 days before `day`, the campaign's own days only: what a Grand Battle fought
+ * on `day` reads its Readiness from (Ch 11, A-161). The battle day's own Valor isn't known until it closes.
+ */
+export function readinessValors(state: CampaignState, day: ISODate): number[] {
+  const { weekStartsOn } = state.campaign
+  const out: number[] = []
+  for (let d = addDays(day, -RULES.grandBattles.readiness.valorDays); d < day; d = addDays(d, 1)) {
+    if (d >= state.campaign.startDate && snapshotOf(state, d)) out.push(valorOn(state, d, weekStartsOn))
+  }
+  return out
+}
+
+/**
+ * Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). Then
+ * the Grand Battles the day raised (T11): assaults on Gates, capitals and Lair Mouths, rare
+ * creatures revealed, and Incursions for hexes conquered, each announced for the next dawn.
+ */
 const combatPhase: Phase = (state, ctx) => {
   const result = settleCombat(state, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
   ctx.hooks.grandBattleRequests.push(...result.grandBattles)
-  return result.state
+  const dawnAfter = addDays(ctx.day, 1)
+  const announced = announceRequests(result.state, result.grandBattles, dawnAfter, ctx.emit)
+  return raiseIncursions(state, announced, dawnAfter, ctx.emit)
 }
 
-/** Pays the running contract on its last day; the queued one takes the slot at the next dawn. */
+/** Every Grand Battle due today and not fought by the close: the Marshal fights it (Ch 11 rule 1, T11). */
+const grandBattlesAuto: Phase = (state, ctx) => grandBattlesDue(state, ctx.day, (battleDate) => readinessValors(state, battleDate), ctx.emit)
+
+/**
+ * Pays the running contract on its last day; the queued one takes the slot at the next dawn. An
+ * Accord's Respect is added the same day, so no `settle` call can lose it (D-01, T12).
+ */
 const contractEnd: Phase = (state, ctx) => {
   const active = state.contracts.active
   if (!active || active.startDate > ctx.day || active.endDate > ctx.day) return state
   const score = contractScore(state, active, active.endDate, ctx.weekStartsOn)
-  const paid = settleContract(state.contracts, state.purse, score, {
-    date: ctx.day,
-    merchantHallTier: state.buildings.merchantHall,
-    bonus: reputationBonus(state)
-  })
+  const paid = settleContract(state.contracts, state.purse, score, payContext(state, ctx.day))
   ctx.emit('contract', paid.outcome)
-  if (paid.accord) ctx.hooks.accordsPaid.push(paid.accord)
-  return { ...state, contracts: paid.contracts, purse: paid.purse }
+  const next = { ...state, contracts: paid.contracts, purse: paid.purse }
+  if (!paid.accord) return next
+  ctx.hooks.accordsPaid.push(paid.accord)
+  return accordPaid(next, paid.accord, ctx.day, ctx.emit)
 }
 
 // ── Week phases ──────────────────────────────────────────────────────────────
 
-/** Step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
-const weeklyIncomePhase: Phase = (state, ctx) => {
-  const { lines } = weekIncome(state, ctx.day, ctx.weekStartsOn)
-  const days = records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).length
+/** The Bank's interest (The Bank Wing): 2% of the purse at the week close, at most 40 (T11). */
+function interest(state: CampaignState, day: ISODate): CampaignState {
+  const bank = realmEffects(state).interest
+  const amount = Math.min(bank.cap, bank.rate * balance(state.purse))
+  return amount > 0 ? { ...state, purse: post(state.purse, { date: day, kind: 'earn', amount, source: 'interest' }) } : state
+}
+
+/** The Bank's interest on the purse as the week closes, then step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
+const weeklyIncomePhase: Phase = (input, ctx) => {
+  const state = interest(input, ctx.day)
+  const { lines, days } = weekIncome(state, ctx.day, ctx.weekStartsOn)
   const villages = state.hexes
     .filter((h) => h.owner === 'player' && h.village)
     .map((h) => ({
@@ -282,7 +311,8 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
       settling: h.village?.settlingUntil !== undefined && h.village.settlingUntil > ctx.day,
       scorched: h.status === 'scorched'
     }))
-  const titheLines = tithes(villages, realmEffects(state).titheMult.value, reputationBonus(state), days)
+  const effects = realmEffects(state)
+  const titheLines = tithes(villages, effects.titheMult.value * effects.titheCut.value, reputationBonus(state), days)
   const purse = postAll(postAll(state.purse, ctx.day, lines), ctx.day, titheLines)
   const snapshot = snapshotOf(state, ctx.day) as DaySnapshot
   const income = postedTotal(lines)
@@ -296,24 +326,26 @@ const weeklyIncomePhase: Phase = (state, ctx) => {
  * Then the player's villages recover loyalty (A-22) (T09).
  */
 const courtshipsPhase: Phase = (state, ctx) => {
-  const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
-  const week = { day: ctx.day, realmConsistency: rc, emit: ctx.emit }
-  return recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
+  const week = { day: ctx.day, realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit }
+  const resolved = recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
+  // Villages courted away can raise an Incursion (A-33, T11).
+  return raiseIncursions(state, resolved, addDays(ctx.day, 1), ctx.emit)
 }
 
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
 const weightPhase: Phase = (state, ctx) => {
-  const { qw } = weekIncome(state, ctx.day, ctx.weekStartsOn)
-  const rc = realmConsistency(records(state, state.campaign.startDate, ctx.day), currentTerms(state, ctx.day), ctx.weekStartsOn)
   const result = closeWeightWeek(state.campaign, state.weight, {
     day: ctx.day,
     week: ctx.week,
     weighIns: weighInsOf(state.settlement.snapshots),
     days: state.settlement.snapshots.map(toHealerDay),
-    qw,
-    realmConsistency: rc
+    qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)
   })
-  for (const m of result.broken) ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
+  for (const m of result.broken) {
+    ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
+    ctx.emit('unlock', { milestone: m.index, unlocks: milestoneUnlocks(m.index) })
+  }
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
   return { ...state, weight: result.weight }
@@ -335,11 +367,13 @@ function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
   }
 }
 
-/** Each active rival's weekly turn (Ch 12 steps 1 to 8); the Orc's Warhosts go to T12 (T10). */
+/** Each active rival's weekly turn (Ch 12 steps 1 to 8); the Orc's Warhosts are announced at once, Incursion-style (T10, T11, A-151). */
 const rivalTurnPhase: Phase = (state, ctx) => {
   const result = rivalTurn(state, rivalWeek(state, ctx))
   ctx.hooks.warhosts.push(...result.warhosts)
-  return result.state
+  let next = result.state
+  for (const w of result.warhosts) next = announceGrandBattle(next, { trigger: 'warhost', hexId: w.hexId, rival: w.rival, announcedOn: addDays(ctx.day, 1) }, ctx.emit).state
+  return next
 }
 
 /** The week's skirmishes on the Rim fronts at War, war losses, and Peace pulling tracks to 0 (T10). */
@@ -347,6 +381,16 @@ const frontsPhase: Phase = (state, ctx) => settleFronts(state, rivalWeek(state, 
 
 /** Border Campaigns in a hidden Border Campaign week, then next week's front states (T10). */
 const borderCampaignsPhase: Phase = (state, ctx) => borderCampaigns(state, rivalWeek(state, ctx))
+
+/** Coalitions, held resolutions and defections, the event deck, Ascendancy and Ultimatums (T12, Ch 13, Ch 14). */
+const worldPhase: Phase = (state, ctx) =>
+  worldWeek(state, {
+    day: ctx.day,
+    week: ctx.week,
+    days: records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).length,
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
+    emit: ctx.emit
+  })
 
 /** Resets garrison damage, keeps the hidden Border Campaign schedule ahead of the campaign, and draws next week's threats (T08, A-28). */
 const resetAndSchedule: Phase = (state, ctx) => {
@@ -359,18 +403,18 @@ const resetAndSchedule: Phase = (state, ctx) => {
   return scheduleThreats(reset, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
 }
 
-/** The day phases. Later tasks replace their entry (T08 `combat`, T12 `grandBattlesAuto`). */
+/** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
   snapshotInputs,
   contractsAndDaily,
   combat: combatPhase, // T08
-  grandBattlesAuto: noop, // T12
+  grandBattlesAuto, // T11
   expireTimers,
   contractEnd
 }
 
-/** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T13 `world`). */
+/** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
 export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   weeklyIncome: weeklyIncomePhase,
   courtships: courtshipsPhase, // T09
@@ -378,36 +422,19 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   rivalTurn: rivalTurnPhase, // T10
   fronts: frontsPhase, // T10
   borderCampaigns: borderCampaignsPhase, // T10
-  world: noop, // T13
+  world: worldPhase, // T12
   resetAndSchedule
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────
 
-/** Collects events from phases and hands them to the log in order. */
-class EventBuffer {
-  readonly all: GameEvent[] = []
-  private pending: { day: ISODate; kind: GameEventKind; payload: object }[] = []
-
-  emitter(day: ISODate): PhaseContext['emit'] {
-    return (kind, payload) => {
-      this.pending.push({ day, kind, payload })
-    }
-  }
-
-  flush(state: CampaignState): CampaignState {
-    if (this.pending.length === 0) return state
-    const base = state.log.length
-    const events = this.pending.map(({ day, kind, payload }, i) => ({ id: `ev-${base + i + 1}`, day, kind, ...payload }) as GameEvent)
-    this.pending = []
-    this.all.push(...events)
-    return { ...state, log: [...state.log, ...events] }
-  }
-}
-
+/** Runs `names` in order; the Fall (a lost Siege) stops the rest (Ch 14 rule 6). */
 function runPhases<N extends string>(state: CampaignState, names: readonly N[], phases: Record<N, Phase>, ctx: PhaseContext, events: EventBuffer): CampaignState {
   let next = state
-  for (const name of names) next = events.flush(phases[name](next, ctx))
+  for (const name of names) {
+    next = events.flush(phases[name](next, ctx))
+    if (!isPlayable(next)) break
+  }
   return next
 }
 
@@ -416,13 +443,13 @@ function runPhases<N extends string>(state: CampaignState, names: readonly N[], 
  * then the next dawn, which fixes the next day's tidings on the border as it now stands (T08).
  */
 function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: EventBuffer, hooks: PhaseHooks): CampaignState {
-  const weekStartsOn = weekStartsOnOf(state, ledger)
+  const { weekStartsOn } = state.campaign
   const week = campaignWeek(state.campaign.startDate, day, weekStartsOn)
   const weekClose = isWeekCloseDay(day, weekStartsOn)
   const ctx: PhaseContext = { day, week, weekClose, weekStartsOn, ledger, emit: events.emitter(day), hooks }
   let next = runPhases(state, DAY_PHASE_NAMES, DAY_PHASES, ctx, events)
-  if (weekClose) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
-  next = dawn(next, addDays(day, 1), weekStartsOn)
+  if (weekClose && isPlayable(next)) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
+  if (isPlayable(next)) next = dawn(next, addDays(day, 1), weekStartsOn)
   return { ...next, settledThrough: { day, week } }
 }
 
@@ -447,7 +474,7 @@ function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events:
   let next = putSnapshot(state, { ...fresh, streak: old?.streak ?? 0, ...(old?.paid ? { paid: old.paid } : {}) })
   if (day < state.campaign.startDate) return next // the founding day: inputs only
 
-  const weekStartsOn = weekStartsOnOf(state, ledger)
+  const { weekStartsOn } = state.campaign
   let adjustment = 0
   const adjust = (amount: number, source: string): void => {
     if (amount <= 0) return
@@ -467,7 +494,7 @@ function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events:
   }
   next = putSnapshot(next, { ...(snapshotOf(next, day) as DaySnapshot), streak: daily.streak, paid })
 
-  const ctx = { merchantHallTier: next.buildings.merchantHall, bonus: reputationBonus(next), date: day }
+  const ctx = payContext(next, day)
   for (const c of next.contracts.history) {
     if (!c.paid || c.startDate > day || day > c.endDate) continue
     const late = lateCorrection(next.contracts, next.purse, c.id, contractScore(next, c, c.endDate, weekStartsOn), ctx)
@@ -553,11 +580,16 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
   const events = new EventBuffer()
   const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [], warhosts: [] }
   const balanceBefore = balance(state.purse)
-  const active = state.campaign.status === 'active'
-  let next = active ? correctLastDay(state, ledger, now, events) : state
+  let next = isPlayable(state) ? correctLastDay(state, ledger, now, events) : state
+
+  // A launch after 14 or more days away is a return (A-10): no Siege may fall within 7 days of it (Ch 14 rule 7).
+  const today = openDay(now, timeZone)
+  const last = next.settlement.lastLaunch
+  const awayDays = options.launch && last !== undefined ? Math.max(0, diffDays(last, today)) : 0
+  if (awayDays >= RULES.clock.absenceDays) next = { ...next, settlement: { ...next.settlement, returnedOn: today } }
 
   const days: SettledDay[] = []
-  if (active) {
+  if (isPlayable(next)) {
     for (const day of closedDaysSince(next.settledThrough.day, now, timeZone)) {
       const before = balance(next.purse)
       const from = events.all.length
@@ -565,23 +597,19 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
       days.push({
         day,
         week: next.settledThrough.week,
-        weekClosed: isWeekCloseDay(day, weekStartsOnOf(next, ledger)),
+        weekClosed: isWeekCloseDay(day, next.campaign.weekStartsOn),
         events: events.all.slice(from),
         purseChange: roundPosting(balance(next.purse) - before)
       })
+      // After the Fall nothing more settles (Ch 14 rule 6).
+      if (!isPlayable(next)) break
     }
   }
 
   // The open day's dawn, if no settled day has brought it yet (the campaign's first day).
-  if (active) next = dawn(next, openDay(now, timeZone), weekStartsOnOf(next, ledger))
+  if (isPlayable(next)) next = dawn(next, today)
 
-  let awayDays = 0
-  if (options.launch) {
-    const today = openDay(now, timeZone)
-    const last = next.settlement.lastLaunch
-    awayDays = last === undefined ? 0 : Math.max(0, diffDays(last, today))
-    if (last !== today) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
-  }
+  if (options.launch && last !== today) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
 
   return {
     state: next,

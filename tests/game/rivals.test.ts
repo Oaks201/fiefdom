@@ -6,7 +6,6 @@ import { COMBAT_HOOKS, armyValue, combatOf, dawn, tidings } from '../../src/rend
 import { resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
 import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import {
-  adjustRespect,
   armyBand,
   armyPointCost,
   benchmarkConsistency,
@@ -28,16 +27,15 @@ import {
   type WeekHabits
 } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
+import { adjustRespect } from '../../src/renderer/src/lib/game/state'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, DayRecord, GameEvent, GraceLevel, RivalId } from '../../src/renderer/src/lib/game/types'
-import { FOUNDED_AT, TZ, charter, chicago, steadyLedger } from './fixtures/ledgers'
+import { chicago, steadyLedger } from './fixtures/ledgers'
 import { realm, withArmory, withCrossings, withBuildings, withPurse } from './support/realm'
-import { eventsOf, founded, simulateRivals } from './support/rival-sim'
+import { eventsOf, simulateRivals } from './support/rival-sim'
 import { hex, withOwner } from './support/war'
-import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, tolerance = 1e-9): void =>
-  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)
 
 /** The first week close of `realm()`: founded Wednesday 2026-10-07, weeks start Monday, so week 1 is Thursday to Sunday. */
 const WEEK1_CLOSE = '2026-10-11'
@@ -504,7 +502,7 @@ function numbersIn(value: unknown, path = ''): string[] {
 }
 
 test('Ch 12 hidden stays hidden: rivalView shows no number but Respect unless the Spy Network or the Spymaster reveals it', () => {
-  const state = simulateRivals(founded(7), 8, { playerHexes: 12 }).state
+  const state = simulateRivals(realm(7), 8, { playerHexes: 12 }).state
   for (const rival of ['orc', 'goblin', 'dwarf', 'archmage'] as const) {
     const view = rivalView(state, rival)
     assert.deepEqual(numbersIn(view), ['respect'], `${rival}: ${JSON.stringify(view)}`)
@@ -545,7 +543,7 @@ test('Ch 12 bands: treasuries Meager < 300 ≤ Modest < 800 ≤ Prosperous < 2,0
 
 test('Test 9 (part): the rival turn is settled once — settling again for a week already closed changes nothing', () => {
   const ledger = steadyLedger('2026-09-10', 120)
-  const state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 11, ledger }, FOUNDED_AT)
+  const state = realm(11, ledger)
   const first = settle(state, ledger, chicago('2026-11-03'))
   assert.ok(first.events.some((e) => e.kind === 'respect' && e.reason === 'prizedWeek'), 'the rival turn ran')
   const again = settle(first.state, ledger, chicago('2026-11-03'))
@@ -563,7 +561,7 @@ test('Test 9 (part): the rival turn is settled once — settling again for a wee
 
 test('Ch 12 determinism and safety: a 52-week run with a passive player keeping every habit keeps every treasury ≥ 0, every rival out of rings 0 to 2 and every AV > 0', () => {
   const ledger = steadyLedger('2026-09-10', 400)
-  let state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 3, ledger }, FOUNDED_AT)
+  let state = realm(3, ledger)
   for (let w = 1; w <= 52; w++) {
     state = settle(state, ledger, chicago(addDays('2026-10-11', w * 7 - 6))).state
     for (const r of Object.values(state.rivals)) {
@@ -576,12 +574,12 @@ test('Ch 12 determinism and safety: a 52-week run with a passive player keeping 
 })
 
 test('Ch 12 determinism: the same seed and state give identical rival states after 10 turns', () => {
-  const a = simulateRivals(founded(21), 10, { playerHexes: 10 })
-  const b = simulateRivals(founded(21), 10, { playerHexes: 10 })
+  const a = simulateRivals(realm(21), 10, { playerHexes: 10 })
+  const b = simulateRivals(realm(21), 10, { playerHexes: 10 })
   assert.deepEqual(a.state.rivals, b.state.rivals)
   assert.deepEqual(a.state.fronts, b.state.fronts)
   assert.deepEqual(a.state.hexes, b.state.hexes)
   assert.deepEqual(a.events, b.events)
-  const c = simulateRivals(founded(22), 10, { playerHexes: 10 })
+  const c = simulateRivals(realm(22), 10, { playerHexes: 10 })
   assert.notDeepEqual(c.state.rivals, a.state.rivals)
 })

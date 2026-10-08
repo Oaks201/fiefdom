@@ -15,8 +15,8 @@ import {
   withGrace,
   withMilestones
 } from './support/realm'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, eps = 1e-9): void => assert.ok(Math.abs(actual - expected) < eps, `${actual} ≠ ${expected}`)
 const fx = (state: CampaignState): Effects => realmEffects(state)
 
 /** Every `Sourced` value inside an Effects answer, by path. */

@@ -13,6 +13,7 @@
         { "id": "wyvern", "name": "Wyvern", "power": 18, "count": 3, "reach": "melee" },
         { "id": "matriarch", "name": "the Matriarch", "power": 30, "count": 1, "reach": "melee" }
       ],
+      "intentPattern": ["strike", "strike", "strike", "strike"],
       "special": "broodVolley",
       "specialEffects": [{ "kind": "fixedIntent", "intent": "volley", "unit": "wyvern" }]
     },
@@ -22,6 +23,7 @@
       "lair": "wyrmfells",
       "eventOnly": false,
       "roster": [{ "id": "basilisk", "name": "The Basilisk", "power": 60, "count": 1, "reach": "melee", "healthPerPower": 6 }],
+      "intentPattern": ["spell", "strike", "spell", "strike"],
       "special": "petrify",
       "specialEffects": [{ "kind": "mythicSpecial", "special": "petrify" }]
     },
@@ -31,6 +33,7 @@
       "lair": "wyrmfells",
       "eventOnly": true,
       "roster": [{ "id": "dragon", "name": "The Dragon", "power": 90, "count": 1, "reach": "melee", "healthPerPower": 8 }],
+      "intentPattern": ["spell", "strike", "spell", "strike"],
       "special": "fire",
       "specialEffects": [{ "kind": "mythicSpecial", "special": "fire", "lanes": 2 }]
     },
@@ -40,6 +43,7 @@
       "lair": "thornwild",
       "eventOnly": false,
       "roster": [{ "id": "griffin", "name": "Griffin", "power": 16, "count": 3, "reach": "melee" }],
+      "intentPattern": ["charge", "charge", "charge", "charge"],
       "special": "griffinDive",
       "specialEffects": [
         { "kind": "fixedIntent", "intent": "charge", "unit": "griffin" },
@@ -52,6 +56,7 @@
       "lair": "thornwild",
       "eventOnly": false,
       "roster": [{ "id": "manticore", "name": "The Manticore", "power": 45, "count": 1, "reach": "melee", "healthPerPower": 5 }],
+      "intentPattern": ["volley", "strike", "volley", "strike"],
       "special": "poison",
       "specialEffects": [{ "kind": "mythicSpecial", "special": "poison", "damagePerRound": 5 }]
     },
@@ -64,6 +69,7 @@
         { "id": "huntLord", "name": "The Hunt Lord", "power": 50, "count": 1, "reach": "melee" },
         { "id": "hound", "name": "Hound", "power": 12, "count": 4, "reach": "melee" }
       ],
+      "intentPattern": ["strike", "strike", "strike", "strike"],
       "special": "huntTheWeak",
       "specialEffects": [{ "kind": "mythicSpecial", "special": "huntTheWeak", "unit": "hound" }]
     }

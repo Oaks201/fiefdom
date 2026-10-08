@@ -22,8 +22,9 @@
  *   `COMBAT_HOOKS.raiderWeight`. `defenseFor` gives the player's expected defense on a hex.
  *   `armyValue` counts the Goblin's mercenaries; rivals.ts wraps `COMBAT_HOOKS.threatMix` (the
  *   Long Night) and `COMBAT_HOOKS.bandsHidden` (the Veil of Fog).
- * - T12 receives the Gate, capital and Lair Mouth assaults the player ordered as
- *   `GrandBattleRequest`s (settlement puts them in `ctx.hooks.grandBattleRequests`).
+ * - T11 receives the Gate, capital and Lair Mouth assaults the player ordered, and the 8% rare
+ *   creatures revealed on West and East beast dens, as `GrandBattleRequest`s; the combat phase
+ *   announces them at once (grand.ts).
  * - T13 changes the threat mix, threat strength and the Herald's view through `COMBAT_HOOKS`.
  * - Screens read `tidings` and `ordersValidity`, which never show a hidden number.
  *
@@ -31,50 +32,49 @@
  * threat's own date with the labels `threat:type`, `threat:raider`, `threat:target`,
  * `threat:roll` and `conquest:<rival>:roll`.
  */
+import { grantTrophy, heldItems, nextTrophy } from './armory'
 import { CODEX, type Matchup, type MatchupId } from './codex'
 import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
-import { blocksConquest, blocksRaids, raidRateMult } from './land'
-import { claimableBy, hexDistance, neighbors } from './map'
+import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
+import { borderHexesOf, claimableBy, hexDistance, hexIndex, nearestTo, touches } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
-import { pick, roll, weighted } from './rng'
+import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
-import type {
-  CampaignState,
-  CombatState,
-  Company,
-  ConquestAttempt,
-  ContestedHex,
-  DailyOrders,
-  DailyThreatKind,
-  Effect,
-  Effects,
-  Foe,
-  GameEventKind,
-  GameEventMap,
-  HexKind,
-  HexState,
-  ISODate,
-  Land,
-  Owner,
-  RivalId,
-  ScheduledThreat,
-  Tag,
-  ThreatKind,
-  Tiding,
-  WeekStartsOn
+import { adjustRespect, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival } from './state'
+import {
+  RIVAL_IDS,
+  type CampaignState,
+  type CombatState,
+  type Company,
+  type ConquestAttempt,
+  type ContestedHex,
+  type DailyOrders,
+  type DailyThreatKind,
+  type Effect,
+  type Effects,
+  type Emit,
+  type Foe,
+  type GameEventMap,
+  type HexKind,
+  type HexState,
+  type ISODate,
+  type Land,
+  type Owner,
+  type RivalId,
+  type ScheduledThreat,
+  type Tag,
+  type ThreatKind,
+  type Tiding,
+  type WeekStartsOn
 } from './types'
 
-const RIVAL_IDS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
 const DAILY_KINDS: readonly DailyThreatKind[] = ['beasts', 'mythic', 'raid']
 /** Hexes the daily assault never takes: they need a Grand Battle (Ch 3 rules 4 and 5, A-16). */
 const GRAND_BATTLE_KINDS: ReadonlySet<HexKind> = new Set<HexKind>(['gate', 'capital', 'lairMouth'])
 /** The between-lands the lairs open onto: mythics come from these sides (A-27). */
 const LAIR_LANDS: ReadonlySet<Land> = new Set(CODEX.lairs.map((l) => l.land as Land))
-const DEFAULT_WEEK_START: WeekStartsOn = 1
-
-export type Emit = <K extends GameEventKind>(kind: K, payload: GameEventMap[K]) => void
 
 // ── Extension points for world modifiers (T10, T13) ──────────────────────────
 
@@ -112,6 +112,8 @@ export interface CombatHooks {
   tidingsHidden(state: CampaignState, date: ISODate): boolean
   /** Whether a day's tidings show no strength band or strength (the Archmage's Veil of Fog, T10). */
   bandsHidden(state: CampaignState, date: ISODate): boolean
+  /** How far from its land a rival's conquest attempt may reach: 1 (touching), 2 under the Deep Call (T12). */
+  conquestReach(state: CampaignState, rival: RivalId, date: ISODate): number
 }
 
 export const COMBAT_HOOKS: CombatHooks = {
@@ -119,7 +121,8 @@ export const COMBAT_HOOKS: CombatHooks = {
   threatStrength: (_state, _threat, strength) => strength,
   raiderWeight: (_state, _rival, _date, weight) => weight,
   tidingsHidden: () => false,
-  bandsHidden: () => false
+  bandsHidden: () => false,
+  conquestReach: () => 1
 }
 
 // ── Reading the state ────────────────────────────────────────────────────────
@@ -133,11 +136,7 @@ function withCombat(state: CampaignState, combat: CombatState): CampaignState {
   return { ...state, combat }
 }
 
-function weekStartOf(state: CampaignState): WeekStartsOn {
-  return state.campaign.weekStartsOn ?? DEFAULT_WEEK_START
-}
-
-function weekNumber(state: CampaignState, date: ISODate, weekStartsOn: WeekStartsOn = weekStartOf(state)): number {
+function weekNumber(state: CampaignState, date: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): number {
   return campaignWeek(state.campaign.startDate, date, weekStartsOn)
 }
 
@@ -150,44 +149,22 @@ export function baseArmyValue(state: CampaignState, rival: RivalId): number {
  * The rival's Army value on `date` (Ch 12): its companies' power, +15% while the Goblin's
  * mercenaries serve it (T10). `date` defaults to the open day.
  */
-export function armyValue(state: CampaignState, rival: RivalId, date: ISODate = addDays(state.settledThrough.day, 1)): number {
+export function armyValue(state: CampaignState, rival: RivalId, date: ISODate = openDayOf(state)): number {
   const until = state.rivals[rival].ai?.mercenariesUntil
   const hired = until !== undefined && date <= until ? RULES.rivals.special.goblinMercenaries.armyBonus : 0
   return baseArmyValue(state, rival) * (1 + hired)
 }
 
-/** An Accord with this rival runs on `date`: it makes no raids or conquest attempts (Ch 14). */
-function accordOn(state: CampaignState, rival: RivalId, date: ISODate): boolean {
-  const c = state.contracts.active
-  return c !== undefined && c.kind === 'accord' && c.rival === rival && c.startDate <= date && date <= c.endDate
-}
-
 /** Whether `rival` may raid on `date` (Ch 10, A-26): active, in Tension or War, and no Truce or Accord. */
 export function canRaid(state: CampaignState, rival: RivalId, date: ISODate): boolean {
   const r = state.rivals[rival]
-  if (r.status !== 'active' || r.disposition.player === 'peace') return false
-  return !blocksRaids(state, rival, date) && !accordOn(state, rival, date)
+  return r.status === 'active' && r.disposition.player !== 'peace' && !blocksRaids(state, rival, date)
 }
 
 /** Whether `rival` may strike a conquest attempt on `date` (Ch 10, Ch 12): active, at War, and no Truce, pact or Accord. */
 export function canConquer(state: CampaignState, rival: RivalId, date: ISODate): boolean {
   const r = state.rivals[rival]
-  if (r.status !== 'active' || r.disposition.player !== 'war') return false
-  return !blocksConquest(state, rival, date) && !accordOn(state, rival, date)
-}
-
-function hexMap(state: CampaignState): Map<string, HexState> {
-  return new Map(state.hexes.map((h) => [h.id, h]))
-}
-
-/** The player's border hexes (held, touching a hex someone else holds), in map order. */
-function playerBorder(state: CampaignState): HexState[] {
-  const byId = hexMap(state)
-  return state.hexes.filter((h) => h.owner === 'player' && neighbors(h.id).some((n) => byId.get(n)?.owner !== 'player'))
-}
-
-function touches(byId: Map<string, HexState>, id: string, owner: Owner): boolean {
-  return neighbors(id).some((n) => byId.get(n)?.owner === owner)
+  return r.status === 'active' && r.disposition.player === 'war' && !blocksConquest(state, rival, date)
 }
 
 function lairSide(hex: HexState): Land | undefined {
@@ -202,15 +179,15 @@ function lairSide(hex: HexState): Land | undefined {
  * coalition (× 0.5 under a non-aggression pact: raids at half rate).
  */
 export function raiderWeights(state: CampaignState, date: ISODate): { rival: RivalId; weight: number }[] {
-  const byId = hexMap(state)
-  const border = playerBorder(state)
+  const byId = hexIndex(state.hexes)
+  const border = borderHexesOf(state.hexes, 'player')
   const out: { rival: RivalId; weight: number }[] = []
   for (const rival of RIVAL_IDS) {
     if (!canRaid(state, rival, date)) continue
     const touching = border.filter((h) => touches(byId, h.id, rival)).length
     let weight = RULES.rivals.raidFrequency[rival] * (1 + touching)
     if (Object.values(state.fronts).some((f) => f.rivals.includes(rival) && f.state === 'war')) weight *= RULES.rivals.raiderWeight.atWarWithRival
-    if (state.coalitions.some((c) => c.members.includes(rival) && (c.until === undefined || c.until >= date))) weight *= RULES.rivals.raiderWeight.inCoalition
+    if (inCoalition(state, rival, date)) weight *= RULES.rivals.raiderWeight.inCoalition
     weight *= raidRateMult(state, rival, date)
     weight = COMBAT_HOOKS.raiderWeight(state, rival, date, weight)
     if (weight > 0) out.push({ rival, weight })
@@ -325,21 +302,16 @@ function ringWeight(ring: number): number {
  */
 function pickTarget(state: CampaignState, date: ISODate, kind: DailyThreatKind, rival: RivalId | undefined): HexState | null {
   const { seed } = state.campaign
-  const byId = hexMap(state)
-  const targets = playerBorder(state).filter((h) => h.ring > 0)
+  const byId = hexIndex(state.hexes)
+  const targets = borderHexesOf(state.hexes, 'player').filter((h) => h.ring > 0)
   if (targets.length === 0) return null
   let pool = targets
   if (kind === 'raid' && rival) {
     const along = targets.filter((h) => touches(byId, h.id, rival))
     if (along.length > 0) pool = along
     else {
-      const land = state.hexes.filter((h) => h.owner === rival)
-      if (land.length > 0) {
-        const distance = (h: HexState): number => Math.min(...land.map((l) => hexDistance(h.id, l.id)))
-        const nearest = Math.min(...targets.map(distance))
-        const ids = targets.filter((h) => distance(h) === nearest).map((h) => h.id)
-        return byId.get(pick(seed, date, 'threat:target', ids)) ?? null
-      }
+      const nearest = nearestTo(targets, state.hexes.filter((h) => h.owner === rival))
+      if (nearest.length > 0) return byId.get(pick(seed, date, 'threat:target', nearest.map((h) => h.id))) ?? null
     }
   } else if (kind === 'mythic') {
     const sides = targets.filter((h) => lairSide(h) !== undefined)
@@ -406,8 +378,8 @@ function maxForetold(effects: Effects): number {
  * day the realm foretells (whose week is already scheduled). Settlement runs it after the day
  * before closes, and once for the open day. Returns the same state when nothing is new.
  */
-export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = weekStartOf(state)): CampaignState {
-  if (state.campaign.status !== 'active' || day < state.campaign.startDate) return state
+export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): CampaignState {
+  if (!isPlayable(state) || day < state.campaign.startDate) return state
   const lastOfWeek = addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
   const next = scheduleThreats(state, day, lastOfWeek)
   const combat = combatOf(next)
@@ -459,7 +431,7 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
   if (!canConquer(state, a.rival, date)) return refuse('blocked')
   if (!hex || hex.owner !== 'player') return refuse('notPlayerHex')
   if (hex.ring < RULES.combat.conquestMinRing) return refuse('innerRing')
-  if (!touches(hexMap(state), hex.id, a.rival)) return refuse('notTouching')
+  if (!withinReach(state, hexIndex(state.hexes), hex.id, a.rival, COMBAT_HOOKS.conquestReach(state, a.rival, date))) return refuse('notTouching')
   if (combat.conquests.some((c) => c.rival === a.rival && c.date === date)) return refuse('onePerDay')
   if (hex.status === 'contested' || combat.conquests.some((c) => c.hexId === hex.id && c.date === date)) return refuse('alreadyUnderAttack')
 
@@ -475,6 +447,13 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
   })
   const attempt: ConquestAttempt = { rival: a.rival, hexId: hex.id, announcedOn: a.announcedOn, date, strength }
   return { ok: true, attempt, state: withCombat(state, { ...combat, conquests: [...combat.conquests, attempt] }) }
+}
+
+/** Whether `hexId` lies within `reach` hexes of `rival`'s land: touching at 1, two away at 2 (the Deep Call). */
+export function withinReach(state: CampaignState, byId: ReturnType<typeof hexIndex>, hexId: string, rival: RivalId, reach: number): boolean {
+  if (touches(byId, hexId, rival)) return true
+  if (reach <= 1) return false
+  return state.hexes.some((h) => h.owner === rival && hexDistance(h.id, hexId) <= reach)
 }
 
 // ── Matching, Army, Defense and Assault (Ch 10, Ch 6) ────────────────────────
@@ -560,11 +539,6 @@ export function assaultValue(d: Omit<DefenseInput, 'walls' | 'fortification'>): 
   return (1 + d.armsBonus) * d.strikes.reduce((s, x) => s + x, 0) * rally(d.rallyFloor, d.valor)
 }
 
-/** F for a hex: fortification level × 0.25 × base(ring). */
-export function fortificationValue(hex: Pick<HexState, 'fortification' | 'ring'>): number {
-  return hex.fortification * RULES.land.garrison.fortificationPerLevel * base(hex.ring)
-}
-
 /** What an assault must beat (Ch 6): the garrison, + fortification unless ignored, − this week's wear. */
 export function effectiveGarrison(hex: HexState, ignoreFortification = false): number {
   const fort = ignoreFortification ? 0 : fortificationValue(hex)
@@ -626,11 +600,13 @@ export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effec
   })
 }
 
-function defenseBanners(effects: Effects): number {
+/** Companies a defense may field: the banners, plus any for the defense pool alone. */
+export function defenseBanners(effects: Effects): number {
   return effects.banners.value + effects.poolBanners.defense.value
 }
 
-function assaultBanners(effects: Effects): number {
+/** Companies one assault may field: the banners, plus the Muster Field's for the assault pool. */
+export function assaultBanners(effects: Effects): number {
   return effects.banners.value + effects.poolBanners.assault.value
 }
 
@@ -687,7 +663,7 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   const assaults: AssaultOrder[] = []
   const grandBattles: string[] = []
   const sent = new Set<string>()
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
 
   const allowed = effects.dailyAssaults.value
   const asked = orders ? assaultsOf(orders) : []
@@ -744,7 +720,8 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   return { ok: problems.length === 0, problems, assaults, grandBattles, defense }
 }
 
-function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
+/** Whether `rival` lends an envoy company for the day's defense: active, at Respect 50 (A-20). */
+export function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
   const r = state.rivals[rival]
   return r.status === 'active' && r.respect >= RULES.respect.thresholds.envoy
 }
@@ -757,16 +734,23 @@ export function setOrders(state: CampaignState, orders: DailyOrders): { state: C
 
 // ── What the Herald shows (no hidden numbers) ────────────────────────────────
 
-export type StrengthBand = 'weaker' | 'matched' | 'stronger' | 'overwhelming'
+/** How a force compares with the player's, as the player is told it: tidings (A-133) and rival armies (A-24). */
+export type Band = 'weaker' | 'matched' | 'stronger' | 'overwhelming'
+export type StrengthBand = Band
 
-/** Bands a threat by its strength over the defense's Army (A-133). */
-export function strengthBand(strength: number, army: number): StrengthBand {
-  const [matched, stronger, overwhelming] = RULES.combat.strengthBands
-  const ratio = army > 0 ? strength / army : Number.POSITIVE_INFINITY
+/** Bands `value` against `against`: Weaker below the first cut, Matched to the second, Stronger to the third, Overwhelming above. */
+export function band(value: number, against: number, cuts: readonly number[]): Band {
+  const [matched, stronger, overwhelming] = cuts
+  const ratio = against > 0 ? value / against : Number.POSITIVE_INFINITY
   if (ratio < matched) return 'weaker'
   if (ratio <= stronger) return 'matched'
   if (ratio <= overwhelming) return 'stronger'
   return 'overwhelming'
+}
+
+/** Bands a threat by its strength over the defense's Army (A-133). */
+export function strengthBand(strength: number, army: number): StrengthBand {
+  return band(strength, army, RULES.combat.strengthBands)
 }
 
 export interface ThreatNotice {
@@ -797,7 +781,7 @@ export interface TidingsView {
  * realm foretells and the attempts already announced.
  */
 export function tidings(state: CampaignState, date: ISODate): TidingsView {
-  const today = addDays(state.settledThrough.day, 1)
+  const today = openDayOf(state)
   if (COMBAT_HOOKS.tidingsHidden(state, date)) return { date, hidden: true, threats: [] }
   const effects = realmEffects(state)
   const combat = combatOf(state)
@@ -843,12 +827,21 @@ export interface CombatDay {
   emit: Emit
 }
 
-/** An assault order on a hex only a Grand Battle can take, for T12 to raise as a trigger. */
+/** An assault order on a hex only a Grand Battle can take, or a rare creature revealed, for grand.ts to raise as a trigger. */
 export interface GrandBattleRequest {
   hexId: string
   kind: HexKind
   owner: Owner
   day: ISODate
+  /** A rare creature turned at bay on a beast den (Ch 11: 8% of ring 4 to 5 West and East den assaults). */
+  reveal?: boolean
+}
+
+/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, ring 4 or 5, on a lair side (Ch 11). */
+export function isRevealDen(hex: HexState): boolean {
+  const reveal = RULES.grandBattles.mythicReveal
+  const den = (hex.kind === 'road' || hex.kind === 'between') && hex.owner === 'neutral' && !hex.village && !hex.mythic
+  return den && hex.ring >= reveal.minRing && hex.ring <= RULES.land.claimableRings.max && lairSide(hex) !== undefined
 }
 
 export interface CombatOutcome {
@@ -888,7 +881,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const { day, emit } = ctx
   let state = dawn(input, day, ctx.weekStartsOn)
   const effects = realmEffects(state)
-  const byId = hexMap(state)
+  const byId = new Map(hexIndex(state.hexes))
   const setHex = (hex: HexState): void => void byId.set(hex.id, hex)
   const combat = combatOf(state)
   const bonus = effects.reputationBonus.value
@@ -909,6 +902,14 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const falls: ContestedHex[] = []
   let illusions = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.grandIllusion === true)
   let hunts = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.hunt !== undefined)
+  // Trophies granted today (A-156): each unique, so later victories see the earlier ones.
+  const held = heldItems(state)
+  const trophies: string[] = []
+  const trophy = (lair: string | undefined, anyLair: boolean): { item?: string } => {
+    const item = nextTrophy([...held, ...trophies], lair, anyLair)
+    if (item) trophies.push(item)
+    return item ? { item } : {}
+  }
 
   const fee = (c: Company): number => {
     if (c.source === 'hired') return RULES.buildings.merchantHall.hiredBlades.costPerBattle
@@ -933,7 +934,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     if (!hex || hex.owner !== 'player' || blocked) {
       if (b.restrike) {
         contested.delete(b.hexId)
-        if (hex?.status === 'contested') setHex(held(hex))
+        if (hex?.status === 'contested') setHex(heldHex(hex))
       }
       emit('calledOff', { threat: b.kind, hexId: b.hexId, ...(b.rival ? { rival: b.rival } : {}) })
       continue
@@ -941,16 +942,8 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 
     const foe = foeOfThreat(b.kind)
     const affordable = defensePool.filter((c) => fee(c) === 0 || fee(c) <= balance(purse))
-    const fielded = fieldBest(affordable, matchupOfThreat(b.kind, b.rival), foe, defenseBanners(effects), orders?.defenseOverride)
+    const { fielded, defense } = defenseOf(effects, affordable, hex, b.kind, b.rival, ctx.valor, orders?.defenseOverride)
     for (const f of fielded) if (fee(f.company) > 0) purse = spend(purse, day, fee(f.company), `${f.company.source}:${f.company.id}:${hex.id}`)
-    const { defense } = defenseValue({
-      strikes: fielded.map((f) => f.strike),
-      armsBonus: effects.armsBonus.value,
-      walls: wallsFor(effects, { ring: hex.ring, foe }),
-      fortification: fortificationValue(hex),
-      rallyFloor: effects.rallyFloor.value,
-      valor: ctx.valor
-    })
     const spoilsRules = RULES.combat.spoils
     const outcome = defense >= spoilsRules.routAt * b.strength ? 'rout' : defense >= b.strength ? 'victory' : 'defeat'
     const report: GameEventMap['defense'] = { threat: b.kind, hexId: hex.id, ...(b.rival ? { rival: b.rival } : {}), outcome }
@@ -962,7 +955,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         const amount = withBonus(effects.royalHunt.reputation, bonus)
         gains.push({ kind: 'spoils', amount, source: `royalHunt:${hex.id}` })
         report.hunt = roundPosting(amount)
-        if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt' })
+        if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt', ...trophy(undefined, true) })
       } else {
         const perRing = outcome === 'rout' ? spoilsRules.routPerRing : spoilsRules.winPerRing
         const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
@@ -973,11 +966,11 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       if (b.kind === 'mythic') {
         const side = lairSide(hex)
         const lair = side ? CODEX.lairs.find((l) => l.land === side)?.id : undefined
-        emit('trophy', { hexId: hex.id, source: 'mythic', ...(lair ? { lair } : {}) })
+        emit('trophy', { hexId: hex.id, source: 'mythic', ...(lair ? { lair, ...trophy(lair, false) } : {}) })
       }
       if (b.restrike) {
         contested.delete(hex.id)
-        setHex(held(hex))
+        setHex(heldHex(hex))
         report.broken = true
       }
     } else if (b.kind !== 'conquest') {
@@ -998,7 +991,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     } else if (hex.ring <= RULES.land.protectedThroughRing) {
       // Rings 0 to 2 never pass: a lost conquest battle only scorches (Ch 3 rule 2).
       contested.delete(hex.id)
-      const scorched = scorch(held(hex), day)
+      const scorched = scorch(heldHex(hex), day)
       setHex(scorched)
       report.scorchedUntil = scorched.statusUntil
     } else if (b.restrike) {
@@ -1027,12 +1020,15 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const wearied = new Set<string>()
   for (const a of validity.assaults) {
     const hex = byId.get(a.target) as HexState
-    const { matchup, foe } = garrisonType(hex)
-    const pool = army.filter((c) => a.companies.includes(c.id))
-    const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
-    const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor: ctx.valor })
-    const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
-    const result = assaultOutcome(effectiveGarrison(hex, ignoreFort), value)
+    if (isRevealDen(hex) && chance(state.campaign.seed, day, `reveal:${hex.id}`, RULES.grandBattles.mythicReveal.chance)) {
+      // A rare creature turns at bay: no assault today, a Mythic Hunt instead (Ch 11).
+      grandBattles.push({ hexId: hex.id, kind: hex.kind, owner: hex.owner, day, reveal: true })
+      emit('assault', { hexId: hex.id, owner: hex.owner, outcome: 'revealed' })
+      continue
+    }
+    const { foe } = garrisonType(hex)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, ctx.valor)
+    const result = assaultOutcome(garrison, value)
     const owner = hex.owner
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
@@ -1053,29 +1049,23 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   for (const c of falls) {
     contested.delete(c.hexId)
     const hex = byId.get(c.hexId) as HexState
-    setHex(lostTo(hex, c.rival))
+    setHex(toRival(hex, c.rival))
     emit('hexTransfer', { hexId: hex.id, from: 'player', to: c.rival, how: 'conquest' })
   }
   for (const t of taken) {
-    setHex(captured(byId.get(t.hex.id) as HexState, day))
+    setHex(toPlayer(byId.get(t.hex.id) as HexState, day, true))
     emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest' })
   }
 
   // 4. Spoils, tribute and Respect.
   for (const g of gains) purse = g.kind === 'spoils' ? post(purse, { date: day, ...g }) : payTribute(purse, day, g.amount, g.source)
-  const rivals = { ...state.rivals }
-  for (const r of respect) {
-    const before = rivals[r.rival].respect
-    const after = Math.min(RULES.respect.max, Math.max(RULES.respect.min, before + r.change))
-    rivals[r.rival] = { ...rivals[r.rival], respect: after }
-    if (after !== before) emit('respect', { rival: r.rival, change: after - before, reason: r.reason })
-  }
+  for (const r of respect) state = adjustRespect(state, r.rival, r.change, r.reason, emit)
+  for (const item of trophies) state = grantTrophy(state, item)
 
   state = {
     ...state,
     hexes: state.hexes.map((h) => byId.get(h.id) as HexState),
     purse,
-    rivals,
     orders: state.orders.filter((o) => o.date >= day),
     combat: {
       schedule: combat.schedule.filter((s) => s.date > day),
@@ -1088,36 +1078,69 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   return { state, grandBattles }
 }
 
-/** The hex back to plain holding. */
-function held(hex: HexState): HexState {
-  const out: HexState = { ...hex, status: 'held' }
-  delete out.statusUntil
-  return out
+// ── Fielding a battle (shared by settlement and the orders estimate) ────────
+
+/** The Defense `pool` puts up on `hex` against a threat of `kind` (Ch 10): the Marshal's best by p × m, or the override. */
+function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, kind: ThreatKind, rival: RivalId | undefined, valor: number, override?: readonly string[]): { fielded: Fielded[]; defense: number } {
+  const foe = foeOfThreat(kind)
+  const fielded = fieldBest(pool, matchupOfThreat(kind, rival), foe, defenseBanners(effects), override)
+  const { defense } = defenseValue({
+    strikes: fielded.map((f) => f.strike),
+    armsBonus: effects.armsBonus.value,
+    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    fortification: fortificationValue(hex),
+    rallyFloor: effects.rallyFloor.value,
+    valor
+  })
+  return { fielded, defense }
+}
+
+/** The Assault `pool` brings against `hex` (Ch 6), and the garrison it must beat (fortification ignored by Siegebreakers and like effects). */
+function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number): { fielded: Fielded[]; value: number; garrison: number } {
+  const { matchup, foe } = garrisonType(hex)
+  const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
+  const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor })
+  const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
+  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort) }
+}
+
+export interface OrdersEstimate {
+  /** Each battle foretold for `day` on the player's land, and the Defense the defense pool would put up at `valor`. */
+  defenses: { hexId: string; kind: ThreatKind; rival?: RivalId; defense: number; fielded: string[] }[]
+  /** Each assault the orders send, its Assault at `valor`, the garrison it must beat, and the outcome that would give. */
+  assaults: { hexId: string; value: number; garrison: number; outcome: 'rout' | 'taken' | 'repulsed'; fielded: string[] }[]
+}
+
+/**
+ * What `orders` would field on `day` at Valor `valor` (an estimate for the orders panel, T15): the
+ * same fielding as the day's close, before any fee is paid. With no orders every company defends.
+ */
+export function ordersEstimate(state: CampaignState, orders: DailyOrders | undefined, day: ISODate, valor: number, effects: Effects = realmEffects(state)): OrdersEstimate {
+  const validity = ordersValidity(state, orders, effects)
+  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
+  const army = roster(state, { day, hired: effects.hiredBlades.on ? (orders?.hired ?? 0) : 0, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
+  const pool = army.filter((c) => !assigned.has(c.id))
+  const byId = hexIndex(state.hexes)
+  const defenses: OrdersEstimate['defenses'] = []
+  for (const t of tidings(state, day).threats) {
+    const hex = byId.get(t.hexId)
+    if (!hex || hex.owner !== 'player') continue
+    const { fielded, defense } = defenseOf(effects, pool, hex, t.kind, t.rival, valor, orders?.defenseOverride)
+    defenses.push({ hexId: t.hexId, kind: t.kind, ...(t.rival ? { rival: t.rival } : {}), defense, fielded: fielded.map((f) => f.company.id) })
+  }
+  const assaults = validity.assaults.map((a) => {
+    const hex = byId.get(a.target) as HexState
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor)
+    return { hexId: hex.id, value, garrison, outcome: assaultOutcome(garrison, value).outcome, fielded: fielded.map((f) => f.company.id) }
+  })
+  return { defenses, assaults }
 }
 
 /** Scorches a hex for 3 days after `day` (a contested hex stays contested). */
-function scorch(hex: HexState, day: ISODate): HexState {
+export function scorch(hex: HexState, day: ISODate): HexState {
   if (hex.status === 'contested') return hex
   const until = addDays(day, RULES.combat.scorchedDays)
   return { ...hex, status: 'scorched', statusUntil: hex.status === 'scorched' && hex.statusUntil && hex.statusUntil > until ? hex.statusUntil : until }
-}
-
-/** A hex the player lost to a rival: its garrison, a rival village's loyalty, no fortification. */
-function lostTo(hex: HexState, rival: RivalId): HexState {
-  const out: HexState = { ...held(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
-  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
-  return out
-}
-
-/** A hex the player took: held, ungarrisoned, unfortified; a village Settles for 4 weeks at half loyalty (A-22). */
-function captured(hex: HexState, day: ISODate): HexState {
-  const out: HexState = { ...held(hex), owner: 'player', garrison: 0, garrisonDamage: 0, fortification: 0 }
-  delete out.mythic
-  if (hex.village) {
-    const loyalty = RULES.land.villageLoyalty.afterConquestShare * RULES.influence.loyalty.neutralPerRing * hex.ring
-    out.village = { loyalty, settlingUntil: addDays(day, RULES.land.settling.weeks * RULES.clock.daysPerWeek) }
-  }
-  return out
 }
 
 /** Repulsed assault companies are Weary the next day (−20%); the Veterans' Hall takes a day off. */

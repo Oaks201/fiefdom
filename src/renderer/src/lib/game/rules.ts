@@ -353,7 +353,8 @@ const RULES_TABLE = {
     routShareRatio: 2,
     wearyDaysAfterRout: 3,
     retryDays: { mythicHunt: 7, gate: 14, capital: 14 },
-    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14 },
+    /** The Orc's Warhost is Incursion-style (T10, A-151), so it warns like one. */
+    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14, warhost: 2 },
     /** 8% of assaults on ring 4 to 5 beast hexes in the West or East reveal a rare creature. */
     mythicReveal: { chance: 0.08, minRing: 4 },
     /** Mythic Hunt rosters scale by 1 + week / 52. */
@@ -367,7 +368,9 @@ const RULES_TABLE = {
       mythicHuntWin: { reputation: 150 },
       mythicHuntLoss: { tributePerRing: 5 },
       coalitionWin: { spoilsPerRing: 40, endsEarlyWeeks: 2 }
-    }
+    },
+    /** "Once a month" (the Herald's Horn, the Scrying Pool, an ally's battle) is once per block of 4 campaign weeks. */
+    monthWeeks: 4 // TUNE (A-157)
   },
 
   rivals: {
@@ -560,7 +563,9 @@ const RULES_TABLE = {
       mifflin: { perKg: 10, perCm: 6.25, perYear: 5, male: 5, female: -161 }
     },
     /** A rough patch (Ch 16 "Illness and travel"): this many low-scoring days in a row. */
-    roughPatchDays: 3 // TUNE (A-120)
+    roughPatchDays: 3, // TUNE (A-120)
+    /** A low-scoring day, for the rough patch: its duties, food and steps average below this (T14). */
+    roughDayBelow: 0.5 // TUNE (A-179)
   },
 
   armory: {
@@ -628,6 +633,16 @@ const RULES_TABLE = {
     marketEveryWeeks: 4, // TUNE (A-147)
     /** The Archmage's first Ritual comes no earlier than this week. */
     firstRitualWeek: 6 // TUNE (A-148)
+  },
+
+  /** T12: the living world's and the endgame's numbers the book leaves open. */
+  worldAi: {
+    /** Bend the knee prices 25% of a treasury estimate: each band's upper edge, and twice the Mighty band's lower edge. */
+    treasuryEstimates: [300, 800, 2_000, 4_000], // TUNE (A-172)
+    /** An offer the world makes (the Goblin buying a hex, keeping a rising village, an envoy's ask, the Grand Auction) stays open this many days. */
+    offerDays: 7, // TUNE (A-171)
+    /** The synodic month, and a known new moon (2000-01-06, 18:14 UTC, 0.76 into the day), for the Wild Hunt's full moon. */
+    moon: { synodicDays: 29.530588853, knownNewMoon: '2000-01-06', knownNewMoonDayShare: 0.76 }
   }
 }
 

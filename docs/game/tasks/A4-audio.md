@@ -2,16 +2,16 @@
 
 | Phase | Depends on | Unblocks | Who |
 | --- | --- | --- | --- |
-| 7 Assets | T16 (the silent sound slots) | — | The owner |
+| 7 Assets | T14 (the silent sound slots) | — | The owner |
 
 ## Goal
 
-Give the new game moments their own sounds, in the same tavern style as the existing effects. The book doesn't require this. T16 registers every new sound id with a silent fallback, so the game is complete without it.
+Give the new game moments their own sounds, in the same tavern style as the existing effects. The book doesn't require this. T14 registers every new sound id with a silent fallback, so the game is complete without it.
 
 ## Read first
 
 - `docs/sound-design.md` (how the existing 34 effects were made and tuned to the soundtrack).
-- `src/renderer/src/audio/sfx.ts`: the list of game sound ids T16 added (battle won, battle lost, Milestone, Herald, coalition, Ultimatum, victory, the Fall, and so on).
+- `src/renderer/src/audio/sfx.ts`: the list of game sound ids T14 added (battle won, battle lost, Milestone, Herald, coalition, Ultimatum, victory, the Fall, and so on).
 
 ## Steps
 

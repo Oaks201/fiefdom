@@ -2,15 +2,15 @@
 
 | Phase | Depends on | Unblocks | Who |
 | --- | --- | --- | --- |
-| 7 Assets | T16 (the slot list and checker), A1 (the style sheet); best after T21 | The finished look | The owner |
+| 7 Assets | T14 (the slot list and checker), A1 (the style sheet); best after T17 | The finished look | The owner |
 
 ## Goal
 
-Replace every placeholder with real art. Thanks to T16, this needs **no code changes**: drop a file into the folder, list it in the manifest, and reload.
+Replace every placeholder with real art. Thanks to T14, this needs **no code changes**: drop a file into the folder, list it in the manifest, and reload.
 
 ## Read first
 
-- `docs/game/assets.md`: the generated checklist of every art slot, with its file name, pixel size and where it shows (T16 generates it; rerun `npm run assets:check` to refresh it).
+- `docs/game/assets.md`: the generated checklist of every art slot, with its file name, pixel size and where it shows (T14 generates it; rerun `npm run assets:check` to refresh it).
 - `docs/game/art/style-sheet.md` (A1).
 - Book: Ch 17 "Art direction" and the asset table.
 

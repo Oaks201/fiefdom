@@ -8,10 +8,13 @@
  * `devAdvanceDays` (also on `window.fiefdomDev`) moves it forward and settles. Both are compiled
  * out of production builds and never reachable by the player.
  */
+import { create } from 'zustand'
 import { openDay } from '../lib/game/clock'
+import { momentsFor } from '../lib/game/view/endgame'
 import type { ISODate } from '../lib/game/types'
 import { useCampaign } from './campaign'
 import { useHealth } from './health'
+import { useMoments } from './moments'
 import { useLedger } from './store'
 
 /** At launch, settle after the first Fitbit sync attempt or this long, whichever comes first. */
@@ -21,6 +24,8 @@ const TICK_MS = 15_000
 const DAY_MS = 86_400_000
 
 let devOffsetMs = 0
+/** Re-renders what reads the campaign's "now" when dev time travel moves it (A-09). */
+export const useDevClock = create<{ offsetMs: number }>(() => ({ offsetMs: 0 }))
 
 /** The campaign's "now": the real time, or in development the time-travel override (A-09). */
 export function campaignNow(): Date {
@@ -64,7 +69,10 @@ function runSettle(launch: boolean): void {
   }
   const now = campaignNow()
   try {
-    useCampaign.getState().settleNow(useLedger.getState().ledger, now, { launch })
+    const result = useCampaign.getState().settleNow(useLedger.getState().ledger, now, { launch })
+    // The big moments a settlement raises (Ch 17): Milestones, Grand Battles the Marshal fought and
+    // decisive ones, coalitions, Ultimatums, victory and the Fall.
+    if (result) useMoments.getState().showAll(momentsFor(result.state, result.events))
   } catch (err) {
     console.error('Settling the campaign failed', err)
   }
@@ -105,7 +113,13 @@ export function startCampaignClock(): () => void {
 export function devAdvanceDays(days: number): void {
   if (!import.meta.env.DEV) return
   devOffsetMs += days * DAY_MS
-  runSettle(false)
+  useDevClock.setState({ offsetMs: devOffsetMs })
+  runSettle(true)
+}
+
+/** The campaign's open day now: the day the player acts on, in the campaign's time zone. */
+export function campaignToday(timeZone: string): ISODate {
+  return openDay(campaignNow(), timeZone)
 }
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {

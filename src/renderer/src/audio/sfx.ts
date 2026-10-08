@@ -6,7 +6,10 @@ import { bell, midiToFreq, noise, pluck } from './synth'
 
 export const SFX_NAMES = [
   'page', 'flip', 'open', 'stamp', 'unstamp', 'quill', 'strike', 'click', 'coin',
-  'lose', 'goal', 'perfect', 'seal', 'burn', 'gilded', 'honored', 'wanting', 'error'
+  'lose', 'goal', 'perfect', 'seal', 'burn', 'gilded', 'honored', 'wanting', 'error',
+  // The game's sounds (T14, task A4). Until a file named after one is added to
+  // assets/audio/sfx/, it plays nothing: the bank is empty and `playSfx` returns.
+  'founding', 'herald', 'battleWon', 'battleLost', 'milestone', 'coalition', 'ultimatum', 'victory', 'fall', 'grandBattle'
 ] as const
 export type SfxName = (typeof SFX_NAMES)[number]
 

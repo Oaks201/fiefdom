@@ -10,14 +10,19 @@ import type { ISODate } from '../dates'
 export type { ISODate }
 
 // ── Identities ───────────────────────────────────────────────────────────────
+// Each list is the single source of its type: loop over the list, never retype it.
 
-export type RivalId = 'orc' | 'goblin' | 'dwarf' | 'archmage'
+/** In the book's usual order, which also breaks ties between rivals. */
+export const RIVAL_IDS = ['orc', 'goblin', 'dwarf', 'archmage'] as const
+export type RivalId = (typeof RIVAL_IDS)[number]
 export type Owner = 'player' | RivalId | 'neutral'
-export type BuildingId = 'barracks' | 'merchantHall' | 'mageTower' | 'foundry'
+export const BUILDING_IDS = ['barracks', 'merchantHall', 'mageTower', 'foundry'] as const
+export type BuildingId = (typeof BUILDING_IDS)[number]
 export type Tag = 'steel' | 'coin' | 'arcane' | 'engine'
 export type Reach = 'melee' | 'ranged'
-/** A between-land, named by the direction it lies in from the castle. */
-export type Land = 'north' | 'south' | 'west' | 'east'
+/** The between-lands, named by the direction they lie in from the castle. */
+export const LANDS = ['north', 'south', 'west', 'east'] as const
+export type Land = (typeof LANDS)[number]
 /** The six building pairs (Ch 8), named alphabetically as in the book's table. */
 export type CrossingId =
   | 'barracksFoundry'
@@ -26,8 +31,9 @@ export type CrossingId =
   | 'foundryMageTower'
   | 'foundryMerchantHall'
   | 'mageTowerMerchantHall'
-/** The four Rim fronts between neighboring rivals (Ch 12). */
-export type FrontId = 'north' | 'south' | 'west' | 'east'
+/** The four Rim fronts between neighboring rivals (Ch 12), each named for the between-land its battlefields lie in. */
+export const FRONT_IDS = LANDS
+export type FrontId = Land
 export type Disposition = 'peace' | 'tension' | 'war'
 export type BuildingTier = 1 | 2 | 3 | 4 | 5 // rules-ok: literal type
 export type CastleTier = 1 | 2 | 3 | 4 | 5 // rules-ok: literal type
@@ -58,8 +64,10 @@ export interface Campaign {
   status: 'active' | 'won' | 'fallen'
   /** The Healer's Dispensation (Ch 9 rule 7); on unless this is false. */
   dispensation?: boolean
-  /** The week start fixed at founding (`settings.weekStartsOn` then). Settlement reads this, not the ledger's current setting. */
-  weekStartsOn?: WeekStartsOn
+  /** The week start fixed at founding (`settings.weekStartsOn` then). Every rule reads this, never the ledger's current setting. */
+  weekStartsOn: WeekStartsOn
+  /** T14: medical supervision confirmed at founding: every later Charter check lets the limit sit below the floor (Ch 4, Ch 16). */
+  medicalSupervision?: boolean
 }
 
 export interface Charter {
@@ -101,6 +109,10 @@ export interface HexState {
   road?: BuildingId
   /** Held by mythic beasts (the Lair Mouths, a Summoning). */
   mythic?: boolean
+  /** T12: a fallen rival's capital or realm hex, left in ruins (Ch 13). */
+  ruins?: boolean
+  /** T12: held by the Pretender's rebels (Appendix C): neutral, with their garrison. */
+  rebels?: boolean
 }
 
 export type CompanySource =
@@ -146,6 +158,8 @@ export interface LandContract {
   respiteDates: ISODate[]
   /** What the purse has paid for it so far (after rounding, adjustments included). */
   paid?: { payout: number; pledgeReturn: number }
+  /** T12: an Accord's rival's Respect when it was sealed (D-01's 60 × f(Q) from 75). */
+  respectAtStart?: number
 }
 
 export interface DailyOrders {
@@ -182,6 +196,8 @@ export interface RivalState {
   ascendancyStreak: number
   ultimatumUntil?: ISODate
   humbledUntil?: ISODate
+  /** T12: the day it was resolved (Ch 14), for the pacing of the next. */
+  resolvedOn?: ISODate
   specialFund: number
   /** −3..+3 per front, from this rival's side. */
   frontTracks: Record<string, number>
@@ -220,8 +236,21 @@ export interface RivalMemory {
 export interface Coalition {
   members: RivalId[]
   trigger: 'firstFall' | 'lastAlliance' | 'risingCrown'
+  /** Its last day; open-ended (the Last Alliance) until it ends, when this is set. */
   until?: ISODate
   warChest: number
+  /** T12: the day it formed. */
+  formedOn?: ISODate
+  /** T12: the First Fall's third rival, who stays apart at Threat +10. */
+  watcher?: RivalId
+  /** T12: its Coalition Offensive, once announced. */
+  offensive?: string
+  /** T12: the campaign week a Goblin member last hired mercenaries for its partner. */
+  mercenaryWeek?: number
+  /** T12: how it ended early, if it did. */
+  broken?: 'offensive' | 'buyout' | 'betrayal' | 'resolved' | 'replaced'
+  /** T12: its end has been posted. */
+  over?: boolean
 }
 
 export type Lane = 'left' | 'center' | 'right'
@@ -234,6 +263,20 @@ export interface BattleLogLine {
   to: string
   amount: number
   note?: string
+  /** T11: the hit as dealt, before the target's own multipliers (a Charge, a Brace, Shieldwall); `amount` is what it took. */
+  dealt?: number
+}
+
+/** A slot on the Grand Battle field: a lane and a rank (Ch 11 "Set the formation"). */
+export type SlotKey = `${Lane}:${Rank}`
+
+/** What an Order is aimed at, when it needs a choice: a lane, an enemy company, or an empty slot (T11). */
+export interface OrderTarget {
+  lane?: Lane
+  /** A company's id (an enemy for Bribe, Arcane Ward, Hunter's Mark and Blink Strike). */
+  unit?: string
+  /** An empty own slot (Reserves). */
+  slot?: SlotKey
 }
 
 /** One round of a Grand Battle, enough to replay it (Ch 11 rule 4). T12 extends this. */
@@ -243,11 +286,91 @@ export interface BattleRoundLog {
   order?: string
   swap?: [string, string]
   lines: BattleLogLine[]
+  /** T11: every enemy company's intent this round (a special can differ from its lane's). */
+  unitIntents?: Record<string, Intent>
+  /** T11: the Orders offered this round. */
+  offered?: string[]
+  /** T11: what the Order played was aimed at. */
+  target?: OrderTarget
+  /** T11: every company's health after the round, the routed at 0. */
+  health?: Record<string, number>
+  /** T11: where every company still on the field stands after the round. */
+  slots?: Record<string, SlotKey>
+}
+
+/** What raised a Grand Battle (Ch 11 "What triggers one"; T12 adds the Coalition Offensive, the Siege and events). */
+export type GrandTrigger = 'incursion' | 'gate' | 'capital' | 'mythicHunt' | 'warhost' | 'coalitionOffensive' | 'siege' | 'event'
+
+/** One company on the Grand Battle field as the battle began (T11). */
+export interface FieldUnit {
+  id: string
+  side: 'player' | 'enemy'
+  name: string
+  /** p, fixed for the battle (Weary and items included). */
+  power: number
+  /** Health at the start, H = 4 × p (or the mythic's multiple, A-47) with every health effect. */
+  health: number
+  tags: Tag[]
+  reach: Reach
+  slot: SlotKey
+  /** An enemy's type for matching: its rival, or mythic (A-29). */
+  foe?: RivalId | 'mythic'
+  /** An enemy's codex unit id (host company, commander or mythic). */
+  unit?: string
+  /** A company hired for this battle only (Mercenary Contract, Reserves). */
+  hired?: boolean
+  /** What its items, Elite ability or the Sworn's do on the field, read from the codex when the battle began. */
+  mods?: UnitMods
+}
+
+/** A company's own battle modifiers (T11), resolved from codex effects when the battle begins. */
+export interface UnitMods {
+  /** × on the damage it deals (Stormglass Bolts on a ranged company). */
+  damage?: number
+  /** × on the damage it takes, from one intent or one kind of foe (the Oathsworn, Warding Charms). */
+  taken?: { mult: number; fromIntent?: Intent; against?: Foe }[]
+  /** Its hits also strike the enemy rear in its lane at this share (the Starwardens). */
+  splash?: number
+  /** Its damage ignores the enemy's Brace (the Sappers). */
+  ignoreBrace?: boolean
+  /** Rounds in which it cannot rout (the Sworn: round 1). */
+  noRoutRounds?: number[]
+  /** The share of its starting health it heals at each round's end (the Healer's Satchel). */
+  heal?: number
+  /** The power share it adds to every own company in its lane, itself included (Banner of the Realm). */
+  lanePower?: number
+  /** Mythic specials it shrugs off (a trophy). */
+  immune?: MythicSpecial[]
+  /** A match that replaces its tags' against one kind of foe (Hunter's Nets). */
+  match?: { set: number; against?: Foe }[]
+  /** × on the battle's spoils when it fights (the Gold Cloaks). */
+  spoils?: number
+}
+
+/** What `begin` fixes for the whole battle (T11): replaying from this and the round log rebuilds it exactly. */
+export interface BattleSetup {
+  /** Readiness R for the whole battle, the Marshal's −0.1 and the Herald's Horn included. */
+  readiness: number
+  /** The Marshal fought it (Ch 11 rule 1). */
+  marshal: boolean
+  units: FieldUnit[]
+  /** The Order deck in its seeded order; each round deals the next `offer` (never repeated in a battle). */
+  deck: string[]
+  /** Orders offered a round: 3, 4 with the Leyline Anchor. */
+  offer: number
+  /** The Herald's Horn was sounded (once a month, A-157). */
+  horn?: boolean
+  /** Last Stand: below this share of total health the player's damage is multiplied. */
+  lastStand?: { below: number; mult: number }
+  /** What a company hired by Reserves fields: the Merchant Hall's company (A-19). */
+  hire: { power: number; name: string }
+  /** The stage behind each Crossing Order in the deck (Earthshatter's damage). */
+  orderStages: Record<string, number>
 }
 
 export interface GrandBattle {
   id: string
-  trigger: string
+  trigger: GrandTrigger
   hexId: string
   announcedOn: ISODate
   battleDate: ISODate
@@ -256,6 +379,45 @@ export interface GrandBattle {
   doctrine?: string
   log?: BattleRoundLog[]
   result?: 'rout' | 'victory' | 'defeat'
+  /** T11: the rival whose host it is; for a coalition, its members. */
+  rival?: RivalId
+  members?: RivalId[]
+  /** T11: the power each rival sent, for the Incursion's 40% loss. Hidden: screens never read it. */
+  sent?: Partial<Record<RivalId, number>>
+  /** T11: a Mythic Hunt's quarry (Appendix C), and whether the 8% reveal raised it. */
+  quarry?: string
+  revealed?: boolean
+  /** T11: fixed when the battle begins. */
+  setup?: BattleSetup
+  /** T12: companies a side when an event sets it (Ugrak's Challenge: a duel of two). */
+  limit?: number
+  /** T11: the day it was fought and what it did, once settled. */
+  foughtOn?: ISODate
+  outcome?: GrandOutcome
+  /** T12: an event's id when an event raised it. */
+  eventId?: string
+}
+
+/** What a Grand Battle's result did (Ch 11 "Outcomes"), for the result card. */
+export interface GrandOutcome {
+  spoils?: number
+  tribute?: number
+  reputation?: number
+  respect?: number
+  /** A hex that changed hands: taken by the player, or lost. */
+  hexTaken?: string
+  hexLost?: string
+  /** A hex scorched instead of lost (rings 0 to 2 never pass). */
+  hexScorched?: string
+  trophy?: string
+  /** Companies Weary after routing, through `wearyUntil`. */
+  weary?: string[]
+  wearyUntil?: ISODate
+  /** The share of the rival's army the battle cost or gave it. */
+  armyLoss?: number
+  armyGain?: number
+  /** A retry may be announced from this day (a lost Gate, Capital or Mythic Hunt). */
+  retryFrom?: ISODate
 }
 
 export type PurseEventKind = 'earn' | 'pledge' | 'return' | 'spend' | 'spoils' | 'tribute' | 'tithe' | 'adjust'
@@ -318,7 +480,8 @@ export interface WorldEvent {
 // ── Effects: how the codex describes what things do ──────────────────────────
 
 /** What kind of foe an effect is limited to. */
-export type Foe = 'beast' | 'mythic' | 'rival' | 'militia'
+export const FOES = ['beast', 'mythic', 'rival', 'militia'] as const
+export type Foe = (typeof FOES)[number]
 
 /**
  * Who an effect applies to. Omitted means the holder: an item's company, an Elite itself,
@@ -354,9 +517,11 @@ export interface EffectBase {
 }
 
 /** A cost that an effect discounts. */
-export type CostKind = 'tiers' | 'crossings' | 'items' | 'fortification' | 'trade'
+export const COST_KINDS = ['tiers', 'crossings', 'items', 'fortification', 'trade'] as const
+export type CostKind = (typeof COST_KINDS)[number]
 /** A hidden value an effect lets the player see. */
-export type RevealKind = 'treasury' | 'army' | 'threatStrength' | 'hostRoster'
+export const REVEAL_KINDS = ['treasury', 'army', 'threatStrength', 'hostRoster'] as const
+export type RevealKind = (typeof REVEAL_KINDS)[number]
 /** A mythic quarry's special (Appendix C, Mythic Hunts). */
 export type MythicSpecial = 'broodVolley' | 'petrify' | 'fire' | 'griffinDive' | 'poison' | 'huntTheWeak'
 
@@ -456,17 +621,17 @@ export interface GameEventMap {
     hunt?: number
   }
   /** The player's daily assault (Ch 6). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed'; spoils?: number; wear?: number }
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
-  /** A trophy earned in daily combat, for T14 to turn into an item (A-131). */
-  trophy: { hexId: string; source: 'mythic' | 'royalHunt'; lair?: string }
+  /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
+  trophy: { hexId: string; source: 'mythic' | 'royalHunt' | 'mythicHunt'; lair?: string; item?: string }
   /** A hex changed hands. */
-  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' }
+  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
-  deal: { rival: RivalId; deal: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms'; price: number; hexId?: string; target?: RivalId }
+  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. */
@@ -483,18 +648,38 @@ export interface GameEventMap {
   grace: { from: GraceLevel; to: GraceLevel }
   /** A contract was paid or withdrawn (Ch 4). */
   contract: { contractId: string; outcome: 'paid' | 'withdrawn'; score: number; payout: number; pledgeReturn: number }
+  /** T14: a contract (or an Accord) was sealed; it starts on `startDate`. */
+  contractSealed: { contractId: string; contractKind: LandContract['kind']; termDays: number; pledge: number; startDate: ISODate; endDate: ISODate; rival?: RivalId }
+  /** T14: a Respite day was spent on `day`; the contract now ends on `endDate`. */
+  respite: { contractId: string; day: ISODate; endDate: ISODate }
+  /** T14: the Charter was revised between contracts. */
+  charter: { stepPool: number; calorieLimit: number; duties: string[] }
   /** A Healer check-in fired (Ch 16). */
   healer: { checkIn: string }
-  /** A Grand Battle was announced, queued or fought (Ch 11). */
-  grandBattle: { battleId: string; trigger: string; hexId: string; stage: 'announced' | 'queued' | 'fought'; result?: BattleOutcome }
+  /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */
+  grandBattle: {
+    battleId: string
+    trigger: string
+    hexId: string
+    stage: 'announced' | 'queued' | 'fought' | 'refused' | 'cancelled'
+    result?: BattleOutcome
+    /** T11: the day it is fought; for a queued battle, the day it moved to. */
+    battleDate?: ISODate
+    rival?: RivalId
+    quarry?: string
+    /** T11: fought by the Marshal at the day's close. */
+    marshal?: boolean
+    /** T11: why a trigger was refused. */
+    reason?: string
+  }
   /** A coalition formed, broke or ended (Ch 13). */
   coalition: { members: RivalId[]; trigger: Coalition['trigger']; stage: 'formed' | 'broken' | 'ended' }
-  /** A world event fired (Ch 13). */
-  worldEvent: { eventId: string }
+  /** A world event fired (Ch 13); T12 adds when its effect holds and the plain facts screens need. */
+  worldEvent: { eventId: string; from?: ISODate; until?: ISODate; rival?: RivalId; other?: RivalId; hexIds?: string[]; item?: string; outcome?: string }
   /** The Archmage cast a Ritual. */
   ritual: { ritualId: string; until?: ISODate; hexId?: string; companyId?: string }
-  /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). */
-  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' }
+  /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). `until`: the Siege's day; `members`: a coalition's. */
+  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' | 'humbled'; until?: ISODate; members?: RivalId[]; price?: number }
   /** A rival was resolved (Ch 14). */
   rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied' }
   /** The campaign ended (Ch 14). */
@@ -503,6 +688,10 @@ export interface GameEventMap {
   weekClosed: { week: number; income: number }
   /** A ledger correction inside the grace window was taken in (A-02); `adjustment` is what the purse gained. */
   correction: { correctedDay: ISODate; adjustment: number }
+  /** T11: what a broken Milestone opened (Ch 9 unlock table), for the Milestone card. */
+  unlock: { milestone: number; unlocks: string[] }
+  /** T11: an Armory action: an item bought or equipped, a Wing chosen, an Elite recruited or promoted, the Sworn. */
+  armory: { action: 'buy' | 'equip' | 'unequip' | 'wing' | 'recruit' | 'promote' | 'sworn' | 'armorer'; id: string; companyId?: string; cost?: number }
 }
 
 export type GameEventKind = keyof GameEventMap
@@ -510,6 +699,9 @@ export type GameEventKind = keyof GameEventMap
 export type GameEvent = {
   [K in GameEventKind]: { id: string; day: ISODate; kind: K } & GameEventMap[K]
 }[GameEventKind]
+
+/** Posts a game event; whoever hands out the emitter dates it and adds it to the log. */
+export type Emit = <K extends GameEventKind>(kind: K, payload: GameEventMap[K]) => void
 
 // ── The campaign's state: one slice per system ───────────────────────────────
 
@@ -546,7 +738,8 @@ export interface FrontState {
 export interface Deal {
   id: string
   rival: RivalId
-  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms'
+  /** T12 adds `buyout`: a coalition member paid to walk away (Ch 13). */
+  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout'
   madeOn: ISODate
   until?: ISODate
   hexId?: string
@@ -584,6 +777,42 @@ export interface CampaignState {
   armory?: ArmoryState
   /** The threat schedule, the dawn tidings, conquest attempts and contested hexes (T08). Absent means none yet. */
   combat?: CombatState
+  /** What the living world remembers between week closes (T12). Absent means nothing yet. */
+  world?: WorldState
+}
+
+// ── The living world and the endgame (T12) ───────────────────────────────────
+
+/** A resolution waiting for Ch 14's pacing (no rival before week 12, one per 8 weeks). */
+export interface PendingResolution {
+  rival: RivalId
+  how: 'conquered' | 'abdicated' | 'allied'
+  since: ISODate
+}
+
+/** Something the player may take up for a while: the Goblin buying an abdicated hex, keeping a rising village, an envoy's ask. */
+export type WorldOffer =
+  | { kind: 'goblinBuys'; hexId: string; price: number; until: ISODate }
+  | { kind: 'uprising'; hexId: string; price: number; until: ISODate }
+  | { kind: 'envoys'; rival: RivalId; foe: RivalId; until: ISODate }
+
+export interface WorldState {
+  /** Week closes in a row the player's Power stood at 1.5× the average rival's, before any rival was resolved (the Rising Crown). */
+  risingStreak: number
+  /** How many rivals were resolved when the coalition triggers last looked. */
+  resolvedSeen: number
+  /** Week closes in a row each conquered village of the player's has had loyalty under 20 (the Village Uprising). */
+  lowLoyalty: Record<string, number>
+  /** Rivals (or coalitions, by their first member) whose Power last stood above 1.3× the player's: the Herald warns on crossing. */
+  warned: RivalId[]
+  /** The day the player bent the knee (once a campaign). */
+  bentKnee?: ISODate
+  pending: PendingResolution[]
+  offers: WorldOffer[]
+  /** Companies lent to an envoy, away for a day (Appendix C "Envoys"). */
+  lent?: { companyId: string; day: ISODate }[]
+  /** The Grand Auction's lots, open until `until` (Appendix C). Bids are sealed: screens show only the player's. */
+  auction?: { until: ISODate; lots: { hexId: string; bids: Partial<Record<'player' | RivalId, number>> }[] }
 }
 
 // ── Daily combat (T08) ───────────────────────────────────────────────────────
@@ -672,6 +901,8 @@ export interface SettlementState {
   borderCampaignWeeks: number[]
   /** The last day the app was launched (A-10), as the campaign day open then. */
   lastLaunch?: ISODate
+  /** T12: the day the player last came back from 14 or more days away (A-10): no Siege falls within 7 days of it. */
+  returnedOn?: ISODate
 }
 
 // ── Scores, contracts and the purse (T04) ────────────────────────────────────
@@ -749,6 +980,8 @@ export type EffectSourceRef =
   | { kind: 'grace'; level: GraceLevel }
   /** A Weary company, through `until` (Ch 10, A-123). */
   | { kind: 'weary'; until: ISODate }
+  /** A world event in force (Ch 13), by its codex id (T12). */
+  | { kind: 'event'; id: string }
 
 export interface Contribution {
   from: EffectSourceRef
@@ -832,6 +1065,8 @@ export interface Effects {
   reveals: Record<RevealKind, Reveal>
   /** Village tithe multiplier. */
   titheMult: Sourced
+  /** T12: cuts to tithes, multiplied after `titheMult` (the Hungry Winter; reductions multiply, A-126). */
+  titheCut: Sourced
   /** Cost multipliers by what is bought. */
   costs: Record<CostKind, Sourced>
   /** Spoils multiplier by the kind of foe beaten. */

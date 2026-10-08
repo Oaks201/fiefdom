@@ -9,6 +9,7 @@ import type { Contract, Metric } from '../../lib/types'
 import { sfx } from '../../audio'
 import { emitFloat } from '../../state/floats'
 import { useApplyWithFeedback, useLedgerData } from '../../state/hooks'
+import { useCampaign } from '../../state/campaign'
 import { SealSocket, WaxSeal } from '../WaxSeal'
 
 const META: Record<Metric, { label: string; unit: string; icon: IconType; presets: number[]; step: number; key: string }> = {
@@ -100,6 +101,8 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
   const source = metricSource(log, metric)
   const fitbitSays = log.synced?.[metric]
   const bound = contractOn(ledger, date)
+  const campaign = useCampaign((s) => s.campaign)
+  const counted = campaign !== null && date >= campaign.campaign.startDate
   // the contract judges this tally (steps, and the calories it counts)
   const contract = bound && (metric === 'steps' || calorieMetricOf(bound) === metric) ? bound : undefined
 
@@ -240,7 +243,13 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
           <p className="tally__goal">{next.text}</p>
         </>
       ) : (
-        <p className="tally__unbound">No contract binds this day. Recorded, but it earns no reputation.</p>
+        <p className="tally__unbound">
+          {counted
+            ? metric === 'steps'
+              ? 'Counts toward this week’s step pool and today’s Valor.'
+              : 'Counts toward this week’s calorie average and today’s Valor.'
+            : 'No contract binds this day. Recorded, but it earns no reputation.'}
+        </p>
       )}
 
       <div className="tally__presets">

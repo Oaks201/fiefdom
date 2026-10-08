@@ -9,6 +9,7 @@ import { foundCampaign, type FoundingInput } from '../../src/renderer/src/lib/ga
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { seal } from '../../src/renderer/src/lib/game/contracts'
 import { balance } from '../../src/renderer/src/lib/game/economy'
+import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import {
   DAY_PHASE_NAMES,
   DAY_PHASES,
@@ -30,7 +31,7 @@ function sealOn(state: CampaignState, today: string, termDays: number, id: strin
     state.contracts,
     state.purse,
     { id, termDays, charter: state.charter, pledge },
-    { today, buildings: state.buildings, castleTier: state.castleTier, merchantHallTier: state.buildings.merchantHall, floor: state.weight.healerFloor ?? 0 }
+    { today, buildings: state.buildings, castleTier: state.castleTier, pledgeCapMult: realmEffects(state).pledgeCap.value, floor: state.weight.healerFloor ?? 0 }
   )
   return { ...state, contracts: sealed.contracts, purse: sealed.purse }
 }
@@ -308,10 +309,14 @@ test('Manual harness: found a campaign, advance 8 days, and see one week close i
   console.log(`# campaign.json week-close event: ${JSON.stringify(closes[0])}`)
 })
 
-test('A campaign that has ended settles nothing more', () => {
+test('Ch 14: a fallen campaign settles nothing more; the Reign after a victory goes on settling', () => {
   const state = found(LEDGER)
-  const won = { ...state, campaign: { ...state.campaign, status: 'won' as const } }
-  const r = settle(won, LEDGER, chicago('2026-10-20'))
-  assert.equal(r.state, won)
+  const fallen = { ...state, campaign: { ...state.campaign, status: 'fallen' as const } }
+  const r = settle(fallen, LEDGER, chicago('2026-10-20'))
+  assert.equal(r.state, fallen)
   assert.equal(r.events.length, 0)
+  const won = { ...state, campaign: { ...state.campaign, status: 'won' as const } }
+  const reign = settle(won, LEDGER, chicago('2026-10-20'))
+  assert.equal(reign.state.settledThrough.day, '2026-10-19')
+  assert.ok(reign.events.length > 0)
 })

@@ -80,7 +80,7 @@ export function DayLedger({ date, today }: { date: ISODate; today: ISODate }): R
 }
 
 /** The day's weigh-in, typed by hand (A-05). Saved on Enter or on leaving the field; emptied, it is cleared. */
-function WeightField({ date, today }: { date: ISODate; today: ISODate }): React.JSX.Element {
+export function WeightField({ date, today }: { date: ISODate; today: ISODate }): React.JSX.Element {
   const ledger = useLedgerData()
   const apply = useLedger((s) => s.apply)
   const unit = ledger.settings.unit

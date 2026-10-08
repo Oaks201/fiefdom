@@ -1,7 +1,6 @@
 import './support/tokyo-tz'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { canConquer, canRaid, raiderWeights } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
@@ -31,12 +30,11 @@ import {
 import { isClaimableKind, neighbors, touchesOwner } from '../../src/renderer/src/lib/game/map'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, GameEvent, GameEventKind, GameEventMap, HexState, RivalId } from '../../src/renderer/src/lib/game/types'
-import { FOUNDED_AT, TZ, charter, chicago, steadyLedger } from './fixtures/ledgers'
+import { chicago, steadyLedger } from './fixtures/ledgers'
 import { TODAY, realm, withArmory, withBuildings, withGrace, withPurse } from './support/realm'
 import { front, hex, plainHex, withDisposition, withHex, withOwner, type Posted } from './support/war'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, tolerance = 1e-9): void =>
-  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)
 
 function withRespect(state: CampaignState, rival: RivalId, respect: number): CampaignState {
   return { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], respect } } }
@@ -218,7 +216,7 @@ test('A-22: the player’s villages recover 5% of 15 × ring loyalty a week, up 
 
 test('Test 9 (part): settlement resolves a courtship once, at the week close; settling again never re-resolves it', () => {
   const ledger = steadyLedger('2026-09-10', 70)
-  let state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
+  let state = realm(7, ledger)
   const v = village(state, 2)
   state = reach(state, v.id)
   const placed = placeBid(state, v.id, 60, '2026-10-08')

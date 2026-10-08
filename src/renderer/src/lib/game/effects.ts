@@ -13,33 +13,33 @@
  * Shared by many tasks: add fields, don't reorganize them.
  */
 import { CODEX } from './codex'
-import { BUILDING_IDS } from './map'
 import { RULES, byTier } from './rules'
-import type {
-  BuildingId,
-  BuildingTier,
-  CampaignState,
-  Contribution,
-  CostKind,
-  CrossingId,
-  CrossingStage,
-  Effect,
-  EffectSourceRef,
-  Effects,
-  Flag,
-  Foe,
-  Grant,
-  Land,
-  Reveal,
-  RevealKind,
-  Sourced
+import { openDayOf } from './state'
+import {
+  BUILDING_IDS,
+  COST_KINDS,
+  FOES,
+  REVEAL_KINDS,
+  type BuildingId,
+  type BuildingTier,
+  type CampaignState,
+  type Contribution,
+  type CostKind,
+  type CrossingId,
+  type CrossingStage,
+  type Effect,
+  type EffectSourceRef,
+  type Effects,
+  type Flag,
+  type Foe,
+  type Grant,
+  type Land,
+  type Reveal,
+  type RevealKind,
+  type Sourced
 } from './types'
 
 // ── Building values ──────────────────────────────────────────────────────────
-
-const COST_KINDS: readonly CostKind[] = ['tiers', 'crossings', 'items', 'fortification', 'trade']
-const FOES: readonly Foe[] = ['beast', 'mythic', 'rival', 'militia']
-const REVEAL_KINDS: readonly RevealKind[] = ['treasury', 'army', 'threatStrength', 'hostRoster']
 
 function sum(base: Contribution[] = []): Sourced {
   return { value: base.reduce((t, c) => t + c.value, 0), op: 'add', sources: base }
@@ -168,6 +168,7 @@ export function realmEffects(state: CampaignState): Effects {
     foretell: { threats: sum(), raids: sum(), raidsOnRoad: {}, grandBattles: sum() },
     reveals: Object.fromEntries(REVEAL_KINDS.map((k) => [k, { whom: 'none', sources: [] } as Reveal])) as Record<RevealKind, Reveal>,
     titheMult: sum([{ from: { kind: 'base' }, value: 1 }]),
+    titheCut: product(),
     costs: Object.fromEntries(COST_KINDS.map((k) => [k, product()])) as Record<CostKind, Sourced>,
     spoils: Object.fromEntries(FOES.map((f) => [f, product()])) as Record<Foe, Sourced>,
     tribute: product(),
@@ -251,6 +252,15 @@ export function realmEffects(state: CampaignState): Effects {
 
   // Perks, Wings and realm-wide items.
   for (const g of realmGrants(state)) apply(e, g)
+
+  // World events in force today (T12): the Hungry Winter's tithes.
+  const today = openDayOf(state)
+  for (const ev of state.worldEvents) {
+    const held = ev.data as { from?: string; until?: string } | null
+    if (!held?.from || !held.until || today < held.from || today > held.until) continue
+    const cut = CODEX.events.find((x) => x.id === ev.id)?.effect.titheMult
+    if (typeof cut === 'number') push(e.titheCut, { kind: 'event', id: ev.id }, cut)
+  }
 
   // Orders and Doctrines from what grants them (Appendix C).
   for (const o of CODEX.orders) {
@@ -386,6 +396,11 @@ export function mythicMultFor(e: Effects, side?: Land): number {
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V']
 
+/** A tier, stage or level as its Roman numeral (1 → "I"), for labels. */
+export function numeral(n: number): string {
+  return ROMAN[n - 1] ?? String(n)
+}
+
 /**
  * A short label for a source, from codex names and tier numerals ("Castle III", "Foundry III",
  * "Warded Steel"). Plain facts only; screens may word them differently.
@@ -395,11 +410,11 @@ export function sourceLabel(ref: EffectSourceRef): string {
     case 'base':
       return 'Base'
     case 'castle':
-      return `Castle ${ROMAN[ref.tier - 1]}`
+      return `Castle ${numeral(ref.tier)}`
     case 'building':
-      return `${CODEX.buildings.find((x) => x.id === ref.id)?.name ?? ref.id} ${ROMAN[ref.tier - 1]}`
+      return `${CODEX.buildings.find((x) => x.id === ref.id)?.name ?? ref.id} ${numeral(ref.tier)}`
     case 'crossing':
-      return `${CODEX.crossings.find((x) => x.id === ref.id)?.name ?? ref.id} ${ROMAN[ref.stage - 1]}`
+      return `${CODEX.crossings.find((x) => x.id === ref.id)?.name ?? ref.id} ${numeral(ref.stage)}`
     case 'perk': {
       const crossing = CODEX.crossings.find((x) => x.id === ref.crossing)
       return crossing?.perks.find((p) => p.id === ref.id)?.name ?? crossing?.name ?? ref.id
@@ -413,8 +428,10 @@ export function sourceLabel(ref: EffectSourceRef): string {
     case 'lair':
       return CODEX.lairs.find((l) => l.id === ref.id)?.name ?? ref.id
     case 'grace':
-      return `Grace ${ROMAN[ref.level - 1]}`
+      return `Grace ${numeral(ref.level)}`
     case 'weary':
       return 'Weary'
+    case 'event':
+      return CODEX.events.find((x) => x.id === ref.id)?.name ?? ref.id
   }
 }

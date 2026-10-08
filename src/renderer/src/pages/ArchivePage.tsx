@@ -13,6 +13,9 @@ import type { Contract, WeightUnit } from '../lib/types'
 import { useToday } from '../state/clock'
 import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
+import { CampaignArchive } from '../components/campaign/CampaignArchive'
+import { useCampaignState } from '../state/campaignHooks'
+import { useReputation } from '../state/hooks'
 
 type Filter = 'all' | 'gilded' | 'honored' | 'wanting' | 'open' | 'wager' | 'burned'
 type Sort = 'newest' | 'oldest' | 'reputation' | 'weight'
@@ -86,6 +89,8 @@ export function ArchivePage(): React.JSX.Element {
   const gilded = closed.filter((ev) => ev.grade === 'gilded').length
 
   const selected = archiveId ? evals.find((x) => x.ev.contract.id === archiveId)?.ev : undefined
+  const campaign = useCampaignState()
+  const legacy = useReputation()
   // Wagers and ashes get their own chips only once there are some.
   const hasWagers = evals.some((x) => x.ev.contract.kind === 'wager')
   const hasAsh = evals.some((x) => x.ev.status === 'burned')
@@ -97,6 +102,9 @@ export function ArchivePage(): React.JSX.Element {
         <h1 className="page-title">The Archive</h1>
         <p className="page-sub">Every contract you have sealed, kept in order. Search by month, date, goal, outcome or the words you left at the weigh-in.</p>
       </header>
+
+      {campaign && <CampaignArchive campaign={campaign} />}
+      {campaign && evals.length > 0 && <h2 className="campaign-archive__title">The ledger’s contracts</h2>}
 
       <dl className="archive__stats">
         <div>
@@ -117,6 +125,12 @@ export function ArchivePage(): React.JSX.Element {
           <dt>Contract reputation</dt>
           <dd>{formatRep(fromContracts)}</dd>
         </div>
+        {campaign && (
+          <div>
+            <dt>Ledger reputation, kept as history</dt>
+            <dd>{formatRep(legacy.total)}</dd>
+          </div>
+        )}
       </dl>
 
       <div className="archive__controls">

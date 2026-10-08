@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { todayISO, type ISODate } from '../lib/dates'
+import type { RivalId } from '../lib/game/types'
 
-export type Page = 'chronicle' | 'contract' | 'archive'
+/** The pages; the Realm, Diplomacy and Armory appear only once a campaign is founded (T14). */
+export type Page = 'chronicle' | 'contract' | 'archive' | 'realm' | 'diplomacy' | 'armory'
 
 interface UIState {
   page: Page
@@ -11,11 +13,23 @@ interface UIState {
   archiveId: string | null
   profileOpen: boolean
   settingsOpen: boolean
+  /** The founding wizard (T14). */
+  foundingOpen: boolean
+  /** The Grand Battle screen (T16): a route over the page, not a tab; `replay` plays a fought battle back. */
+  battle: { id: string; replay: boolean } | null
+  /** The rival court Diplomacy shows first, and a hex to offer from it (T15: the hex panel's "buy"). */
+  rivalFocus: { rival: RivalId; hexId?: string } | null
   go(page: Page): void
   setDate(date: ISODate): void
   openArchive(id: string | null): void
   setProfileOpen(open: boolean): void
   setSettingsOpen(open: boolean): void
+  setFoundingOpen(open: boolean): void
+  openBattle(id: string, replay?: boolean): void
+  closeBattle(): void
+  /** Opens Diplomacy at `rival`'s court, with `hexId` picked out in its deals. */
+  goDiplomacy(rival: RivalId, hexId?: string): void
+  setRivalFocus(focus: { rival: RivalId; hexId?: string } | null): void
   /** jump to a day in the Chronicle from anywhere */
   showDay(date: ISODate): void
 }
@@ -26,11 +40,19 @@ export const useUI = create<UIState>((set) => ({
   archiveId: null,
   profileOpen: false,
   settingsOpen: false,
-  go: (page) => set({ page }),
+  foundingOpen: false,
+  rivalFocus: null,
+  battle: null,
+  go: (page) => set({ page, battle: null }),
+  openBattle: (id, replay = false) => set({ battle: { id, replay } }),
+  closeBattle: () => set({ battle: null }),
   setDate: (date) => set({ date }),
   openArchive: (archiveId) => set({ archiveId }),
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setFoundingOpen: (foundingOpen) => set({ foundingOpen }),
+  goDiplomacy: (rival, hexId) => set({ page: 'diplomacy', rivalFocus: { rival, ...(hexId ? { hexId } : {}) } }),
+  setRivalFocus: (rivalFocus) => set({ rivalFocus }),
   showDay: (date) => set({ page: 'chronicle', date, archiveId: null })
 }))
 

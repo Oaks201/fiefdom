@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buyCastleTier, buyCrossing, buyTier, castleOffer, crossingOffer, rivalOf, tierOffer } from '../../src/renderer/src/lib/game/buildings'
+import { buyCastleTier, buyCrossing, buyTier, castleOffer, crossingOffer, tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { dominion } from '../../src/renderer/src/lib/game/map'
+import { dominion, rivalOfRoad } from '../../src/renderer/src/lib/game/map'
 import { crownguardPower, refreshRoster, roster, rosterDetail } from '../../src/renderer/src/lib/game/roster'
 import type { CampaignState, CrossingId } from '../../src/renderer/src/lib/game/types'
 import {
@@ -20,8 +20,8 @@ import {
   withMilestones,
   withPurse
 } from './support/realm'
+import { near } from './support/assert'
 
-const near = (actual: number, expected: number, eps = 1e-9): void => assert.ok(Math.abs(actual - expected) < eps, `${actual} ≠ ${expected}`)
 
 function company(state: CampaignState, id: string) {
   const c = roster(state).find((x) => x.id === id)
@@ -67,7 +67,7 @@ test('Ch 7: tiers are never lost; after Dominion falls only the next tier waits'
 
 test('Ch 7 / A-42: Tier V needs the matching rival resolved and Milestone 6', () => {
   let state = withPurse(withDominion(withBuildings(realm(), { foundry: 4 }), 'foundry', 68), 5_000)
-  assert.equal(rivalOf('foundry'), 'dwarf')
+  assert.equal(rivalOfRoad('foundry'), 'dwarf')
   state = withMilestones(state, 6)
   assert.deepEqual(tierOffer(state, 'foundry').reason, { code: 'rivalUnresolved', rival: 'dwarf' })
 
@@ -97,7 +97,15 @@ test('Ch 7: the Dominion and reputation table for Tiers II to V', () => {
     const base = withPurse(withBuildings(realm(), { mageTower: from }), 10_000)
     assert.deepEqual(tierOffer(withDominion(base, 'mageTower', dom - 1), 'mageTower').reason, { code: 'dominion', needed: dom, have: dom - 1 })
     const offer = tierOffer(withDominion(base, 'mageTower', dom), 'mageTower')
-    assert.deepEqual(offer, { ok: true, next: from + 1, cost })
+    assert.deepEqual(offer, {
+      ok: true,
+      next: from + 1,
+      cost,
+      requirements: [
+        { need: { code: 'dominion', needed: dom, have: dom }, met: true },
+        { need: { code: 'reputation', needed: cost, have: 10_000 }, met: true }
+      ]
+    })
   }
 })
 
@@ -183,11 +191,13 @@ test('Ch 8 / A-31: Trade Roads makes the next Tier III cost 405; with Guild Char
   assert.equal(castleOffer(withCastle(charters, 1)).cost, 250)
 })
 
-test('Ch 7: a campaign that has ended buys nothing', () => {
+test('Ch 7 / Ch 14: a fallen campaign buys nothing; the Reign after a victory still does', () => {
   const state = withPurse(withDominion(realm(), 'barracks', 8), 500)
+  const fallen = { ...state, campaign: { ...state.campaign, status: 'fallen' as const } }
+  assert.deepEqual(buyTier(fallen, 'barracks', TODAY).reason, { code: 'campaignOver' })
+  assert.deepEqual(buyCastleTier(fallen, TODAY).reason, { code: 'campaignOver' })
   const won = { ...state, campaign: { ...state.campaign, status: 'won' as const } }
-  assert.deepEqual(buyTier(won, 'barracks', TODAY).reason, { code: 'campaignOver' })
-  assert.deepEqual(buyCastleTier(won, TODAY).reason, { code: 'campaignOver' })
+  assert.equal(buyTier(won, 'barracks', TODAY).ok, true)
 })
 
 // ── The roster ───────────────────────────────────────────────────────────────

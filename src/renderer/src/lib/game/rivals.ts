@@ -30,39 +30,54 @@
  */
 import { CODEX } from './codex'
 import { addDays, diffDays, weekOf } from './clock'
-import { COMBAT_HOOKS, armyValue, baseArmyValue, defenseFor, effectiveGarrison, planConquest, type Emit } from './combat'
+import { COMBAT_HOOKS, armyValue, band, baseArmyValue, defenseFor, effectiveGarrison, planConquest, withinReach, type Band } from './combat'
 import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
-import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, toRival } from './land'
-import { fronts as rimFronts, hexDistance, isClaimableKind, neighbors } from './map'
+import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, tradeValue } from './land'
+import { borderHexesOf, fronts as rimFronts, hexIndex, isClaimableKind, nearestTo, touches } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle } from './rng'
 import { refreshRoster, roster } from './roster'
+import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
 import type { HostUnitEntry } from './codex'
-import type {
-  CampaignState,
-  Company,
-  DayRecord,
-  Disposition,
-  Effects,
-  FrontId,
-  FrontState,
-  GraceLevel,
-  HexState,
-  ISODate,
-  Owner,
-  Pillars,
-  RivalId,
-  RivalMemory,
-  RivalSpend,
-  RivalState,
-  WeekStartsOn
+import {
+  FRONT_IDS,
+  RIVAL_IDS,
+  type CampaignState,
+  type Company,
+  type DayRecord,
+  type Disposition,
+  type Effects,
+  type Emit,
+  type FrontId,
+  type FrontState,
+  type GraceLevel,
+  type HexState,
+  type ISODate,
+  type Owner,
+  type Pillars,
+  type RivalId,
+  type RivalMemory,
+  type RivalSpend,
+  type RivalState,
+  type WeekStartsOn
 } from './types'
 
-const RIVAL_IDS: readonly RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
-const FRONT_IDS: readonly FrontId[] = ['north', 'south', 'west', 'east']
 const SPENDS: readonly RivalSpend[] = ['army', 'expand', 'fortify', 'special']
+
+/**
+ * Hooks for world events that change a rival's turn from outside (T12). Each default changes
+ * nothing; replace an entry, never reorder or remove one. Hooks must be pure.
+ */
+export interface RivalHooks {
+  /** The share of its budget a rival spends on its army this turn (Fear of the Crown: ×1.1). */
+  armyShare(state: CampaignState, rival: RivalId, day: ISODate, share: number): number
+}
+
+export const RIVAL_HOOKS: RivalHooks = {
+  armyShare: (_state, _rival, _day, share) => share
+}
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
@@ -70,29 +85,18 @@ function sum(values: readonly number[]): number {
   return values.reduce((s, x) => s + x, 0)
 }
 
-function patchRival(state: CampaignState, rival: RivalId, patch: Partial<RivalState>): CampaignState {
-  return { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], ...patch } } }
-}
-
 function patchMemory(state: CampaignState, rival: RivalId, patch: Partial<RivalMemory>): CampaignState {
   const r = state.rivals[rival]
   return patchRival(state, rival, { ai: { ...r.ai, ...patch } })
 }
 
-function replaceHex(state: CampaignState, hex: HexState): CampaignState {
-  return { ...state, hexes: state.hexes.map((h) => (h.id === hex.id ? hex : h)) }
-}
-
-function hexMap(state: CampaignState): Map<string, HexState> {
-  return new Map(state.hexes.map((h) => [h.id, h]))
-}
-
-function touches(byId: Map<string, HexState>, id: string, owner: Owner): boolean {
-  return neighbors(id).some((n) => byId.get(n)?.owner === owner)
-}
-
 function isActive(state: CampaignState, rival: RivalId): boolean {
   return state.rivals[rival].status === 'active'
+}
+
+/** What a hex is worth to a rival choosing where to grow: the Dominion it would give on a road, 2 × ring (A-25). */
+function dominionValue(hex: HexState): number {
+  return RULES.map.dominion.roadPerRing * hex.ring
 }
 
 /** Unspent reputation: the treasury and the special fund it is saving (Ch 12 "treasury"). */
@@ -100,23 +104,10 @@ export function holdings(r: RivalState): number {
   return r.treasury + r.specialFund
 }
 
-function inCoalition(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  return state.coalitions.some((c) => c.members.includes(rival) && (c.until === undefined || day <= c.until))
-}
-
-function coalitionPartners(state: CampaignState, a: RivalId, b: RivalId, day: ISODate): boolean {
-  return state.coalitions.some((c) => c.members.includes(a) && c.members.includes(b) && (c.until === undefined || day <= c.until))
-}
-
-/** An Accord with this rival runs on `date` (Ch 14). */
-function accordOn(state: CampaignState, rival: RivalId, date: ISODate): boolean {
-  const c = state.contracts.active
-  return c !== undefined && c.kind === 'accord' && c.rival === rival && c.startDate <= date && date <= c.endDate
-}
-
 // ── The founding (A-18) ──────────────────────────────────────────────────────
 
-function hostUnits(rival: RivalId): DeepReadonly<HostUnitEntry>[] {
+/** A rival's host companies from its Appendix C list, strongest first (the commander apart). */
+export function hostUnits(rival: RivalId): DeepReadonly<HostUnitEntry>[] {
   const host = CODEX.hosts.find((h) => h.rival === rival)
   if (!host) throw new Error(`The codex has no host for ${rival}`)
   return [...host.companies].sort((a, b) => b.power - a.power)
@@ -133,7 +124,7 @@ function nextCompanyNo(companies: readonly Company[]): number {
 }
 
 /** A company bought from a rival's host list. Host companies carry no tags: they match as their rival's type (Ch 10). */
-function hostCompany(rival: RivalId, unit: DeepReadonly<HostUnitEntry>, n: number): Company {
+export function hostCompany(rival: RivalId, unit: DeepReadonly<HostUnitEntry>, n: number): Company {
   return { id: `${rival}:${unit.id}:${n}`, name: unit.name, source: 'host', power: unit.power, tags: [], reach: unit.reach, items: [] }
 }
 
@@ -268,6 +259,8 @@ export interface ThreatInput {
   averageRivalPower: number
   /** Rivals resolved so far. */
   resolved: number
+  /** What the rivals' falls add, when known by how each fell (Ch 13, A-167); replaces 15 × resolved. */
+  fallout?: number
   /** The player's hexes touching this rival's land. */
   borderHexes: number
   /** The player took this rival's land in the last 4 weeks. */
@@ -278,7 +271,7 @@ export interface ThreatInput {
 export function threatScore(i: ThreatInput): number {
   const t = RULES.rivals.threat
   const ratio = i.averageRivalPower > 0 ? i.playerPower / i.averageRivalPower : t.ratioCap
-  let value = t.ratioWeight * Math.min(t.ratioCap, ratio) + t.perResolved * i.resolved
+  let value = t.ratioWeight * Math.min(t.ratioCap, ratio) + (i.fallout ?? t.perResolved * i.resolved)
   if (i.borderHexes >= t.border.minHexes) value += t.border.bonus
   if (i.tookLand) value += t.recentLand.bonus
   return Math.min(t.max, value)
@@ -340,8 +333,21 @@ export function hostileAct(state: CampaignState, rival: RivalId, day: ISODate, d
 
 /** The player's hexes touching `rival`'s land. */
 export function sharedBorder(state: CampaignState, rival: RivalId): number {
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
   return state.hexes.filter((h) => h.owner === 'player' && touches(byId, h.id, rival)).length
+}
+
+/**
+ * What the rivals' falls add to every Threat (Ch 13 "When a rival falls", A-167): +15 for each
+ * conquered, +10 for each abdicated, +5 for each allied; and +10 for the First Fall's Watcher
+ * while its coalition stands.
+ */
+export function falloutThreat(state: CampaignState, rival: RivalId, day: ISODate): number {
+  const f = RULES.world.fallout
+  const by: Record<RivalState['status'], number> = { active: 0, conquered: f.conqueredThreat, abdicated: f.abdicatedThreat, allied: f.alliedThreat }
+  const falls = sum(RIVAL_IDS.map((r) => by[state.rivals[r].status]))
+  const watcher = state.coalitions.some((c) => c.watcher === rival && (c.until === undefined || day <= c.until))
+  return falls + (watcher ? RULES.world.coalitions.watcherThreat : 0)
 }
 
 /** `rival`'s Threat now (Ch 12): its view of the player's Power against the active rivals' average. */
@@ -353,21 +359,13 @@ export function threatOf(state: CampaignState, rival: RivalId, day: ISODate, eff
     playerPower: playerPower(state, effects),
     averageRivalPower: average,
     resolved: RIVAL_IDS.length - active.length,
+    fallout: falloutThreat(state, rival, day),
     borderHexes: sharedBorder(state, rival),
     tookLand: tookLandFrom(state, rival, day, weeksToDays(RULES.rivals.threat.recentLand.weeks))
   })
 }
 
-// ── Respect (Ch 12) ──────────────────────────────────────────────────────────
-
-/** Changes a rival's Respect by `change`, clamped to 0–100, and posts the change. */
-export function adjustRespect(state: CampaignState, rival: RivalId, change: number, reason: string, emit: Emit): CampaignState {
-  const r = state.rivals[rival]
-  const after = Math.min(RULES.respect.max, Math.max(RULES.respect.min, r.respect + change))
-  if (after === r.respect) return state
-  emit('respect', { rival, change: after - r.respect, reason })
-  return patchRival(state, rival, { respect: after })
-}
+// ── Respect (Ch 12; `adjustRespect` in state.ts changes it) ──────────────────
 
 /** What a rival's Respect opens (Ch 12 thresholds): for T08 (weaker raids), T09 (deals) and T13 (Accords). */
 export interface RespectEffects {
@@ -505,7 +503,7 @@ function oneTurn(input: CampaignState, rival: RivalId, w: RivalWeek, effects: Ef
   const spent: Record<RivalSpend, number> = { army: 0, expand: 0, fortify: 0, special: 0 }
 
   // 3. Army.
-  let step: Spending = buyArmy(state, rival, budget * split.army)
+  let step: Spending = buyArmy(state, rival, budget * RIVAL_HOOKS.armyShare(state, rival, w.day, split.army))
   state = step.state
   spent.army = step.spent
 
@@ -569,13 +567,10 @@ function buyArmy(state: CampaignState, rival: RivalId, allowance: number): Spend
  * here for the neutral hexes touching its land only: claimable, not a Lair Mouth, outside rings 0 to 2.
  */
 function expansionCandidates(state: CampaignState, rival: RivalId): HexState[] {
-  const byId = hexMap(state)
-  const seen = new Set<string>()
-  for (const h of state.hexes) {
-    if (h.owner !== rival) continue
-    for (const n of neighbors(h.id)) if (byId.get(n)?.owner === 'neutral') seen.add(n)
-  }
-  return state.hexes.filter((h) => seen.has(h.id) && isClaimableKind(h) && h.kind !== 'lairMouth' && h.ring > RULES.land.protectedThroughRing)
+  const byId = hexIndex(state.hexes)
+  return state.hexes.filter(
+    (h) => h.owner === 'neutral' && isClaimableKind(h) && h.kind !== 'lairMouth' && h.ring > RULES.land.protectedThroughRing && touches(byId, h.id, rival)
+  )
 }
 
 /**
@@ -591,7 +586,7 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
   let left = allowance
   let spent = 0
   const tried = new Set<string>()
-  const value = (h: HexState): number => RULES.map.dominion.roadPerRing * h.ring
+  const worth = (v: { hex: HexState; bid: number }): number => dominionValue(v.hex) / v.bid
   for (let i = 0; i < ex.targets[rival]; i++) {
     const candidates = expansionCandidates(state, rival).filter((h) => !tried.has(h.id))
     const courting = new Set((state.rivals[rival].ai?.courting ?? []).map((c) => c.hexId))
@@ -600,7 +595,7 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
       .map((hex) => ({ hex, bid: ex.villageBidMult[rival] * resistance(hex) }))
       .filter((v) => v.bid > 0 && v.bid <= left)
     if (villages.length > 0) {
-      const best = villages.reduce((a, b) => (value(b.hex) / b.bid > value(a.hex) / a.bid || (value(b.hex) / b.bid === value(a.hex) / a.bid && b.hex.ring > a.hex.ring) ? b : a))
+      const best = villages.reduce((a, b) => (worth(b) > worth(a) || (worth(b) === worth(a) && b.hex.ring > a.hex.ring) ? b : a))
       tried.add(best.hex.id)
       const r = state.rivals[rival]
       state = patchRival(state, rival, {
@@ -644,9 +639,9 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number):
   const cap = fortificationCap(rival)
   const order = new Map(state.hexes.map((h, i) => [h.id, i]))
   for (;;) {
-    const byId = hexMap(state)
-    const candidates = state.hexes
-      .filter((h) => h.owner === rival && isClaimableKind(h) && h.fortification < cap && neighbors(h.id).some((n) => byId.has(n) && byId.get(n)?.owner !== rival))
+    const byId = hexIndex(state.hexes)
+    const candidates = borderHexesOf(state.hexes, rival)
+      .filter((h) => isClaimableKind(h) && h.fortification < cap)
       .map((h) => ({ hex: h, facing: touches(byId, h.id, 'player'), cost: rivalFortificationCost(h.fortification + 1, h.ring, mult) }))
       .filter((c) => c.cost <= left)
       .sort(
@@ -668,19 +663,14 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number):
 
 /** Whether `rival` would strike the player now: not at Peace, and no Truce, pact or Accord in force tomorrow. */
 function hostileNow(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  const tomorrow = addDays(day, 1)
-  return state.rivals[rival].disposition.player !== 'peace' && !blocksConquest(state, rival, tomorrow) && !accordOn(state, rival, tomorrow)
+  return state.rivals[rival].disposition.player !== 'peace' && !blocksConquest(state, rival, addDays(day, 1))
 }
 
-/** The player's border hexes (rings 1 to 5) nearest `rival`'s land, ties drawn. */
+/** The player's border hex (rings 1 to 5) nearest `rival`'s land, ties drawn. */
 function nearestBorderHex(state: CampaignState, rival: RivalId, day: ISODate, label: string): string | undefined {
-  const byId = hexMap(state)
-  const border = state.hexes.filter((h) => h.owner === 'player' && isClaimableKind(h) && neighbors(h.id).some((n) => byId.has(n) && byId.get(n)?.owner !== 'player'))
-  const land = state.hexes.filter((h) => h.owner === rival)
-  if (border.length === 0 || land.length === 0) return undefined
-  const distance = (h: HexState): number => Math.min(...land.map((l) => hexDistance(h.id, l.id)))
-  const nearest = Math.min(...border.map(distance))
-  return pick(state.campaign.seed, day, label, border.filter((h) => distance(h) === nearest).map((h) => h.id))
+  const border = borderHexesOf(state.hexes, 'player').filter(isClaimableKind)
+  const nearest = nearestTo(border, state.hexes.filter((h) => h.owner === rival))
+  return nearest.length > 0 ? pick(state.campaign.seed, day, label, nearest.map((h) => h.id)) : undefined
 }
 
 /**
@@ -695,12 +685,6 @@ function warhostFund(state: CampaignState, w: RivalWeek): { state: CampaignState
   if (!hexId) return { state }
   w.emit('rivalNews', { rival: 'orc', news: 'warhost', hexId })
   return { state: patchRival(state, 'orc', { specialFund: 0 }), warhost: { rival: 'orc', hexId, day: w.day } }
-}
-
-/** A hex's trade price with its holder's greed: 50 × ring × greed, ×1.5 for a village (Ch 6). */
-function rivalTradePrice(holder: RivalId, hex: HexState): number {
-  const t = RULES.trade
-  return t.hexPricePerRing * hex.ring * t.greed[holder] * (hex.village ? t.villageMult : 1)
 }
 
 /**
@@ -727,7 +711,7 @@ function market(input: CampaignState, w: RivalWeek): CampaignState {
 
   const last = state.rivals.goblin.ai?.marketWeek
   if (last !== undefined && w.week - last < RULES.rivalAi.marketEveryWeeks) return state
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
   const fund = state.rivals.goblin.specialFund
   const offers = state.hexes
     .filter((h) => {
@@ -736,11 +720,10 @@ function market(input: CampaignState, w: RivalWeek): CampaignState {
       if (h.ring <= RULES.land.protectedThroughRing || !touches(byId, h.id, 'goblin')) return false
       return state.rivals.goblin.disposition[h.owner] !== 'war'
     })
-    .map((hex) => ({ hex, seller: hex.owner as RivalId, price: rivalTradePrice(hex.owner as RivalId, hex) }))
+    .map((hex) => ({ hex, seller: hex.owner as RivalId, price: tradeValue(hex.owner as RivalId, hex) }))
     .filter((o) => o.price <= fund)
   if (offers.length === 0) return state
-  const value = (h: HexState): number => RULES.map.dominion.roadPerRing * h.ring
-  const best = offers.reduce((a, b) => (value(b.hex) / b.price > value(a.hex) / a.price ? b : a))
+  const best = offers.reduce((a, b) => (dominionValue(b.hex) / b.price > dominionValue(a.hex) / a.price ? b : a))
   state = patchRival(state, 'goblin', { specialFund: fund - best.price })
   state = patchMemory(state, 'goblin', { marketWeek: w.week })
   state = patchRival(state, best.seller, { treasury: state.rivals[best.seller].treasury + best.price })
@@ -787,7 +770,7 @@ function rituals(input: CampaignState, w: RivalWeek): CampaignState {
       return patchMemory(state, 'archmage', { veilUntil: until })
     }
     case 'summoning': {
-      const byId = hexMap(state)
+      const byId = hexIndex(state.hexes)
       const spots = state.hexes.filter(
         (h) => h.owner === 'neutral' && isClaimableKind(h) && h.kind !== 'lairMouth' && !h.village && !h.mythic && touches(byId, h.id, 'player')
       )
@@ -880,14 +863,15 @@ function planConquests(input: CampaignState, rival: RivalId, w: RivalWeek, effec
   if (input.rivals[rival].disposition.player !== 'war' || w.week + 1 < RULES.combat.noConquestBeforeWeek) return input
   let state = input
   const rules = RULES.rivals.conquestAttempt
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
   const targeted = new Set<string>()
   for (let i = 0; i < ai.conquestPlansPerWeek; i++) {
     const offset = int(state.campaign.seed, w.day, `conquest:${rival}:day:${i}`, ai.conquestDays.min, ai.conquestDays.max)
     const date = addDays(w.day, offset)
     const av = armyValue(state, rival, date)
+    const reach = COMBAT_HOOKS.conquestReach(state, rival, date)
     const targets = state.hexes
-      .filter((h) => h.owner === 'player' && h.ring >= RULES.combat.conquestMinRing && h.status !== 'contested' && !targeted.has(h.id) && touches(byId, h.id, rival))
+      .filter((h) => h.owner === 'player' && h.ring >= RULES.combat.conquestMinRing && h.status !== 'contested' && !targeted.has(h.id) && withinReach(state, byId, h.id, rival, reach))
       .map((h) => ({ hex: h, defense: defenseFor(state, { hexId: h.id, kind: 'conquest', rival, valor: w.valor, day: date }, effects).defense }))
       .filter((t) => rules.armyShare * av >= rules.defenseShare * t.defense)
     if (targets.length === 0) break
@@ -922,7 +906,7 @@ export function rivalBidsAtClose(input: CampaignState, day: ISODate): CampaignSt
     state = patchMemory(state, rival, { courting: courting.filter((c) => !joining.includes(c)) })
   }
 
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
   for (const rival of RIVAL_IDS) {
     if (!isActive(state, rival)) continue
     const own = due.filter((c) => byId.get(c.hexId)?.owner === rival)
@@ -1006,7 +990,7 @@ export function frontWarChance(front: FrontId): number {
 /**
  * Draws each front's state for the coming week from the seed (A-144): War at its war chance, then
  * Peace or Tension. A call to arms in force holds it at War; a front between coalition partners
- * is never at War; a front with a resolved rival is at Peace.
+ * (Ch 13) or with a resolved rival is at Peace.
  */
 export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
   let state = input
@@ -1019,8 +1003,7 @@ export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
     const u = draw(state.campaign.seed, w.day, `front:${id}`)
     let next: Disposition = u < p ? 'war' : u < p + (1 - p) * RULES.rivalAi.frontPeaceShareOfRest ? 'peace' : 'tension'
     if (calls.some((c) => (c.rival === a && c.target === b) || (c.rival === b && c.target === a))) next = 'war'
-    if (next === 'war' && coalitionPartners(state, a, b, tomorrow)) next = 'tension'
-    if (!isActive(state, a) || !isActive(state, b)) next = 'peace'
+    if (coalitionPartners(state, a, b, tomorrow) || !isActive(state, a) || !isActive(state, b)) next = 'peace'
     if (next !== front.state) w.emit('front', { front: id, state: next, track: front.track })
     state = withTrack(state, front, front.track, next)
   }
@@ -1035,19 +1018,16 @@ export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
  * (ties drawn). Never a Gate, a capital, a Lair Mouth, a hex in rings 0 to 2 or a player's hex.
  */
 export function borderCampaignTarget(state: CampaignState, attacker: RivalId, defender: RivalId, front: FrontId, day: ISODate): HexState | undefined {
-  const byId = hexMap(state)
+  const byId = hexIndex(state.hexes)
   const eligible = state.hexes.filter(
     (h) => h.owner === defender && isClaimableKind(h) && h.kind !== 'gate' && h.kind !== 'capital' && h.kind !== 'lairMouth' && h.ring > RULES.land.protectedThroughRing
   )
   if (eligible.length === 0) return undefined
   const touching = eligible.filter((h) => touches(byId, h.id, attacker))
   if (touching.length > 0) return touching.reduce((a, b) => (effectiveGarrison(b) < effectiveGarrison(a) ? b : a))
-  const fields = rimFronts().find((f) => f.front === front)?.battlefields ?? []
-  if (fields.length === 0) return undefined
-  const distance = (h: HexState): number => Math.min(...fields.map((f) => hexDistance(h.id, f)))
-  const nearest = Math.min(...eligible.map(distance))
-  const id = pick(state.campaign.seed, day, `borderCampaign:${front}:target`, eligible.filter((h) => distance(h) === nearest).map((h) => h.id))
-  return byId.get(id)
+  const nearest = nearestTo(eligible, rimFronts().find((f) => f.front === front)?.battlefields ?? [])
+  if (nearest.length === 0) return undefined
+  return byId.get(pick(state.campaign.seed, day, `borderCampaign:${front}:target`, nearest.map((h) => h.id)))
 }
 
 /**
@@ -1087,7 +1067,7 @@ export function borderCampaigns(input: CampaignState, w: RivalWeek): CampaignSta
 // ── What the player sees (Ch 12) ─────────────────────────────────────────────
 
 export type TreasuryBand = 'meager' | 'modest' | 'prosperous' | 'mighty'
-export type ArmyBand = 'weaker' | 'matched' | 'stronger' | 'overwhelming'
+export type ArmyBand = Band
 
 /** A rival as the Diplomacy screen may show it. Numbers other than Respect appear only when revealed. */
 export interface RivalView {
@@ -1117,12 +1097,7 @@ export function treasuryBand(amount: number): TreasuryBand {
 
 /** Weaker below 0.8×, Matched to 1.25×, Stronger to 2×, Overwhelming above (A-24). */
 export function armyBand(rivalArmy: number, playerArmy: number): ArmyBand {
-  const [matched, stronger, overwhelming] = RULES.rivals.armyBands
-  const ratio = playerArmy > 0 ? rivalArmy / playerArmy : Number.POSITIVE_INFINITY
-  if (ratio < matched) return 'weaker'
-  if (ratio <= stronger) return 'matched'
-  if (ratio <= overwhelming) return 'stronger'
-  return 'overwhelming'
+  return band(rivalArmy, playerArmy, RULES.rivals.armyBands)
 }
 
 /** A neighbor: its land touches the player's. */

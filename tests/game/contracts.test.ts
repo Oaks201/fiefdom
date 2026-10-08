@@ -9,7 +9,6 @@ import {
   payoutCurve,
   pledgeCap,
   pledgeReturn,
-  respiteBankCap,
   seal,
   settleContract,
   spendRespite,
@@ -21,10 +20,12 @@ import {
   type SealRequest
 } from '../../src/renderer/src/lib/game/contracts'
 import { balance, roundPosting } from '../../src/renderer/src/lib/game/economy'
+import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { CampaignError } from '../../src/renderer/src/lib/game/errors'
 import { consistency, termsOf } from '../../src/renderer/src/lib/game/score'
 import { t } from '../../src/renderer/src/lib/game/text'
 import type { BuildingId, BuildingTier, ContractsState, PurseState } from '../../src/renderer/src/lib/game/types'
+import { realm, withBuildings } from './support/realm'
 import { MONDAY, days, workedExampleWeek } from './support/worked-example'
 
 const CHARTER = { stepPool: 50_000, calorieLimit: 2_000, duties: ['Read', 'Stretch', 'Water'] }
@@ -37,8 +38,14 @@ function buildings(tier: BuildingTier = 1): Record<BuildingId, BuildingTier> {
 }
 
 function ctx(over: Partial<SealContext> = {}): SealContext {
-  return { today: SUNDAY, buildings: buildings(2), castleTier: 3, merchantHallTier: 1, floor: 1_550, ...over }
+  return { today: SUNDAY, buildings: buildings(2), castleTier: 3, pledgeCapMult: 1, floor: 1_550, ...over }
 }
+
+/** What paying reads from a realm with no Merchant Hall pledge rules yet. */
+const PAY = { minPledgeReturn: 0, bonus: 0 }
+
+/** The realm's pledge rules with the Merchant Hall at `tier` (Ch 4, Ch 7). */
+const merchantHall = (tier: number) => realmEffects(withBuildings(realm(), { merchantHall: tier }))
 
 const purseOf = (amount: number): PurseState => ({ events: [{ id: 'seed', date: SUNDAY, kind: 'earn', amount, source: 'test' }] })
 
@@ -56,9 +63,9 @@ test('Test 1: Ch 4 worked example pays 80.68 (posted 80.7); a 70 pledge returns 
   assert.ok(near(q, 0.893968, 1e-6), `Q = ${q}`)
   assert.ok(near(payoutCurve(q), 0.82328, 1e-6), `f = ${payoutCurve(q)}`)
   assert.ok(near(contractPayout(7, q), 80.68, 0.01))
-  assert.ok(near(pledgeReturn(70, q, 1), 115.26, 0.01))
+  assert.ok(near(pledgeReturn(70, q, 0), 115.26, 0.01))
 
-  const paid = settleContract(sealed.contracts, sealed.purse, q, { date: '2026-10-11', merchantHallTier: 1, bonus: 0 })
+  const paid = settleContract(sealed.contracts, sealed.purse, q, { ...PAY, date: '2026-10-11' })
   const posted = paid.purse.events.slice(-2).map((e) => [e.kind, e.amount, e.source])
   assert.deepEqual(posted, [
     ['earn', 80.7, 'contract:c1'],
@@ -114,7 +121,7 @@ test('Lengths unlock: 7 days at any building Tier II, 14 at Castle II, 30 at Cas
 test('Withdrawal on day 4 of a 7-day contract at Q = 0.9 pays 33.3 and returns half the pledge (Ch 4 rule 3)', () => {
   assert.ok(near(withdrawalPayout(4, 0.9), 33.33, 0.01))
   const sealed = sealOne({ pledge: 40 })
-  const out = withdraw(sealed.contracts, sealed.purse, 0.9, { date: '2026-10-08', merchantHallTier: 1, bonus: 0 })
+  const out = withdraw(sealed.contracts, sealed.purse, 0.9, { ...PAY, date: '2026-10-08' })
   assert.deepEqual(
     out.purse.events.slice(-2).map((e) => [e.kind, e.amount]),
     [
@@ -132,7 +139,7 @@ test('Withdrawing lets the queued contract start at the next dawn (Ch 2 rule 1)'
   const second = sealOne({ id: 'c2', termDays: 3 }, {}, first.purse, first.contracts)
   assert.equal(second.contract.status, 'queued')
   assert.equal(second.contract.startDate, '2026-10-12')
-  const out = withdraw(second.contracts, second.purse, 0.9, { date: '2026-10-08', merchantHallTier: 1, bonus: 0 })
+  const out = withdraw(second.contracts, second.purse, 0.9, { ...PAY, date: '2026-10-08' })
   assert.equal(out.contracts.active?.id, 'c2')
   assert.equal(out.contracts.active?.status, 'active')
   assert.equal(out.contracts.active?.startDate, '2026-10-09')
@@ -153,18 +160,19 @@ test('Sealing copies the Charter, and one contract runs while at most one waits 
   assert.equal(second.contracts.queued?.id, 'c2')
   assert.throws(() => sealOne({ id: 'c3' }, {}, second.purse, second.contracts), /already queued/)
   // Paying the first lets the queued one run.
-  const paid = settleContract(second.contracts, second.purse, 1, { date: '2026-10-11', merchantHallTier: 1, bonus: 0 })
+  const paid = settleContract(second.contracts, second.purse, 1, { ...PAY, date: '2026-10-11' })
   assert.equal(paid.contracts.active?.id, 'c2')
-  assert.throws(() => settleContract(paid.contracts, paid.purse, 1, { date: '2026-10-12', merchantHallTier: 1, bonus: 0 }), /runs until/)
+  assert.throws(() => settleContract(paid.contracts, paid.purse, 1, { ...PAY, date: '2026-10-12' }), /runs until/)
 })
 
 test('A pledge above the balance is refused, and the cap is 10 × days, ×1.5 at Merchant Hall III (Ch 4)', () => {
   assert.throws(() => sealOne({ pledge: 31 }, {}, purseOf(30)), CampaignError)
   assert.throws(() => sealOne({ pledge: 71 }), CampaignError)
-  assert.equal(pledgeCap(7, 1, 500), 70)
-  assert.equal(pledgeCap(7, 3, 500), 105)
-  assert.equal(pledgeCap(7, 3, 50), 50)
-  const sealed = sealOne({ pledge: 105 }, { merchantHallTier: 3 })
+  const [mhI, mhIII] = [merchantHall(1).pledgeCap.value, merchantHall(3).pledgeCap.value]
+  assert.equal(pledgeCap(7, mhI, 500), 70)
+  assert.equal(pledgeCap(7, mhIII, 500), 105)
+  assert.equal(pledgeCap(7, mhIII, 50), 50)
+  const sealed = sealOne({ pledge: 105 }, { pledgeCapMult: mhIII })
   assert.equal(balance(sealed.purse), 395)
   assert.deepEqual(
     [sealed.purse.events.at(-1)?.kind, sealed.purse.events.at(-1)?.amount, sealed.purse.events.at(-1)?.source],
@@ -173,14 +181,15 @@ test('A pledge above the balance is refused, and the cap is 10 × days, ×1.5 at
 })
 
 test('Merchant Hall IV guarantees at least half the pledge back (Ch 4)', () => {
-  assert.equal(pledgeReturn(70, 0.3, 3), 0)
-  assert.equal(pledgeReturn(70, 0.3, 4), 35)
-  assert.ok(near(pledgeReturn(70, 0.9, 4), 70 * 2 * payoutCurve(0.9), 1e-9))
+  const [mhIII, mhIV] = [merchantHall(3).minPledgeReturn.value, merchantHall(4).minPledgeReturn.value]
+  assert.equal(pledgeReturn(70, 0.3, mhIII), 0)
+  assert.equal(pledgeReturn(70, 0.3, mhIV), 35)
+  assert.ok(near(pledgeReturn(70, 0.9, mhIV), 70 * 2 * payoutCurve(0.9), 1e-9))
 })
 
 test('The reputation bonus raises a contract payout but not the pledge return', () => {
   const sealed = sealOne({ pledge: 70 })
-  const paid = settleContract(sealed.contracts, sealed.purse, 1, { date: '2026-10-11', merchantHallTier: 1, bonus: 0.02 })
+  const paid = settleContract(sealed.contracts, sealed.purse, 1, { ...PAY, date: '2026-10-11', bonus: 0.02 })
   assert.equal(paid.outcome.payout, 100)
   assert.equal(paid.outcome.pledgeReturn, 140)
 })
@@ -244,9 +253,7 @@ test('Respite moves a queued contract back with the running one', () => {
 })
 
 test('Respite is earned once per 7 days played and the bank never exceeds its cap (Ch 4 rule 4)', () => {
-  assert.equal(respiteBankCap(1, false), 4)
-  assert.equal(respiteBankCap(3, false), 5)
-  assert.equal(respiteBankCap(5, true), 7)
+  // The cap itself (4, 5 at Mage Tower III, …) is realmEffects().respiteBank, tested in effects.test.ts.
   let state = EMPTY
   for (let day = 1; day <= 100; day++) {
     state = earnRespite(state, day, 4)
@@ -259,7 +266,7 @@ test('Respite is earned once per 7 days played and the bank never exceeds its ca
 test('A withdrawn contract does not pay for its Respite days', () => {
   const sealed = sealOne()
   const after = spendRespite({ ...sealed.contracts, respiteBank: 1 }, '2026-10-07', '2026-10-08')
-  const out = withdraw(after, sealed.purse, 1, { date: '2026-10-08', merchantHallTier: 1, bonus: 0 })
+  const out = withdraw(after, sealed.purse, 1, { ...PAY, date: '2026-10-08' })
   assert.equal(out.outcome.payout, 30)
 })
 
@@ -267,7 +274,7 @@ test('A withdrawn contract does not pay for its Respite days', () => {
 
 test('Late data only helps: a lower Q posts nothing; a higher Q posts an adjust for the difference (Ch 2 rule 5, A-02)', () => {
   const sealed = sealOne({ pledge: 70 })
-  const pay = { date: '2026-10-11', merchantHallTier: 1, bonus: 0 }
+  const pay = { ...PAY, date: '2026-10-11' }
   const paid = settleContract(sealed.contracts, sealed.purse, 0.85, pay)
   const before = balance(paid.purse)
 
@@ -277,7 +284,7 @@ test('Late data only helps: a lower Q posts nothing; a higher Q posts an adjust 
   assert.equal(lower.contracts, paid.contracts)
 
   const higher = lateCorrection(paid.contracts, paid.purse, 'c1', 0.9, { ...pay, date: '2026-10-12' })
-  const expected = roundPosting(contractPayout(7, 0.9)) + roundPosting(pledgeReturn(70, 0.9, 1)) - paid.outcome.payout - paid.outcome.pledgeReturn
+  const expected = roundPosting(contractPayout(7, 0.9)) + roundPosting(pledgeReturn(70, 0.9, 0)) - paid.outcome.payout - paid.outcome.pledgeReturn
   assert.ok(near(higher.adjustment, expected, 1e-9))
   assert.deepEqual(
     [higher.purse.events.at(-1)?.kind, higher.purse.events.at(-1)?.source],
@@ -297,15 +304,15 @@ test('An Accord is sealed and paid exactly like a 30-day contract, and reports i
   assert.throws(() => sealOne({ kind: 'accord', termDays: 30, rival: 'orc' }, { castleTier: 2 }), CampaignError)
   const sealed = sealOne({ kind: 'accord', termDays: 30, rival: 'orc', pledge: 100 })
   assert.equal(sealed.contract.endDate, '2026-11-03')
-  const paid = settleContract(sealed.contracts, sealed.purse, 0.9, { date: '2026-11-03', merchantHallTier: 1, bonus: 0 })
+  const paid = settleContract(sealed.contracts, sealed.purse, 0.9, { ...PAY, date: '2026-11-03' })
   assert.equal(paid.outcome.payout, roundPosting(contractPayout(30, 0.9)))
-  assert.equal(paid.outcome.pledgeReturn, roundPosting(pledgeReturn(100, 0.9, 1)))
+  assert.equal(paid.outcome.pledgeReturn, roundPosting(pledgeReturn(100, 0.9, 0)))
   assert.deepEqual(paid.accord, { contractId: 'c1', rival: 'orc', curve: payoutCurve(0.9) })
   assert.ok(near(accordRespectGain(paid.accord!.curve, 74), 50 * payoutCurve(0.9), 1e-9))
   assert.ok(near(accordRespectGain(paid.accord!.curve, 75), 60 * payoutCurve(0.9), 1e-9))
   // A standard contract carries no Accord hook.
   const standard = sealOne()
-  assert.equal(settleContract(standard.contracts, standard.purse, 1, { date: '2026-10-11', merchantHallTier: 1, bonus: 0 }).accord, undefined)
+  assert.equal(settleContract(standard.contracts, standard.purse, 1, { ...PAY, date: '2026-10-11' }).accord, undefined)
 })
 
 // ── The Steward's Counsel ────────────────────────────────────────────────────

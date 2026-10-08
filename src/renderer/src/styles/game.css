@@ -1,0 +1,728 @@
+/* ==========================================================================
+   The campaign (T14): art slots, the big-moment card, the Herald, the Homecoming,
+   the founding wizard, the campaign Contract page, the Chronicle's realm panels,
+   the Milestones, the Archive's campaign cards and the page shells.
+   ========================================================================== */
+
+/* -- Art slots ------------------------------------------------------------ */
+.game-art {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.game-art--placeholder {
+  filter: drop-shadow(0 2px 2px rgba(42, 26, 12, 0.25));
+}
+
+/* -- The big-moment card -------------------------------------------------- */
+.moment {
+  z-index: 60;
+  background: radial-gradient(circle at 50% 40%, rgba(40, 22, 8, 0.82), rgba(10, 5, 2, 0.94));
+}
+
+.moment__card {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 18px;
+  width: min(1000px, 92vw);
+  max-height: 92vh;
+  padding: 22px;
+  background: var(--tex-parchment) center / cover, var(--paper);
+  border: 3px solid var(--gold-deep);
+  border-radius: 16px;
+  box-shadow: 0 0 0 6px rgba(201, 150, 46, 0.35), 0 30px 60px rgba(0, 0, 0, 0.6);
+  animation: modal-in 0.35s ease-out;
+}
+
+.moment__art {
+  width: 100%;
+  max-height: 56vh;
+  object-fit: contain;
+}
+
+.moment__words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.moment__title {
+  font: 700 32px var(--font-caps);
+  color: var(--crimson);
+}
+
+.moment__body {
+  max-width: 60ch;
+  color: var(--ink-2);
+}
+
+/* -- The Herald ----------------------------------------------------------- */
+.herald__section + .herald__section {
+  margin-top: 10px;
+}
+
+.herald__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font: 700 14px var(--font-caps);
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.herald__lines {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.herald__line {
+  padding: 3px 0 3px 12px;
+  border-left: 2px solid var(--rule-soft);
+  font-size: 16px;
+}
+
+.herald__section--threat .herald__line {
+  border-left-color: var(--crimson-hi);
+}
+
+.herald__section--warning .herald__line {
+  border-left-color: var(--amber);
+}
+
+/* -- The Homecoming ------------------------------------------------------- */
+.modal--homecoming {
+  width: min(720px, 100%);
+}
+
+.homecoming {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.homecoming__lede {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.homecoming__totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0;
+}
+
+.homecoming__totals div {
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: rgba(255, 249, 232, 0.4);
+}
+
+.homecoming__totals dt {
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.homecoming__totals dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 700 22px var(--font-caps);
+}
+
+.homecoming__days {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.homecoming__day {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 0.8fr;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: 16px;
+}
+
+.homecoming__change {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.homecoming__lost {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+}
+
+/* -- Healer cards --------------------------------------------------------- */
+.healer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.healer-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--ink-2);
+  background: rgba(47, 116, 64, 0.08);
+  border: 1px solid rgba(47, 116, 64, 0.3);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+}
+
+.healer-card svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--forest);
+}
+
+/* -- The founding wizard -------------------------------------------------- */
+.modal--founding {
+  width: min(860px, 100%);
+}
+
+.wizard__steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.wizard__steps li {
+  flex: 1;
+  padding: 6px 10px;
+  font: 700 14px var(--font-caps);
+  color: var(--ink-3);
+  border-bottom: 3px solid var(--rule-soft);
+  counter-increment: step;
+}
+
+.wizard__steps li::before {
+  content: counter(step) '. ';
+}
+
+.wizard__steps li.is-on {
+  color: var(--crimson);
+  border-bottom-color: var(--crimson);
+}
+
+.wizard__steps li.is-done {
+  color: var(--ink-2);
+  border-bottom-color: var(--gold);
+}
+
+.wizard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 260px;
+}
+
+.wizard__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.wizard__floor strong {
+  font: 700 24px var(--font-caps);
+  color: var(--crimson);
+}
+
+.wizard__duties {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.wizard__duties legend {
+  padding: 0 6px;
+  font: 700 15px var(--font-caps);
+}
+
+.wizard__duties ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.wizard__check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 16px;
+}
+
+.wizard__seal {
+  align-items: center;
+  justify-content: center;
+}
+
+.wizard__summary {
+  align-self: stretch;
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* -- The campaign Contract page ------------------------------------------- */
+.campaign-contract {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.campaign-contract__cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.campaign-contract__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deed--campaign {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.length-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.length {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  background: rgba(255, 249, 232, 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.length.is-on {
+  border-color: var(--crimson);
+  box-shadow: inset 0 0 0 2px var(--crimson);
+}
+
+.length.is-locked {
+  opacity: 0.55;
+}
+
+.length__days {
+  font: 700 17px var(--font-caps);
+}
+
+.length__mult {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.length__note {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.charter__title {
+  font: 700 18px var(--font-caps);
+}
+
+.pledge {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payout-preview {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.payout-preview caption {
+  text-align: left;
+  font: 700 14px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.payout-preview th,
+.payout-preview td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--rule-soft);
+  text-align: right;
+}
+
+.payout-preview th:first-child,
+.payout-preview td:first-child {
+  text-align: left;
+}
+
+.running {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 30px;
+}
+
+.running .status-ribbon {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.running__score {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.running__q {
+  font: 700 36px var(--font-caps);
+  color: var(--crimson);
+}
+
+.running__respite {
+  display: flex;
+  gap: 8px;
+}
+
+.pillars,
+.valor__parts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pillars li,
+.valor__parts li {
+  display: grid;
+  grid-template-columns: 110px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 15px;
+}
+
+.pillars__bar,
+.valor__bar {
+  position: relative;
+  height: 10px;
+  background: rgba(92, 58, 24, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pillars__bar::after,
+.valor__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+
+.valor__parts li {
+  --fill: 0;
+}
+
+.valor__parts li .valor__bar::after {
+  width: calc(var(--fill) * 100%);
+}
+
+.pillars__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- The Chronicle's realm panels ----------------------------------------- */
+.campaign-week {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.weekbar__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font: 700 15px var(--font-caps);
+}
+
+.weekbar__track {
+  position: relative;
+  height: 14px;
+  background: rgba(92, 58, 24, 0.12);
+  border-radius: 8px;
+}
+
+.weekbar__track::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  background: linear-gradient(90deg, var(--forest), #5aa86b);
+  border-radius: 8px;
+}
+
+.weekbar__track--calories::before {
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+
+.weekbar__mark,
+.weekbar__floor {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.weekbar__mark {
+  left: calc(var(--mark, 0) * 100%);
+}
+
+.weekbar__floor {
+  left: calc(var(--floor, 0) * 100%);
+  background: var(--forest);
+}
+
+.weekbar__text {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.pace--ahead {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.pace--behind {
+  color: var(--ink-3);
+}
+
+.gentle {
+  color: var(--forest);
+}
+
+.chronicle__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chronicle__realm {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.chronicle__realm-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* -- Milestones ----------------------------------------------------------- */
+.milestones__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.milestone {
+  display: grid;
+  grid-template-columns: 26px 92px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: 15px;
+}
+
+.milestone__index {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font: 700 13px var(--font-caps);
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+}
+
+.milestone.is-broken .milestone__index {
+  color: #fff4d6;
+  background: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+.milestone.is-next {
+  background: rgba(201, 150, 46, 0.12);
+}
+
+.milestone__mark {
+  font-weight: 700;
+}
+
+.milestone__state {
+  color: var(--ink-3);
+}
+
+.lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lock.is-met {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.milestones__grace {
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* -- The Archive's campaign cards ----------------------------------------- */
+.campaign-archive {
+  margin-bottom: 18px;
+}
+
+.campaign-archive__title {
+  margin: 6px 0 10px;
+  font: 700 20px var(--font-caps);
+}
+
+.campaign-card {
+  padding: 12px 14px;
+  background: rgba(255, 249, 232, 0.5);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+}
+
+.campaign-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.campaign-card__status {
+  margin-left: auto;
+  font: 700 12px var(--font-caps);
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.campaign-card__dates {
+  margin: 4px 0 6px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.campaign-card dl {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.campaign-card dt {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.campaign-card dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* -- The top bar with the campaign's six tabs ------------------------------ */
+.reputation--campaign .reputation__label {
+  white-space: nowrap;
+}
+
+.tabs--campaign {
+  gap: 8px;
+}
+
+@media (max-width: 1800px) {
+  .tabs--campaign .tab {
+    gap: 7px;
+    padding: 9px 13px 8px 11px;
+    font-size: 18px;
+  }
+
+  .tabs--campaign .tab__icon {
+    font-size: 21px;
+  }
+}
+
+/* Narrower windows show the tabs' icons; each keeps its name as a tooltip. */
+@media (max-width: 1560px) {
+  .tabs--campaign .tab__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tabs--campaign .tab {
+    padding: 9px 13px 8px;
+  }
+}
+
+.chronicle__side .ledger__weight {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* -- Page shells ---------------------------------------------------------- */
+.game-page__art {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 1100px) {
+  .campaign-contract__cols,
+  .chronicle__realm {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-week {
+    grid-template-columns: 1fr;
+  }
+}

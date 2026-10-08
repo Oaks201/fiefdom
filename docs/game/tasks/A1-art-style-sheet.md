@@ -18,7 +18,7 @@ Lock one art route and one style sheet before any real art is made, so that ever
 1. **Choose the route:** licensed 2D packs, generated images from a locked style sheet, or commissioned art. Write it at the top of `docs/game/art/style-sheet.md`.
 2. **Write the style paragraph:** one paragraph that every prompt or brief reuses word for word. Cover chunky exaggerated shapes, hand-painted brushwork lit from the top left, saturated warm color, a 48 px silhouette, and no photorealism or flat vector art.
 3. **Pick 3 to 5 reference images** you made or licensed (not Blizzard art) and save them in `docs/game/art/reference/`.
-4. **Fix the banner colors** as hex values for the six owners in the Ch 17 table (Player red and gold, Orc crimson, Goblin ochre, Dwarf bronze, Archmage violet, Neutral grey-brown). Put them in the style sheet, and ask an AI to update the placeholder colors in `game.css` (T16) to match.
+4. **Fix the banner colors** as hex values for the six owners in the Ch 17 table (Player red and gold, Orc crimson, Goblin ochre, Dwarf bronze, Archmage violet, Neutral grey-brown). Put them in the style sheet, and ask an AI to update the placeholder colors in `game.css` (T14) to match.
 5. **Make a test set:** one building, one company token, one rival portrait, one hex terrain. Check each against the style sheet side by side, and against the originality rule.
 6. If the route uses licensed packs, record each pack's license and where it allows use, in `docs/game/art/licenses.md`.
 
