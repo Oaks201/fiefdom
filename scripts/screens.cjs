@@ -115,15 +115,23 @@ function launch({ data, port, dev = false, env = {}, stdio = 'ignore', userData 
   const electron = require(path.join(ROOT, 'node_modules', 'electron'))
   const flags = [`--user-data-dir=${userData}`, ...(process.platform === 'linux' && process.getuid?.() === 0 ? ['--no-sandbox'] : [])]
   const fullEnv = { ...process.env, FIEFDOM_DATA_DIR: path.resolve(data), ELECTRON_ENABLE_LOGGING: '0', ...env }
+  // Its own process group outside Windows, so stop() ends the dev server's Electron along with it.
+  const options = { cwd: ROOT, env: fullEnv, stdio, detached: process.platform !== 'win32' }
   return dev
-    ? spawn(process.execPath, [path.join(ROOT, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js'), 'dev', '--remoteDebuggingPort', String(port), '--', ...flags], { cwd: ROOT, env: fullEnv, stdio })
-    : spawn(electron, ['.', `--remote-debugging-port=${port}`, ...flags], { cwd: ROOT, env: fullEnv, stdio })
+    ? spawn(process.execPath, [path.join(ROOT, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js'), 'dev', '--remoteDebuggingPort', String(port), '--', ...flags], options)
+    : spawn(electron, ['.', `--remote-debugging-port=${port}`, ...flags], options)
 }
 
 /** Ends the app and, for the dev server, the Electron it started. */
 async function stop(app) {
   if (process.platform === 'win32') spawn('taskkill', ['/pid', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
-  else app.kill()
+  else {
+    try {
+      process.kill(-app.pid, 'SIGTERM')
+    } catch {
+      app.kill()
+    }
+  }
   await sleep(500)
 }
 

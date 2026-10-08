@@ -95,6 +95,8 @@ const MONTH_WEEKS = RULES.grandBattles.monthWeeks
 const WEEK = RULES.clock.daysPerWeek
 /** Days per campaign on which settlement is repeated to check Test 9. */
 const IDEMPOTENCE_SAMPLES = 6
+/** A violation that already starts with its day. */
+const DATED = /^\d{4}-\d{2}-\d{2}: /
 /** The income check's window (Ch 15). */
 const BOOK_WEEKS = 48
 const TENTH = 10
@@ -166,7 +168,7 @@ export function runCampaign(o: RunOptions): RunResult {
     state = settle(state, ledger, now).state
     // The runtime invariants the app checks in development (T17), settling again on a sample of days (Test 9).
     const sampled = draw(o.seed, today, 'sim:idempotence') < IDEMPOTENCE_SAMPLES / days
-    for (const v of settleViolations({ before, after: state, ledger, now, resettle: sampled })) violations.push(`${today}: ${v}`)
+    for (const v of settleViolations({ before, after: state, ledger, now, resettle: sampled })) violations.push(DATED.test(v) ? v : `${today}: ${v}`)
     // And on the same days, a clock set back a week changes nothing either.
     if (sampled && fingerprint(settle(state, ledger, after(addDays(today, -WEEK))).state) !== fingerprint(state)) violations.push(`${today}: settling with the clock set back changed the campaign`)
     for (const r of RIVAL_IDS) maxAscendancyStreak = Math.max(maxAscendancyStreak, state.rivals[r].ascendancyStreak)
