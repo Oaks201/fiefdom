@@ -66,6 +66,18 @@ test('A-08: a corrupt campaign.json falls back to the newest good backup and the
   assert.equal(fs.existsSync(path.join(dir, 'ledger.json')), false)
 })
 
+test('T17: a deleted campaign.json loads from the newest backup, and the next save restores the file', async () => {
+  const dir = tmpDir()
+  const store = new CampaignFile(dir)
+  await store.save('{"day":1}')
+  await store.save('{"day":2}') // backs up day 1
+  fs.rmSync(path.join(dir, 'campaign.json'))
+  assert.equal(store.load(), '{"day":1}')
+  await store.save('{"day":3}')
+  assert.equal(fs.readFileSync(path.join(dir, 'campaign.json'), 'utf8'), '{"day":3}')
+  assert.equal(new CampaignFile(dir).load(), '{"day":3}')
+})
+
 test('A-08: the newest 30 campaign backups are kept by default', async () => {
   const dir = tmpDir()
   fs.mkdirSync(path.join(dir, 'backups'))
