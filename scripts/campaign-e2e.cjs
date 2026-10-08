@@ -5,11 +5,13 @@
 //
 //   node scripts/campaign-e2e.cjs [--weeks 52] [--out docs/game/screens/t17] [--port 9335] [--keep]
 //
-// - Every 4 weeks it buys a tier, courts a village, sets the day's orders and seals the longest
-//   contract, each through its page; it fights the first Grand Battle by hand from the top bar.
-// - Each day it advances the dev clock one day (the app settles, and in development checks Ch 15's
-//   invariants after every settlement, logging the seed and stopping on a failure), and dismisses
-//   the big-moment cards and the Homecoming.
+// - Every 4 weeks it buys a tier, courts a village and seals the longest contract, each through its
+//   page; it fights the first Grand Battle by hand from the top bar.
+// - Each day it sets the day's orders on the Realm (an assault on the open target with the weakest
+//   garrison, villages last, with as many companies as the assault takes), advances the dev clock
+//   one day (the app settles, and in development checks Ch 15's invariants after every settlement,
+//   logging the seed and stopping on a failure), and dismisses the big-moment cards and the
+//   Homecoming.
 // - It saves screenshots at fixed checkpoints (the founding, every 4 weeks, the hand-fought battle
 //   and the end) and records every console error, uncaught page exception and main-process error.
 // - It writes <out>/e2e-summary.json and exits 1 on any invariant failure or uncaught error.

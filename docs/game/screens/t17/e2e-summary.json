@@ -1,7 +1,7 @@
 {
   "weeks": 52,
   "start": "2026-10-08",
-  "seconds": 549,
+  "seconds": 538,
   "status": "active",
   "consoleErrors": [],
   "pageExceptions": [],
@@ -323,9 +323,9 @@
   "hover": {
     "hexes": 127,
     "commits": 168,
-    "maxMs": 19.5,
-    "p95Ms": 5.1,
-    "meanMs": 1.34
+    "maxMs": 1.3,
+    "p95Ms": 0.7,
+    "meanMs": 0.31
   },
   "end": {
     "status": "active",
