@@ -1,29 +1,19 @@
 import { GiBootPrints, GiHealthPotion, GiKnifeFork, GiLaurelCrown, GiScales, GiSwordman } from 'react-icons/gi'
-import { addDays, diffDays } from '../../lib/dates'
+import { diffDays } from '../../lib/dates'
 import { formatNumber, formatRep } from '../../lib/format'
-import { weekOf } from '../../lib/game/clock'
 import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
-import type { CampaignState, DayRecord, ISODate } from '../../lib/game/types'
-import { calorieWeek, dayEarned, dayProjection, healerCards, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
+import type { CampaignState, ISODate } from '../../lib/game/types'
+import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
 import { weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
 import { WaxSeal } from '../WaxSeal'
 
-/** The ledger's days of `date`'s week up to `date`, as the campaign scores them (live, before settlement). */
-function weekRecords(campaign: CampaignState, ledger: Ledger, date: ISODate): DayRecord[] {
-  const from = weekOf(date, campaign.campaign.weekStartsOn)
-  const start = from > campaign.campaign.startDate ? from : campaign.campaign.startDate
-  const out: DayRecord[] = []
-  for (let d = start; d <= date; d = addDays(d, 1)) out.push(toDayRecord(snapshotDay(ledger, d, charterOn(campaign, d))))
-  return out
-}
-
 /** The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4). */
 export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignState; ledger: Ledger; date: ISODate }): React.JSX.Element {
   const charter = charterOn(campaign, date)
-  const days = weekRecords(campaign, ledger, date)
+  const days = liveWeek(campaign, ledger, date)
   const pace = stepPace(days, charter.stepPool, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
   const cal = calorieWeek(days, charter.calorieLimit, campaign.weight.healerFloor ?? 0, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
   const fill = Math.min(1, pace.walked / pace.pool)
@@ -68,7 +58,7 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
 
 /** Today's Valor so far in its three parts, and the reputation the day earned (or will, at its close). */
 export function ValorPanel({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
-  const days = weekRecords(campaign, ledger, date)
+  const days = liveWeek(campaign, ledger, date)
   const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(campaign, date)))
   const parts = valorParts(day, days, charterOn(campaign, date).stepPool)
   const settled = date <= campaign.settledThrough.day
@@ -126,7 +116,7 @@ export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignS
 
 /** The Healer's check-ins, as calm cards (Ch 16); each shows its approved text, or else its placeholder. */
 export function HealerCards({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
-  const steps = weekRecords(campaign, ledger, today).reduce((s, d) => s + (d.steps ?? 0), 0)
+  const steps = liveWeek(campaign, ledger, today).reduce((s, d) => s + (d.steps ?? 0), 0)
   const cards = healerCards(campaign, today, { stepsThisWeek: steps })
   if (cards.length === 0) return null
   return (

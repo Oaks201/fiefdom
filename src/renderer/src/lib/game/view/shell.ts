@@ -62,9 +62,14 @@ export interface TopBarView {
   grace: { level: GraceLevel; textId: string; text: string }
 }
 
-export function topBarView(state: CampaignState, today: ISODate = openDayOf(state)): TopBarView {
+/** Realm Consistency as of the last settled day (0 before the first): what Trust and the top bar read. */
+export function realmConsistencyNow(state: CampaignState): number {
   const settled = state.settledThrough.day
-  const rc = settled >= state.campaign.startDate ? realmConsistencyOn(state, settled, state.campaign.weekStartsOn) : 0
+  return settled >= state.campaign.startDate ? realmConsistencyOn(state, settled, state.campaign.weekStartsOn) : 0
+}
+
+export function topBarView(state: CampaignState, today: ISODate = openDayOf(state)): TopBarView {
+  const rc = realmConsistencyNow(state)
   const level = state.weight.grace
   return {
     status: state.campaign.status,

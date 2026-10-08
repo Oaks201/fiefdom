@@ -8,7 +8,7 @@ import { addDays, diffDays } from '../clock'
 import { charterLocked, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
 import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, stewardSuggestion, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
-import { realmEffects } from '../effects'
+import { numeral, realmEffects } from '../effects'
 import { snapshotsBetween, toDayRecord } from '../ledgerDays'
 import { RULES } from '../rules'
 import { termsOf, weekPillars, weekScores } from '../score'
@@ -17,7 +17,6 @@ import { openDayOf } from '../state'
 import { t } from '../text'
 import type { CampaignState, Charter, ContractTerm, ISODate, LandContract, Pillars, RivalId } from '../types'
 
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'] // rules-ok: numerals for display
 
 // ── Lengths and pledges ──────────────────────────────────────────────────────
 
@@ -41,10 +40,9 @@ export interface LengthOption {
 
 function requirementOf(unlock: (typeof RULES.contracts.lengths)[number]['unlock']): LengthRequirement | undefined {
   if (unlock.kind === 'start') return undefined
-  const numeral = ROMAN[unlock.tier - 1]
   return unlock.kind === 'castleTier'
-    ? { kind: 'castleTier', tier: unlock.tier, label: `Castle Tier ${numeral}` }
-    : { kind: 'anyBuildingTier', tier: unlock.tier, label: `a building at Tier ${numeral}` }
+    ? { kind: 'castleTier', tier: unlock.tier, label: `Castle Tier ${numeral(unlock.tier)}` }
+    : { kind: 'anyBuildingTier', tier: unlock.tier, label: `a building at Tier ${numeral(unlock.tier)}` }
 }
 
 /** Every contract length (1, 3, 7, 14 and 30 days), unlocked or with its exact requirement. */

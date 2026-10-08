@@ -97,7 +97,15 @@ test('Ch 7: the Dominion and reputation table for Tiers II to V', () => {
     const base = withPurse(withBuildings(realm(), { mageTower: from }), 10_000)
     assert.deepEqual(tierOffer(withDominion(base, 'mageTower', dom - 1), 'mageTower').reason, { code: 'dominion', needed: dom, have: dom - 1 })
     const offer = tierOffer(withDominion(base, 'mageTower', dom), 'mageTower')
-    assert.deepEqual(offer, { ok: true, next: from + 1, cost })
+    assert.deepEqual(offer, {
+      ok: true,
+      next: from + 1,
+      cost,
+      requirements: [
+        { need: { code: 'dominion', needed: dom, have: dom }, met: true },
+        { need: { code: 'reputation', needed: cost, have: 10_000 }, met: true }
+      ]
+    })
   }
 })
 

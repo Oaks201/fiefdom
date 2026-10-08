@@ -10,20 +10,31 @@
 import { addDays, diffDays, weekOf } from '../clock'
 import { dailyIncome, roundPosting } from '../economy'
 import { realmEffects } from '../effects'
-import { snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
+import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
 import { hexLabel } from '../map'
 import { RULES } from '../rules'
 import { dutiesPillar, poolShare, stepsPillar, termsOf, valor, weekScores } from '../score'
-import { snapshotOf } from '../settle'
+import { charterOn, snapshotOf } from '../settle'
 import { openDayOf, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
 import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weekMomentum, type HealerSituation } from '../weight'
 import type { CampaignState, DayRecord, GraceLevel, ISODate, WeekStartsOn, WeighIn } from '../types'
+import type { Ledger } from '../../types'
 
 /** The first day of `today`'s week, never before the campaign's first day (a partial week 1, A-04). */
 function weekFrom(today: ISODate, weekStartsOn: WeekStartsOn, campaignStart?: ISODate): ISODate {
   const start = weekOf(today, weekStartsOn)
   return campaignStart && campaignStart > start ? campaignStart : start
+}
+
+/**
+ * The ledger's days of `date`'s week up to `date` (never before the campaign's first day), as the
+ * campaign scores them: live, before settlement reads them.
+ */
+export function liveWeek(state: CampaignState, ledger: Ledger, date: ISODate): DayRecord[] {
+  const out: DayRecord[] = []
+  for (let d = weekFrom(date, state.campaign.weekStartsOn, state.campaign.startDate); d <= date; d = addDays(d, 1)) out.push(toDayRecord(snapshotDay(ledger, d, charterOn(state, d))))
+  return out
 }
 
 // ── Steps and calories this week ─────────────────────────────────────────────
@@ -94,6 +105,13 @@ export interface ValorParts {
 export function valorParts(day: DayRecord, weekSoFar: readonly DayRecord[], stepPool: number): ValorParts {
   const elapsed = weekSoFar.some((d) => d.date === day.date) ? weekSoFar : [...weekSoFar, day]
   return { duties: dutiesPillar([day]), food: day.eaten !== undefined ? 1 : 0, steps: stepsPillar(elapsed, stepPool), valor: valor(day, weekSoFar, stepPool) }
+}
+
+/** `date`'s Valor so far, from the ledger as it stands (the close reads the day's final Valor). */
+export function liveValor(state: CampaignState, ledger: Ledger, date: ISODate): number {
+  const days = liveWeek(state, ledger, date)
+  const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(state, date)))
+  return valorParts(day, days, charterOn(state, date).stepPool).valor
 }
 
 // ── The weigh-in ─────────────────────────────────────────────────────────────

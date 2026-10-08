@@ -396,6 +396,11 @@ export function mythicMultFor(e: Effects, side?: Land): number {
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V']
 
+/** A tier, stage or level as its Roman numeral (1 → "I"), for labels. */
+export function numeral(n: number): string {
+  return ROMAN[n - 1] ?? String(n)
+}
+
 /**
  * A short label for a source, from codex names and tier numerals ("Castle III", "Foundry III",
  * "Warded Steel"). Plain facts only; screens may word them differently.
@@ -405,11 +410,11 @@ export function sourceLabel(ref: EffectSourceRef): string {
     case 'base':
       return 'Base'
     case 'castle':
-      return `Castle ${ROMAN[ref.tier - 1]}`
+      return `Castle ${numeral(ref.tier)}`
     case 'building':
-      return `${CODEX.buildings.find((x) => x.id === ref.id)?.name ?? ref.id} ${ROMAN[ref.tier - 1]}`
+      return `${CODEX.buildings.find((x) => x.id === ref.id)?.name ?? ref.id} ${numeral(ref.tier)}`
     case 'crossing':
-      return `${CODEX.crossings.find((x) => x.id === ref.id)?.name ?? ref.id} ${ROMAN[ref.stage - 1]}`
+      return `${CODEX.crossings.find((x) => x.id === ref.id)?.name ?? ref.id} ${numeral(ref.stage)}`
     case 'perk': {
       const crossing = CODEX.crossings.find((x) => x.id === ref.crossing)
       return crossing?.perks.find((p) => p.id === ref.id)?.name ?? crossing?.name ?? ref.id
@@ -423,7 +428,7 @@ export function sourceLabel(ref: EffectSourceRef): string {
     case 'lair':
       return CODEX.lairs.find((l) => l.id === ref.id)?.name ?? ref.id
     case 'grace':
-      return `Grace ${ROMAN[ref.level - 1]}`
+      return `Grace ${numeral(ref.level)}`
     case 'weary':
       return 'Weary'
     case 'event':

@@ -34,6 +34,12 @@ export type Refusal =
   /** A Crossing stage needs both of its buildings at a tier. */
   | { code: 'buildingTier'; building: BuildingId; needed: number; have: number }
 
+/** One requirement of the next step, met or not; `need` names it with its facts, as a refusal would. */
+export interface Requirement {
+  need: Refusal
+  met: boolean
+}
+
 /** What the next step would cost and whether it can be bought now. `next` is the tier or stage it reaches. */
 export interface Offer {
   ok: boolean
@@ -41,6 +47,8 @@ export interface Offer {
   next: number
   /** The price after discounts, as it would post (0.1 precision). 0 when maxed. */
   cost: number
+  /** Every requirement of the next step in the order they are checked, reputation last (absent when maxed). */
+  requirements?: Requirement[]
 }
 
 export interface Purchase {
@@ -59,14 +67,14 @@ function refuse(reason: Refusal, next: number, cost = 0): Offer {
   return { ok: false, reason, next, cost }
 }
 
-/** The first failing check, or an open offer. Reputation is checked last, after the requirements. */
-function checked(state: CampaignState, next: number, cost: number, requirements: (Refusal | null)[]): Offer {
-  if (!isPlayable(state)) return refuse({ code: 'campaignOver' }, next, cost)
-  const failed = requirements.find((r) => r !== null)
-  if (failed) return refuse(failed, next, cost)
+/** The first unmet requirement, or an open offer. Reputation is checked last, after the requirements. */
+function checked(state: CampaignState, next: number, cost: number, requirements: Requirement[]): Offer {
   const have = balance(state.purse)
-  if (have < cost) return refuse({ code: 'reputation', needed: cost, have }, next, cost)
-  return { ok: true, next, cost }
+  const all: Requirement[] = [...requirements, { need: { code: 'reputation', needed: cost, have }, met: have >= cost }]
+  if (!isPlayable(state)) return { ...refuse({ code: 'campaignOver' }, next, cost), requirements: all }
+  const failed = all.find((r) => !r.met)
+  if (failed) return { ...refuse(failed.need, next, cost), requirements: all }
+  return { ok: true, next, cost, requirements: all }
 }
 
 // ── Building tiers ───────────────────────────────────────────────────────────
@@ -81,9 +89,13 @@ export function tierOffer(state: CampaignState, building: BuildingId): Offer {
   const rival = rivalOfRoad(building)
   const tierV = RULES.milestones.unlocks.tierV
   return checked(state, next, cost, [
-    have < needed ? { code: 'dominion', needed, have } : null,
-    next === TOP_TIER && state.rivals[rival].status === 'active' ? { code: 'rivalUnresolved', rival } : null,
-    next === TOP_TIER && !milestoneBroken(state, tierV) ? { code: 'milestone', index: tierV } : null
+    { need: { code: 'dominion', needed, have }, met: have >= needed },
+    ...(next === TOP_TIER
+      ? [
+          { need: { code: 'rivalUnresolved', rival } as const, met: state.rivals[rival].status !== 'active' },
+          { need: { code: 'milestone', index: tierV } as const, met: milestoneBroken(state, tierV) }
+        ]
+      : [])
   ])
 }
 
@@ -116,7 +128,7 @@ export function castleOffer(state: CampaignState): Offer {
   const next = tier + 1
   const needed = byTier(RULES.castle.tierSum, next)
   const have = tierSum(state)
-  return checked(state, next, byTier(RULES.castle.tierCost, next), [have < needed ? { code: 'tierSum', needed, have } : null])
+  return checked(state, next, byTier(RULES.castle.tierCost, next), [{ need: { code: 'tierSum', needed, have }, met: have >= needed }])
 }
 
 /** Raises the castle one tier (to IV at most). */
@@ -139,7 +151,7 @@ export function crossingOffer(state: CampaignState, pair: CrossingId): Offer {
     state,
     next,
     cost,
-    crossing.buildings.map((b) => (state.buildings[b] < needed ? { code: 'buildingTier', building: b, needed, have: state.buildings[b] } : null))
+    crossing.buildings.map((b) => ({ need: { code: 'buildingTier', building: b, needed, have: state.buildings[b] }, met: state.buildings[b] >= needed }))
   )
 }
 

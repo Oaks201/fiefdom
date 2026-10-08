@@ -600,11 +600,13 @@ export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effec
   })
 }
 
-function defenseBanners(effects: Effects): number {
+/** Companies a defense may field: the banners, plus any for the defense pool alone. */
+export function defenseBanners(effects: Effects): number {
   return effects.banners.value + effects.poolBanners.defense.value
 }
 
-function assaultBanners(effects: Effects): number {
+/** Companies one assault may field: the banners, plus the Muster Field's for the assault pool. */
+export function assaultBanners(effects: Effects): number {
   return effects.banners.value + effects.poolBanners.assault.value
 }
 
@@ -718,7 +720,8 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   return { ok: problems.length === 0, problems, assaults, grandBattles, defense }
 }
 
-function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
+/** Whether `rival` lends an envoy company for the day's defense: active, at Respect 50 (A-20). */
+export function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
   const r = state.rivals[rival]
   return r.status === 'active' && r.respect >= RULES.respect.thresholds.envoy
 }
@@ -939,16 +942,8 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 
     const foe = foeOfThreat(b.kind)
     const affordable = defensePool.filter((c) => fee(c) === 0 || fee(c) <= balance(purse))
-    const fielded = fieldBest(affordable, matchupOfThreat(b.kind, b.rival), foe, defenseBanners(effects), orders?.defenseOverride)
+    const { fielded, defense } = defenseOf(effects, affordable, hex, b.kind, b.rival, ctx.valor, orders?.defenseOverride)
     for (const f of fielded) if (fee(f.company) > 0) purse = spend(purse, day, fee(f.company), `${f.company.source}:${f.company.id}:${hex.id}`)
-    const { defense } = defenseValue({
-      strikes: fielded.map((f) => f.strike),
-      armsBonus: effects.armsBonus.value,
-      walls: wallsFor(effects, { ring: hex.ring, foe }),
-      fortification: fortificationValue(hex),
-      rallyFloor: effects.rallyFloor.value,
-      valor: ctx.valor
-    })
     const spoilsRules = RULES.combat.spoils
     const outcome = defense >= spoilsRules.routAt * b.strength ? 'rout' : defense >= b.strength ? 'victory' : 'defeat'
     const report: GameEventMap['defense'] = { threat: b.kind, hexId: hex.id, ...(b.rival ? { rival: b.rival } : {}), outcome }
@@ -1031,12 +1026,9 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       emit('assault', { hexId: hex.id, owner: hex.owner, outcome: 'revealed' })
       continue
     }
-    const { matchup, foe } = garrisonType(hex)
-    const pool = army.filter((c) => a.companies.includes(c.id))
-    const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
-    const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor: ctx.valor })
-    const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
-    const result = assaultOutcome(effectiveGarrison(hex, ignoreFort), value)
+    const { foe } = garrisonType(hex)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, ctx.valor)
+    const result = assaultOutcome(garrison, value)
     const owner = hex.owner
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
@@ -1084,6 +1076,64 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   }
   if (wearied.size > 0) state = weary(state, wearied, day, effects)
   return { state, grandBattles }
+}
+
+// ── Fielding a battle (shared by settlement and the orders estimate) ────────
+
+/** The Defense `pool` puts up on `hex` against a threat of `kind` (Ch 10): the Marshal's best by p × m, or the override. */
+function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, kind: ThreatKind, rival: RivalId | undefined, valor: number, override?: readonly string[]): { fielded: Fielded[]; defense: number } {
+  const foe = foeOfThreat(kind)
+  const fielded = fieldBest(pool, matchupOfThreat(kind, rival), foe, defenseBanners(effects), override)
+  const { defense } = defenseValue({
+    strikes: fielded.map((f) => f.strike),
+    armsBonus: effects.armsBonus.value,
+    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    fortification: fortificationValue(hex),
+    rallyFloor: effects.rallyFloor.value,
+    valor
+  })
+  return { fielded, defense }
+}
+
+/** The Assault `pool` brings against `hex` (Ch 6), and the garrison it must beat (fortification ignored by Siegebreakers and like effects). */
+function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number): { fielded: Fielded[]; value: number; garrison: number } {
+  const { matchup, foe } = garrisonType(hex)
+  const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
+  const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor })
+  const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
+  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort) }
+}
+
+export interface OrdersEstimate {
+  /** Each battle foretold for `day` on the player's land, and the Defense the defense pool would put up at `valor`. */
+  defenses: { hexId: string; kind: ThreatKind; rival?: RivalId; defense: number; fielded: string[] }[]
+  /** Each assault the orders send, its Assault at `valor`, the garrison it must beat, and the outcome that would give. */
+  assaults: { hexId: string; value: number; garrison: number; outcome: 'rout' | 'taken' | 'repulsed'; fielded: string[] }[]
+}
+
+/**
+ * What `orders` would field on `day` at Valor `valor` (an estimate for the orders panel, T15): the
+ * same fielding as the day's close, before any fee is paid. With no orders every company defends.
+ */
+export function ordersEstimate(state: CampaignState, orders: DailyOrders | undefined, day: ISODate, valor: number, effects: Effects = realmEffects(state)): OrdersEstimate {
+  const validity = ordersValidity(state, orders, effects)
+  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
+  const army = roster(state, { day, hired: effects.hiredBlades.on ? (orders?.hired ?? 0) : 0, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
+  const pool = army.filter((c) => !assigned.has(c.id))
+  const byId = hexIndex(state.hexes)
+  const defenses: OrdersEstimate['defenses'] = []
+  for (const t of tidings(state, day).threats) {
+    const hex = byId.get(t.hexId)
+    if (!hex || hex.owner !== 'player') continue
+    const { fielded, defense } = defenseOf(effects, pool, hex, t.kind, t.rival, valor, orders?.defenseOverride)
+    defenses.push({ hexId: t.hexId, kind: t.kind, ...(t.rival ? { rival: t.rival } : {}), defense, fielded: fielded.map((f) => f.company.id) })
+  }
+  const assaults = validity.assaults.map((a) => {
+    const hex = byId.get(a.target) as HexState
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor)
+    return { hexId: hex.id, value, garrison, outcome: assaultOutcome(garrison, value).outcome, fielded: fielded.map((f) => f.company.id) }
+  })
+  return { defenses, assaults }
 }
 
 /** Scorches a hex for 3 days after `day` (a contested hex stays contested). */

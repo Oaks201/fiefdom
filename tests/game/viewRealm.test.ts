@@ -1,0 +1,232 @@
+/**
+ * T15: the Realm page's view models (Ch 3, Ch 6, Ch 7, Ch 10, A-36): the map's layout, the hex
+ * panel's actions against the engine's own checks, Dominion's sources, the buildings' offers, and
+ * the orders panel (banners, the 04:00 lock, the Marshal's default, the estimate).
+ */
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { tierOffer } from '../../src/renderer/src/lib/game/buildings'
+import { CODEX } from '../../src/renderer/src/lib/game/codex'
+import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
+import { ordersEstimate, ordersValidity, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { challenge } from '../../src/renderer/src/lib/game/grand'
+import { bidCheck, fortifyOffer, offerDeal, reclaimOffer } from '../../src/renderer/src/lib/game/land'
+import { dominion, dominionSources } from '../../src/renderer/src/lib/game/map'
+import { shuffle } from '../../src/renderer/src/lib/game/rng'
+import { rosterDetail } from '../../src/renderer/src/lib/game/roster'
+import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
+import { openDayOf } from '../../src/renderer/src/lib/game/state'
+import { BUILDING_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
+import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
+import { HEX_WIDTH, buildingsView, castleView, crossingsView, effectLines, hexLayout, hexPanel, mapView, rosterView, suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
+import { driveCampaign } from './support/campaign-driver'
+import { chicago, ledgerWith } from './fixtures/ledgers'
+import { realmEffects } from '../../src/renderer/src/lib/game/effects'
+import { realm, withBuildings, withCastle, withCrossings, withDominion, withPurse } from './support/realm'
+
+/** A mid-game realm: 16 weeks of a steady, greedy player, settled day by day. */
+function midGame(seed: number): CampaignState {
+  return driveCampaign({ seed, weeks: 16, habits: 'steady', policy: 'greedy' }).state
+}
+
+test('T15: no two of the 127 hex centers are closer than the hex width × 0.9; neighbors are one width apart', () => {
+  const { points } = hexLayout(realm().hexes)
+  assert.equal(points.length, 127)
+  let least = Infinity
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) least = Math.min(least, Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y))
+  }
+  assert.ok(least >= HEX_WIDTH * 0.9)
+  assert.ok(Math.abs(least - HEX_WIDTH) < 1e-9)
+})
+
+test('T15: every action the hex panel offers matches the engine, for 200 seeded hexes in mid-game states', () => {
+  let checked = 0
+  for (const seed of [3, 4]) {
+    const state = midGame(seed)
+    const today = openDayOf(state)
+    const strongest = rosterDetail(state, { day: today }).sort((a, b) => b.company.power - a.company.power)[0].company.id
+    const ids = shuffle(seed, today, 'test:hexes', state.hexes.map((h) => h.id)).slice(0, 100)
+    for (const id of ids) {
+      const panel = hexPanel(state, id, today)
+      assert.ok(panel)
+      const hex = state.hexes.find((h) => h.id === id)!
+      for (const a of panel.actions) {
+        let engine: boolean
+        switch (a.kind) {
+          case 'challenge':
+            engine = challenge(state, id, today).ok
+            break
+          case 'assault':
+            engine = ordersValidity(state, { date: today, assaultTarget: id, assault: [strongest], defense: [] }).assaults.some((x) => x.target === id)
+            break
+          case 'court':
+            engine = bidCheck(state, id, suggestedBid(state, hex)).ok
+            break
+          case 'buy':
+            engine = offerDeal(state, hex.owner as RivalId, { kind: 'buyHex', hexId: id }, today).allowed
+            break
+          case 'fortify':
+            engine = fortifyOffer(state, id).ok
+            break
+          case 'reclaim':
+            engine = reclaimOffer(state, id, today).ok
+            break
+        }
+        assert.equal(a.available, engine, `${a.kind} on ${id}`)
+        if (!a.available) assert.ok(a.reason?.code, `${a.kind} on ${id} says why not`)
+        checked++
+      }
+    }
+  }
+  assert.ok(checked >= 200, `${checked} actions checked`)
+})
+
+test('T15 gap 2: each building’s Dominion is the sum of its sources, hex by hex', () => {
+  const state = midGame(5)
+  const totals = dominion(state.hexes, 'player')
+  for (const b of BUILDING_IDS) {
+    const sources = dominionSources(state.hexes, 'player', b)
+    assert.equal(sources.reduce((s, x) => s + x.value, 0), totals[b])
+  }
+  const view = buildingsView(state)
+  for (const b of view) assert.equal(b.dominion, totals[b.id])
+})
+
+test('Ch 7: the buildings panel shows each next tier as the engine offers it, and what it gives', () => {
+  const state = withPurse(withBuildings(realm(), { merchantHall: 2 }), 50)
+  const view = buildingsView(state)
+  for (const b of view) {
+    const offer = tierOffer(state, b.id)
+    assert.equal(b.next?.ok, offer.ok)
+    assert.equal(b.next?.cost, offer.cost)
+    assert.equal(b.next?.refusal?.code, offer.reason?.code)
+  }
+  const mh = view.find((b) => b.id === 'merchantHall')!
+  assert.ok(mh.gives.some((g) => g.field === 'hiredBlades'), 'Tier II hires blades')
+  assert.ok(mh.next?.gives.some((g) => g.field === 'pledgeCap' && g.value === 1.5), 'Tier III raises the pledge cap ×1.5')
+  assert.deepEqual(castleView(realm()).next && { tier: castleView(realm()).next?.tier, code: castleView(realm()).next?.refusal?.code }, { tier: 2, code: 'tierSum' })
+  assert.equal(crossingsView(realm()).length, 6)
+  assert.ok(rosterView(realm()).every((c) => c.power > 0 && c.source === 'building'))
+})
+
+test('Ch 7 / A-42: the next tier lists every requirement, met or not: Dominion, reputation, and at Tier V the rival and Milestone 6', () => {
+  const ready = withPurse(withDominion(realm(), 'barracks', 8), 160)
+  const barracks = buildingsView(ready).find((b) => b.id === 'barracks')!
+  assert.equal(barracks.next?.ok, true)
+  assert.deepEqual(barracks.next?.requirements.map((r) => [r.code, r.met]), [['dominion', true], ['reputation', true]])
+  assert.equal(barracks.next?.company.name, 'Men-at-Arms')
+  assert.equal(barracks.next?.company.power, 9)
+  const top = buildingsView(withPurse(withBuildings(realm(), { foundry: 4 }), 5_000)).find((b) => b.id === 'foundry')!
+  assert.deepEqual(top.next?.requirements.map((r) => [r.code, r.met]), [['dominion', false], ['rivalUnresolved', false], ['milestone', false], ['reputation', true]])
+  assert.equal(top.next?.refusal?.code, 'dominion')
+  assert.match(top.next?.refusal?.label ?? '', /Dominion 68/)
+})
+
+test('Ch 8: a Crossing’s perks say what they give, the walls-count-double perks included', () => {
+  const crossings = crossingsView(withCrossings(realm(), { barracksFoundry: 2 }))
+  const ironLegion = crossings.find((x) => x.id === 'barracksFoundry')!
+  assert.equal(ironLegion.hybrid?.name, 'Cataphracts')
+  assert.equal(ironLegion.hybrid?.power, 18)
+  assert.deepEqual(ironLegion.perks.map((p) => [p.name, p.active]), [['Shieldwall', true], ['Siegebreakers', false]])
+  assert.deepEqual(ironLegion.perks[0].gives.map((g) => g.label), ['Walls count double on rings 4 and 5'])
+  assert.deepEqual(ironLegion.perks[1].gives.map((g) => g.label), ['Your assaults ignore fortification'])
+  const shadow = effectLines(realmEffects(withCrossings(realm(), { mageTowerMerchantHall: 2 })), (r) => r.kind === 'perk')
+  assert.ok(shadow.some((g) => g.label === 'Rival treasuries shown as numbers'))
+})
+
+test('T15: the map marks today’s threat, the assault target, and contested and scorched hexes with days left', () => {
+  const state = midGame(6)
+  const today = openDayOf(state)
+  const mine = state.hexes.filter((h) => h.owner === 'player' && h.ring >= 3)
+  const marked: CampaignState = {
+    ...state,
+    hexes: state.hexes.map((h) => (h.id === mine[0].id ? { ...h, status: 'contested', statusUntil: addDays(today, 1) } : h.id === mine[1].id ? { ...h, status: 'scorched', statusUntil: addDays(today, 2) } : h))
+  }
+  const map = mapView(marked, today)
+  assert.equal(map.length, 127)
+  assert.deepEqual([map.find((h) => h.id === mine[0].id)?.status, map.find((h) => h.id === mine[0].id)?.daysLeft], ['contested', 2])
+  assert.deepEqual([map.find((h) => h.id === mine[1].id)?.status, map.find((h) => h.id === mine[1].id)?.daysLeft], ['scorched', 3])
+  assert.ok(map.some((h) => h.threats?.length), 'today’s threat')
+  assert.ok(map.filter((h) => h.front).length === 18, 'the 18 battlefields carry their front')
+})
+
+test('Ch 2 rule 2 / A-36: no more companies than the banners allow; read-only after the 04:00 lock; with no orders every company defends', () => {
+  const state = realm()
+  const today = openDayOf(state)
+  const close = dayCloseInstant(today, state.campaign.timeZone).getTime()
+  const view = ordersView(state, 0.8, today)
+  assert.equal(view.allDefend, true)
+  assert.equal(view.orders, null)
+  assert.ok(view.companies.every((c) => c.pool === 'defense'))
+  assert.equal(view.estimate.assaults.length, 0)
+  assert.ok(view.estimate.defenses.every((d) => d.fielded.length > 0), 'every foretold battle is met by the defense')
+  const before = ordersLock(state, today, new Date(close - 3_600_000))
+  assert.deepEqual([before.locked, before.secondsLeft], [false, 3_600])
+  // Send companies to the assault until the banners are full: the next is refused.
+  let orders = withTarget(null, today, state.hexes.find((h) => h.owner === 'neutral' && h.ring === 1)!.id)
+  for (const c of view.companies.slice(0, view.banners.assault)) orders = moveCompany(state, orders, today, c.id, 'assault').orders
+  const extra = moveCompany(state, orders, today, view.companies[view.banners.assault].id, 'assault')
+  assert.equal(extra.refused, 'tooManyCompanies')
+  assert.equal(extra.orders.assault.length, view.banners.assault)
+  const set = setOrders(state, orders).state
+  const sent = ordersView(set, 0.8, today)
+  assert.equal(sent.allDefend, false)
+  assert.equal(sent.companies.filter((c) => c.pool === 'assault').length, view.banners.assault)
+  assert.equal(sent.problems.length, 0)
+  assert.equal(sent.assaults[0].goesOut, true)
+  // After the close, the panel only reads.
+  const after = ordersLock(set, today, new Date(close + 60_000))
+  assert.deepEqual([after.locked, after.secondsLeft], [true, 0])
+  // Tomorrow can repeat today's orders.
+  assert.deepEqual(repeatYesterday(set, addDays(today, 1))?.assault, orders.assault)
+  assert.equal(ordersView(set, 0.8, addDays(today, 1)).canRepeat, true)
+})
+
+test('A-36 / Ch 10: companies sent before a target is named still defend; a second assault needs Castle IV and its own target; chosen defenders stop at the banners', () => {
+  // Castle IV (5 banners, two assaults) and a hybrid from each Crossing: ten companies.
+  const state = withCrossings(withCastle(realm(), 4), Object.fromEntries(CODEX.crossings.map((x) => [x.id, 1])))
+  const today = openDayOf(state)
+  const ids = ordersView(state, 1, today).companies.map((c) => c.id)
+  assert.equal(ids.length, 10)
+  // No target yet: the company shows as sent, but nothing goes out and everyone defends.
+  const waiting = moveCompany(state, null, today, ids[0], 'assault').orders
+  const view = ordersView(setOrders(state, waiting).state, 1, today)
+  assert.equal(view.companies.find((c) => c.id === ids[0])?.pool, 'assault')
+  assert.deepEqual([view.allDefend, view.assaults[0].goesOut], [true, false])
+  // Castle IV allows two assaults; the second takes companies only once it has a target.
+  assert.equal(view.assaultsAllowed, 2)
+  assert.equal(moveCompany(state, waiting, today, ids[1], 'assault', 1).refused, 'noTarget')
+  const ring1 = state.hexes.filter((h) => h.owner === 'neutral' && h.ring === 1).map((h) => h.id)
+  let orders = withTarget(withTarget(waiting, today, ring1[0]), today, ring1[1], 1)
+  orders = moveCompany(state, orders, today, ids[1], 'assault', 1).orders
+  const two = ordersValidity(setOrders(state, orders).state, orders)
+  assert.deepEqual(two.assaults.map((a) => a.target), ring1.slice(0, 2))
+  assert.deepEqual(two.problems, [])
+  // Clearing the second target drops that assault; its company defends again.
+  const cleared = withTarget(orders, today, undefined, 1)
+  assert.equal(cleared.extraAssaults, undefined)
+  // Chosen defenders: up to the defense's banners, never a company on an assault.
+  const banners = realmEffects(state).banners.value
+  let picked = marshalOrders(today)
+  for (const id of ids.slice(2, 2 + banners)) picked = toggleDefender(state, picked, today, id).orders
+  assert.equal(picked.defenseOverride?.length, banners)
+  assert.equal(toggleDefender(state, picked, today, ids[2 + banners]).refused, 'tooManyCompanies')
+  assert.equal(toggleDefender(state, orders, today, ids[0]).refused, 'onAssault')
+  assert.deepEqual(ordersValidity(state, picked).problems, [])
+})
+
+test('T15: the estimate at the day’s own Valor gives the outcome the close then gives', () => {
+  const ledger = ledgerWith('2026-09-10', 120)
+  let state = settle(realm(7, ledger), ledger, chicago(addDays('2026-10-08', 10))).state
+  const today = openDayOf(state)
+  const target = state.hexes.find((h) => h.owner === 'neutral' && h.ring === 1)!
+  const army = rosterDetail(state, { day: today }).map((e) => e.company.id)
+  state = setOrders(state, { date: today, assaultTarget: target.id, assault: army.slice(0, 2), defense: [] }).state
+  const settled = settle(state, ledger, chicago(addDays(today, 1)))
+  const valor = valorOn(settled.state, today, settled.state.campaign.weekStartsOn)
+  const estimate = ordersEstimate(state, state.orders.find((o) => o.date === today), today, valor)
+  const assault = settled.events.find((e) => e.kind === 'assault')
+  assert.ok(assault && assault.kind === 'assault')
+  assert.equal(estimate.assaults[0].outcome, assault.outcome === 'revealed' ? estimate.assaults[0].outcome : assault.outcome)
+})

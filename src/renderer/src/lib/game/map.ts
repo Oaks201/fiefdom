@@ -440,18 +440,35 @@ export function nearestTo(from: readonly HexState[], to: readonly (string | Axia
 }
 
 /**
- * Dominion (Ch 3 rule 3): each road hex `owner` holds in rings 1 to 5 gives its building
- * 2 × ring; each between-land hex gives ring to each of its two buildings. The castle and the
- * buildings give 0.
+ * What one hex gives each building in Dominion, whoever holds it (Ch 3 rule 3): a road hex in rings
+ * 1 to 5 gives its building 2 × ring; a between-land hex gives ring to each of its two buildings.
+ * The castle, the buildings and the Rim give nothing.
  */
+export function dominionOf(hex: Pick<HexState, 'ring' | 'kind' | 'road' | 'land'>): Partial<Record<BuildingId, number>> {
+  if (!isClaimableKind(hex)) return {}
+  if (hex.road) return { [hex.road]: RULES.map.dominion.roadPerRing * hex.ring }
+  if (!hex.land) return {}
+  const out: Partial<Record<BuildingId, number>> = {}
+  for (const b of LAND_BUILDINGS[hex.land]) out[b] = RULES.map.dominion.betweenPerRing * hex.ring
+  return out
+}
+
+/** Dominion (Ch 3 rule 3): what every hex `owner` holds gives each building (`dominionOf`), summed. */
 export function dominion(hexes: readonly HexState[], owner: Owner): Record<BuildingId, number> {
   const out: Record<BuildingId, number> = { barracks: 0, merchantHall: 0, mageTower: 0, foundry: 0 }
   for (const h of hexes) {
-    if (h.owner !== owner || !isClaimableKind(h)) continue
-    if (h.road) out[h.road] += RULES.map.dominion.roadPerRing * h.ring
-    else if (h.land) for (const b of LAND_BUILDINGS[h.land]) out[b] += RULES.map.dominion.betweenPerRing * h.ring
+    if (h.owner !== owner) continue
+    for (const [b, v] of Object.entries(dominionOf(h)) as [BuildingId, number][]) out[b] += v
   }
   return out
+}
+
+/** Where `building`'s Dominion comes from: each hex `owner` holds that gives it some, with how much, in map order. */
+export function dominionSources(hexes: readonly HexState[], owner: Owner, building: BuildingId): { hexId: string; value: number }[] {
+  return hexes.flatMap((h) => {
+    const value = h.owner === owner ? dominionOf(h)[building] : undefined
+    return value ? [{ hexId: h.id, value }] : []
+  })
 }
 
 export type ClaimMethod = 'assault' | 'court' | 'buy' | 'rivalExpand'
