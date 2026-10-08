@@ -5,7 +5,7 @@
 ## The run
 
 - **Campaigns:** 6260 in all. Base rules: 3900 (300 per profile for the greedy and smarter policies, 50 per profile for the push policy, 70 weeks). Income check: 200 (50 per profile, 48 weeks). Sweeps: 2160 (30 per profile per step).
-- **Time:** 83 min 47 s on 4 worker threads (4 × Intel(R) Xeon(R) Processor @ 2.80GHz, Node v22.22.0, linux x64).
+- **Time:** 48 min 17 s on 4 worker threads (4 × Intel(R) Xeon(R) Processor @ 2.10GHz, Node v22.22.0, linux x64).
 - **Seeds:** 1 to N for every group, so a sweep step and the base run play the same ledgers and draws (paired comparisons).
 - **Campaigns stop at their end**: the Fall or the victory. The Reign after a victory decides no target, so it is not simulated; hexes after the end count as held at the end.
 - **Reading the intervals:** for a median week, the 80% interval is the 10th to 90th percentile of the campaigns themselves; for a share, it is the 80% Wilson interval. Hit or miss is judged on the greedy policy.
@@ -29,30 +29,7 @@
 
 Checked in all 6260 campaigns: no loss before week 36 (44 at Grace III); rings 0 to 2 never change owner; settling a sample of six days again, at the same instant and with the clock set back a week, changes nothing (Test 9); every purse gain has a behavior, battle or land source; no Momentum above the target pace (and, while the trend is too fast, none above the held weight score or the plateau floor). The checks are `lib/game/dev/invariants.ts`, the same ones development builds run after every settlement.
 
-**20 campaigns broke an invariant.** Each can be reproduced from its variant, profile, policy and seed:
-
-| Variant | Profile | Policy | Seed | First violations |
-| --- | --- | --- | --- | --- |
-| base | committed | greedy | 68 | 2028-01-09: 2028-01-09: a Border Campaign targeted the player's hex 1,-3 |
-| base | committed | greedy | 119 | 2027-09-19: 2027-09-19: a Border Campaign targeted the player's hex -3,3 |
-| base | committed | greedy | 126 | 2028-01-02: 2028-01-02: a Border Campaign targeted the player's hex -3,2 |
-| base | committed | greedy | 136 | 2028-01-02: 2028-01-02: a Border Campaign targeted the player's hex 2,-3 |
-| base | committed | greedy | 185 | 2027-09-12: 2027-09-12: a Border Campaign targeted the player's hex -2,3 |
-| base | committed | greedy | 214 | 2027-09-12: 2027-09-12: a Border Campaign targeted the player's hex 0,-3; 2027-11-14: 2027-11-14: a Border Campaign targeted the player's hex -3,1 |
-| base | committed | greedy | 243 | 2028-01-16: 2028-01-16: a Border Campaign targeted the player's hex -3,3 |
-| base | committed | smarter | 167 | 2027-11-14: 2027-11-14: a Border Campaign targeted the player's hex 3,-2 |
-| base | committed | smarter | 214 | 2027-11-14: 2027-11-14: a Border Campaign targeted the player's hex -3,0 |
-| base | steadfast | greedy | 213 | 2027-10-03: week 52: Momentum 0.6 while the trend is too fast |
-| base | steadfast | smarter | 213 | 2027-10-03: week 52: Momentum 0.6 while the trend is too fast |
-| base | wavering | greedy | 83 | 2027-11-21: 2027-11-21: a Border Campaign targeted the player's hex -3,3 |
-| base | wavering | greedy | 222 | 2027-11-14: 2027-11-14: a Border Campaign targeted the player's hex 1,2 |
-| base | wavering | greedy | 233 | 2028-01-09: 2028-01-09: a Border Campaign targeted the player's hex -1,-2 |
-| benchmarkB:+10 | committed | greedy | 4 | 2027-06-06: 2027-06-06: a Border Campaign targeted the player's hex 2,-3 |
-| benchmarkB:+20 | committed | greedy | 4 | 2027-06-06: 2027-06-06: a Border Campaign targeted the player's hex 1,-3 |
-| benchmarkB:+20 | committed | greedy | 16 | 2027-07-18: 2027-07-18: a Border Campaign targeted the player's hex 3,-2 |
-| garrisonMult:-10 | committed | greedy | 28 | 2027-07-18: 2027-07-18: a Border Campaign targeted the player's hex 0,-3 |
-| payoutStart:-20 | committed | greedy | 30 | 2027-09-19: 2027-09-19: a Border Campaign targeted the player's hex 2,-3 |
-| rivalStart:+20 | committed | greedy | 30 | 2027-09-19: 2027-09-19: a Border Campaign targeted the player's hex 2,-3 |
+**Zero violations.**
 
 ## The Ch 15 targets
 

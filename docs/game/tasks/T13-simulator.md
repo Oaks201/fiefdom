@@ -62,24 +62,36 @@ Changing any value in `rules.ts` or any TUNE number: that is the owner's call. E
 
 ## Verification
 
-- [ ] `npm run typecheck`, `npm test` and `npm run check:game` pass.
-- [ ] The full run (6 profiles × 2 policies × 300 campaigns × 70 weeks, plus the sweeps) finishes in under 60 minutes on the development PC; record the time in the report.
-- [ ] Determinism: the same arguments twice give byte-identical CSVs (put the hashes in the hand-off notes).
-- [ ] The income check reproduces each Ch 15 figure within ±3%, or the report names the formula responsible and leaves it unchanged.
-- [ ] Every row of the Ch 15 targets table appears in the report as hit or miss, with its value and interval.
-- [ ] The invariants ran in every campaign; the report states zero violations, or lists each with its seed so it can be reproduced as a failing test.
-- [ ] The sweep tables cover every lever in the Ch 15 levers table.
-- [ ] `git diff main -- src/renderer/src/lib/game/rules.ts` is empty (D-02).
-- [ ] `sim/` imports nothing from React, the DOM or Electron (`grep -rE "react|electron" sim/` finds nothing).
-- [ ] The report ends with the owner's decision list.
+- [x] `npm run typecheck`, `npm test` and `npm run check:game` pass.
+- [x] The full run (6 profiles × 2 policies × 300 campaigns × 70 weeks, plus the sweeps) finishes in under 60 minutes on the development PC; record the time in the report. (48 min 17 s in a 4-core cloud container; timing it on the development PC is the owner's step, `handover.md` §1.)
+- [x] Determinism: the same arguments twice give byte-identical CSVs (put the hashes in the hand-off notes).
+- [x] The income check reproduces each Ch 15 figure within ±3%, or the report names the formula responsible and leaves it unchanged.
+- [x] Every row of the Ch 15 targets table appears in the report as hit or miss, with its value and interval.
+- [x] The invariants ran in every campaign; the report states zero violations, or lists each with its seed so it can be reproduced as a failing test.
+- [x] The sweep tables cover every lever in the Ch 15 levers table.
+- [x] `git diff main -- src/renderer/src/lib/game/rules.ts` is empty (D-02).
+- [x] `sim/` imports nothing from React, the DOM or Electron (`grep -rE "react|electron" sim/` finds nothing).
+- [x] The report ends with the owner's decision list.
 
 ## Hand-off notes
 
 ### Evidence (2026-10-08)
 
-RUN_SECTION
+- **The full run** (`npm run sim`: 6,260 campaigns) took **48 min 17 s** on 4 worker threads in a Linux cloud container (4 × Xeon @ 2.10 GHz, Node 22.22), with nothing else running; an earlier full run, sharing the machine with other work, took 83 min 47 s. Not timed on the development PC (`docs/game/handover.md` §1).
+- **Invariants:** checked every simulated day in all 6,260 campaigns; **zero violations**. (The first full run reported 20, all from two checks that were wrong and are fixed with tests in T17: a Border Campaign on a hex a rival had taken from the player earlier the same day, and Momentum under a too-fast trend, where Ch 5 rule 6 holds only Mw at half.)
+- **Determinism:** the two full runs gave byte-identical `targets.csv`, `income_by_week.csv`, `hexes_by_month.csv`, `spend.csv`, `resolutions.csv` and `sweeps.csv`; `runs.csv` was identical in every row and column but `violations`, the one thing the invariant fix changed. `--report-only` from the stored results rebuilds the same bytes, and `npm run sim -- --quick` run twice with the same arguments gave byte-identical CSVs (the reports differ only in the time line). The committed CSVs, sha256:
 
-- **`git diff main -- src/renderer/src/lib/game/rules.ts`** is empty (D-02); every lever was changed in memory only, by `sim/overrides.ts`, and each worker checks its loaded `RULES` carries the variant before it runs a campaign.
+  | File | sha256 |
+  | --- | --- |
+  | `runs.csv` | `0c7ddb26e932782349cac3710ea4d67dd3c25cae1e18859869dbc08645ca0f55` |
+  | `targets.csv` | `99b75e2a13f32622608b319a259f9f206a075e69dec1d6ffa9ce16cabecbb230` |
+  | `income_by_week.csv` | `6db99a72ef2f319d4d8b6113b00fbe0b62c9486497c8d74ca70ac549876c4115` |
+  | `hexes_by_month.csv` | `0f2032f0503d5876226b0ee319bcbbd01f53365b707ddc259aef528d7dc8fd1f` |
+  | `spend.csv` | `fe14a09b5d473fe7cc75084b322c76f6c1260629d48161965a0e71722f99c938` |
+  | `resolutions.csv` | `ffed36541ae5f2d3c696449bf2c618a8dbb9be7c12268b2fb57fdecffb16673d` |
+  | `sweeps.csv` | `2bf2259965046417478cb4c02eeb5b2c2aacb7800af9f0f72fcf72efe11bbb03` |
+
+- **`git diff origin/master -- src/renderer/src/lib/game/rules.ts`** is empty (D-02; the default branch is `master`); every lever was changed in memory only, by `sim/overrides.ts`, and each worker checks its loaded `RULES` carries the variant before it runs a campaign.
 - **`grep -rE "react|electron" sim/`** finds nothing.
 - **Tests:** `tests/game/sim.test.ts` (2 campaigns × 8 weeks, the rules hook in a worker, the report built twice byte for byte) runs in about 3 s.
 

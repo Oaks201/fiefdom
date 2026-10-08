@@ -8,8 +8,8 @@ Everything the owner still has to decide or do before Fiefdom is played for real
 | --- | --- | --- |
 | **Install the release on the development PC** | The installer is built for Windows; it was built in a Linux container, where it can't be run | `npm run dist` (or the `dist/Fiefdom-Setup-0.2.0.exe` it makes), then run it. The installer isn't code-signed (README) |
 | **Check the real ledger migrates** | The real `ledger.json` stays on the owner's PC and is never committed (T17 scope 4) | Copy `%APPDATA%\Fiefdom\ledger.json` to a scratch folder, then `npm run build` and `node scripts/migration-check.cjs <copy> --goal <your goal> --app`. It checks the migration to version 2, that the Archive evaluates every legacy contract as before, that founding works, and that a launch that settles leaves `ledger.json` byte-identical. A stand-in version 1 ledger passed all of it (T17 hand-off) |
-| **Time the performance targets on the development PC** | They were measured in a 4-core container | `npx tsx scripts/campaign-perf.ts` (365-day catch-up, `campaign.json` size) and `node scripts/campaign-e2e.cjs` (the hover line in its summary) |
-| **Time the full simulator run** | T13's target is "under 60 minutes on the development PC" | `npm run sim`; the report records the time and the machine |
+| **Time the performance targets on the development PC** | They were measured in a 4-core container (a 365-day catch-up in under 1 s, `campaign.json` under 1 MB after 70 weeks, hover commits under 16 ms) | `npx tsx scripts/campaign-perf.ts` (365-day catch-up, `campaign.json` size) and `node scripts/campaign-e2e.cjs` (the hover line in its summary) |
+| **Time the full simulator run** | T13's target is "under 60 minutes on the development PC"; it took 48 min in a 4-core container | `npm run sim`; the report records the time and the machine |
 
 ## 2. Decisions still owed
 
