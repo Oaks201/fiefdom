@@ -1,0 +1,61 @@
+profile,metric,target,policy,value,interval_lo,interval_hi,n,verdict_greedy
+perfect,"Win, median week",36 to 40,greedy,48,46,50,300,miss
+perfect,"Win, median week",36 to 40,smarter,44,43.9,46,300,miss
+perfect,"Win, median week",36 to 40,push,46,40,47.2,49,miss
+perfect,Win within 70 weeks,100%,greedy,1,0.9946,1,300,hit
+perfect,Win within 70 weeks,100%,smarter,1,0.9946,1,300,hit
+perfect,Win within 70 weeks,100%,push,0.98,0.9355,0.994,50,hit
+perfect,Loss to Ascendancy,0%,greedy,0,0,0.0054,300,hit
+perfect,Loss to Ascendancy,0%,smarter,0,0,0.0054,300,hit
+perfect,Loss to Ascendancy,0%,push,0,0,0.0318,50,hit
+steadfast,"Win, median week",44 to 48,greedy,51,46,64,295,miss
+steadfast,"Win, median week",44 to 48,smarter,48,46,59,299,miss
+steadfast,"Win, median week",44 to 48,push,46,40,50,50,miss
+steadfast,Win within 70 weeks,95% or more,greedy,0.9833,0.9709,0.9905,300,hit
+steadfast,Win within 70 weeks,95% or more,smarter,0.9967,0.9889,0.999,300,hit
+steadfast,Win within 70 weeks,95% or more,push,1,0.9682,1,50,hit
+steadfast,Loss to Ascendancy,under 5%,greedy,0,0,0.0054,300,hit
+steadfast,Loss to Ascendancy,under 5%,smarter,0,0,0.0054,300,hit
+steadfast,Loss to Ascendancy,under 5%,push,0,0,0.0318,50,hit
+committed,"Win, median week",52 to 62,greedy,63,56,68,124,miss
+committed,"Win, median week",52 to 62,smarter,63,57.4,69.6,125,miss
+committed,"Win, median week",52 to 62,push,46,40,48.3,48,miss
+committed,Win within 70 weeks,60 to 75%,greedy,0.4133,0.3775,0.4501,300,miss
+committed,Win within 70 weeks,60 to 75%,smarter,0.4167,0.3807,0.4535,300,miss
+committed,Win within 70 weeks,60 to 75%,push,0.96,0.9075,0.9833,50,miss
+committed,Loss to Ascendancy,20 to 35%,greedy,0,0,0.0054,300,miss
+committed,Loss to Ascendancy,20 to 35%,smarter,0.01,0.0049,0.0205,300,miss
+committed,Loss to Ascendancy,20 to 35%,push,0,0,0.0318,50,miss
+wavering,"Win, median week",rarely,greedy,,,,0,hit
+wavering,"Win, median week",rarely,smarter,,,,0,hit
+wavering,"Win, median week",rarely,push,50,47,54.7,44,hit
+wavering,Win within 70 weeks,under 15%,greedy,0,0,0.0054,300,hit
+wavering,Win within 70 weeks,under 15%,smarter,0,0,0.0054,300,hit
+wavering,Win within 70 weeks,under 15%,push,0.88,0.8087,0.9271,50,hit
+wavering,Loss to Ascendancy,60 to 80%,greedy,0.6933,0.6582,0.7263,300,hit
+wavering,Loss to Ascendancy,60 to 80%,smarter,0.9567,0.939,0.9694,300,hit
+wavering,Loss to Ascendancy,60 to 80%,push,0,0,0.0318,50,hit
+casual,"Win, median week",never,greedy,,,,0,hit
+casual,"Win, median week",never,smarter,,,,0,hit
+casual,"Win, median week",never,push,59,52,67,47,hit
+casual,Win within 70 weeks,0%,greedy,0,0,0.0054,300,hit
+casual,Win within 70 weeks,0%,smarter,0,0,0.0054,300,hit
+casual,Win within 70 weeks,0%,push,0.94,0.8814,0.9706,50,hit
+casual,Loss to Ascendancy,85% or more,greedy,1,0.9946,1,300,hit
+casual,Loss to Ascendancy,85% or more,smarter,1,0.9946,1,300,hit
+casual,Loss to Ascendancy,85% or more,push,0,0,0.0318,50,hit
+all,"Earliest loss, any profile (week)",never before 36,greedy,42,,,508,hit
+all,"Earliest loss, any profile (week)",never before 36,smarter,42,,,591,hit
+all,"Earliest loss, any profile (week)",never before 36,push,,,,0,hit
+steadfast,Grand Battles a month,1 to 3,greedy,1.882,1.6667,2.087,300,hit
+steadfast,Grand Battles a month,1 to 3,smarter,1.5095,1.3027,1.7402,300,hit
+steadfast,Grand Battles a month,1 to 3,push,2.0628,1.7,2.353,50,hit
+steadfast,Campaigns with a coalition,80% or more,greedy,1,0.9946,1,300,hit
+steadfast,Campaigns with a coalition,80% or more,smarter,1,0.9946,1,300,hit
+steadfast,Campaigns with a coalition,80% or more,push,1,0.9682,1,50,hit
+steadfast,Skill value: smarter vs greedy finishing time,10 to 20%,greedy,0.0417,-0.0217,0.1273,295,miss
+steadfast,Skill value: smarter vs greedy finishing time,10 to 20%,smarter,0.0417,-0.0217,0.1273,295,miss
+steadfast,Skill value: smarter vs greedy finishing time,10 to 20%,push,0.165,0.0146,0.3064,48,miss
+committed,Skill value: smarter vs greedy finishing time,10 to 20%,greedy,-0.0158,-0.0894,0.0782,96,miss
+committed,Skill value: smarter vs greedy finishing time,10 to 20%,smarter,-0.0158,-0.0894,0.0782,96,miss
+committed,Skill value: smarter vs greedy finishing time,10 to 20%,push,0.2958,0.2056,0.3834,18,miss

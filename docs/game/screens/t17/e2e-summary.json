@@ -1,0 +1,355 @@
+{
+  "weeks": 52,
+  "start": "2026-10-08",
+  "seconds": 549,
+  "status": "active",
+  "consoleErrors": [],
+  "pageExceptions": [],
+  "mainErrors": [],
+  "invariantFailures": [],
+  "shots": [
+    "docs/game/screens/t17/00-wizard-journey.jpg",
+    "docs/game/screens/t17/01-wizard-charter.jpg",
+    "docs/game/screens/t17/02-founded.jpg",
+    "docs/game/screens/t17/04-month-1-realm.jpg",
+    "docs/game/screens/t17/05-month-2-realm.jpg",
+    "docs/game/screens/t17/06-month-3-realm.jpg",
+    "docs/game/screens/t17/80-battle-preparation.jpg",
+    "docs/game/screens/t17/81-battle-round-1.jpg",
+    "docs/game/screens/t17/82-battle-result.jpg",
+    "docs/game/screens/t17/07-month-4-realm.jpg",
+    "docs/game/screens/t17/08-month-5-realm.jpg",
+    "docs/game/screens/t17/09-month-6-realm.jpg",
+    "docs/game/screens/t17/10-month-7-realm.jpg",
+    "docs/game/screens/t17/11-month-8-realm.jpg",
+    "docs/game/screens/t17/12-month-9-realm.jpg",
+    "docs/game/screens/t17/13-month-10-realm.jpg",
+    "docs/game/screens/t17/14-month-11-realm.jpg",
+    "docs/game/screens/t17/15-month-12-realm.jpg",
+    "docs/game/screens/t17/16-month-13-realm.jpg",
+    "docs/game/screens/t17/90-end-chronicle.jpg",
+    "docs/game/screens/t17/91-end-realm.jpg",
+    "docs/game/screens/t17/92-end-diplomacy.jpg",
+    "docs/game/screens/t17/93-end-armory.jpg"
+  ],
+  "actions": [
+    {
+      "day": 0,
+      "what": "found",
+      "ok": true,
+      "detail": "seed 3820571481, starts 2026-10-08"
+    },
+    {
+      "day": 1,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 1,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 1,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 1,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 29,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 29,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 29,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 29,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 57,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 57,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 57,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 57,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 84,
+      "what": "fight a Grand Battle by hand",
+      "ok": true,
+      "detail": "{\"rounds\":2,\"trigger\":\"warhost\",\"result\":\"defeat\",\"date\":\"2026-12-30\"}"
+    },
+    {
+      "day": 85,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 85,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 85,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 85,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 113,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 113,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 113,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 113,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 141,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 141,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 141,
+      "what": "set orders",
+      "ok": true,
+      "detail": "2 companies sent"
+    },
+    {
+      "day": 141,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 169,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 169,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 169,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 169,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 197,
+      "what": "buy a tier",
+      "ok": true
+    },
+    {
+      "day": 197,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 197,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 197,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 225,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 225,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 225,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 225,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 253,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 253,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 253,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 253,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 281,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 281,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 281,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 281,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 309,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 309,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 309,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 309,
+      "what": "seal a contract",
+      "ok": true
+    },
+    {
+      "day": 337,
+      "what": "buy a tier",
+      "ok": false
+    },
+    {
+      "day": 337,
+      "what": "court a village",
+      "ok": true
+    },
+    {
+      "day": 337,
+      "what": "set orders",
+      "ok": true,
+      "detail": "3 companies sent"
+    },
+    {
+      "day": 337,
+      "what": "seal a contract",
+      "ok": true
+    }
+  ],
+  "dailyOrders": 351,
+  "hover": {
+    "hexes": 127,
+    "commits": 168,
+    "maxMs": 19.5,
+    "p95Ms": 5.1,
+    "meanMs": 1.34
+  },
+  "end": {
+    "status": "active",
+    "startDate": "2026-10-08",
+    "settled": {
+      "day": "2027-10-05",
+      "week": 53
+    },
+    "seed": 3820571481,
+    "buildings": {
+      "barracks": 2,
+      "merchantHall": 3,
+      "mageTower": 2,
+      "foundry": 2
+    },
+    "castle": 2,
+    "hexes": 19,
+    "contracts": 13,
+    "grand": 12
+  },
+  "handFought": {
+    "rounds": 2,
+    "trigger": "warhost",
+    "result": "defeat",
+    "date": "2026-12-30"
+  }
+}

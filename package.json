@@ -1,7 +1,7 @@
 {
   "name": "fiefdom",
   "productName": "Fiefdom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A medieval habit ledger: keep your weekly contract, tend your daily duties, earn reputation.",
   "private": true,
   "main": "./out/main/index.js",

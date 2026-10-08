@@ -75,4 +75,31 @@ Changing any value in `rules.ts` or any TUNE number: that is the owner's call. E
 
 ## Hand-off notes
 
-*(The implementing agent adds notes here: the run time, the CSV hashes, and anything the owner must decide.)*
+### Evidence (2026-10-08)
+
+RUN_SECTION
+
+- **`git diff main -- src/renderer/src/lib/game/rules.ts`** is empty (D-02); every lever was changed in memory only, by `sim/overrides.ts`, and each worker checks its loaded `RULES` carries the variant before it runs a campaign.
+- **`grep -rE "react|electron" sim/`** finds nothing.
+- **Tests:** `tests/game/sim.test.ts` (2 campaigns × 8 weeks, the rules hook in a worker, the report built twice byte for byte) runs in about 3 s.
+
+### What was built
+
+- `sim/run.ts` (`npm run sim`; `--quick`, `--report-only`, and `--runs`, `--push-runs`, `--income-runs`, `--sweep-runs`, `--workers` to scale it), `sim/worker.ts` and `sim/worker.cjs`, `sim/overrides.ts`, `sim/report.ts`; `sim/campaign.ts`, `sim/policy.ts`, `sim/ledgerGen.ts` and `sim/profiles.ts` were begun before this task and finished here. The report is `docs/game/sim/report.md`; its CSVs are in `docs/game/sim/data/`.
+- **The run:** 300 campaigns per profile for greedy and smarter (3,600), 50 per profile for a third policy, push (300), 50 per profile for the income check under the book's conditions (200, 48 weeks), and every Ch 15 lever plus A-17 and A-18 at −20, −10, +10 and +20%, 30 campaigns each for Steadfast and Committed (2,160): 6,260 campaigns. Seeds 1 to N in every group, so sweeps compare paired seeds. A campaign stops at its victory or Fall.
+- **Rules overrides:** tsx loads this repo's TypeScript as CommonJS, so the hook wraps `Module.prototype._compile` (where `require` hands over each file) instead of an ESM `module.register` loader, which `require` never consults; it rewrites `deepFreeze(RULES_TABLE)` in memory and fails loudly if that line ever changes.
+- **The player AI was wrong in three ways when this task began, and is fixed:** the greedy player sent its two strongest companies, which no garrison type let win, so it never assaulted (it now sends the companies the engine's own fielding picks for that garrison); it only challenged a Gate or capital at the Weaker or Matched band, so the fourth rival was never resolved (it now challenges at any band short of Overwhelming: a host is 60% of AV, so even a Stronger rival sends one the player's best can meet); and it retried a resolved rival's capital forever. The smarter player never sealed an Accord, because the greedy contract routine kept the slot full (it now lets the slot empty, D-01).
+- **The push policy** (not in the book): greedy plus Ch 6's repeated push, assaulting a hex the week's repulses can wear down. Added because without it a Committed player sits on its founding land for months, and with it every profile wins.
+- **The invariants** are the shared `lib/game/dev/invariants.ts` (T17), checked every simulated day.
+
+### What the owner should know
+
+- **Steadfast is close; the rest of the curve isn't.** Greedy: Perfect wins in week 48 (target 36 to 40), Steadfast in 51 (44 to 48) with 98% won and none lost; Committed wins only 41% within 70 weeks (target 60 to 75%) and never loses (target 20 to 35%); Wavering and Casual hit their targets.
+- **The land deadlock decides the middle of the curve.** Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. A greedy Committed player holds its founding land until month 9 (Steadfast: month 3), its purse filling with nothing to buy.
+- **The repeated push breaks the curve the other way.** Assaulting the same den again and again (Ch 6's 25% wear) takes it within days: with it Committed wins 96%, Wavering 88% and Casual 94%, and nobody falls. Whether a player discovers it decides more than any lever in the sweeps.
+- **The income check misses by 9 to 18%** for every profile, and the report names the formula: the contract payout's `L`. The book's estimate takes the benchmark's contract schedule (7-day contracts from week 3, 30-day from week 21); a Steadfast player's first 30-day contract comes in week 38, a Committed player's in week 44, because the longer contracts need tiers and castle tiers that need land. Steadfast's Momentum is also 692 below the book's full Momentum, from its weight noise and plateaus.
+- **Skill is worth 4% (Steadfast) and −2% (Committed)** for the smarter policy, against a target of 10 to 20%: Truces, Accords and buy-outs barely move finishing time. The push is worth 16% and 30%.
+- **The sweeps are noisy** (30 campaigns a cell, about ±9 points on a share). No single lever brings all three of Committed's measures into range: a few steps (army cost scale −20%, army cost per power +20%, `b` −20%) lift its win share to 60 to 63%, but its median win week stays at 64 to 67 and its losses near zero. The ranked proposals are those steps.
+- **Also found:** Border Campaigns take 0 hexes a campaign (book 2 to 6; T10 saw the same); a Steadfast player's first trophy arrives in week 2 (A-156 asked); 2% of resolved rivals defect under A-143's literal reading, which T13 kept (`decisions.md`).
+- **The owner's decisions** are listed at the end of the report and in `docs/game/handover.md`.
+
