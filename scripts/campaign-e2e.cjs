@@ -220,17 +220,19 @@ async function main() {
       })()`)
       if (!ordered) return 0
       await sleep(250)
-      return run(`(() => {
-        const banners = Number((document.querySelector('.assault-slot .field__label')?.textContent.match(/of (\\d+) companies/) ?? [])[1] ?? 1)
-        let n = 0
-        for (const row of document.querySelectorAll('.orders__companies tbody tr')) {
-          if (n >= banners) break
-          const buttons = row.querySelectorAll('.segmented button[role=radio]')
-          if (buttons.length > 1 && !buttons[1].classList.contains('is-on') && window.__e2e.click(buttons[1])) n++
-          else if (buttons[1]?.classList.contains('is-on')) n++
-        }
-        return n
-      })()`)
+      // One company at a time, reading the table afresh: each click re-renders it.
+      const banners = await run(`Number((document.querySelector('.assault-slot .field__label')?.textContent.match(/of (\\d+) companies/) ?? [])[1] ?? 1)`)
+      for (let i = 0; i < banners; i++) {
+        const sentNow = await run(`[...document.querySelectorAll('.orders__companies tbody tr')].filter((r) => r.querySelectorAll('.segmented button[role=radio]')[1]?.classList.contains('is-on')).length`)
+        if (sentNow >= banners) break
+        const clicked = await run(`(() => {
+          const row = [...document.querySelectorAll('.orders__companies tbody tr')].find((r) => { const b = r.querySelectorAll('.segmented button[role=radio]'); return b.length > 1 && !b[1].classList.contains('is-on') && !b[1].disabled })
+          return row ? window.__e2e.click(row.querySelectorAll('.segmented button[role=radio]')[1]) : false
+        })()`)
+        if (!clicked) break
+        await sleep(150)
+      }
+      return run(`Number((document.querySelector('.assault-slot .field__label')?.textContent.match(/: (\\d+) of/) ?? [])[1] ?? 0)`)
     }
 
     const monthly = async (month) => {

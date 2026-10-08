@@ -41,6 +41,9 @@ const Z80 = 1.2816
 const PERCENT = 100
 const MONTH_WEEKS = 4
 const BOOK_WEEKS = 48
+const HALF = 0.5
+/** The book's Border Campaign hexes a campaign (Ch 15 targets: 2 to 6). */
+const BOOK_BC_LOW = 2
 
 function quantile(values: readonly number[], p: number): number {
   if (values.length === 0) return Number.NaN
@@ -471,7 +474,7 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
   const broken = results.filter((r) => r.violations.length > 0)
   say('## Invariants (every campaign)')
   say(
-    `Checked in all ${results.length} campaigns: no loss before week 36 (44 at Grace III); rings 0 to 2 never change owner; settling a sample of six days again, at the same instant and with the clock set back a week, changes nothing (Test 9); every purse gain has a behavior, battle or land source; no Momentum above the target pace (and none above half while too fast).`
+    `Checked in all ${results.length} campaigns: no loss before week 36 (44 at Grace III); rings 0 to 2 never change owner; settling a sample of six days again, at the same instant and with the clock set back a week, changes nothing (Test 9); every purse gain has a behavior, battle or land source; no Momentum above the target pace (and, while the trend is too fast, none above the held weight score or the plateau floor). The checks are \`lib/game/dev/invariants.ts\`, the same ones development builds run after every settlement.`
   )
   if (broken.length === 0) say('**Zero violations.**')
   else {
@@ -560,14 +563,34 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
     }
   }
   say(table(['Profile', 'Term', 'Book (48 weeks)', 'Measured (mean)', 'Difference'], termRows))
+  const FORMULAS: Record<string, string> = {
+    Contracts: 'the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule',
+    Momentum: 'Momentum `M = max(Mw, Mf)` (Ch 5): the book’s estimate takes full Momentum every week, while the profile’s weight carries ±1.5 lb of noise and a 3-week plateau every 12 weeks',
+    'Duties, perfect days, streak': 'the daily duties, perfect-day and streak terms (Ch 5)',
+    'Steps and calories': 'the weekly steps and calories terms (Ch 5)',
+    'Flawless weeks': 'the flawless-week bonus, which the book’s estimate leaves out'
+  }
+  const worst = BOOK_INCOME.flatMap((b) => {
+    const rows = termRows.filter((r) => r[0] === PROFILE_NAME[b.profile])
+    if (rows.length === 0) return []
+    const top = [...rows].sort((x, y) => Math.abs(Number(y[4])) - Math.abs(Number(x[4])))[0]
+    return [`**${PROFILE_NAME[b.profile]}:** ${top[1].toLowerCase()} (${top[4]} over 48 weeks), so the formula responsible is ${FORMULAS[top[1]] ?? top[1]}.`]
+  })
+  if (worst.length > 0) say(`The largest difference, profile by profile. None of these is changed here (D-02):\n\n${worst.map((w) => `- ${w}`).join('\n')}`)
   say("*The book's Momentum is what is left of its total once the other terms are taken out (full Momentum is 60 a week, so 2,880 over 48 weeks).*")
+  // The first contract at least `days` long: the policy seals the longest it can, so it may skip a length.
   const termWeeks = (days: number, runs: RunResult[]): string => {
-    const weeks = runs.map((r) => r.firstTerm[days]).filter((w): w is number => w !== undefined)
+    const weeks = runs
+      .map((r) => {
+        const at = Object.entries(r.firstTerm).filter(([d]) => Number(d) >= days).map(([, w]) => w)
+        return at.length > 0 ? Math.min(...at) : undefined
+      })
+      .filter((w): w is number => w !== undefined)
     return `${fmt(median(weeks))} (${pct(weeks.length / Math.max(1, runs.length))} ever)`
   }
   say(
     table(
-      ['Profile (income variant)', 'First 7-day contract (book: week 3)', 'First 14-day (book: week 10)', 'First 30-day (book: week 21)'],
+      ['Profile (income variant)', 'First contract of 7 days or more (book: week 3)', '14 days or more (book: week 10)', '30 days (book: week 21)'],
       BOOK_INCOME.map((b) => {
         const runs = pick(results, INCOME, b.profile, 'greedy')
         return [PROFILE_NAME[b.profile], termWeeks(7, runs), termWeeks(14, runs), termWeeks(30, runs)]
@@ -602,6 +625,28 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
   }
   say(table(['Profile', 'Holder', ...months.map((m) => `M${m}`)], hexTable))
   say('Every profile and policy, month by month, is in `data/hexes_by_month.csv`.')
+
+  // The land deadlock: how long the player stays near its founding land, by policy.
+  const SPREAD_HEXES = 20
+  const breakout = (r: RunResult): number | undefined => {
+    const m = r.hexes.player.findIndex((n) => n >= SPREAD_HEXES)
+    return m >= 0 ? m + 1 : undefined
+  }
+  say(`### Leaving the founding land: the first month holding ${SPREAD_HEXES} or more hexes (median; share that ever did)`)
+  say(
+    table(
+      ['Profile', ...POLICIES],
+      PROFILES.map((p) => [
+        p.name,
+        ...POLICIES.map((policy) => {
+          const runs = pick(results, BASE, p.id, policy)
+          const months = runs.map(breakout).filter((m): m is number => m !== undefined)
+          return runs.length === 0 ? '–' : `${fmt(median(months))} (${pct(months.length / runs.length)})`
+        })
+      ])
+    )
+  )
+  say('*Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. Until a player takes land, its purse can buy nothing but courtships of the villages in reach and, once Milestone 1 breaks, Armory items: no tier, castle tier or Crossing.*')
 
   say('### Border Campaigns, the first month, Grand Battles and Ascendancy (greedy)')
   const measureRows: string[][] = []
@@ -700,6 +745,10 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
   say(
     `Each lever alone at −20%, −10%, +10% and +20% of its value, ${meta.options.sweepRuns} campaigns per profile per step, on the base run's first ${meta.options.sweepRuns} seeds. The 0 column is the base run on the same seeds. Each cell: median win week · win share · loss share.`
   )
+  const shareNoise = Math.sqrt(HALF * HALF / Math.max(1, meta.options.sweepRuns))
+  say(
+    `**Read these as directions, not measurements.** With ${meta.options.sweepRuns} campaigns a cell, a share moves about ±${fmt(shareNoise * PERCENT)} points by chance (one standard error at 50%), and a median week by a week or two; the seeds are shared, which steadies differences against the 0 column but doesn't remove the noise. Only a steady trend across the four steps, or a change of more than about ${fmt(2 * shareNoise * PERCENT)} points, says much. \`npm run sim -- --sweep-runs 100\` (about three times as long) narrows it.`
+  )
   for (const lever of [...new Set(meta.variants.map((v) => v.lever))]) {
     const info = meta.variants.filter((v) => v.lever === lever)
     say(`### ${info[0].label} (${info[0].source})`)
@@ -744,13 +793,18 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
   // Owner's decisions
   say("## The owner's decision list")
   const misses = targets.filter((t) => verdict(t).startsWith('miss'))
+  const resolved = base.flatMap((r) => r.resolutions)
+  const defectionShare = resolved.length > 0 ? resolved.filter((x) => x.how === 'abdicated').length / resolved.length : Number.NaN
   const decisions = [
     `**The targets.** ${misses.length} of ${targets.length} target rows miss on the greedy policy: ${misses.map((t) => `${t.profile === 'all' ? 'all' : PROFILE_NAME[t.profile]} ${t.metric.toLowerCase()}`).join('; ') || 'none'}. Decide which to accept and which to tune toward.`,
     '**The ranked proposals above:** approve, change or reject each (D-02: no value changes until you do).',
     '**The repeated push.** Compare the push column with greedy: it is the biggest single choice a player makes. Decide whether repulse wear (25% of the Assault until the week closes, `RULES.land.repulseWear`) should stay as strong, and whether Weary (−20% the next day) should also stop a company pushing on consecutive days.',
-    '**The income check.** Where a row is outside ±3%, decide whether the book’s estimate or the engine’s formula is right (see the hand-off notes in `docs/game/tasks/T13-simulator.md`).',
-    '**A-143 (open since T09):** whether a defection needs the rival to hold none of its villages, or only none of its original ones.',
-    '**A-156:** whether daily mythic victories should give trophies this early (the trophy line above), or only the record.'
+    '**The income check.** Where a row is outside ±3%, decide whether the book’s estimate or the engine’s formula is right; the term behind each gap is named under the income check.',
+    `**A-143 (defection).** T13 kept the literal reading: a rival defects only when it holds no village at all. Under it, ${pct(defectionShare)} of the rivals resolved in the base runs were resolved by defection. Confirm, or allow defection once its original villages are gone.`,
+    `**A-156 (trophies).** A Steadfast player's first trophy arrives in week ${fmt(median(trophies))} (median). Decide whether daily mythic victories should give trophies this early, or only the record.`,
+    ...(median(base.filter((r) => r.policy === 'greedy' && r.profile === 'steadfast').map((r) => r.borderCampaignHexes)) < BOOK_BC_LOW
+      ? [`**Border Campaigns** take a median of ${fmt(median(base.filter((r) => r.policy === 'greedy' && r.profile === 'steadfast').map((r) => r.borderCampaignHexes)))} hexes a campaign (Steadfast) against the book’s 2 to 6, as T10 found. The levers are the attack share (\`RULES.world.borderCampaigns.armyShare\`, 0.5), rival army growth and A-17's garrisons.`]
+      : [])
   ]
   say(decisions.map((d, i) => `${i + 1}. ${d}`).join('\n'))
 
