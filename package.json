@@ -21,6 +21,7 @@
     "text:check": "node scripts/check-text.cjs",
     "screens": "node scripts/screens.cjs",
     "map:print": "tsx scripts/print-map.ts",
+    "sim": "tsx sim/run.ts",
     "dist": "electron-vite build && electron-builder --win --x64",
     "dist:dir": "electron-vite build && electron-builder --dir"
   },
