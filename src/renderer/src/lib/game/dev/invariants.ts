@@ -9,7 +9,8 @@
  * 3. A Border Campaign never targets a Gate, a capital or a player hex (Test 10).
  * 4. Settling again with the same `now` changes nothing (Test 9; optional, as it costs a settle).
  * 5. Every reputation gain traces to a behavior, a battle or land held.
- * 6. No Momentum above the target pace, and no more than half while the trend is too fast.
+ * 6. No Momentum above the target pace; while the trend is too fast, none above the held weight score
+ *    or the habits' plateau floor.
  */
 import type { Ledger } from '../../types'
 import { RULES } from '../rules'
@@ -63,7 +64,6 @@ export function settleViolations(i: InvariantInput): string[] {
   const out: string[] = []
   const fresh = added(before.log, after.log)
   const ringOf = new Map(after.hexes.map((h) => [h.id, h.ring]))
-  const ownerBefore = new Map(before.hexes.map((h) => [h.id, h.owner]))
   const kindOf = new Map(after.hexes.map((h) => [h.id, h.kind]))
   const protectedRing = RULES.land.protectedThroughRing
 
@@ -86,12 +86,15 @@ export function settleViolations(i: InvariantInput): string[] {
     if (h.ring <= protectedRing && h.owner !== 'player' && h.owner !== 'neutral') out.push(`hex ${h.id} in ring ${h.ring} is held by ${h.owner}`)
   }
 
-  // 3. Border Campaigns never target a Gate, a capital or a player hex.
+  // 3. Border Campaigns never target a Gate, a capital or a player hex. Ownership is followed through
+  // the day's events in order: a hex the player lost to a rival earlier that day is that rival's by then.
+  const owner = new Map(before.hexes.map((h) => [h.id, h.owner]))
   for (const e of fresh) {
+    if (e.kind === 'hexTransfer') owner.set(e.hexId, e.to)
     if (e.kind !== 'borderCampaign') continue
     const kind = kindOf.get(e.hexId)
     if (kind === 'gate' || kind === 'capital') out.push(`${e.day}: a Border Campaign targeted the ${kind} ${e.hexId}`)
-    if (ownerBefore.get(e.hexId) === 'player') out.push(`${e.day}: a Border Campaign targeted the player's hex ${e.hexId}`)
+    if (owner.get(e.hexId) === 'player') out.push(`${e.day}: a Border Campaign targeted the player's hex ${e.hexId}`)
   }
 
   // 4. Settling again changes nothing.
@@ -104,12 +107,14 @@ export function settleViolations(i: InvariantInput): string[] {
     if (!allowed.has(sourcePrefix(p.source))) out.push(`${p.date}: a ${p.kind} of ${p.amount} from "${p.source}" has no behavior, battle or land source`)
   }
 
-  // 6. Momentum never pays for losing faster than the target pace.
+  // 6. Momentum never pays for losing faster than the target pace. While the trend is too fast the
+  // weight score Mw is held at half (Ch 5 rule 6); M = max(Mw, Mf) may still reach the habits' plateau floor.
+  const heldOrFloor = Math.max(RULES.momentum.tooFast.heldMw, ...RULES.momentum.plateauFloor.map((p) => p.floor))
   const seenWeeks = new Set(before.weight.weeks.map((w) => w.week))
   for (const w of after.weight.weeks) {
     if (seenWeeks.has(w.week)) continue
     if (w.momentum > 1 + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} above the target pace`)
-    if (w.tooFast && w.momentum > RULES.momentum.tooFast.heldMw + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} while the trend is too fast`)
+    if (w.tooFast && w.momentum > heldOrFloor + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} while the trend is too fast`)
   }
   return out
 }

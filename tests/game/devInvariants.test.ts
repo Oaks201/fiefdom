@@ -47,4 +47,23 @@ test('T17: each broken invariant is reported (Ch 15, Test 10)', () => {
   assert.deepEqual(settleViolations({ before, after: { ...after, purse: post(after.purse, { date: day, kind: 'earn', amount: 50, source: 'dev:scenario:x' }) }, ledger: LEDGER, now, extraSources: ['dev'] }), [])
   const week = { ...after.weight.weeks[after.weight.weeks.length - 1], week: 99, momentum: 1.2 }
   assert.match(check({ ...after, weight: { ...after.weight, weeks: [...after.weight.weeks, week] } })[0], /Momentum 1.2 above the target pace/)
+  const fast = (momentum: number): CampaignState => ({ ...after, weight: { ...after.weight, weeks: [...after.weight.weeks, { ...week, momentum, tooFast: true }] } })
+  assert.match(check(fast(0.8))[0], /Momentum 0.8 while the trend is too fast/)
+})
+
+test('T17 / Ch 5 rule 6: a too-fast week may still earn the habits’ plateau floor, since only Mw is held at half', () => {
+  const { before, after, now } = settled(10)
+  const week = { ...after.weight.weeks[after.weight.weeks.length - 1], week: 99, momentum: 0.6, tooFast: true }
+  assert.deepEqual(settleViolations({ before, after: { ...after, weight: { ...after.weight, weeks: [...after.weight.weeks, week] } }, ledger: LEDGER, now }), [])
+})
+
+test('Test 10: a Border Campaign on a player hex is reported, but not on one a rival took from the player earlier that day', () => {
+  const { before, after, now } = settled(10)
+  const day = after.settledThrough.day
+  const hex = after.hexes.find((h) => h.owner === 'player' && h.ring === 1) as CampaignState['hexes'][number]
+  const check = (events: GameEvent[]): string[] => settleViolations({ before, after: { ...after, log: [...after.log, ...events] }, ledger: LEDGER, now })
+  const campaign: GameEvent = { id: 'x-9', day, kind: 'borderCampaign', attacker: 'goblin', defender: 'orc', hexId: hex.id, taken: true }
+  assert.ok(check([campaign]).some((v) => /targeted the player's hex/.test(v)))
+  const lost: GameEvent = { id: 'x-8', day, kind: 'hexTransfer', hexId: hex.id, from: 'player', to: 'orc', how: 'conquest' }
+  assert.ok(!check([lost, campaign]).some((v) => /targeted the player's hex/.test(v)))
 })
