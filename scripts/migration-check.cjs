@@ -28,6 +28,9 @@ const { openDay } = require('../src/renderer/src/lib/game/clock.ts')
 const { settle } = require('../src/renderer/src/lib/game/settle.ts')
 
 const APP_WAIT_MS = 15_000
+const DAY_MS = 86_400_000
+const FOUNDED_DAYS_AGO = 5
+const SETTLED_DAYS_AGO = 2
 const DEFAULT_GOAL_SHARE = 0.9
 
 function args() {
@@ -102,8 +105,9 @@ async function main() {
       const frozen = JSON.stringify(ledger)
       const habits = ledger.habits.filter((h) => !h.retiredOn).slice(0, 5).map((h) => h.name)
       try {
-        campaign = foundCampaign({ startWeight: start, goalWeight: goal, unit: ledger.settings.unit, charter: { stepPool: 50_000, calorieLimit: 2_500, duties: habits.length ? habits : ['Read'] }, timeZone: zone, seed: 1, ledger }, now)
-        const settled = settle(campaign, ledger, new Date(now.getTime() + 2 * 86_400_000), { launch: true })
+        // Founded a few days ago and settled only to two days ago, so the app's launch (--app) has days left to settle.
+        campaign = foundCampaign({ startWeight: start, goalWeight: goal, unit: ledger.settings.unit, charter: { stepPool: 50_000, calorieLimit: 2_500, duties: habits.length ? habits : ['Read'] }, timeZone: zone, seed: 1, ledger }, new Date(now.getTime() - FOUNDED_DAYS_AGO * DAY_MS))
+        const settled = settle(campaign, ledger, new Date(now.getTime() - SETTLED_DAYS_AGO * DAY_MS), { launch: true })
         check(true, `founds a campaign (${start} → ${goal} ${ledger.settings.unit}, starting ${campaign.campaign.startDate}) and settles ${settled.summary.days.length} days`)
         campaign = settled.state
       } catch (err) {
@@ -133,7 +137,7 @@ async function main() {
       const after = fs.readFileSync(path.join(dir, 'ledger.json'), 'utf8')
       check(after === migrated, `ledger.json is byte-identical across a launch that settles the campaign (sha256 ${hash(after)})`)
       const saved = JSON.parse(fs.readFileSync(path.join(dir, 'campaign.json'), 'utf8'))
-      console.log(`     campaign.json after that launch: settled through ${saved.settledThrough?.day}, last launch ${saved.settlement?.lastLaunch}`)
+      check(saved.settledThrough?.day > campaign.settledThrough.day, `the launch settled the campaign: from ${campaign.settledThrough.day} through ${saved.settledThrough?.day}`)
     }
     fs.rmSync(dir, { recursive: true, force: true })
   }
