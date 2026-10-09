@@ -5,8 +5,8 @@
 import type { ISODate } from '../lib/game/types'
 import type { CampaignState } from '../lib/game/types'
 import { useCampaign } from './campaign'
-import { campaignToday, useDevClock } from './campaignClock'
-import { useClock } from './clock'
+import { campaignToday } from './campaignClock'
+import { useClock, useDevClock } from './clock'
 
 export function useCampaignState(): CampaignState | null {
   return useCampaign((s) => s.campaign)

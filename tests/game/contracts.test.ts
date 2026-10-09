@@ -12,6 +12,7 @@ import {
   seal,
   settleContract,
   spendRespite,
+  startDays,
   stewardSuggestion,
   validateCharter,
   withdraw,
@@ -145,6 +146,30 @@ test('Withdrawing lets the queued contract start at the next dawn (Ch 2 rule 1)'
   assert.equal(out.contracts.active?.startDate, '2026-10-09')
   assert.equal(out.contracts.active?.endDate, '2026-10-11')
   assert.equal(out.contracts.queued, undefined)
+})
+
+test('D-06: a contract starts on a day the player picks, from the next dawn through 7 days, never today', () => {
+  assert.deepEqual(startDays(EMPTY, SUNDAY), ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11'])
+  const later = sealOne({ startDate: '2026-10-08' })
+  assert.equal(later.contract.startDate, '2026-10-08')
+  assert.equal(later.contract.endDate, '2026-10-14')
+  assert.equal(later.contract.status, 'active', 'it holds the slot, waiting for its day')
+  assert.throws(() => sealOne({ startDate: SUNDAY }), /starts between 2026-10-05 and 2026-10-11/)
+  assert.throws(() => sealOne({ startDate: '2026-10-12' }), CampaignError)
+  // Queued: the choice runs from the day after the running one ends.
+  assert.deepEqual(startDays(later.contracts, SUNDAY)[0], '2026-10-15')
+  const queued = sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-17' }, {}, later.purse, later.contracts)
+  assert.equal(queued.contract.startDate, '2026-10-17')
+  assert.throws(() => sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-14' }, {}, later.purse, later.contracts), CampaignError)
+})
+
+test('D-06: withdrawing keeps a later start the player chose for the queued contract', () => {
+  const first = sealOne()
+  const second = sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-15' }, {}, first.purse, first.contracts)
+  const out = withdraw(second.contracts, second.purse, 0.9, { ...PAY, date: '2026-10-08' })
+  assert.equal(out.contracts.active?.id, 'c2')
+  assert.equal(out.contracts.active?.startDate, '2026-10-15')
+  assert.equal(out.contracts.active?.endDate, '2026-10-17')
 })
 
 // ── Sealing and pledges ──────────────────────────────────────────────────────

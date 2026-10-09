@@ -69,9 +69,12 @@ test('D-04: no notifications, no tray icon and no background process', () => {
 test('Pillar 7: nothing is sold, and dev time travel and the scenario loader exist only in development builds', () => {
   assert.deepEqual(hits(/\b(checkout|purchase|payment|stripe|paypal|inAppPurchase)\b/i).filter((h) => !/^renderer\/src\/lib\/game\//.test(h)), [])
   const clock = SOURCES.find((s) => s.file === 'renderer/src/state/campaignClock.ts')?.text ?? ''
-  assert.match(clock, /export function devAdvanceDays\(days: number\): void \{\n\s+if \(!import\.meta\.env\.DEV\) return/)
-  assert.match(clock, /if \(!import\.meta\.env\.DEV\) return real/)
-  assert.match(clock, /if \(import\.meta\.env\.DEV && typeof window !== 'undefined'\) \{\n\s+window\.fiefdomDev = /)
+  assert.match(clock, /export function devAdvanceDays\(days: number\): void \{\r?\n\s+if \(!import\.meta\.env\.DEV\) return/)
+  assert.match(clock, /if \(import\.meta\.env\.DEV && typeof window !== 'undefined'\) \{\r?\n\s+window\.fiefdomDev = /)
+  // The one "now" the ledger and the campaign share is the real time outside development.
+  const now = SOURCES.find((s) => s.file === 'renderer/src/state/clock.ts')?.text ?? ''
+  assert.match(now, /if \(!import\.meta\.env\.DEV\) return real/)
+  assert.match(now, /export function devShiftNow\(ms: number\): void \{\r?\n\s+if \(!import\.meta\.env\.DEV\) return/)
   // Only the dev panel imports the scenarios, and the app mounts that panel only in development.
   assert.deepEqual(
     hits(/from ['"].*dev\/scenarios['"]/).map((h) => h.split(':')[0]),

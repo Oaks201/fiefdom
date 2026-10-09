@@ -6,7 +6,7 @@
  */
 import { addDays, diffDays } from '../clock'
 import { charterLocked, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
-import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, stewardSuggestion, accordRespectGain } from '../contracts'
+import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, startDays, stewardSuggestion, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
 import { numeral, realmEffects } from '../effects'
 import { snapshotsBetween, toDayRecord } from '../ledgerDays'
@@ -203,8 +203,8 @@ export function runningView(state: CampaignState, today: ISODate = openDayOf(sta
 export interface ContractPageView {
   lengths: LengthOption[]
   charter: Charter & { floor: number; locked: boolean; medicalSupervision: boolean }
-  /** A contract sealed today starts on this day (the next dawn, or the day after the running one ends). */
-  sealStartsOn: ISODate
+  /** The days a contract sealed today may start, earliest first (D-06): from the next dawn, or the day after the running one ends. */
+  sealStartDays: ISODate[]
   /** Another can be sealed: none is queued behind a running one. */
   canSeal: boolean
   running: RunningView | null
@@ -227,8 +227,6 @@ export function closedWeekScores(state: CampaignState): number[] {
 
 export function contractPageView(state: CampaignState, today: ISODate = openDayOf(state)): ContractPageView {
   const { active, queued } = state.contracts
-  const nextDawn = addDays(today, 1)
-  const afterActive = active ? addDays(active.endDate, 1) : nextDawn
   const counsel = stewardSuggestion(closedWeekScores(state))
   return {
     lengths: lengthOptions(state),
@@ -239,7 +237,7 @@ export function contractPageView(state: CampaignState, today: ISODate = openDayO
       locked: charterLocked(state, today),
       medicalSupervision: state.campaign.medicalSupervision === true
     },
-    sealStartsOn: afterActive > nextDawn ? afterActive : nextDawn,
+    sealStartDays: startDays(state.contracts, today),
     canSeal: !(active && queued),
     running: runningView(state, today),
     ...(queued ? { queued: summary(queued) } : {}),

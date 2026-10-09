@@ -116,19 +116,34 @@ export interface SealRequest {
   rival?: RivalId
   pledge?: number
   charter: Charter
+  /** The day it starts, one of `startDays` (D-06); the earliest when left out. */
+  startDate?: ISODate
 }
 
 export interface SealContext extends Progress, CharterLimits {
-  /** The open campaign day; the contract starts at the next dawn. */
+  /** The open campaign day; the contract starts at the next dawn at the earliest. */
   today: ISODate
   /** The pledge cap's multiplier, `realmEffects().pledgeCap`. */
   pledgeCapMult: number
 }
 
 /**
- * Seals a contract. It copies the Charter, starts at the next dawn (or the day after the running
- * contract ends, when it is queued) and posts the pledge. One contract runs and at most one waits.
- * The Accord (D-01) is a 30-day contract with a rival, sealed exactly like one.
+ * The days a contract sealed on `today` may start (D-06): its earliest dawn (the next dawn, or the
+ * day after the running contract ends) and the days after it, `startChoiceDays` in all. Never
+ * today: a contract never begins partway through a day (Ch 4 rule 2).
+ */
+export function startDays(contracts: ContractsState, today: ISODate): ISODate[] {
+  const nextDawn = addDays(today, 1)
+  const afterActive = contracts.active ? addDays(contracts.active.endDate, 1) : nextDawn
+  const earliest = afterActive > nextDawn ? afterActive : nextDawn
+  return Array.from({ length: RULES.contracts.startChoiceDays }, (_, i) => addDays(earliest, i))
+}
+
+/**
+ * Seals a contract. It copies the Charter, starts on the chosen day (by default the next dawn, or
+ * the day after the running contract ends, when it is queued) and posts the pledge. One contract
+ * runs and at most one waits. The Accord (D-01) is a 30-day contract with a rival, sealed exactly
+ * like one.
  */
 export function seal(
   contracts: ContractsState,
@@ -154,9 +169,9 @@ export function seal(
   const cap = pledgeCap(req.termDays, ctx.pledgeCapMult, held)
   if (pledge > cap) throw new CampaignError(`A ${req.termDays}-day contract takes a pledge of at most ${cap}.`)
 
-  const nextDawn = addDays(ctx.today, 1)
-  const afterActive = contracts.active ? addDays(contracts.active.endDate, 1) : nextDawn
-  const startDate = afterActive > nextDawn ? afterActive : nextDawn
+  const days = startDays(contracts, ctx.today)
+  const startDate = req.startDate ?? days[0]
+  if (!days.includes(startDate)) throw new CampaignError(`A contract sealed now starts between ${days[0]} and ${days[days.length - 1]}.`)
   const contract: LandContract = {
     id: req.id,
     termDays: req.termDays as ContractTerm,
@@ -238,7 +253,10 @@ function closeActive(contracts: ContractsState, closed: LandContract, queuedStar
   const queued = contracts.queued
   if (!queued) return rest
   let next: LandContract = { ...queued, status: 'active' }
-  if (queuedStart && queuedStart < queued.startDate) {
+  // A withdrawal pulls the queued contract forward only when it was to follow straight on; a later
+  // start the player chose stands (D-06).
+  const chained = contracts.active !== undefined && queued.startDate === addDays(contracts.active.endDate, 1)
+  if (queuedStart && queuedStart < queued.startDate && chained) {
     const shift = diffDays(queued.startDate, queuedStart)
     next = { ...next, startDate: queuedStart, endDate: addDays(queued.endDate, shift) }
   }

@@ -459,6 +459,13 @@ button:disabled {
   align-items: center;
 }
 
+/* two boxes for one value, such as feet and inches */
+.field__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .field__suffix {
   position: absolute;
   right: 12px;

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GiHourglass, GiReceiveMoney, GiScrollUnfurled, GiShakingHands } from 'react-icons/gi'
 import { sfx } from '../../audio'
-import { formatShort, WEEKDAYS, weekday } from '../../lib/dates'
+import { addDays, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep, parseInteger } from '../../lib/format'
 import { reviseCharter, sealContract, takeRespite, withdrawContract } from '../../lib/game/contractActions'
 import type { CampaignState, ContractTerm, ISODate } from '../../lib/game/types'
@@ -68,6 +68,9 @@ function DraftContract({ view, campaign, today }: { view: ContractPageView; camp
   const [term, setTerm] = useState<ContractTerm>(() => unlocked[unlocked.length - 1]?.days ?? 1)
   const [pledgeText, setPledgeText] = useState('')
   const [revising, setRevising] = useState(false)
+  const [chosenStart, setChosenStart] = useState<ISODate | null>(null)
+  // The earliest day unless the player picked another that is still open (D-06).
+  const start = chosenStart && view.sealStartDays.includes(chosenStart) ? chosenStart : view.sealStartDays[0]
   const option = view.lengths.find((l) => l.days === term) ?? view.lengths[0]
   const pledge = pledgeText.trim() ? parseInteger(pledgeText) : 0
   const pledgeProblem = !Number.isInteger(pledge) || pledge < 0 ? 'A pledge is a whole number.' : pledge > option.pledgeCap ? `At most ${formatNumber(option.pledgeCap)} for ${term} days.` : null
@@ -75,11 +78,12 @@ function DraftContract({ view, campaign, today }: { view: ContractPageView; camp
 
   const seal = (): void => {
     if (pledgeProblem) return
-    const ok = act((s) => sealContract(s, { id: newId(), termDays: term, pledge }, today))
+    const ok = act((s) => sealContract(s, { id: newId(), termDays: term, pledge, startDate: start }, today))
     if (!ok) return
     sfx('seal')
-    toast(`The ${term}-day contract is sealed. It begins ${day(view.sealStartsOn)}.`, 'success')
+    toast(`The ${term}-day contract is sealed. It begins ${day(start)}.`, 'success')
     setPledgeText('')
+    setChosenStart(null)
   }
 
   return (
@@ -90,7 +94,24 @@ function DraftContract({ view, campaign, today }: { view: ContractPageView; camp
           ❦
         </div>
         <h2 className="deed__title">A Contract of the Realm</h2>
-        <div className="deed__dates">Begins {day(view.sealStartsOn)}, at dawn</div>
+        <div className="deed__dates">
+          Begins{' '}
+          <label className="deed-field deed-field--select">
+            <span className="sr-only">First day of the contract</span>
+            <select value={start} onChange={(e) => setChosenStart(e.target.value)}>
+              {view.sealStartDays.map((d) => {
+                const rel = formatRelativeDay(d, today)
+                return (
+                  <option key={d} value={d}>
+                    {rel ? `${rel}, ` : ''}
+                    {day(d)}
+                  </option>
+                )
+              })}
+            </select>
+          </label>{' '}
+          at dawn, through {day(addDays(start, term - 1))}
+        </div>
       </header>
 
       <div className="length-picker" role="radiogroup" aria-label="Length">

@@ -8,6 +8,7 @@ import { SvgDefs } from './components/SvgDefs'
 import { TopBar } from './components/TopBar'
 import { BigMomentCard } from './components/game/BigMomentCard'
 import { FoundingWizard } from './components/game/FoundingWizard'
+import { HowToPlay } from './components/HowToPlay'
 import { Homecoming } from './components/game/Homecoming'
 import { pagesFor } from './lib/game/view/shell'
 import { ArchivePage } from './pages/ArchivePage'
@@ -63,9 +64,21 @@ export default function App(): React.JSX.Element {
     if (!hasCampaign && (page === 'realm' || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
   }, [hasCampaign, page])
 
-  // Ctrl+1 to 6 switch pages from anywhere (the campaign's pages once one is founded); M pauses or resumes the music.
+  // Ctrl+1 to 6 switch pages from anywhere (the campaign's pages once one is founded); M pauses or resumes the music;
+  // Esc opens Settings and F1 or ? opens How to play when no dialog is open (an open dialog takes Esc to close).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      const plain = !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e) && !isDialogOpen()
+      if (plain && e.key === 'Escape') {
+        e.preventDefault()
+        useUI.getState().setSettingsOpen(true)
+        return
+      }
+      if (plain && (e.key === 'F1' || e.key === '?')) {
+        e.preventDefault()
+        useUI.getState().setHelpOpen(true)
+        return
+      }
       if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e) && !isDialogOpen()) {
         e.preventDefault()
         useLedger.getState().apply((l) => setSound(l, { music: !l.settings.sound.music, musicVolume: l.settings.sound.musicVolume || 0.5 }))
@@ -132,6 +145,7 @@ export default function App(): React.JSX.Element {
           <ProfileModal />
           <SettingsModal />
           <FoundingWizard />
+          <HowToPlay />
           <Homecoming />
           <BigMomentCard />
           {DevTimeTravel && (

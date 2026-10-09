@@ -176,12 +176,12 @@ test('T14: the page view: Charter locked while a contract runs, seals queue afte
   let state = withPurse(realm(), 200)
   const page0 = contractPageView(state, START)
   assert.equal(page0.charter.locked, false)
-  assert.equal(page0.sealStartsOn, addDays(START, 1))
+  assert.deepEqual(page0.sealStartDays, [1, 2, 3, 4, 5, 6, 7].map((n) => addDays(START, n)), 'D-06: from the next dawn, 7 days to choose from')
   assert.equal(page0.running, null)
   state = sealContract(state, { id: 'c1', termDays: 3, pledge: 20 }, addDays(START, -1)).state
   const page1 = contractPageView(state, START)
   assert.equal(page1.charter.locked, true)
-  assert.equal(page1.sealStartsOn, addDays(START, 3))
+  assert.equal(page1.sealStartDays[0], addDays(START, 3), 'queued: from the day after the running one ends')
   assert.equal(page1.canSeal, true)
   // Settle the 3 days through settlement itself: the contract pays, and the Archive card says so.
   const ledger = ledgerWith('2026-09-10', 60)

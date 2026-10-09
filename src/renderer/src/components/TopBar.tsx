@@ -1,5 +1,5 @@
 import type { IconType } from 'react-icons'
-import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
+import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiHelp, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
 import { battleNotices } from '../lib/game/view/battle'
 import { pagesFor, topBarView } from '../lib/game/view/shell'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
@@ -30,6 +30,7 @@ export function TopBar(): React.JSX.Element {
   const go = useUI((s) => s.go)
   const setProfileOpen = useUI((s) => s.setProfileOpen)
   const setSettingsOpen = useUI((s) => s.setSettingsOpen)
+  const setHelpOpen = useUI((s) => s.setHelpOpen)
   const apply = useLedger((s) => s.apply)
   const ledger = useLedgerData()
   const today = useToday()
@@ -141,7 +142,10 @@ export function TopBar(): React.JSX.Element {
               {fitbitTrouble && <span className="tool__alert">!</span>}
             </button>
           )}
-          <button type="button" className="tool" aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
+          <button type="button" className="tool" aria-label="How to play" title="How to play (F1)" onClick={() => setHelpOpen(true)}>
+            <GiHelp aria-hidden="true" />
+          </button>
+          <button type="button" className="tool" aria-label="Settings" title="Settings (Esc)" onClick={() => setSettingsOpen(true)}>
             <GiCog aria-hidden="true" />
           </button>
         </div>

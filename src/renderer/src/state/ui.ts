@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { todayISO, type ISODate } from '../lib/dates'
+import { appNow } from './clock'
 import type { RivalId } from '../lib/game/types'
 
 /** The pages; the Realm, Diplomacy and Armory appear only once a campaign is founded (T14). */
@@ -15,6 +16,8 @@ interface UIState {
   settingsOpen: boolean
   /** The founding wizard (T14). */
   foundingOpen: boolean
+  /** How to play (F1 or ?). */
+  helpOpen: boolean
   /** The Grand Battle screen (T16): a route over the page, not a tab; `replay` plays a fought battle back. */
   battle: { id: string; replay: boolean } | null
   /** The rival court Diplomacy shows first, and a hex to offer from it (T15: the hex panel's "buy"). */
@@ -25,6 +28,7 @@ interface UIState {
   setProfileOpen(open: boolean): void
   setSettingsOpen(open: boolean): void
   setFoundingOpen(open: boolean): void
+  setHelpOpen(open: boolean): void
   openBattle(id: string, replay?: boolean): void
   closeBattle(): void
   /** Opens Diplomacy at `rival`'s court, with `hexId` picked out in its deals. */
@@ -36,11 +40,12 @@ interface UIState {
 
 export const useUI = create<UIState>((set) => ({
   page: 'chronicle',
-  date: todayISO(),
+  date: todayISO(appNow()),
   archiveId: null,
   profileOpen: false,
   settingsOpen: false,
   foundingOpen: false,
+  helpOpen: false,
   rivalFocus: null,
   battle: null,
   go: (page) => set({ page, battle: null }),
@@ -51,6 +56,7 @@ export const useUI = create<UIState>((set) => ({
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setFoundingOpen: (foundingOpen) => set({ foundingOpen }),
+  setHelpOpen: (helpOpen) => set({ helpOpen }),
   goDiplomacy: (rival, hexId) => set({ page: 'diplomacy', rivalFocus: { rival, ...(hexId ? { hexId } : {}) } }),
   setRivalFocus: (rivalFocus) => set({ rivalFocus }),
   showDay: (date) => set({ page: 'chronicle', date, archiveId: null })

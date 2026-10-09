@@ -59,18 +59,20 @@ export interface SealOrder {
   /** An Accord (D-01): seal it through `sealAccord` in world.ts, which checks the Accord's own rules first. */
   kind?: LandContract['kind']
   rival?: RivalId
+  /** The day it starts, one of `startDays` (D-06); the earliest when left out. */
+  startDate?: ISODate
 }
 
 /**
- * Seals a contract on `today` (Ch 4): it starts at the next dawn, or is queued after the running
- * one. An Accord records its rival's Respect now, for D-01's 60 × f(Q) at Respect 75.
+ * Seals a contract on `today` (Ch 4): it starts on the chosen day, by default the next dawn or,
+ * queued, the day after the running one ends (D-06). An Accord records its rival's Respect now, for D-01's 60 × f(Q) at Respect 75.
  */
 export function sealContract(state: CampaignState, order: SealOrder, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
     const sealed = seal(
       state.contracts,
       state.purse,
-      { id: order.id, termDays: order.termDays, charter: order.charter ?? state.charter, pledge: order.pledge ?? 0, kind: order.kind ?? 'standard', ...(order.rival ? { rival: order.rival } : {}) },
+      { id: order.id, termDays: order.termDays, charter: order.charter ?? state.charter, pledge: order.pledge ?? 0, kind: order.kind ?? 'standard', ...(order.rival ? { rival: order.rival } : {}), ...(order.startDate ? { startDate: order.startDate } : {}) },
       sealContextOf(state, today)
     )
     let contract = sealed.contract
