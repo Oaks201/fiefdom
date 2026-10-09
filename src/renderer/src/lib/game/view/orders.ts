@@ -11,7 +11,7 @@
 import { addDays, dayCloseInstant } from '../clock'
 import { assaultBanners, defenseBanners, effectiveGarrison, envoyAvailable, ordersEstimate, ordersValidity, type OrderProblem, type OrdersEstimate } from '../combat'
 import { realmEffects } from '../effects'
-import { claimableBy, hexLabel } from '../map'
+import { claimableBy, hexName } from '../map'
 import { RULES } from '../rules'
 import { roster } from '../roster'
 import { openDayOf } from '../state'
@@ -105,7 +105,7 @@ function slotsOf(orders: DailyOrders | null): { target?: string; companies: stri
 export function assaultTargets(state: CampaignState): AssaultTarget[] {
   return state.hexes
     .filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
-    .map((h) => ({ hexId: h.id, label: hexLabel(h), owner: h.owner, ring: h.ring, garrison: effectiveGarrison(h) }))
+    .map((h) => ({ hexId: h.id, label: hexName(h), owner: h.owner, ring: h.ring, garrison: effectiveGarrison(h) }))
 }
 
 /** The orders panel for `date`, with today's Valor so far (`valor`, 0 to 1). */
@@ -122,7 +122,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
     const target = a?.target
     return {
       index,
-      ...(target ? { target: { hexId: target, label: hexLabel(target) } } : {}),
+      ...(target ? { target: { hexId: target, label: hexName(target) } } : {}),
       companies: a ? [...a.companies] : [],
       goesOut: target !== undefined && validity.assaults.some((x) => x.target === target)
     }

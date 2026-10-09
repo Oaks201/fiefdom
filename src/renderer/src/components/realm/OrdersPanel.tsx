@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { GiArcheryTarget, GiHourglass, GiRallyTheTroops, GiScrollUnfurled, GiShield } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { setOrders } from '../../lib/game/combat'
-import { hexLabel } from '../../lib/game/map'
+import { hexName } from '../../lib/game/map'
 import type { CampaignState, DailyOrders, ISODate, RivalId } from '../../lib/game/types'
 import { liveValor } from '../../lib/game/view/chronicle'
 import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withHelp, withTarget, type OrdersView } from '../../lib/game/view/orders'
@@ -95,7 +95,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
           </>
         ) : (
           <>
-            <GiArcheryTarget aria-hidden="true" /> {view.assaults.filter((a) => a.goesOut).map((a) => `Hex ${a.target?.label}`).join(' and ')} assaulted at the close.
+            <GiArcheryTarget aria-hidden="true" /> {view.assaults.filter((a) => a.goesOut).map((a) => a.target?.label).join(' and ')} assaulted at the close.
           </>
         )}
       </p>
@@ -243,7 +243,7 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
             <option value="">No target</option>
             {view.targets.map((t) => (
               <option key={t.hexId} value={t.hexId}>
-                Hex {t.label} · {t.owner === 'neutral' ? 'unaligned' : rivalName(t.owner as RivalId)} · garrison {amount(t.garrison)}
+                {t.label} · {t.owner === 'neutral' ? 'unaligned' : rivalName(t.owner as RivalId)} · garrison {amount(t.garrison)}
               </option>
             ))}
           </select>
@@ -268,12 +268,12 @@ function Estimate({ view, name }: { view: OrdersView; name(id: string): string }
         {e.defenses.map((d, i) => (
           <li key={`d${i}`}>
             {THREATS[d.kind]}
-            {d.rival ? ` (${rivalName(d.rival)})` : ''} at hex {hexLabel(d.hexId)}: Defense <strong>{amount(d.defense)}</strong> with {d.fielded.map(name).join(', ') || 'no one'}
+            {d.rival ? ` (${rivalName(d.rival)})` : ''} at {hexName(d.hexId)}: Defense <strong>{amount(d.defense)}</strong> with {d.fielded.map(name).join(', ') || 'no one'}
           </li>
         ))}
         {e.assaults.map((a, i) => (
           <li key={`a${i}`}>
-            Assault on hex {hexLabel(a.hexId)}: <strong>{amount(a.value)}</strong> against garrison {amount(a.garrison)}, {OUTCOMES[a.outcome]}
+            Assault on {hexName(a.hexId)}: <strong>{amount(a.value)}</strong> against garrison {amount(a.garrison)}, {OUTCOMES[a.outcome]}
           </li>
         ))}
       </ul>

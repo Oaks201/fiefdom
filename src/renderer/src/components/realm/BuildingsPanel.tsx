@@ -98,7 +98,7 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
               <p>
                 <Company company={b.company} />
               </p>
-              <details className="dominion" title={b.dominionSources.map((s) => `Hex ${s.label}: +${s.value}`).join('\n') || 'No hexes give it Dominion yet'}>
+              <details className="dominion" title={b.dominionSources.map((s) => `${s.label}: +${s.value}`).join('\n') || 'No hexes give it Dominion yet'}>
                 <summary>
                   Dominion <strong>{b.dominion}</strong>
                 </summary>
@@ -108,7 +108,7 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
                   <ul>
                     {b.dominionSources.map((s) => (
                       <li key={s.hexId}>
-                        Hex {s.label}: +{s.value}
+                        {s.label}: +{s.value}
                       </li>
                     ))}
                   </ul>

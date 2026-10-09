@@ -58,10 +58,10 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
   if (!view) return null
   const dominion = Object.entries(view.dominion) as [BuildingId, number][]
   return (
-    <section className="panel hex-panel" aria-label={`Hex ${view.label}`}>
+    <section className="panel hex-panel" aria-label={view.label}>
       <header className="panel__head">
         <h3 className="panel__title">
-          <GiTreasureMap aria-hidden="true" /> Hex {view.label}
+          <GiTreasureMap aria-hidden="true" /> {view.label}
         </h3>
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close the hex panel" title="Close">
           ×
@@ -162,7 +162,7 @@ function ActionButton({ action: a, view, campaign, today, onCourt }: { action: H
           onClick={() => {
             apply((s) => setOrders(s, withTarget(orders, today, view.id)).state)
             sfx('stamp')
-            toast(`Hex ${view.label} is today’s assault target. Send companies in the orders.`, 'success')
+            toast(`${view.label} is today’s assault target. Send companies in the orders.`, 'success')
           }}
         >
           <GiArcheryTarget aria-hidden="true" /> {view.target ? 'Today’s target' : 'Set as assault target'}
@@ -178,7 +178,7 @@ function ActionButton({ action: a, view, campaign, today, onCourt }: { action: H
           onClick={() => {
             if (act((s) => challenge(s, view.id, today))) {
               sfx('strike')
-              toast(`A Grand Battle is announced at hex ${view.label}.`, 'success')
+              toast(`A Grand Battle is announced at ${view.label}.`, 'success')
             }
           }}
         >
@@ -206,7 +206,7 @@ function ActionButton({ action: a, view, campaign, today, onCourt }: { action: H
           onClick={() => {
             if (act((s) => fortify(s, view.id, today))) {
               sfx('coin')
-              toast(`Hex ${view.label} is fortified to level ${view.fortification + 1}.`, 'success')
+              toast(`${view.label} is fortified to level ${view.fortification + 1}.`, 'success')
             }
           }}
         >
@@ -222,7 +222,7 @@ function ActionButton({ action: a, view, campaign, today, onCourt }: { action: H
           onClick={() => {
             if (act((s) => reclaim(s, view.id, today))) {
               sfx('coin')
-              toast(`Hex ${view.label} is yours again.`, 'success')
+              toast(`${view.label} is yours again.`, 'success')
             }
           }}
         >

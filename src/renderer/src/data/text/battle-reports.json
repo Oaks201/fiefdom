@@ -1,82 +1,82 @@
 {
   "battle.beasts.rout": {
-    "template": "Beasts attacked hex {hex}: routed. Spoils {spoils}.",
+    "template": "Beasts attacked {hex}: routed. Spoils {spoils}.",
     "final": null
   },
   "battle.beasts.victory": {
-    "template": "Beasts attacked hex {hex}: held. Spoils {spoils}.",
+    "template": "Beasts attacked {hex}: held. Spoils {spoils}.",
     "final": null
   },
   "battle.beasts.defeat": {
-    "template": "Beasts attacked hex {hex}: lost. Tribute {tribute}. Hex scorched until {until}.",
+    "template": "Beasts attacked {hex}: lost. Tribute {tribute}. Scorched until {until}.",
     "final": null
   },
   "battle.mythic.rout": {
-    "template": "Mythic attack on hex {hex}: routed. Spoils {spoils}.",
+    "template": "Mythic attack on {hex}: routed. Spoils {spoils}.",
     "final": null
   },
   "battle.mythic.victory": {
-    "template": "Mythic attack on hex {hex}: held. Spoils {spoils}.",
+    "template": "Mythic attack on {hex}: held. Spoils {spoils}.",
     "final": null
   },
   "battle.mythic.defeat": {
-    "template": "Mythic attack on hex {hex}: lost. Tribute {tribute}. Hex scorched until {until}.",
+    "template": "Mythic attack on {hex}: lost. Tribute {tribute}. Scorched until {until}.",
     "final": null
   },
   "battle.raid.rout": {
-    "template": "{rival} raid on hex {hex}: routed. Spoils {spoils}.",
+    "template": "{rival} raid on {hex}: routed. Spoils {spoils}.",
     "final": null
   },
   "battle.raid.victory": {
-    "template": "{rival} raid on hex {hex}: held. Spoils {spoils}.",
+    "template": "{rival} raid on {hex}: held. Spoils {spoils}.",
     "final": null
   },
   "battle.raid.defeat": {
-    "template": "{rival} raid on hex {hex}: lost. Tribute {tribute}. Hex scorched until {until}.",
+    "template": "{rival} raid on {hex}: lost. Tribute {tribute}. Scorched until {until}.",
     "final": null
   },
   "battle.conquest.repelled": {
-    "template": "{rival} conquest attempt on hex {hex}: held.",
+    "template": "{rival} conquest attempt on {hex}: held.",
     "final": null
   },
   "battle.conquest.contested": {
-    "template": "{rival} conquest attempt on hex {hex}: lost. Hex contested until {until}.",
+    "template": "{rival} conquest attempt on {hex}: lost. Contested until {until}.",
     "final": null
   },
   "battle.conquest.broken": {
-    "template": "{rival} conquest attempt on contested hex {hex}: held. The attempt is broken.",
+    "template": "{rival} renewed its conquest attempt on {hex}: held. The attempt is broken.",
     "final": null
   },
   "battle.conquest.lost": {
-    "template": "{rival} conquest attempt on contested hex {hex}: lost. The hex passes to {rival}.",
+    "template": "{rival} renewed its conquest attempt on {hex}: lost. {hex} passes to {rival}.",
     "final": null
   },
   "battle.conquest.coreHeld": {
-    "template": "{rival} conquest attempt on hex {hex}: lost. Rings 0 to 2 cannot be taken, so the hex is scorched until {until}.",
+    "template": "{rival} conquest attempt on {hex}: lost. Rings 0 to 2 cannot be taken, so the hex is scorched until {until}.",
     "final": null
   },
   "battle.assault.taken": {
-    "template": "Assault on hex {hex}: taken. Spoils {spoils}.",
+    "template": "Assault on {hex}: taken. Spoils {spoils}.",
     "final": null
   },
   "battle.assault.rout": {
-    "template": "Assault on hex {hex}: taken in a rout. Spoils {spoils}.",
+    "template": "Assault on {hex}: taken in a rout. Spoils {spoils}.",
     "final": null
   },
   "battle.assault.repulsed": {
-    "template": "Assault on hex {hex}: repulsed. Its garrison is worn down until the week closes.",
+    "template": "Assault on {hex}: repulsed. Its garrison is worn down until the week closes.",
     "final": null
   },
   "battle.grandIllusion": {
-    "template": "Battle at hex {hex} lost. Grand Illusion: no tribute, and the hex is not contested.",
+    "template": "Battle at {hex} lost. Grand Illusion: no tribute, and the hex is not contested.",
     "final": null
   },
   "battle.trophy": {
-    "template": "Mythic beaten at hex {hex}. Trophy: {item}.",
+    "template": "Mythic beaten at {hex}. Trophy: {item}.",
     "final": null
   },
   "battle.royalHunt": {
-    "template": "Royal Hunt at hex {hex}: {reputation} reputation and {item}.",
+    "template": "Royal Hunt at {hex}: {reputation} reputation and {item}.",
     "final": null
   }
 }

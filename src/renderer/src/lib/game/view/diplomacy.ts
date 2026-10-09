@@ -11,7 +11,7 @@
 import { CODEX } from '../codex'
 import { realmEffects } from '../effects'
 import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer } from '../land'
-import { claimableBy, hexLabel } from '../map'
+import { claimableBy, hexName } from '../map'
 import { RULES } from '../rules'
 import { respectEffects, rivalView, type ArmyBand, type RespectEffects, type TreasuryBand } from '../rivals'
 import { openDayOf } from '../state'
@@ -157,7 +157,7 @@ export interface DealLine {
   requires: string
   effect: string
   hexId?: string
-  hexLabel?: string
+  hexName?: string
   target?: RivalId
   available: boolean
   /** The engine's reason, as its catalog text id and the words. */
@@ -168,9 +168,9 @@ export interface DealLine {
 export function dealName(kind: DealKind, hexId?: string, target?: RivalId): string {
   switch (kind) {
     case 'buyHex':
-      return hexId ? `Buy hex ${hexLabel(hexId)}` : 'Buy a hex'
+      return hexId ? `Buy ${hexName(hexId)}` : 'Buy a hex'
     case 'sellHex':
-      return hexId ? `Sell hex ${hexLabel(hexId)}` : 'Sell a hex'
+      return hexId ? `Sell ${hexName(hexId)}` : 'Sell a hex'
     case 'truce':
       return 'Truce'
     case 'pact':
@@ -214,7 +214,7 @@ export function dealsView(state: CampaignState, rival: RivalId, today: ISODate =
     const line: DealLine = { kind: d.kind, rival, price: d.price, name: dealName(d.kind, d.hexId, d.target), ...dealTerms(d.kind, rival), available: d.allowed }
     if (d.hexId) {
       line.hexId = d.hexId
-      line.hexLabel = hexLabel(d.hexId)
+      line.hexName = hexName(d.hexId)
     }
     if (d.target) line.target = d.target
     if (!d.allowed && d.reason) {
@@ -222,7 +222,7 @@ export function dealsView(state: CampaignState, rival: RivalId, today: ISODate =
         rival: name,
         ...(d.reason.needed !== undefined ? { needed: d.reason.needed } : {}),
         ...(d.reason.have !== undefined ? { have: d.reason.have } : {}),
-        ...(d.hexId ? { hex: hexLabel(d.hexId) } : {}),
+        ...(d.hexId ? { hex: hexName(d.hexId) } : {}),
         ...(d.target ? { target: rivalName(d.target) } : {})
       }
       line.reason = { code: d.reason.code, textId: d.reason.textId, text: t(d.reason.textId, facts) }
@@ -297,7 +297,7 @@ export function courtableVillages(state: CampaignState, effects: Effects = realm
       const check = bidCheck(state, h.id, suggested)
       return {
         hexId: h.id,
-        label: hexLabel(h),
+        label: hexName(h),
         owner: h.owner,
         ownerName: h.owner === 'neutral' ? 'Unaligned' : rivalName(h.owner as RivalId),
         ring: h.ring,
@@ -320,7 +320,7 @@ export function courtshipsView(state: CampaignState, effects: Effects = realmEff
       const hex = byId.get(c.hexId)
       return {
         hexId: c.hexId,
-        label: hexLabel(c.hexId),
+        label: hexName(c.hexId),
         owner: hex?.owner ?? 'neutral',
         bid: c.bid,
         placedOn: c.placedOn,
@@ -332,7 +332,7 @@ export function courtshipsView(state: CampaignState, effects: Effects = realmEff
     results: state.log
       .flatMap((e) =>
         e.kind === 'courtship'
-          ? [{ day: e.day, hexId: e.hexId, label: hexLabel(e.hexId), outcome: e.outcome, bid: e.bid, ...(e.loyaltyDrop !== undefined ? { loyaltyDrop: e.loyaltyDrop } : {}), ...(e.winner ? { winner: e.winner } : {}) }]
+          ? [{ day: e.day, hexId: e.hexId, label: hexName(e.hexId), outcome: e.outcome, bid: e.bid, ...(e.loyaltyDrop !== undefined ? { loyaltyDrop: e.loyaltyDrop } : {}), ...(e.winner ? { winner: e.winner } : {}) }]
           : []
       )
       .reverse()

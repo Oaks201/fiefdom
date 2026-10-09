@@ -12,7 +12,7 @@ import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
 import { hostView } from '../grand/hosts'
-import { hexLabel } from '../map'
+import { hexName } from '../map'
 import { rivalView } from '../rivals'
 import { RULES } from '../rules'
 import { realmConsistencyOn, type SettleSummary } from '../settle'
@@ -118,7 +118,7 @@ function threatLines(state: CampaignState, today: ISODate): { hidden: boolean; l
   const view = tidings(state, today)
   const lines: HeraldLine[] = []
   for (const n of view.threats) {
-    const facts: TextFacts = { hex: hexLabel(n.hexId), strength: strengthWord(n), date: n.date, ...(n.rival ? { rival: rivalName(n.rival) } : {}) }
+    const facts: TextFacts = { hex: hexName(n.hexId), strength: strengthWord(n), date: n.date, ...(n.rival ? { rival: rivalName(n.rival) } : {}) }
     const id = n.kind === 'conquest' ? 'herald.threat.conquest' : `herald.threat.${n.kind}`
     lines.push(line('threat', id, facts, { hexId: n.hexId, ...(n.rival ? { rival: n.rival } : {}) }))
     if (n.siegeDay) lines.push(line('threat', 'herald.threat.siegeDay', {}, { hexId: n.hexId }))
@@ -131,7 +131,7 @@ function warningLines(state: CampaignState, today: ISODate): HeraldLine[] {
     .filter((b) => b.announcedOn <= today && b.battleDate >= today)
     .map((b) => {
       const host = hostView(state, b)
-      const facts: TextFacts = { trigger: b.trigger, hex: hexLabel(b.hexId), date: b.battleDate, host: `${host.size} host` }
+      const facts: TextFacts = { trigger: b.trigger, hex: hexName(b.hexId), date: b.battleDate, host: `${host.size} host` }
       return line('warning', 'herald.grandBattle.warning', facts, { hexId: b.hexId, ...(b.rival ? { rival: b.rival } : {}) })
     })
 }
@@ -147,7 +147,7 @@ function resultLine(e: GameEvent): HeraldLine | null {
   switch (e.kind) {
     case 'defense': {
       const until = e.scorchedUntil ?? e.contestedUntil
-      const facts: TextFacts = { hex: hexLabel(e.hexId), spoils: e.spoils ?? 0, tribute: e.tribute ?? 0 }
+      const facts: TextFacts = { hex: hexName(e.hexId), spoils: e.spoils ?? 0, tribute: e.tribute ?? 0 }
       if (e.rival) facts.rival = rivalName(e.rival)
       if (until) facts.until = until
       if (e.grandIllusion) return line('result', 'battle.grandIllusion', facts, { hexId: e.hexId })
@@ -160,9 +160,9 @@ function resultLine(e: GameEvent): HeraldLine | null {
     }
     case 'assault':
       if (e.outcome === 'revealed') return null
-      return line('result', `battle.assault.${e.outcome}`, { hex: hexLabel(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId })
+      return line('result', `battle.assault.${e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId })
     case 'borderCampaign':
-      return line('world', e.taken ? 'herald.borderCampaign.taken' : 'herald.borderCampaign.held', { rival: rivalName(e.attacker), other: rivalName(e.defender), hex: hexLabel(e.hexId) }, { hexId: e.hexId })
+      return line('world', e.taken ? 'herald.borderCampaign.taken' : 'herald.borderCampaign.held', { rival: rivalName(e.attacker), other: rivalName(e.defender), hex: hexName(e.hexId) }, { hexId: e.hexId })
     case 'coalition':
       return line('world', `herald.coalition.${e.stage}`, { members: rivalNames(e.members) })
     case 'rivalResolved':
@@ -177,7 +177,7 @@ function resultLine(e: GameEvent): HeraldLine | null {
       if ((e.stage === 'delayed' || e.stage === 'humbled') && e.until) return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival), date: e.until }, { rival: e.rival })
       return null
     case 'grandBattle':
-      if (e.stage === 'queued' && e.battleDate) return line('warning', 'herald.grandBattle.queued', { trigger: e.trigger, hex: hexLabel(e.hexId), date: e.battleDate }, { hexId: e.hexId })
+      if (e.stage === 'queued' && e.battleDate) return line('warning', 'herald.grandBattle.queued', { trigger: e.trigger, hex: hexName(e.hexId), date: e.battleDate }, { hexId: e.hexId })
       return null
     default:
       return null
@@ -223,7 +223,7 @@ export function homecomingView(summary: SettleSummary, suggestedTermDays: number
   const lost = summary.lost.flatMap((e) => {
     if (e.kind !== 'hexTransfer') return resultLine(e) ?? []
     if (e.how === 'conquest') return []
-    return [line('result', 'healer.shame', { what: `Hex ${hexLabel(e.hexId)}`, date: e.day }, { hexId: e.hexId })]
+    return [line('result', 'healer.shame', { what: `${hexName(e.hexId)}`, date: e.day }, { hexId: e.hexId })]
   })
   const away = summary.awayDays
   return {

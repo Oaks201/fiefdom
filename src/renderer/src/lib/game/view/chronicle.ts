@@ -11,7 +11,7 @@ import { addDays, diffDays, weekOf } from '../clock'
 import { dailyIncome, roundPosting } from '../economy'
 import { realmEffects } from '../effects'
 import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
-import { hexLabel } from '../map'
+import { hexName } from '../map'
 import { RULES } from '../rules'
 import { dutiesPillar, poolShare, stepsPillar, termsOf, valor, weekScores } from '../score'
 import { charterOn, snapshotOf } from '../settle'
@@ -269,7 +269,7 @@ export function healerCards(state: CampaignState, today: ISODate = openDayOf(sta
   const warned = state.log.some((e) => e.kind === 'ascendancy' && (e.stage === 'warning' || e.stage === 'ultimatum') && diffDays(e.day, today) <= RULES.healer.checkInWindowDays)
   if (warned) situation.fearOfLosing = { grace: state.weight.grace }
   const lost = state.log.find((e) => e.kind === 'hexTransfer' && e.from === 'player' && e.day === addDays(today, -1))
-  if (lost && lost.kind === 'hexTransfer') situation.loss = { what: `Hex ${hexLabel(lost.hexId)}`, date: lost.day }
+  if (lost && lost.kind === 'hexTransfer') situation.loss = { what: `${hexName(lost.hexId)}`, date: lost.day }
   if (state.orders.some((o) => o.date === today)) situation.ordersSet = { closeTime: `${String(RULES.clock.dayCloseHour).padStart(2, '0')}:00` }
   return healerCheckIns(situation).map((n) => ({ checkIn: n.checkIn, textId: `healer.${n.checkIn}`, text: t(`healer.${n.checkIn}`, n.facts) }))
 }

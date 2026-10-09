@@ -6,6 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
+import { hexName } from '../../src/renderer/src/lib/game/map'
 import { applyScenario } from '../../src/renderer/src/lib/game/dev/scenarios'
 import { begin, companyLimit, playRound, setFormation } from '../../src/renderer/src/lib/game/grand'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
@@ -120,13 +121,13 @@ test('Convention 6: the enemy’s power shows on the field only when the host ro
   }
 })
 
-test('Ch 11: the warning shows as "Incursion at hex … in 2 days", then "today" with Fight now', () => {
+test('Ch 11: the warning shows as "Incursion at <hex name> in 2 days", then "today" with Fight now', () => {
   const state = fresh()
   const today = openDayOf(state)
   const announced = applyScenario(state, 'incursion', today) as CampaignState
   const [notice] = battleNotices(announced, today)
   assert.equal(notice.daysLeft, 2)
-  assert.match(notice.label, /^Incursion at hex \d-\d+ in 2 days$/)
+  assert.equal(notice.label, `Incursion at ${hexName(notice.hexId)} in 2 days`)
   assert.equal(notice.today, false)
   const day = battleNotices(announced, addDays(today, 2))[0]
   assert.equal(day.today, true)

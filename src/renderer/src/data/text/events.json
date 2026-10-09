@@ -4,7 +4,7 @@
     "final": null
   },
   "events.ugraksChallenge.body": {
-    "template": "Ugrak challenges the realm to a duel at hex {hex} on {date}: {companies} companies a side. Win: Orc Respect +{respect}. Lose: {tribute} tribute.",
+    "template": "Ugrak challenges the realm to a duel at {hex} on {date}: {companies} companies a side. Win: Orc Respect +{respect}. Lose: {tribute} tribute.",
     "final": null
   },
   "events.grandAuction.title": {
@@ -44,7 +44,7 @@
     "final": null
   },
   "events.dragonWakes.body": {
-    "template": "The Dragon attacks hex {hex} on {date} in a Grand Battle. Win: the Dragon's Heart and {reputation} reputation.",
+    "template": "The Dragon attacks {hex} on {date} in a Grand Battle. Win: the Dragon's Heart and {reputation} reputation.",
     "final": null
   },
   "events.wildHunt.title": {
@@ -52,7 +52,7 @@
     "final": null
   },
   "events.wildHunt.body": {
-    "template": "The Wild Hunt attacks hex {hex} on {date} in a Grand Battle.",
+    "template": "The Wild Hunt attacks {hex} on {date} in a Grand Battle.",
     "final": null
   },
   "events.pretender.title": {
@@ -76,7 +76,7 @@
     "final": null
   },
   "events.villageUprising.body": {
-    "template": "The village at hex {hex} turns neutral on {date} unless {cost} is paid.",
+    "template": "The village at {hex} turns neutral on {date} unless {cost} is paid.",
     "final": null
   },
   "events.wanderingOrder.title": {

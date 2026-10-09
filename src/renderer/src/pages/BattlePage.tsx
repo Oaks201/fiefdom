@@ -3,7 +3,7 @@ import { BattleResult, Replay } from '../components/battle/BattleParts'
 import { LiveBattle } from '../components/battle/LiveBattle'
 import { Preparation } from '../components/battle/Preparation'
 import { formatShort } from '../lib/dates'
-import { hexLabel } from '../lib/game/map'
+import { hexName } from '../lib/game/map'
 import { triggerName } from '../lib/game/view/battle'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useUI } from '../state/ui'
@@ -40,7 +40,7 @@ export function BattlePage(): React.JSX.Element | null {
           <GiCrossedSwords aria-hidden="true" /> {triggerName(battle)}
         </h1>
         <p className="page-sub">
-          At hex {hexLabel(battle.hexId)}, {formatShort(battle.battleDate)}
+          At {hexName(battle.hexId)}, {formatShort(battle.battleDate)}
           {battle.result !== undefined ? ' · fought' : battle.setup ? ' · under way' : ''}
         </p>
       </header>

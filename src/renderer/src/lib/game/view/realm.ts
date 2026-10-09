@@ -12,7 +12,7 @@ import { combatOf, effectiveGarrison, ordersValidity, tidings, type Band } from 
 import { numeral, realmEffects, sourceLabel } from '../effects'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
-import { dominionOf, dominionSources, fronts, hexLabel, isClaimableKind, parseHexId } from '../map'
+import { dominionOf, dominionSources, fronts, hexName, isClaimableKind, parseHexId } from '../map'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
 import { openDayOf } from '../state'
@@ -128,7 +128,7 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
     const front = battlefield.get(h.id)
     const out: MapHex = {
       ...p,
-      label: hexLabel(h),
+      label: hexName(h),
       ring: h.ring,
       kind: h.kind,
       owner: h.owner,
@@ -252,7 +252,7 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
   if (isRival(hex.owner)) {
     const offer = offerDeal(state, hex.owner, { kind: 'buyHex', hexId }, today)
     const reason = offer.reason
-    const facts = { rival: rivalName(hex.owner), hex: hexLabel(hex), ...(reason?.needed !== undefined ? { needed: reason.needed } : {}) }
+    const facts = { rival: rivalName(hex.owner), hex: hexName(hex), ...(reason?.needed !== undefined ? { needed: reason.needed } : {}) }
     actions.push({ kind: 'buy', available: offer.allowed, cost: offer.price, ...(offer.allowed || !reason ? {} : { reason: { code: reason.code, label: t(reason.textId, facts), textId: reason.textId, facts: { ...reason } } }) })
   }
   if (hex.owner === 'player') {
@@ -268,7 +268,7 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
   const courtship = state.courtships.find((c) => c.hexId === hexId)
   return {
     id: hex.id,
-    label: hexLabel(hex),
+    label: hexName(hex),
     owner: hex.owner,
     ownerName: ownerName(hex.owner),
     kind: hex.kind,
@@ -479,7 +479,7 @@ export function buildingsView(state: CampaignState, effects: Effects = realmEffe
       slot: `building.${id}.${tier}`,
       company: companyAt(id, tier),
       dominion: sources.reduce((s, x) => s + x.value, 0),
-      dominionSources: sources.map((s) => ({ ...s, label: hexLabel(s.hexId) })),
+      dominionSources: sources.map((s) => ({ ...s, label: hexName(s.hexId) })),
       gives: effectLines(effects, fromThis)
     }
     if (next) {

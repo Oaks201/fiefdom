@@ -3,7 +3,7 @@ import { GiQuill } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { formatNumber, parseInteger } from '../../lib/format'
 import { bidCheck, placeBid } from '../../lib/game/land'
-import { hexLabel } from '../../lib/game/map'
+import { hexName } from '../../lib/game/map'
 import type { CampaignState, ISODate } from '../../lib/game/types'
 import { landRefusalLabel } from '../../lib/game/view/refusals'
 import { useCampaign } from '../../state/campaign'
@@ -37,7 +37,7 @@ export function BidForm({ campaign, today, hexId, suggested, resistance, trust, 
     if (!valid) return
     if (!act((s) => placeBid(s, hexId, bid, today))) return
     sfx('quill')
-    toast(`Bid of ${formatNumber(bid)} placed on hex ${hexLabel(hexId)}. It resolves at the week close.`, 'success')
+    toast(`Bid of ${formatNumber(bid)} placed on ${hexName(hexId)}. It resolves at the week close.`, 'success')
     onDone?.()
   }
 
@@ -45,7 +45,7 @@ export function BidForm({ campaign, today, hexId, suggested, resistance, trust, 
     <div className="bid-form">
       <label className="field">
         <span className="field__label">
-          <GiQuill aria-hidden="true" /> Bid on hex {hexLabel(hexId)}
+          <GiQuill aria-hidden="true" /> Bid on {hexName(hexId)}
         </span>
         <span className="field__box">
           <input value={text} inputMode="numeric" onChange={(e) => setText(e.target.value.replace(/[^\d,]/g, ''))} aria-invalid={!valid || !check?.ok} />

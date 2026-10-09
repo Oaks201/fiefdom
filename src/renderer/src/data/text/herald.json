@@ -1,18 +1,18 @@
 {
   "herald.threat.beasts": {
-    "template": "Beasts threaten hex {hex} today. Strength: {strength}.",
+    "template": "Beasts threaten {hex} today. Strength: {strength}.",
     "final": null
   },
   "herald.threat.mythic": {
-    "template": "A mythic threatens hex {hex} today. Strength: {strength}.",
+    "template": "A mythic threatens {hex} today. Strength: {strength}.",
     "final": null
   },
   "herald.threat.raid": {
-    "template": "{rival} raid expected on hex {hex} today. Strength: {strength}.",
+    "template": "{rival} raid expected on {hex} today. Strength: {strength}.",
     "final": null
   },
   "herald.threat.conquest": {
-    "template": "{rival} conquest attempt announced on hex {hex} for {date}. Strength: {strength}.",
+    "template": "{rival} conquest attempt announced on {hex} for {date}. Strength: {strength}.",
     "final": null
   },
   "herald.threat.siegeDay": {
@@ -20,11 +20,11 @@
     "final": null
   },
   "herald.grandBattle.warning": {
-    "template": "Grand Battle ({trigger}) at hex {hex} on {date}. Enemy: {host}.",
+    "template": "Grand Battle ({trigger}) at {hex} on {date}. Enemy: {host}.",
     "final": null
   },
   "herald.grandBattle.queued": {
-    "template": "Grand Battle ({trigger}) at hex {hex} queued for {date}.",
+    "template": "Grand Battle ({trigger}) at {hex} queued for {date}.",
     "final": null
   },
   "herald.results": {
@@ -48,11 +48,11 @@
     "final": null
   },
   "herald.borderCampaign.taken": {
-    "template": "{rival} took hex {hex} from {other}.",
+    "template": "{rival} took {hex} from {other}.",
     "final": null
   },
   "herald.borderCampaign.held": {
-    "template": "{rival} attacked hex {hex}, held by {other}, and was driven off.",
+    "template": "{rival} attacked {hex}, held by {other}, and was driven off.",
     "final": null
   },
   "herald.coalition.formed": {
@@ -116,7 +116,7 @@
     "final": null
   },
   "herald.offer.goblinBuys": {
-    "template": "The Goblin offers {price} for hex {hex}, until {date}.",
+    "template": "The Goblin offers {price} for {hex}, until {date}.",
     "final": null
   },
   "herald.ritual.longNight": {
@@ -128,7 +128,7 @@
     "final": null
   },
   "herald.ritual.summoning": {
-    "template": "The Archmage cast the Summoning: a mythic garrison holds hex {hex}.",
+    "template": "The Archmage cast the Summoning: a mythic garrison holds {hex}.",
     "final": null
   },
   "herald.ritual.curseOfWeariness": {
@@ -192,15 +192,15 @@
     "final": null
   },
   "herald.deal.refused.notRivalHex": {
-    "template": "{rival} does not hold hex {hex}.",
+    "template": "{rival} does not hold {hex}.",
     "final": null
   },
   "herald.deal.refused.notPlayerHex": {
-    "template": "The realm does not hold hex {hex}.",
+    "template": "The realm does not hold {hex}.",
     "final": null
   },
   "herald.deal.refused.notClaimable": {
-    "template": "Hex {hex} cannot change hands with {rival}.",
+    "template": "{hex} cannot change hands with {rival}.",
     "final": null
   },
   "herald.deal.refused.innerRing": {
@@ -240,15 +240,15 @@
     "final": null
   },
   "herald.grandBattle.rout": {
-    "template": "Grand Battle ({battle}) at hex {hex}: won in a rout.",
+    "template": "Grand Battle ({battle}) at {hex}: won in a rout.",
     "final": null
   },
   "herald.grandBattle.victory": {
-    "template": "Grand Battle ({battle}) at hex {hex}: won.",
+    "template": "Grand Battle ({battle}) at {hex}: won.",
     "final": null
   },
   "herald.grandBattle.defeat": {
-    "template": "Grand Battle ({battle}) at hex {hex}: lost.",
+    "template": "Grand Battle ({battle}) at {hex}: lost.",
     "final": null
   },
   "herald.reign": {
