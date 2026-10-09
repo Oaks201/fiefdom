@@ -18,6 +18,7 @@ import mythicsJson from '../../data/codex/mythics.json'
 import ritualsJson from '../../data/codex/rituals.json'
 import eventsJson from '../../data/codex/events.json'
 import rivalsJson from '../../data/codex/rivals.json'
+import hexesJson from '../../data/codex/hexes.json'
 import { RULES, deepFreeze, type DeepReadonly } from './rules'
 import { RIVAL_MOMENTS } from './text'
 import {
@@ -257,6 +258,13 @@ export interface FrontEntry {
   rivals: [RivalId, RivalId]
 }
 
+/** A hex's place name, shown wherever the hex is named (D-07). `label` is its ring label (A-109), for finding it. */
+export interface HexNameEntry {
+  id: string
+  label: string
+  name: string
+}
+
 export interface CodexData {
   buildings: BuildingEntry[]
   companies: CompanyEntry[]
@@ -275,6 +283,7 @@ export interface CodexData {
   events: EventEntry[]
   rivals: RivalEntry[]
   fronts: FrontEntry[]
+  hexes: HexNameEntry[]
 }
 
 export type Codex = DeepReadonly<CodexData>
@@ -303,7 +312,8 @@ export const CODEX: Codex = deepFreeze<CodexData>({
   rituals: load(ritualsJson),
   events: load(eventsJson),
   rivals: load(rivalsJson.rivals),
-  fronts: load(rivalsJson.fronts)
+  fronts: load(rivalsJson.fronts),
+  hexes: load(hexesJson.hexes)
 })
 
 // ── Units ────────────────────────────────────────────────────────────────────
@@ -734,6 +744,10 @@ export function validateCodex(codex: Codex = CODEX): string[] {
     f.rivals.forEach((r) => rival(`front ${f.id}`, r))
     if (f.rivals[0] === f.rivals[1]) fail(`front ${f.id}`, 'needs two different rivals')
   }
+
+  // Hex names (D-07): one per hex, no two alike. That they cover the map exactly is tested beside the map.
+  unique('hexes', codex.hexes.map((h) => h.id))
+  unique('hex names', codex.hexes.map((h) => h.name))
 
   return errors
 }

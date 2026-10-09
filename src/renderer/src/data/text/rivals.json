@@ -8,23 +8,23 @@
     "final": null
   },
   "rivals.orc.raid": {
-    "template": "Orc: raid on hex {hex} today.",
+    "template": "Orc: raid on {hex} today.",
     "final": null
   },
   "rivals.orc.defeatInBattle": {
-    "template": "Orc: its force lost the battle at hex {hex}.",
+    "template": "Orc: its force lost the battle at {hex}.",
     "final": null
   },
   "rivals.orc.victoryInBattle": {
-    "template": "Orc: its force won the battle at hex {hex}.",
+    "template": "Orc: its force won the battle at {hex}.",
     "final": null
   },
   "rivals.orc.surrenderHex": {
-    "template": "Orc: hex {hex} ceded to you.",
+    "template": "Orc: {hex} ceded to you.",
     "final": null
   },
   "rivals.orc.defection": {
-    "template": "Orc: village at hex {hex} defected to you.",
+    "template": "Orc: village at {hex} defected to you.",
     "final": null
   },
   "rivals.orc.dealStruck": {
@@ -56,23 +56,23 @@
     "final": null
   },
   "rivals.goblin.raid": {
-    "template": "Goblin: raid on hex {hex} today.",
+    "template": "Goblin: raid on {hex} today.",
     "final": null
   },
   "rivals.goblin.defeatInBattle": {
-    "template": "Goblin: its force lost the battle at hex {hex}.",
+    "template": "Goblin: its force lost the battle at {hex}.",
     "final": null
   },
   "rivals.goblin.victoryInBattle": {
-    "template": "Goblin: its force won the battle at hex {hex}.",
+    "template": "Goblin: its force won the battle at {hex}.",
     "final": null
   },
   "rivals.goblin.surrenderHex": {
-    "template": "Goblin: hex {hex} ceded to you.",
+    "template": "Goblin: {hex} ceded to you.",
     "final": null
   },
   "rivals.goblin.defection": {
-    "template": "Goblin: village at hex {hex} defected to you.",
+    "template": "Goblin: village at {hex} defected to you.",
     "final": null
   },
   "rivals.goblin.dealStruck": {
@@ -104,23 +104,23 @@
     "final": null
   },
   "rivals.archmage.raid": {
-    "template": "Archmage: raid on hex {hex} today.",
+    "template": "Archmage: raid on {hex} today.",
     "final": null
   },
   "rivals.archmage.defeatInBattle": {
-    "template": "Archmage: its force lost the battle at hex {hex}.",
+    "template": "Archmage: its force lost the battle at {hex}.",
     "final": null
   },
   "rivals.archmage.victoryInBattle": {
-    "template": "Archmage: its force won the battle at hex {hex}.",
+    "template": "Archmage: its force won the battle at {hex}.",
     "final": null
   },
   "rivals.archmage.surrenderHex": {
-    "template": "Archmage: hex {hex} ceded to you.",
+    "template": "Archmage: {hex} ceded to you.",
     "final": null
   },
   "rivals.archmage.defection": {
-    "template": "Archmage: village at hex {hex} defected to you.",
+    "template": "Archmage: village at {hex} defected to you.",
     "final": null
   },
   "rivals.archmage.dealStruck": {
@@ -152,23 +152,23 @@
     "final": null
   },
   "rivals.dwarf.raid": {
-    "template": "Dwarf: raid on hex {hex} today.",
+    "template": "Dwarf: raid on {hex} today.",
     "final": null
   },
   "rivals.dwarf.defeatInBattle": {
-    "template": "Dwarf: its force lost the battle at hex {hex}.",
+    "template": "Dwarf: its force lost the battle at {hex}.",
     "final": null
   },
   "rivals.dwarf.victoryInBattle": {
-    "template": "Dwarf: its force won the battle at hex {hex}.",
+    "template": "Dwarf: its force won the battle at {hex}.",
     "final": null
   },
   "rivals.dwarf.surrenderHex": {
-    "template": "Dwarf: hex {hex} ceded to you.",
+    "template": "Dwarf: {hex} ceded to you.",
     "final": null
   },
   "rivals.dwarf.defection": {
-    "template": "Dwarf: village at hex {hex} defected to you.",
+    "template": "Dwarf: village at {hex} defected to you.",
     "final": null
   },
   "rivals.dwarf.dealStruck": {

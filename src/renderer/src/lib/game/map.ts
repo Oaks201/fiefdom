@@ -143,6 +143,17 @@ export function hexLabel(hex: string | Axial | HexState): string {
   return `${ringOf(at)}-${ringIndex(at) + 1}`
 }
 
+const NAME_OF = new Map(CODEX.hexes.map((h) => [h.id, h.name]))
+
+/**
+ * A hex's place name, as screens and text name it (D-07): "Ashfall", "Caer Emrys". From the codex,
+ * themed by the region the hex lies in; the ring label (`hexLabel`) stands in for a hex without one.
+ */
+export function hexName(hex: string | Axial | HexState): string {
+  const id = typeof hex === 'string' ? hex : hexId(hex.q, hex.r)
+  return NAME_OF.get(id) ?? hexLabel(hex)
+}
+
 // ── Building the map ─────────────────────────────────────────────────────────
 
 /** Where a hex sits in the layout, before anyone owns it. */

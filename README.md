@@ -193,6 +193,6 @@ If it still fails, it prints the reason (for example a proxy or antivirus blocki
 
 ## Credits
 
-Desk and parchment artwork generated for Fiefdom with the built-in image generation tool. Asset paths and full prompts are recorded in [the art notes](docs/art-assets.md).
+Desk, parchment and the 17-class starter game art set were generated for Fiefdom with the built-in image generation tool. Asset paths and full prompts are recorded in [the art notes](docs/art-assets.md) and [the game style sheet](docs/game/art/style-sheet.md). In development, **Art samples** previews every installed class before founding a campaign; **Reload art** refreshes dropped-in files. Validate this set with `npm run assets:check -- --starter --strict`.
 
 Font: Almendra in regular, bold and italic styles (SIL Open Font License), bundled with the app so it works offline. Background music: **Innfolk Mirth**, supplied by the user. Original sound effects rendered with [sfx-api](https://github.com/gteuscher/sfx-api); live hold textures use the Web Audio API. Illustrated top-bar timber is an original SVG. Icons from [game-icons.net](https://game-icons.net) by their authors, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), via react-icons.

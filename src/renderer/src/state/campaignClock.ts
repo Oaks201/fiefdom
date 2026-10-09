@@ -9,11 +9,11 @@
  * campaign with `window.fiefdomDev.campaign()`. All are compiled out of production builds and never
  * reachable by the player.
  */
-import { create } from 'zustand'
 import { openDay } from '../lib/game/clock'
 import { momentsFor } from '../lib/game/view/endgame'
 import type { ISODate } from '../lib/game/types'
 import { useCampaign } from './campaign'
+import { appNow, devShiftNow } from './clock'
 import { useHealth } from './health'
 import { useMoments } from './moments'
 import { useLedger } from './store'
@@ -24,17 +24,9 @@ const LAUNCH_SYNC_WAIT_MS = 10_000
 const TICK_MS = 15_000
 const DAY_MS = 86_400_000
 
-let devOffsetMs = 0
-/** Re-renders what reads the campaign's "now" when dev time travel moves it (A-09). */
-export const useDevClock = create<{ offsetMs: number }>(() => ({ offsetMs: 0 }))
-
-/** The campaign's "now": the real time, or in development the time-travel override (A-09). */
+/** The campaign's "now": the app's, which development builds can move (A-09). */
 export function campaignNow(): Date {
-  const real = new Date()
-  if (!import.meta.env.DEV) return real
-  const fixed = import.meta.env.FIEFDOM_DEV_NOW ? new Date(import.meta.env.FIEFDOM_DEV_NOW) : null
-  const base = fixed && !Number.isNaN(fixed.getTime()) ? fixed : real
-  return new Date(base.getTime() + devOffsetMs)
+  return appNow()
 }
 
 /** Resolves once the first Fitbit sync has been tried (or can't be), or after `timeoutMs`. */
@@ -113,8 +105,7 @@ export function startCampaignClock(): () => void {
 /** Development only (A-09): moves "now" forward by whole days and settles. A no-op in production. */
 export function devAdvanceDays(days: number): void {
   if (!import.meta.env.DEV) return
-  devOffsetMs += days * DAY_MS
-  useDevClock.setState({ offsetMs: devOffsetMs })
+  devShiftNow(days * DAY_MS)
   runSettle(true)
 }
 

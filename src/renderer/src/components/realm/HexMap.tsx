@@ -109,7 +109,7 @@ function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Elemen
   const { id, x, y } = useMapHover()
   const hex = id ? hexes.get(id) : undefined
   if (!hex) return null
-  const parts = [`Hex ${hex.label}`, hex.kind === 'battlefield' ? `${hex.front?.front ?? ''} front`.trim() : ownerName(hex.owner)]
+  const parts = [hex.label, hex.kind === 'battlefield' ? `${hex.front?.front ?? ''} front`.trim() : ownerName(hex.owner)]
   if (hex.village) parts.push('village')
   if (hex.status !== 'held') parts.push(`${hex.status}${hex.daysLeft !== undefined ? `, ${hex.daysLeft}d` : ''}`)
   if (hex.threats?.length) parts.push(hex.threats.map((t) => `${t.rival ? `${rivalName(t.rival)} ` : ''}${THREAT_WORDS[t.kind]}${t.band ? ` (${t.band})` : ''}`).join(', '))

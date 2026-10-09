@@ -1,0 +1,48 @@
+{
+  "id": "company.trapSetters",
+  "kind": "unit",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production square transparent company portrait for Fiefdom medieval strategy game. Reference image is only STYLE. Subject: green goblin trap-setter, huge ears, ochre work cap, leather coat, small toothed iron trap at chest edge, cunning squint. Tight large head-and-shoulders icon, face or creature head dominates, with transparent margin; no full-body character, no busy scene. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Genuine transparent background, clean silhouette fully in canvas. Logical 256x256 hand placed pixel drawing nearest enlarged. No text, no frame, no watermark.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-24a4876e-72e4-4210-983a-8c8cd976f7f0.png",
+  "staged": false,
+  "outputs": [
+    {
+      "slot": "company.trapSetters.portrait",
+      "kind": "portrait",
+      "size": [
+        512,
+        512
+      ],
+      "logical": [
+        256,
+        256
+      ],
+      "file": "company.trapSetters.portrait-early-v3.png"
+    },
+    {
+      "slot": "company.trapSetters.token",
+      "kind": "token",
+      "size": [
+        128,
+        128
+      ],
+      "logical": [
+        64,
+        64
+      ],
+      "file": "company.trapSetters.token-early-v3.png"
+    }
+  ],
+  "normalization": {
+    "logical": [
+      256,
+      256
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

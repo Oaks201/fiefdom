@@ -26,7 +26,7 @@ import {
   type HostView
 } from '../grand'
 import { LANES, SLOTS, isOver, laneOf, onField, orderNeeds, plannedIntents, rankOf, shares, validTargets, type Field } from '../grand/field'
-import { hexLabel } from '../map'
+import { hexName } from '../map'
 import { RULES } from '../rules'
 import { rosterDetail } from '../roster'
 import { readinessValors } from '../settle'
@@ -256,7 +256,7 @@ export interface BattleNotice {
   battleId: string
   trigger: string
   hexId: string
-  hexLabel: string
+  hexName: string
   battleDate: ISODate
   daysLeft: number
   /** Today is the battle day: "Fight now". */
@@ -264,16 +264,16 @@ export interface BattleNotice {
   label: string
 }
 
-/** Every Grand Battle announced and unfought, soonest first: "Battle at hex 4-7 in 2 days". */
+/** Every Grand Battle announced and unfought, soonest first: "Battle at Ashfall in 2 days". */
 export function battleNotices(state: CampaignState, today: ISODate = openDayOf(state)): BattleNotice[] {
   return pendingBattles(state).map((b) => {
     const days = Math.max(0, diffDays(today, b.battleDate))
-    const where = `hex ${hexLabel(b.hexId)}`
+    const where = hexName(b.hexId)
     return {
       battleId: b.id,
       trigger: triggerName(b),
       hexId: b.hexId,
-      hexLabel: hexLabel(b.hexId),
+      hexName: hexName(b.hexId),
       battleDate: b.battleDate,
       daysLeft: days,
       today: days === 0,
@@ -331,7 +331,7 @@ export interface PrepCompany {
 export interface PreparationView {
   battleId: string
   trigger: string
-  hexLabel: string
+  hexName: string
   battleDate: ISODate
   daysLeft: number
   canFight: boolean
@@ -387,7 +387,7 @@ export function preparationView(state: CampaignState, battleId: string, today: I
   return {
     battleId,
     trigger: triggerName(battle),
-    hexLabel: hexLabel(battle.hexId),
+    hexName: hexName(battle.hexId),
     battleDate: battle.battleDate,
     daysLeft: Math.max(0, diffDays(today, battle.battleDate)),
     canFight: prep.canFight,
@@ -489,7 +489,7 @@ export interface OfferedCard extends OrderCard {
 export interface FieldView {
   battleId: string
   trigger: string
-  hexLabel: string
+  hexName: string
   /** Rounds played, and how many there are. */
   round: number
   rounds: number
@@ -596,7 +596,7 @@ export function fieldView(state: CampaignState, battleId: string): FieldView | n
   return {
     battleId,
     trigger: triggerName(battle),
-    hexLabel: hexLabel(battle.hexId),
+    hexName: hexName(battle.hexId),
     round: field.round,
     rounds: G.rounds,
     over,
@@ -626,7 +626,7 @@ export interface ReplayFrame {
 export interface ReplayView {
   battleId: string
   trigger: string
-  hexLabel: string
+  hexName: string
   units: Omit<UnitView, 'hp' | 'routed' | 'intent' | 'slot'>[]
   frames: ReplayFrame[]
 }
@@ -652,7 +652,7 @@ export function replayView(state: CampaignState, battleId: string): ReplayView |
   return {
     battleId,
     trigger: triggerName(battle),
-    hexLabel: hexLabel(battle.hexId),
+    hexName: hexName(battle.hexId),
     units: field.units.map((u) => ({
       id: u.id,
       name: u.name,
@@ -675,7 +675,7 @@ const DECISIVE = new Set<GrandTrigger>(['gate', 'capital', 'siege', 'mythicHunt'
 export interface ResultView {
   battleId: string
   trigger: string
-  hexLabel: string
+  hexName: string
   result: 'rout' | 'victory' | 'defeat'
   won: boolean
   /** Gate, Capital, Siege and Mythic Hunt results get the big-moment card. */
@@ -703,9 +703,9 @@ export function resultView(state: CampaignState, battleId: string): ResultView |
   if (o.reputation) lines.push(`+${amount(o.reputation)} reputation`)
   if (o.tribute) lines.push(`Tribute −${amount(o.tribute)}`)
   if (o.respect) lines.push(`Respect ${o.respect > 0 ? '+' : '−'}${amount(Math.abs(o.respect))}${who ? ` with ${who}` : ''}`)
-  if (o.hexTaken) lines.push(`Hex ${hexLabel(o.hexTaken)} is yours`)
-  if (o.hexLost) lines.push(`Hex ${hexLabel(o.hexLost)} passes to ${who ?? 'the enemy'}`)
-  if (o.hexScorched) lines.push(`Hex ${hexLabel(o.hexScorched)} is scorched; rings 0 to 2 never fall`)
+  if (o.hexTaken) lines.push(`${hexName(o.hexTaken)} is yours`)
+  if (o.hexLost) lines.push(`${hexName(o.hexLost)} passes to ${who ?? 'the enemy'}`)
+  if (o.hexScorched) lines.push(`${hexName(o.hexScorched)} is scorched; rings 0 to 2 never fall`)
   if (o.trophy) lines.push(`Trophy: ${CODEX.items.find((i) => i.id === o.trophy)?.name ?? o.trophy}`)
   if (o.armyLoss) lines.push(`${who ?? 'The enemy'}’s army −${pct(o.armyLoss)}`)
   if (o.armyGain) lines.push(`${who ?? 'The enemy'}’s army +${pct(o.armyGain)}`)
@@ -716,7 +716,7 @@ export function resultView(state: CampaignState, battleId: string): ResultView |
   return {
     battleId,
     trigger: triggerName(battle),
-    hexLabel: hexLabel(battle.hexId),
+    hexName: hexName(battle.hexId),
     result: done.result,
     won,
     decisive: DECISIVE.has(battle.trigger),
@@ -724,7 +724,7 @@ export function resultView(state: CampaignState, battleId: string): ResultView |
     shares: done.shares,
     lines,
     titleId: `herald.grandBattle.${done.result}`,
-    facts: { battle: triggerName(battle), hex: hexLabel(battle.hexId) },
+    facts: { battle: triggerName(battle), hex: hexName(battle.hexId) },
     slot: won ? 'moment.grandBattleWon' : 'moment.grandBattleLost'
   }
 }

@@ -17,6 +17,7 @@ import { useUI } from '../../state/ui'
 import { HoldButton } from '../HoldButton'
 import { Modal } from '../Modal'
 import { WaxSeal } from '../WaxSeal'
+import { GameArt } from './GameArt'
 
 /** Ch 16's suggested duties: all additive habits, never skipping anything. */
 const SUGGESTED_DUTIES = ['Sleep by 11', 'Drink water', 'Stretch', 'Read', 'Cook at home']
@@ -52,7 +53,11 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
   const [start, setStart] = useState(latest ? latest.weight.toFixed(1) : '')
   const [goal, setGoal] = useState('')
   const [pace, setPace] = useState(String(RULES.momentum.targetPace.capLb))
+  // Height in feet and inches beside pounds, in centimetres beside kilograms.
+  const imperial = unit === 'lb'
   const [height, setHeight] = useState('')
+  const [heightFt, setHeightFt] = useState('')
+  const [heightIn, setHeightIn] = useState('')
   const [sex, setSex] = useState<Campaign['sex'] | ''>('')
   const [birthYear, setBirthYear] = useState('')
   const [pool, setPool] = useState('50,000')
@@ -63,6 +68,12 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
 
   const legacyOpen = openContract(ledger) !== undefined
+  const heightGiven = imperial ? heightFt.trim() !== '' || heightIn.trim() !== '' : height.trim() !== ''
+  const heightCm = !heightGiven
+    ? undefined
+    : imperial
+      ? (parseDecimal(heightFt.trim() || '0') * RULES.units.inchesPerFoot + parseDecimal(heightIn.trim() || '0')) * RULES.units.cmPerInch
+      : parseDecimal(height)
   const charter: Charter = { stepPool: parseInteger(pool), calorieLimit: parseInteger(limit), duties }
   const input: FoundingInput = useMemo(
     () => ({
@@ -70,7 +81,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
       goalWeight: parseDecimal(goal),
       unit,
       targetPace: parseDecimal(pace),
-      ...(height.trim() ? { heightCm: parseDecimal(height) } : {}),
+      ...(heightCm !== undefined ? { heightCm } : {}),
       ...(sex ? { sex } : {}),
       ...(birthYear.trim() ? { birthYear: parseInteger(birthYear) } : {}),
       charter,
@@ -79,7 +90,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
       ...(supervised ? { medicalSupervision: true } : {})
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [start, goal, unit, pace, height, sex, birthYear, pool, limit, duties, supervised, ledger]
+    [start, goal, unit, pace, heightCm, sex, birthYear, pool, limit, duties, supervised, ledger]
   )
   const healer = useMemo(() => {
     try {
@@ -96,6 +107,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
     if (input.goalWeight >= input.startWeight) return 'The goal must be below the weight today.'
     return null
   })()
+  const healerProblem = heightCm !== undefined && !(heightCm > 0) ? 'Enter your height as a number, or leave it blank.' : null
   const charterProblem = ((): string | null => {
     const c = RULES.contracts.charter
     if (!(charter.stepPool >= c.stepPool.min && charter.stepPool <= c.stepPool.max)) return `The step pool must be ${formatNumber(c.stepPool.min)} to ${formatNumber(c.stepPool.max)} a week.`
@@ -134,7 +146,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
     go('chronicle')
   }
 
-  const canNext = step === 0 ? !journeyProblem : step === 2 ? !charterProblem : true
+  const canNext = step === 0 ? !journeyProblem : step === 1 ? !healerProblem : step === 2 ? !charterProblem : true
 
   return (
     <Modal open onClose={onClose} className="modal--wide modal--founding" title="Found your realm" labelledBy="founding-title">
@@ -187,13 +199,29 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
         <div className="wizard__body">
           <p className="muted">All optional. These only estimate the Healer’s calorie floor until your own logs can, and a height lets the Healer refuse an unsafe goal.</p>
           <div className="wizard__grid">
-            <label className="field">
-              <span className="field__label">Height</span>
-              <span className="field__box">
-                <input value={height} inputMode="decimal" onChange={(e) => setHeight(e.target.value)} />
-                <span className="field__suffix">cm</span>
-              </span>
-            </label>
+            {imperial ? (
+              <div className="field">
+                <span className="field__label">Height</span>
+                <span className="field__pair">
+                  <span className="field__box">
+                    <input value={heightFt} inputMode="numeric" aria-label="Height, feet" onChange={(e) => setHeightFt(e.target.value)} />
+                    <span className="field__suffix">ft</span>
+                  </span>
+                  <span className="field__box">
+                    <input value={heightIn} inputMode="decimal" aria-label="Height, inches" onChange={(e) => setHeightIn(e.target.value)} />
+                    <span className="field__suffix">in</span>
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <label className="field">
+                <span className="field__label">Height</span>
+                <span className="field__box">
+                  <input value={height} inputMode="decimal" onChange={(e) => setHeight(e.target.value)} />
+                  <span className="field__suffix">cm</span>
+                </span>
+              </label>
+            )}
             <label className="field">
               <span className="field__label">Sex</span>
               <span className="field__box">
@@ -211,6 +239,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
               </span>
             </label>
           </div>
+          {healerProblem && <p className="field__problem">{healerProblem}</p>}
         </div>
       )}
 
@@ -284,7 +313,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
           </ul>
           {error && <p className="field__problem">{error}</p>}
           <HoldButton className="seal-button" onComplete={seal} duration={1200} aria-label="Hold to found the realm">
-            <WaxSeal color="crimson" icon={GiCastle} size={88} seed={23} />
+            <GameArt slot="ui.seal" width={88} fallback={<WaxSeal color="crimson" icon={GiCastle} size={88} seed={23} />} />
             <span className="seal-button__label">Hold to found the realm</span>
           </HoldButton>
         </div>

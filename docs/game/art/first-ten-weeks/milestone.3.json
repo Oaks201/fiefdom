@@ -1,0 +1,63 @@
+{
+  "id": "milestone.3",
+  "kind": "milestone",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: style-transfer. Input 1 is the EDIT TARGET, the four Elite champions scene. Input 2 is the owner's exact desired PIXEL ART style. Input 3 is the accepted fierce Orc style as a further example of bold faceted shading. Redraw the target completely as AUTHENTIC HAND DRAWN PIXEL ART; keep four champions in a fortress courtyard and their emerald/gold/violet/brown class colors, but replace all rendering. The current target looks too smooth and realistic. Make the faces and cloth visibly composed of intentional connected rectangular pixel clusters, chunky warm dark outlines, hard stepped edges, just FOUR flat shade facets per material. Crisp square pixels inside face planes as well as silhouettes. No blended airbrushed skin, no realistic pores, no smooth cloth rendering, no grain or scratch noise, no photographic painted effect, no blur. Think a carefully drawn 480x270 retro fantasy pixel illustration nearest enlarged to 1920x1080, broad simplified shapes, thick stylized armor, sparse stones and clouds. Do not merely apply a pixel filter to the current painting: reconstruct every form from large connected pixel shapes. Keep four distinct champions and the courtyard, but do NOT copy the supplied reference person's face. Opaque 16:9 artwork edge to edge, no text, no labels, no logos, no frame or watermark.",
+  "references": [
+    "C:\\Code\\Claude Projects\\fiefdom v2\\src\\renderer\\public\\game-assets\\milestone.3-early-v3.png",
+    "C:\\Code\\Claude Projects\\fiefdom v2\\docs\\game\\art\\reference\\owner-portrait.png",
+    "C:\\Code\\Claude Projects\\fiefdom v2\\src\\renderer\\public\\game-assets\\rival.orc.calm-early-v3.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-c329e334-c9bb-485d-b9b6-937502617ed1.png",
+  "staged": false,
+  "normalization": {
+    "logical": [
+      480,
+      270
+    ],
+    "fit": "cover",
+    "kernel": "nearest",
+    "alphaPreserved": false
+  },
+  "history": [
+    {
+      "prompt": "Use case: stylized-concept. Production milestone art asset for Fiefdom medieval strategy game. Input image is solely the user's pixel STYLE reference. Subject: Elite companies unlocked: four imposing human champions stand shoulder-to-shoulder in an open medieval courtyard: silver armored oathsworn knight in emerald, gilded merchant champion in gold cloak, violet starwarden mage with staff, leather-aproned sapper with iron hammer. Sunrise on fortress stone behind them, celebratory but disciplined. Wide opaque 16:9 scene with few broad readable shapes. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Wide 16:9 opaque artwork filling entire scene, logical 480x270 drawing nearest enlarged.",
+      "references": [
+        "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+      ],
+      "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-b52d409a-d106-44da-bd8b-4349cff76915.png",
+      "outputs": [
+        {
+          "slot": "milestone.3",
+          "kind": "milestone",
+          "size": [
+            1920,
+            1080
+          ],
+          "logical": [
+            480,
+            270
+          ],
+          "file": "milestone.3-early-v3.png"
+        }
+      ],
+      "review": "Rejected: shading too smooth for the requested pixel art."
+    }
+  ],
+  "version": "early-v4",
+  "outputs": [
+    {
+      "slot": "milestone.3",
+      "kind": "milestone",
+      "size": [
+        1920,
+        1080
+      ],
+      "logical": [
+        480,
+        270
+      ],
+      "file": "milestone.3-early-v4.png"
+    }
+  ]
+}

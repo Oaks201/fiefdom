@@ -1,0 +1,35 @@
+{
+  "id": "building.mageTower.1",
+  "kind": "building",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster art asset for Fiefdom medieval strategy game. Input images are visual STYLE references; for rival mood variants the first character input is the exact IDENTITY to retain, all others style only. Asset id: building.mageTower.1. Subject: small medieval stone mage tower with violet conical roof, chunky silver steps, one violet crystal glow and ivy. Tier 1: modest single compact starter building. Single isolated architecture vignette seen from elevated 3/4 angle, full silhouette, no broad terrain background. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Composition: square canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-ecb4bea1-6ca8-4a73-912b-45c4b223ef7f.png",
+  "outputs": [
+    {
+      "slot": "building.mageTower.1",
+      "kind": "building",
+      "size": [
+        512,
+        512
+      ],
+      "logical": [
+        256,
+        256
+      ],
+      "file": "building.mageTower.1-early-v3.png"
+    }
+  ],
+  "staged": false,
+  "normalization": {
+    "logical": [
+      256,
+      256
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

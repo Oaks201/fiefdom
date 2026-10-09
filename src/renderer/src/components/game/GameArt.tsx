@@ -55,6 +55,8 @@ interface GameArtProps {
   width?: number
   className?: string
   title?: string
+  /** Preserve an existing interface ornament when this optional slot has no usable file. */
+  fallback?: React.JSX.Element
 }
 
 type Look = 'hex' | 'token' | 'banner' | 'card'
@@ -83,9 +85,10 @@ const DEFAULT_SIZE: Record<Look, [number, number]> = { hex: [222, 256], token: [
  * owner's banner color, a lettered token, a banner, or initials on a parchment card). A missing
  * file, or one that fails to load, falls back to the placeholder and never throws.
  */
-export function GameArt({ slot, owner = 'neutral', label, width, className, title, place }: GameArtProps): React.JSX.Element {
+export function GameArt({ slot, owner = 'neutral', label, width, className, title, place, fallback }: GameArtProps): React.JSX.Element {
   const entry = useArt((s) => s.slots[slot])
   const load = useArt((s) => s.load)
+  const revision = useArt((s) => s.revision)
   const [broken, setBroken] = useState<string | null>(null)
   useEffect(load, [load])
 
@@ -93,12 +96,12 @@ export function GameArt({ slot, owner = 'neutral', label, width, className, titl
   const [w, h] = entry?.size ?? DEFAULT_SIZE[look]
   const shownWidth = width ?? w
   const shownHeight = Math.round((shownWidth * h) / w)
-  const url = artUrl(entry)
+  const url = artUrl(entry, revision)
   const classes = `game-art game-art--${look} ${className ?? ''}`
 
   if (place) {
     if (url && broken !== url) {
-      return <image className={classes} href={url} x={place.x} y={place.y} width={place.width} height={place.height} preserveAspectRatio="xMidYMid meet" onError={() => setBroken(url)} />
+      return <image className={classes} href={url} x={place.x} y={place.y} width={place.width} height={place.height} preserveAspectRatio="xMidYMid meet" data-slot={slot} onError={() => setBroken(url)} />
     }
     const hexPoints = `${w / 2},0 ${w},${h / 4} ${w},${(3 * h) / 4} ${w / 2},${h} 0,${(3 * h) / 4} 0,${h / 4}`
     const overlay = OVERLAY_TONES[slot]
@@ -112,8 +115,10 @@ export function GameArt({ slot, owner = 'neutral', label, width, className, titl
   }
 
   if (url && broken !== url) {
-    return <img className={classes} src={url} width={shownWidth} height={shownHeight} alt={title ?? ''} title={title} onError={() => setBroken(url)} draggable={false} />
+    return <img className={classes} src={url} width={shownWidth} height={shownHeight} alt={title ?? ''} title={title} data-slot={slot} onError={() => setBroken(url)} draggable={false} />
   }
+
+  if (fallback) return fallback
 
   const color = OWNER_COLORS[owner]
   const letters = initials(label ?? slot.split('.').filter((p) => !/^\d+$/.test(p) && p !== 'token' && p !== 'portrait').pop() ?? slot)

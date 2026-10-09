@@ -1,0 +1,34 @@
+{
+  "id": "rival.archmage.angry",
+  "kind": "rival",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster art asset for Fiefdom medieval strategy game. Input images are visual STYLE references; for rival mood variants the first character input is the exact IDENTITY to retain, all others style only. Asset id: rival.archmage.angry. Subject: Emrys the ancient human archmage: distinguished long white hair and beard, piercing violet eyes, heavy violet robe with silver edging, glowing violet crystal staff edge. Mysterious powerful elder, tight expressive head-and-shoulder bust. Mood: hostile furious glare with bared teeth, threatening forward lean Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Composition: 4:5 upright canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256x320 nearest enlarged.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-f4da276a-b56b-4b09-b330-1a50c76f1596.png",
+  "outputs": [
+    {
+      "slot": "rival.archmage.angry",
+      "kind": "rival",
+      "size": [
+        512,
+        640
+      ],
+      "logical": [
+        256,
+        320
+      ],
+      "file": "rival.archmage.angry-early-v3.png"
+    }
+  ],
+  "normalization": {
+    "logical": [
+      256,
+      320
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

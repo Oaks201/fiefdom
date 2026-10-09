@@ -1,5 +1,5 @@
 import type { IconType } from 'react-icons'
-import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
+import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiHelp, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
 import { battleNotices } from '../lib/game/view/battle'
 import { pagesFor, topBarView } from '../lib/game/view/shell'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
@@ -13,6 +13,7 @@ import { useLedger } from '../state/store'
 import { useUI, type Page } from '../state/ui'
 import { AnimatedNumber } from './AnimatedNumber'
 import { WaxSeal } from './WaxSeal'
+import { GameArt } from './game/GameArt'
 
 const TAB_INFO: Record<Page, { label: string; icon: IconType }> = {
   chronicle: { label: 'Chronicle', icon: GiQuillInk },
@@ -30,6 +31,7 @@ export function TopBar(): React.JSX.Element {
   const go = useUI((s) => s.go)
   const setProfileOpen = useUI((s) => s.setProfileOpen)
   const setSettingsOpen = useUI((s) => s.setSettingsOpen)
+  const setHelpOpen = useUI((s) => s.setHelpOpen)
   const apply = useLedger((s) => s.apply)
   const ledger = useLedgerData()
   const today = useToday()
@@ -141,7 +143,10 @@ export function TopBar(): React.JSX.Element {
               {fitbitTrouble && <span className="tool__alert">!</span>}
             </button>
           )}
-          <button type="button" className="tool" aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
+          <button type="button" className="tool" aria-label="How to play" title="How to play (F1)" onClick={() => setHelpOpen(true)}>
+            <GiHelp aria-hidden="true" />
+          </button>
+          <button type="button" className="tool" aria-label="Settings" title="Settings (Esc)" onClick={() => setSettingsOpen(true)}>
             <GiCog aria-hidden="true" />
           </button>
         </div>
@@ -152,7 +157,7 @@ export function TopBar(): React.JSX.Element {
         </div>
         {bar ? (
           <div className="reputation reputation--campaign" title={`${bar.grace.text} Realm Consistency over the last 28 days: ${bar.realmConsistencyPercent}%.`}>
-            <WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />
+            <GameArt slot="ui.icon.purse" width={46} fallback={<WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />} />
             <span className="reputation__text">
               <span className="reputation__value">
                 <AnimatedNumber value={bar.purse} />

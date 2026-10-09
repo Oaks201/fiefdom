@@ -32,7 +32,7 @@ export function ContractPage(): React.JSX.Element {
         <header className="page-head">
           <h1 className="page-title">The Contract</h1>
           <p className="page-sub">
-            From a single day to a month, sealed in wax. It begins at the next dawn and pays at its end by how well its terms were kept; a longer one pays more for each day.
+            From a single day to a month, sealed in wax. It begins at dawn on the day you choose and pays at its end by how well its terms were kept; a longer one pays more for each day.
           </p>
         </header>
         <CampaignContract campaign={campaign} today={campaignToday} />

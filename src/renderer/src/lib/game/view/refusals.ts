@@ -11,7 +11,7 @@ import type { OrderProblem } from '../combat'
 import { numeral } from '../effects'
 import type { GrandRefusal } from '../grand'
 import type { LandRefusal } from '../land'
-import { hexLabel } from '../map'
+import { hexName } from '../map'
 import type { RivalId } from '../types'
 
 const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
@@ -130,13 +130,13 @@ export function orderProblemLabel(p: OrderProblem): string {
     case 'unknownHex':
       return 'There is no such hex.'
     case 'grandBattleRequired':
-      return `Hex ${hexLabel(p.hexId)} is taken only in a Grand Battle.`
+      return `${hexName(p.hexId)} is taken only in a Grand Battle.`
     case 'notClaimable':
-      return `Hex ${hexLabel(p.hexId)} cannot be assaulted: it must touch your land, and rings 0 to 2 never fall to anyone else.`
+      return `${hexName(p.hexId)} cannot be assaulted: it must touch your land, and rings 0 to 2 never fall to anyone else.`
     case 'duplicateTarget':
-      return `Hex ${hexLabel(p.hexId)} is already a target.`
+      return `${hexName(p.hexId)} is already a target.`
     case 'noCompanies':
-      return `No company is sent against hex ${hexLabel(p.hexId)}.`
+      return `No company is sent against ${hexName(p.hexId)}.`
     case 'tooManyCompanies':
       return `At most ${p.banners} companies ${p.pool === 'assault' ? 'on an assault' : 'defend'}; the rest stay out.`
     case 'overrideNotDefending':

@@ -44,7 +44,7 @@ export function Courtships({ campaign, today }: { campaign: CampaignState; today
             {view.bids.map((b) => (
               <tr key={b.hexId}>
                 <td>
-                  Hex {b.label} <span className="muted">({b.owner === 'neutral' ? 'unaligned' : rivalName(b.owner as RivalId)})</span>
+                  {b.label} <span className="muted">({b.owner === 'neutral' ? 'unaligned' : rivalName(b.owner as RivalId)})</span>
                 </td>
                 <td className="num">{formatNumber(b.bid)}</td>
                 <td className="num">{b.offer.toFixed(1)}</td>
@@ -65,7 +65,7 @@ export function Courtships({ campaign, today }: { campaign: CampaignState; today
               <option value="">{view.villages.length === 0 ? 'No village touches your land' : 'Choose a village…'}</option>
               {view.villages.map((v) => (
                 <option key={v.hexId} value={v.hexId}>
-                  Hex {v.label} · {v.ownerName} · resists {amount(v.resistance)} · about {formatNumber(v.suggested)}
+                  {v.label} · {v.ownerName} · resists {amount(v.resistance)} · about {formatNumber(v.suggested)}
                   {v.available ? '' : ' (closed)'}
                 </option>
               ))}
@@ -84,7 +84,7 @@ export function Courtships({ campaign, today }: { campaign: CampaignState; today
           <ul className="courtships__results">
             {view.results.slice(0, 12).map((r, i) => (
               <li key={`${r.day}-${r.hexId}-${i}`} className={`result result--${r.outcome}`}>
-                <span className="result__day">{formatShort(r.day)}</span> Hex {r.label}, bid {formatNumber(r.bid)}:{' '}
+                <span className="result__day">{formatShort(r.day)}</span> {r.label}, bid {formatNumber(r.bid)}:{' '}
                 {r.outcome === 'defected'
                   ? r.winner && r.winner !== 'player'
                     ? `won by ${rivalName(r.winner as RivalId)}`

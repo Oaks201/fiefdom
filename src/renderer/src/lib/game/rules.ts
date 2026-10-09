@@ -80,6 +80,8 @@ const RULES_TABLE = {
     stewardCounsel: { weeks: 4, gentlerBelow: 0.75, firmerAbove: 0.95 },
     /** One contract runs; the next can be queued. */
     maxQueued: 1,
+    /** D-06: a contract may start on any of this many days from its earliest dawn. */
+    startChoiceDays: 7,
     /** Ch 14 and D-01: the Accord is a 30-day contract that also raises Respect. */
     accord: {
       days: 30,
@@ -598,8 +600,8 @@ const RULES_TABLE = {
     realmConsistencyDays: 28
   },
 
-  /** Weight rules compute in lb (A-05); BMI uses kg and m. */
-  units: { lbPerKg: 2.2046226218, cmPerM: 100 },
+  /** Weight rules compute in lb (A-05); BMI uses kg and m. A height typed in feet and inches is stored in cm. */
+  units: { lbPerKg: 2.2046226218, cmPerM: 100, cmPerInch: 2.54, inchesPerFoot: 12 },
 
   /** T06: founding and the settlement engine. */
   settlement: {

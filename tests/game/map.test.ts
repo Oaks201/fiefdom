@@ -12,6 +12,7 @@ import {
   hexDistance,
   hexId,
   hexLabel,
+  hexName,
   isBorderHex,
   isClaimableKind,
   lairOf,
@@ -22,6 +23,7 @@ import {
   touchesOwner,
   villageCredits
 } from '../../src/renderer/src/lib/game/map'
+import { CODEX } from '../../src/renderer/src/lib/game/codex'
 import { MAP_ASCII_LEGEND, mapAscii } from '../../src/renderer/src/lib/game/dev/mapAscii'
 import { BUILDING_IDS, type BuildingId, type HexState, type Land, type Owner, type RivalId } from '../../src/renderer/src/lib/game/types'
 
@@ -274,6 +276,23 @@ test('hexLabel counts clockwise from 1 at the NW corner of each ring (A-109)', (
   assert.equal(hexLabel('-1,-2'), '3-18')
   assert.equal(hexLabel(hex(map, 0, -5)), '5-1')
   assert.equal(new Set(map.map((h) => hexLabel(h))).size, 127)
+})
+
+test('every hex has its own place name, and the codex names only map hexes (D-07)', () => {
+  const ids = new Set(map.map((h) => h.id))
+  assert.equal(CODEX.hexes.length, map.length)
+  for (const entry of CODEX.hexes) {
+    assert.ok(ids.has(entry.id), `${entry.name} names no hex (${entry.id})`)
+    assert.equal(entry.label, hexLabel(entry.id), `${entry.name}'s label`)
+  }
+  assert.equal(new Set(map.map((h) => hexName(h))).size, map.length)
+})
+
+test('hexName reads the codex for an id, coordinates or a hex (D-07)', () => {
+  assert.equal(hexName('0,0'), 'Crownhold')
+  assert.equal(hexName({ q: -6, r: 6 }), 'Caer Emrys') // the Archmage's capital, SW
+  assert.equal(hexName(hex(map, 0, 6)), 'Kaldor Deep') // the Dwarf's capital, SE
+  assert.notEqual(hexName('0,-3'), hexLabel('0,-3'))
 })
 
 // ── Starting garrisons and loyalty ───────────────────────────────────────────

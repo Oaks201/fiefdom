@@ -60,9 +60,12 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
       <article className="building-card castle-card">
         <GameArt slot={castle.slot} owner="player" width={132} label={castle.name} />
         <div className="building-card__body">
-          <h4 className="building-card__name">
-            The castle <span className="tier">Tier {numeral(castle.tier)} · {castle.name}</span>
-          </h4>
+          <div className="castle-card__heading">
+            <GameArt slot="banner.player" owner="player" width={26} title="Your realm's banner" />
+            <h4 className="building-card__name">
+              The castle <span className="tier">Tier {numeral(castle.tier)} · {castle.name}</span>
+            </h4>
+          </div>
           <p>
             <strong>{castle.banners}</strong> banners · walls <strong>{castle.walls}</strong>
           </p>
@@ -98,7 +101,7 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
               <p>
                 <Company company={b.company} />
               </p>
-              <details className="dominion" title={b.dominionSources.map((s) => `Hex ${s.label}: +${s.value}`).join('\n') || 'No hexes give it Dominion yet'}>
+              <details className="dominion" title={b.dominionSources.map((s) => `${s.label}: +${s.value}`).join('\n') || 'No hexes give it Dominion yet'}>
                 <summary>
                   Dominion <strong>{b.dominion}</strong>
                 </summary>
@@ -108,7 +111,7 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
                   <ul>
                     {b.dominionSources.map((s) => (
                       <li key={s.hexId}>
-                        Hex {s.label}: +{s.value}
+                        {s.label}: +{s.value}
                       </li>
                     ))}
                   </ul>

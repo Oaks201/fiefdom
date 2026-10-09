@@ -58,7 +58,8 @@
 }
 
 .seal-button > span,
-.seal-button > svg {
+.seal-button > svg,
+.seal-button > .game-art {
   grid-area: 1 / 1;
 }
 
@@ -656,6 +657,93 @@
 
 .deed-field input::placeholder {
   color: rgba(29, 42, 85, 0.3);
+}
+
+/* ----------------------------------------------------------- how to play */
+.modal--guide {
+  width: min(760px, 100%);
+}
+
+.guide__toc {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.guide__chip {
+  padding: 3px 10px;
+  font: 700 13px var(--font-caps);
+  color: var(--ink-2);
+  background: rgba(255, 250, 236, 0.55);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.guide__chip:hover,
+.guide__chip:focus-visible {
+  color: var(--crimson);
+  border-color: var(--gold);
+  outline: none;
+}
+
+.guide__section {
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--rule-soft);
+  scroll-margin-top: 12px;
+}
+
+.guide__title {
+  margin-bottom: 8px;
+  font: 700 22px var(--font-display);
+  color: var(--crimson);
+}
+
+.guide p,
+.guide li {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.guide p + p,
+.guide p + ul,
+.guide ul + p,
+.guide ol + p {
+  margin-top: 8px;
+}
+
+.guide ul,
+.guide ol {
+  padding-left: 22px;
+}
+
+.guide li + li {
+  margin-top: 5px;
+}
+
+.guide b {
+  color: var(--ink);
+}
+
+.guide kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 5px;
+  font: 700 13px/1.5 var(--font-caps);
+  text-align: center;
+  color: var(--ink);
+  background: rgba(255, 250, 236, 0.8);
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.guide__keys td {
+  padding: 4px 16px 4px 0;
+  vertical-align: top;
 }
 
 /* ----------------------------------------------------------- settings */
