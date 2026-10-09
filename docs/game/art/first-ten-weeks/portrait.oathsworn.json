@@ -1,0 +1,35 @@
+{
+  "id": "portrait.oathsworn",
+  "kind": "portrait",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production portrait art asset for Fiefdom medieval strategy game. Input image is solely the user's pixel STYLE reference. Subject: Elite oathsworn human knight, broad severe face, silver helmet and massive silver pauldrons, emerald cloak, ceremonial sword edge. Tight large head-and-shoulders transparent bust. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Square canvas, genuinely transparent background, entire silhouette contained with clear margin; logical 256x256 drawing nearest enlarged.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-697a2c86-e48c-4820-b07d-51fb161e89b5.png",
+  "staged": false,
+  "outputs": [
+    {
+      "slot": "portrait.oathsworn",
+      "kind": "portrait",
+      "size": [
+        512,
+        512
+      ],
+      "logical": [
+        256,
+        256
+      ],
+      "file": "portrait.oathsworn-early-v3.png"
+    }
+  ],
+  "normalization": {
+    "logical": [
+      256,
+      256
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

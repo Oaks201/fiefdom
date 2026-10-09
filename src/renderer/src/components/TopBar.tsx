@@ -13,6 +13,7 @@ import { useLedger } from '../state/store'
 import { useUI, type Page } from '../state/ui'
 import { AnimatedNumber } from './AnimatedNumber'
 import { WaxSeal } from './WaxSeal'
+import { GameArt } from './game/GameArt'
 
 const TAB_INFO: Record<Page, { label: string; icon: IconType }> = {
   chronicle: { label: 'Chronicle', icon: GiQuillInk },
@@ -156,7 +157,7 @@ export function TopBar(): React.JSX.Element {
         </div>
         {bar ? (
           <div className="reputation reputation--campaign" title={`${bar.grace.text} Realm Consistency over the last 28 days: ${bar.realmConsistencyPercent}%.`}>
-            <WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />
+            <GameArt slot="ui.icon.purse" width={46} fallback={<WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />} />
             <span className="reputation__text">
               <span className="reputation__value">
                 <AnimatedNumber value={bar.purse} />

@@ -556,12 +556,23 @@
   flex: none;
 }
 
+.building-card > .game-art {
+  align-self: flex-start;
+  object-fit: contain;
+}
+
 .building-card__body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
   flex: 1;
+}
+
+.castle-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .building-card__body p {

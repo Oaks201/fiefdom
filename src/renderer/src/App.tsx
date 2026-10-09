@@ -8,6 +8,7 @@ import { SvgDefs } from './components/SvgDefs'
 import { TopBar } from './components/TopBar'
 import { BigMomentCard } from './components/game/BigMomentCard'
 import { FoundingWizard } from './components/game/FoundingWizard'
+import { GameArt } from './components/game/GameArt'
 import { HowToPlay } from './components/HowToPlay'
 import { Homecoming } from './components/game/Homecoming'
 import { pagesFor } from './lib/game/view/shell'
@@ -28,6 +29,7 @@ import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 
 // Development builds only (A-09): the time-travel panel. Production builds drop this import entirely.
 const DevTimeTravel = import.meta.env.DEV ? lazy(() => import('./components/game/DevTimeTravel')) : null
+const DevArtSamples = import.meta.env.DEV ? lazy(() => import('./components/game/DevArtSamples')) : null
 
 export default function App(): React.JSX.Element {
   const status = useLedger((s) => s.status)
@@ -130,7 +132,9 @@ export default function App(): React.JSX.Element {
           <TopBar />
           <main className="desk__main">
             <div className={`sheet page page--${battle && hasCampaign ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : page}>
-              <div className="sheet__paper" aria-hidden="true" />
+              <div className="sheet__paper" aria-hidden="true">
+                <GameArt slot="ui.parchment" width={1024} className="sheet__art" fallback={<></>} />
+              </div>
               <div className="page__content">
                 {battle && hasCampaign && <BattlePage />}
                 {!(battle && hasCampaign) && page === 'chronicle' && <ChroniclePage />}
@@ -166,6 +170,11 @@ export default function App(): React.JSX.Element {
         <div className="boot">
           <p>Unrolling the ledger…</p>
         </div>
+      )}
+      {DevArtSamples && (
+        <Suspense fallback={null}>
+          <DevArtSamples />
+        </Suspense>
       )}
       <FloatLayer />
       <Toasts />

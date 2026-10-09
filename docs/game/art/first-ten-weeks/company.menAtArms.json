@@ -1,0 +1,48 @@
+{
+  "id": "company.menAtArms",
+  "kind": "unit",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster unit art for Fiefdom. All input images are ONLY references for PIXEL STYLE, not subjects or compositions to copy. If an Orc reference is included, use that fierce green-skinned black-maned tusked warlord's character design for Ugrak, or the same race/materials for his different soldiers. Requested new subject: disciplined human man-at-arms, square chainmail coif and broad silver helmet, emerald tabard, broad pauldron, sword edge. Tight HEAD AND SHOULDERS icon, large readable face at least 45% canvas height, not full-body, not small head, full silhouette with clear margin. Use emerald fabric for player soldiers, crimson for orcs, ochre for goblins. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. IMPORTANT: DRAW the artwork using intentional connected angular square clusters and strong warm dark stepped outlines. Use just FOUR solid shade facets per material; avoid smoothly painted or realistic rendering. Crisp pixel geometry inside faces, cloth, clouds and all surfaces, not just a pixel filter on a painting. Keep the requested object or character large, clearly identifiable and contained. square canvas. Genuine transparent background, no painted checkerboard, full silhouette with clear margin, logical 256 pixels nearest enlarged. No text, logos, labels, frames, or watermark.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-de461bd4-770b-4c98-94c0-9ac7f94e83c1.png",
+  "outputs": [
+    {
+      "slot": "company.menAtArms.portrait",
+      "kind": "portrait",
+      "size": [
+        512,
+        512
+      ],
+      "logical": [
+        256,
+        256
+      ],
+      "file": "company.menAtArms.portrait-early-v3.png"
+    },
+    {
+      "slot": "company.menAtArms.token",
+      "kind": "token",
+      "size": [
+        128,
+        128
+      ],
+      "logical": [
+        64,
+        64
+      ],
+      "file": "company.menAtArms.token-early-v3.png"
+    }
+  ],
+  "staged": false,
+  "normalization": {
+    "logical": [
+      256,
+      256
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

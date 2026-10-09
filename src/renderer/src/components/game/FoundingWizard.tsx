@@ -17,6 +17,7 @@ import { useUI } from '../../state/ui'
 import { HoldButton } from '../HoldButton'
 import { Modal } from '../Modal'
 import { WaxSeal } from '../WaxSeal'
+import { GameArt } from './GameArt'
 
 /** Ch 16's suggested duties: all additive habits, never skipping anything. */
 const SUGGESTED_DUTIES = ['Sleep by 11', 'Drink water', 'Stretch', 'Read', 'Cook at home']
@@ -312,7 +313,7 @@ function Wizard({ onClose }: { onClose(): void }): React.JSX.Element {
           </ul>
           {error && <p className="field__problem">{error}</p>}
           <HoldButton className="seal-button" onComplete={seal} duration={1200} aria-label="Hold to found the realm">
-            <WaxSeal color="crimson" icon={GiCastle} size={88} seed={23} />
+            <GameArt slot="ui.seal" width={88} fallback={<WaxSeal color="crimson" icon={GiCastle} size={88} seed={23} />} />
             <span className="seal-button__label">Hold to found the realm</span>
           </HoldButton>
         </div>

@@ -3,6 +3,7 @@
 //
 //   node scripts/check-assets.cjs            report missing slots, unknown files and wrong sizes (exit 0)
 //   node scripts/check-assets.cjs --strict   the same, but exit 1 when anything is missing or wrong
+//   node scripts/check-assets.cjs --starter --strict   require one valid sample per art class
 //   node scripts/check-assets.cjs --write    also (re)write the manifest with every slot, keeping each `file`
 //
 // The slot inventory comes from the codex (companies, hybrids, hosts, elites, quarries, items,
@@ -88,6 +89,7 @@ function inventory() {
     for (const u of h.companies) lines.push([u.id, u.name])
   }
   const elites = read('elites.json')
+  lines.push(['wanderingOrder', 'The Wandering Order'])
   lines.push([elites.sworn.id, elites.sworn.name])
   for (const [id, name] of lines) {
     add(`company.${id}.token`, 'token', `${name}: token`)
@@ -172,7 +174,10 @@ function main() {
   let manifest = readManifest()
   if (args.has('--write') || Object.keys(manifest).length === 0) manifest = writeManifest(slots, manifest)
 
-  const problems = { missing: [], notInManifest: [], wrongSize: [], unknown: [], unreadable: [] }
+  const starter = args.has('--starter')
+  const early = args.has('--first-ten-weeks')
+  const earlySlots = early ? new Set(JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/game/art/first-ten-weeks/required-slots.json'), 'utf8')).slots) : new Set()
+  const problems = { missing: [], missingClasses: [], notInManifest: [], wrongSize: [], unknown: [], unreadable: [] }
   const status = new Map()
   const referenced = new Set()
   for (const s of slots) {
@@ -183,7 +188,7 @@ function main() {
       continue
     }
     if (!entry.file) {
-      problems.missing.push(s.id)
+      if ((!starter && !early) || earlySlots.has(s.id)) problems.missing.push(s.id)
       status.set(s.id, 'missing')
       continue
     }
@@ -204,11 +209,17 @@ function main() {
     } else status.set(s.id, 'ok')
   }
   const known = new Set(slots.map((s) => s.id))
+  for (const id of earlySlots) if (!known.has(id)) problems.notInManifest.push(`${id} (required early slot missing from inventory)`)
   for (const id of Object.keys(manifest)) if (!known.has(id)) problems.unknown.push(`${id} (in the manifest, but no such slot)`)
   if (fs.existsSync(ASSETS)) {
     for (const f of fs.readdirSync(ASSETS)) if (f !== 'manifest.json' && !referenced.has(f)) problems.unknown.push(`${f} (a file no slot uses)`)
   }
   writeChecklist(slots, manifest, status)
+  if (starter) {
+    for (const kind of Object.keys(SIZES)) {
+      if (!slots.some((s) => s.kind === kind && status.get(s.id) === 'ok')) problems.missingClasses.push(kind)
+    }
+  }
 
   const report = (title, list) => {
     if (list.length === 0) return
@@ -217,7 +228,10 @@ function main() {
     if (list.length > 12 && !args.has('--all')) console.log(`  … and ${list.length - 12} more (--all lists every one)`)
   }
   console.log(`assets:check: ${slots.length} slots, ${slots.filter((s) => status.get(s.id) === 'ok').length} with art.`)
+  if (starter) console.log(`Starter classes: ${Object.keys(SIZES).length - problems.missingClasses.length} of ${Object.keys(SIZES).length}.`)
+  if (early) console.log(`First ten weeks: ${[...earlySlots].filter(id => status.get(id) === 'ok').length} of ${earlySlots.size} required slots.`)
   report('Missing', problems.missing)
+  report('Missing starter classes', problems.missingClasses)
   report('Not in the manifest (run with --write)', problems.notInManifest)
   report('Wrong size', problems.wrongSize)
   report('Not PNG or WebP', problems.unreadable)

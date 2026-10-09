@@ -60,9 +60,12 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
       <article className="building-card castle-card">
         <GameArt slot={castle.slot} owner="player" width={132} label={castle.name} />
         <div className="building-card__body">
-          <h4 className="building-card__name">
-            The castle <span className="tier">Tier {numeral(castle.tier)} · {castle.name}</span>
-          </h4>
+          <div className="castle-card__heading">
+            <GameArt slot="banner.player" owner="player" width={26} title="Your realm's banner" />
+            <h4 className="building-card__name">
+              The castle <span className="tier">Tier {numeral(castle.tier)} · {castle.name}</span>
+            </h4>
+          </div>
           <p>
             <strong>{castle.banners}</strong> banners · walls <strong>{castle.walls}</strong>
           </p>

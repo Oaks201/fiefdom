@@ -1,0 +1,35 @@
+{
+  "id": "building.barracks.2",
+  "kind": "building",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster building art for Fiefdom. All input images are ONLY references for PIXEL STYLE, not subjects or compositions to copy. If an Orc reference is included, use that fierce green-skinned black-maned tusked warlord's character design for Ugrak, or the same race/materials for his different soldiers. Requested new subject: medieval stone barracks with emerald roofs, shield sign, training yard, silver weapons rack. Tier 2: expanded fortified building with side annex and larger roof, recognizably an upgrade. Single isolated architecture vignette seen from elevated 3/4 angle, full silhouette, no broad terrain background. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. IMPORTANT: DRAW the artwork using intentional connected angular square clusters and strong warm dark stepped outlines. Use just FOUR solid shade facets per material; avoid smoothly painted or realistic rendering. Crisp pixel geometry inside faces, cloth, clouds and all surfaces, not just a pixel filter on a painting. Keep the requested object or character large, clearly identifiable and contained. square canvas. Genuine transparent background, no painted checkerboard, full silhouette with clear margin, logical 256 pixels nearest enlarged. No text, logos, labels, frames, or watermark.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-4358b474-8e83-4a0f-b2c5-4dcb4c6d59c4.png",
+  "outputs": [
+    {
+      "slot": "building.barracks.2",
+      "kind": "building",
+      "size": [
+        512,
+        512
+      ],
+      "logical": [
+        256,
+        256
+      ],
+      "file": "building.barracks.2-early-v3.png"
+    }
+  ],
+  "staged": false,
+  "normalization": {
+    "logical": [
+      256,
+      256
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

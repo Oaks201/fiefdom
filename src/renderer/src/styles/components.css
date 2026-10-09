@@ -58,7 +58,8 @@
 }
 
 .seal-button > span,
-.seal-button > svg {
+.seal-button > svg,
+.seal-button > .game-art {
   grid-area: 1 / 1;
 }
 

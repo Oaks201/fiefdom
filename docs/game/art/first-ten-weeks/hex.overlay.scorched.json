@@ -1,0 +1,36 @@
+{
+  "id": "hex.overlay.scorched",
+  "kind": "overlay",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster art asset for Fiefdom medieval strategy game. Input images are visual STYLE references; for rival mood variants the first character input is the exact IDENTITY to retain, all others style only. Asset id: hex.overlay.scorched. Subject: Transparent sparse overlay for a pointy-top hex terrain tile: a few charred black soil patches, burnt sticks, two little orange embers, concentrated edges and lower third. Most of entire canvas transparent so underlying terrain stays visible. Match supporting hex proportions. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Composition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged.",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/src/renderer/public/game-assets/hex.wild.png",
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-6772cdb1-13d8-4138-96f1-e196f27510f4.png",
+  "outputs": [
+    {
+      "slot": "hex.overlay.scorched",
+      "kind": "overlay",
+      "size": [
+        222,
+        256
+      ],
+      "logical": [
+        111,
+        128
+      ],
+      "file": "hex.overlay.scorched-early-v3.png"
+    }
+  ],
+  "staged": false,
+  "normalization": {
+    "logical": [
+      111,
+      128
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

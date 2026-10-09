@@ -1,0 +1,34 @@
+{
+  "id": "rival.orc.calm",
+  "kind": "rival",
+  "prompt": "Use case: stylized-concept. Create an ENTIRELY NEW original orc warlord portrait for a medieval strategy game, not a retouch of the previous orc. Input image is solely the user's pixel-art STYLE reference, not a subject to preserve. Desired character: fierce Grommash Hellscream-esque savage chieftain energy, huge muscular green-skinned brute, heavy jutting jaw, enormous ivory lower tusks, intense narrowed amber eyes, long wild black mane swept backward, furious intimidating clenched-teeth snarl. Bare powerful upper chest with rough leather war harness, a single massive dark iron spiked pauldron with crimson wraps, one thick heavy axe blade visible at lower side. Original design, no franchise logos. HEAD and shoulders DOMINATE the portrait, face occupies roughly 45% of canvas height, tight large readable silhouette, slightly turned 3/4 toward viewer, imposing forward lean. Strong anatomy, not a goblin, not a friendly old man, not lanky. ART STYLE MUST MATCH REFERENCE: authentic painterly PIXEL ART constructed from connected square pixel clusters, hard stepped contours, broad 4-5 discrete color shade planes, warm golden light from upper left, dark warm brown outlines, olive green skin and dark red accents. Intentionally hand-placed low-resolution pixel clusters, logical 256x320 artwork nearest enlarged to 1024x1280 4:5 canvas. Crisp squared edges even inside facial planes, no smooth airbrush, no 3D render, no photographic texture, no tiny scratch noise, no blur, no dithering. Genuine transparent background, entire bust silhouette contained with 4% clear margin, no scene, no frame, no text, no watermark. Fierce and dangerous even in the default diplomacy portrait.",
+  "source": "C:/Users/boberino/.codex/generated_images/01a11e14-da42-7a91-a04e-4104786d6141/exec-f5b315b1-d4b5-4b8a-b8d7-2c8ee9d10841.png",
+  "mode": "built-in image_gen",
+  "references": [
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "outputs": [
+    {
+      "slot": "rival.orc.calm",
+      "kind": "rival",
+      "size": [
+        512,
+        640
+      ],
+      "logical": [
+        256,
+        320
+      ],
+      "file": "rival.orc.calm-early-v3.png"
+    }
+  ],
+  "normalization": {
+    "logical": [
+      256,
+      320
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}

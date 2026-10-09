@@ -1,0 +1,35 @@
+{
+  "id": "rival.orc.angry",
+  "kind": "rival",
+  "mode": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Production raster art asset for Fiefdom medieval strategy game. Input images are visual STYLE references; for rival mood variants the first character input is the exact IDENTITY to retain, all others style only. Asset id: rival.orc.angry. Subject: SAME EXACT newly designed fierce black-maned green orc as input 1, same huge tusks, chest harness, spike pauldron and axe. Change ONLY expression and pose: furious wide open roar, brow deeply lowered, blazing amber eyes, raised clenched fist; savage terrifying rage. Match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, silver chunky metal, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering. Readable large shapes. No writing, letters, numbers, logos, UI, frame, or watermark. Composition: 4:5 upright canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256x320 nearest enlarged.",
+  "references": [
+    "C:/Users/boberino/.codex/generated_images/01a11e14-da42-7a91-a04e-4104786d6141/exec-f5b315b1-d4b5-4b8a-b8d7-2c8ee9d10841.png",
+    "C:/Code/Claude Projects/fiefdom v2/docs/game/art/reference/owner-portrait.png"
+  ],
+  "source": "C:\\Users\\boberino\\.codex\\generated_images\\01a11e14-da42-7a91-a04e-4104786d6141\\exec-5166d723-c940-48a5-b2c9-5e7114be93b5.png",
+  "outputs": [
+    {
+      "slot": "rival.orc.angry",
+      "kind": "rival",
+      "size": [
+        512,
+        640
+      ],
+      "logical": [
+        256,
+        320
+      ],
+      "file": "rival.orc.angry-early-v3.png"
+    }
+  ],
+  "normalization": {
+    "logical": [
+      256,
+      320
+    ],
+    "fit": "contain",
+    "kernel": "nearest",
+    "alphaPreserved": true
+  }
+}
