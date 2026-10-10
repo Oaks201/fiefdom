@@ -62,6 +62,15 @@ test('T15: no two of the 127 hex centers are closer than the hex width × 0.9; n
   assert.ok(Math.abs(least - HEX_WIDTH) < 1e-9)
 })
 
+test('Ch 8: every Crossing perk says what it gives, a perk a later one replaces too (A-31)', () => {
+  const perks = crossingsView(realm()).flatMap((x) => x.perks)
+  for (const p of perks) assert.ok(p.gives.length > 0, `${p.name} says nothing`)
+  const tradeRoads = perks.find((p) => p.id === 'tradeRoads')
+  assert.deepEqual(tradeRoads?.gives.map((g) => g.label), ['Building tiers cost −10%', 'Crossing stages cost −10%'])
+  assert.deepEqual(tradeRoads?.replacedBy, { name: 'Guild Charters', stage: 3 })
+  assert.equal(perks.find((p) => p.id === 'guildCharters')?.replacedBy, undefined)
+})
+
 test('D-09: each hex asks for its region’s terrain, near or far, and the heartland and ruins keep the shared tiles', () => {
   const hexes = buildMap(7)
   const at = (id: string): HexState => hexes.find((h) => h.id === id)!

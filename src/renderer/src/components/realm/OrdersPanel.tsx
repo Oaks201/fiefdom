@@ -22,6 +22,15 @@ function countdown(seconds: number): string {
   return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(seconds % 60).padStart(2, '0')}s`
 }
 
+/** Who defends (D-10): the companies always fielded, and the banners the Marshal fills for each battle. */
+function pinnedLine(pinned: string[], banners: number): string {
+  if (pinned.length === 0) return 'The Marshal fields the best defenders for each battle; tick Always field to make sure a company fights.'
+  const names = pinned.length > 1 ? `${pinned.slice(0, -1).join(', ')} and ${pinned[pinned.length - 1]}` : pinned[0]
+  const left = banners - pinned.length
+  if (left <= 0) return `Always fielded: ${names}, every banner.`
+  return `Always fielded: ${names}; the Marshal fills the other ${left === 1 ? 'banner' : `${left} banners`} with the best for each battle.`
+}
+
 /** "now", ticking once a second (dev time travel included). */
 function useNow(): Date {
   const [now, setNow] = useState(() => campaignNow())
@@ -129,7 +138,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
             <th>Company</th>
             <th>Power</th>
             <th>Goes to</th>
-            <th title="Field it on defense in place of the Marshal’s pick">Fields</th>
+            <th title="This company fights in every defense today; the Marshal fills the other banners with the best for each battle">Always field</th>
           </tr>
         </thead>
         <tbody>
@@ -162,7 +171,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
                 </div>
               </td>
               <td className="orders__field">
-                <input type="checkbox" checked={c.defender} disabled={locked || c.pool === 'assault'} onChange={() => store(...unpack(toggleDefender(campaign, view.orders, today, c.id)))} aria-label={`Field ${c.name} on defense`} />
+                <input type="checkbox" checked={c.defender} disabled={locked || c.pool === 'assault'} onChange={() => store(...unpack(toggleDefender(campaign, view.orders, today, c.id)))} aria-label={`Always field ${c.name} on defense`} />
               </td>
             </tr>
           ))}
@@ -170,10 +179,10 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
       </table>
       <p className="orders__banners">
         Banners: each assault fields up to {view.banners.assault}; each defense up to {view.banners.defense}.{' '}
-        {view.override ? `You field ${view.override.map(name).join(', ')} on defense.` : 'The Marshal fields the best defenders for each battle.'}
+        {pinnedLine(view.override?.map(name) ?? [], view.banners.defense)}
         {view.override && (
           <button type="button" className="link" disabled={locked} onClick={() => store(withOverride(view.orders, today))}>
-            Let the Marshal choose
+            Let the Marshal pick them all
           </button>
         )}
       </p>

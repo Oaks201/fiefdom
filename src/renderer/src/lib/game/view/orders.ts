@@ -1,7 +1,7 @@
 /**
  * The day's orders (T15; Ch 2 rule 2, Ch 6, Ch 10, A-36): which hexes to assault, which companies
- * go and which defend, who the defense fields instead of the Marshal's best, hired blades and
- * envoys, the Marshal's default, "repeat yesterday's orders", the countdown to the 04:00 lock, and
+ * go and which defend, which defenders always fight (the Marshal fills the rest, D-10), hired
+ * blades and envoys, the Marshal's default, "repeat yesterday's orders", the countdown to the 04:00 lock, and
  * an estimate of the day's Defense and Assault from today's Valor so far (labeled as an estimate:
  * the close uses the day's final Valor).
  *
@@ -31,7 +31,7 @@ export interface OrdersCompany {
   pool: Pool
   /** Which assault it goes on (0 for the first), when sent. */
   assault?: number
-  /** Chosen to defend in place of the Marshal's pick. */
+  /** Pinned: always fielded on defense, ahead of the Marshal's pick (D-10). */
   defender: boolean
 }
 
@@ -75,7 +75,7 @@ export interface OrdersView {
   problems: OrderProblem[]
   /** No assault goes out: every company defends. */
   allDefend: boolean
-  /** The companies chosen to defend in place of the Marshal's best, or null for the Marshal's pick. */
+  /** The companies pinned to always defend (the Marshal fills the other banners), or null when he picks them all. */
   override: string[] | null
   /** Yesterday had orders to repeat (A-36). */
   canRepeat: boolean
@@ -244,9 +244,9 @@ export function moveCompany(state: CampaignState, orders: DailyOrders | null, da
 }
 
 /**
- * Picks a company to defend in place of the Marshal's best, or puts it back (Ch 10: "unless the
- * player overrides"). Choosing more than the defense's banners, or a company sent on an assault,
- * is refused. With nobody chosen, the Marshal picks again.
+ * Pins a company to always defend, or unpins it (Ch 10: "unless the player overrides", D-10): the
+ * Marshal fills the banners left with his best for each battle. Pinning more than the defense's
+ * banners, or a company sent on an assault, is refused.
  */
 export function toggleDefender(state: CampaignState, orders: DailyOrders | null, date: ISODate, companyId: string, effects: Effects = realmEffects(state)): { orders: DailyOrders; refused?: 'tooManyCompanies' | 'onAssault' } {
   const out = copyOf(orders, date)

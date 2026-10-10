@@ -676,7 +676,8 @@ export interface CrossingView {
   hybrid?: CompanyCard
   /** The next stage's hybrid. */
   nextHybrid?: CompanyCard
-  perks: { id: string; name: string; stage: number; active: boolean; gives: EffectLine[] }[]
+  /** Each perk, worded at its own stage; `replacedBy` is the later perk that replaces it (A-31). */
+  perks: { id: string; name: string; stage: number; active: boolean; gives: EffectLine[]; replacedBy?: { name: string; stage: number } }[]
   /** The Crossing's own description slot (`crossings.<id>.body`). */
   textId: string
   text: string
@@ -696,7 +697,9 @@ export function crossingsView(state: CampaignState, effects: Effects = realmEffe
   return CODEX.crossings.map((x) => {
     const stage = state.crossings[x.id] ?? 0
     const next = nextOf(crossingOffer(state, x.id))
-    const legend = realmEffects({ ...state, crossings: { ...state.crossings, [x.id]: RULES.crossings.stageCost.length } })
+    // Each perk is worded with the Crossing raised to its own stage: at a later stage, a perk that
+    // another replaces (Trade Roads under Guild Charters, A-31) gives nothing to read.
+    const atStage = (n: number): Effects => realmEffects({ ...state, crossings: { ...state.crossings, [x.id]: n } })
     const hybrid = hybridAt(x.id, stage)
     const nextHybrid = next ? hybridAt(x.id, next.tier) : undefined
     const textId = `crossings.${x.id}.body`
@@ -707,13 +710,17 @@ export function crossingsView(state: CampaignState, effects: Effects = realmEffe
       stage,
       ...(hybrid ? { hybrid } : {}),
       ...(nextHybrid ? { nextHybrid } : {}),
-      perks: x.perks.map((p) => ({
-        id: p.id,
-        name: p.name,
-        stage: p.stage,
-        active: active.has(p.id),
-        gives: effectLines(legend, (ref) => ref.kind === 'perk' && ref.id === p.id)
-      })),
+      perks: x.perks.map((p) => {
+        const replacedBy = x.perks.find((q) => q.replaces === p.id)
+        return {
+          id: p.id,
+          name: p.name,
+          stage: p.stage,
+          active: active.has(p.id),
+          gives: effectLines(atStage(p.stage), (ref) => ref.kind === 'perk' && ref.id === p.id),
+          ...(replacedBy ? { replacedBy: { name: replacedBy.name, stage: replacedBy.stage } } : {})
+        }
+      }),
       textId,
       text: t(textId),
       ...(next ? { next } : {})

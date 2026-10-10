@@ -146,6 +146,10 @@ export function HowToPlay(): React.JSX.Element | null {
             either defends or assaults that day. If you set nothing, every company defends and nothing is assaulted. Orders lock at {dawn}.
           </p>
           <p>
+            <b>Banners</b> cap how many companies fight in one battle; your castle sets them. For each defense the Marshal fields the defenders that hit hardest against that
+            attacker. Tick <b>Always field</b> beside a company to make sure it fights in every defense that day; the Marshal fills the other banners.
+          </p>
+          <p>
             <b>At {dawn}</b> the day closes: battles are fought with the day’s Valor and daily reputation is paid. If the app was closed, it catches up on every missed day at its next
             launch, with no orders for those days.
           </p>

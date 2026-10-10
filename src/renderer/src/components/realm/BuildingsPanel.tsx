@@ -176,6 +176,12 @@ export function CrossingsPanel({ campaign, today }: { campaign: CampaignState; t
             {x.perks.map((p) => (
               <li key={p.id} className={p.active ? 'is-active' : ''}>
                 <strong>{p.name}</strong> <span className="muted">(stage {numeral(p.stage)})</span>: {p.gives.map((g) => g.label).join('; ')}
+                {p.replacedBy && (
+                  <span className="muted">
+                    {' '}
+                    ({p.replacedBy.name} replaces it at stage {numeral(p.replacedBy.stage)})
+                  </span>
+                )}
               </li>
             ))}
           </ul>

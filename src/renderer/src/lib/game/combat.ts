@@ -496,16 +496,18 @@ export interface Fielded {
 }
 
 /**
- * The Marshal's pick: the best `banners` companies of the pool by p × m. With an override, the
- * player's own choice (those of them in the pool, up to `banners`).
+ * The Marshal's pick: the best `banners` companies of the pool by p × m. `pinned` are the
+ * companies the player always fields (D-10): those of them in the pool go first, and the Marshal
+ * fills the banners left with the best of the rest.
  */
-export function fieldBest(pool: readonly Company[], matchupId: MatchupId, foe: Foe, banners: number, override?: readonly string[]): Fielded[] {
+export function fieldBest(pool: readonly Company[], matchupId: MatchupId, foe: Foe, banners: number, pinned?: readonly string[]): Fielded[] {
   const rated = pool.map((company) => {
     const match = companyMatch(company, matchupId, foe)
     return { company, match, strike: company.power * match }
   })
-  const chosen = override ? override.flatMap((id) => rated.filter((r) => r.company.id === id)) : [...rated].sort((a, b) => b.strike - a.strike)
-  return chosen.slice(0, Math.max(0, banners))
+  const first = (pinned ?? []).flatMap((id) => rated.filter((r) => r.company.id === id))
+  const rest = rated.filter((r) => !first.includes(r)).sort((a, b) => b.strike - a.strike)
+  return [...first, ...rest].slice(0, Math.max(0, banners))
 }
 
 export interface DefenseInput {
@@ -1080,7 +1082,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 
 // ── Fielding a battle (shared by settlement and the orders estimate) ────────
 
-/** The Defense `pool` puts up on `hex` against a threat of `kind` (Ch 10): the Marshal's best by p × m, or the override. */
+/** The Defense `pool` puts up on `hex` against a threat of `kind` (Ch 10): the companies the player always fields, then the Marshal's best by p × m (D-10). */
 function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, kind: ThreatKind, rival: RivalId | undefined, valor: number, override?: readonly string[]): { fielded: Fielded[]; defense: number } {
   const foe = foeOfThreat(kind)
   const fielded = fieldBest(pool, matchupOfThreat(kind, rival), foe, defenseBanners(effects), override)

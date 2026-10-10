@@ -169,7 +169,7 @@ export interface DailyOrders {
   defense: string[]
   /** More assaults, when the realm allows them (Castle IV, the Siege Park; T08). */
   extraAssaults?: { target: string; companies: string[] }[]
-  /** The companies the player fields on defense instead of the Marshal's best B (T08). */
+  /** The companies the player always fields on defense; the Marshal fills the other banners with his best (T08, D-10). */
   defenseOverride?: string[]
   /** Hired blades for the day's defense battles (Merchant Hall II, A-19; T08). */
   hired?: number

@@ -11,6 +11,7 @@ import {
   defenseValue,
   drawThreat,
   earlyGraceMult,
+  fieldBest,
   planConquest,
   scheduleThreats,
   strengthBand,
@@ -21,7 +22,7 @@ import {
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { RULES, base } from '../../src/renderer/src/lib/game/rules'
-import type { CampaignState, Deal } from '../../src/renderer/src/lib/game/types'
+import type { CampaignState, Company, Deal } from '../../src/renderer/src/lib/game/types'
 import { chicago, steadyLedger, withDay } from './fixtures/ledgers'
 import { allBuildings, realm, withBuildings, withCastle, withCrossings, withGrace } from './support/realm'
 import { START, WEEK6, fight, front, hex, plainHex, withDisposition, withHex, withTiding } from './support/war'
@@ -413,4 +414,17 @@ test('Settlement: every settled day fights its daily threat, and the open day’
   assert.deepEqual(combatOf(state).tidings.map((t) => t.date), ['2026-10-15'])
   assert.ok(combatOf(state).schedule.every((s) => s.date > '2026-10-14'))
   assert.equal(combatOf(state).schedule.at(-1)?.date, '2026-10-18')
+})
+
+test('D-10: the companies the player always fields go first, and the Marshal fills the banners left with his best', () => {
+  const company = (id: string, power: number): Company => ({ id, name: id, source: 'building', power, tags: [], reach: 'melee', items: [] })
+  const pool = [company('a', 10), company('b', 30), company('c', 20), company('d', 40), company('e', 5)]
+  const fielded = (pinned?: string[]): string[] => fieldBest(pool, 'beasts', 'beast', 3, pinned).map((f) => f.company.id)
+  assert.deepEqual(fielded(), ['d', 'b', 'c'])
+  // One pinned company no longer defends alone: the Marshal fills the other two banners.
+  assert.deepEqual(fielded(['e']), ['e', 'd', 'b'])
+  assert.deepEqual(fielded(['a', 'e']), ['a', 'e', 'd'])
+  assert.deepEqual(fielded(['a', 'e', 'c', 'b']), ['a', 'e', 'c'])
+  // A pinned company not in the pool (sent on an assault, or hired blades the purse can't pay) is skipped.
+  assert.deepEqual(fielded(['gone']), ['d', 'b', 'c'])
 })
