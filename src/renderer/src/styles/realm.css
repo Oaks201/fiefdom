@@ -53,8 +53,7 @@
 }
 
 .hexmap__board {
-  padding: 14px 10px 0;
-  perspective: 1500px;
+  padding: 6px;
   background:
     radial-gradient(ellipse 80% 70% at 50% 45%, rgba(255, 244, 214, 0.35), transparent 70%),
     linear-gradient(160deg, #8a6236, #5e3d1d);
@@ -66,20 +65,32 @@
     0 6px 14px rgba(40, 22, 8, 0.35);
 }
 
+.hexmap__board.is-zoomed {
+  cursor: grab;
+}
+
+.hexmap__board.is-panning,
+.hexmap__board.is-panning .hex {
+  cursor: grabbing;
+}
+
+/* Tilted like a tabletop by each hex's own 2D transform (tiltedBoard), not a CSS 3D transform: Chromium rasterizes a 3D-transformed map blurred in patches. */
 .hexmap__svg {
   display: block;
   width: 100%;
   height: auto;
-  /* Tilted like a tabletop, hinged at its top edge; the board closes up under the foreshortened map. */
-  transform: rotateX(18deg);
-  transform-origin: 50% 0;
-  margin-bottom: -3%;
-  will-change: transform;
   user-select: none;
 }
 
+/* Only a hex's own outline takes the pointer: its terrain picture is a rectangle whose corners lie over its neighbors. */
 .hex {
   cursor: pointer;
+  pointer-events: none;
+}
+
+.hex__hit {
+  fill: none;
+  pointer-events: fill;
 }
 
 .hex--battlefield,
@@ -93,14 +104,29 @@
   stroke-width: 0.035;
 }
 
-.hex__hover {
-  fill: #fff6dc;
-  opacity: 0;
-  transition: opacity 0.08s;
+/* Drawn once, over every hex, so its neighbors' borders never cut into it. */
+.hexmap__hover {
+  fill: rgba(255, 246, 220, 0.3);
+  stroke: rgba(255, 246, 220, 0.9);
+  stroke-width: 0.06;
+  pointer-events: none;
 }
 
-.hex:hover .hex__hover {
-  opacity: 0.3;
+.hexmap__zoom {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hexmap__zoom .btn--icon {
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .hexmap__selected {
@@ -751,7 +777,11 @@
 .roster__table td:first-child {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.roster__token {
+  flex: none;
 }
 
 .roster__table tr.is-weary {

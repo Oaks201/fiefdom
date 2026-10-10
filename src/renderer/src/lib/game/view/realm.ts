@@ -71,6 +71,121 @@ export function hexLayout(hexes: readonly Pick<HexState, 'id'>[]): { points: Hex
   return { points, minX, minY, width: Math.max(...xs) + SQRT3 - minX, height: Math.max(...ys) + 2 - minY }
 }
 
+/** The box the map fills, in units of a hex's side (from `hexLayout`). */
+export type MapBox = Pick<ReturnType<typeof hexLayout>, 'minX' | 'minY' | 'width' | 'height'>
+
+/** A 2D affine map as SVG's `matrix(a b c d e f)`: x' = a·x + c·y + e, y' = b·x + d·y + f. */
+export type Affine = [number, number, number, number, number, number]
+
+/** A pointy-top hex's corners around its center, in units of its side. */
+const HEX_CORNERS = [
+  [0, -1],
+  [SQRT3 / 2, -1 / 2],
+  [SQRT3 / 2, 1 / 2],
+  [0, 1],
+  [-SQRT3 / 2, 1 / 2],
+  [-SQRT3 / 2, -1 / 2]
+] as const
+
+/**
+ * The tabletop tilt (T15) drawn in plain 2D: the map leans back `angle` radians about the top edge
+ * of `frame` and is seen in perspective from `distance` frame-heights away, toward the frame's
+ * center. `place(x, y)` is the affine map that matches the perspective at a hex centered there
+ * (exact at the center; tests bound the gap between neighbors' shared corners), so the board
+ * needs no 3D layer, whose raster Chromium leaves blurred in patches. `box` is the tilted realm's
+ * extent, with `margin` sides around it.
+ */
+export function tiltedBoard(
+  points: readonly { x: number; y: number }[],
+  frame: MapBox,
+  angle: number,
+  distance: number,
+  margin: number
+): { project(x: number, y: number): [number, number]; place(x: number, y: number): Affine; box: MapBox } {
+  const midU = frame.width / 2
+  const midV = frame.height / 2
+  const far = distance * frame.height
+  const sin = Math.sin(angle)
+  const cos = Math.cos(angle)
+  const scaleAt = (v: number): number => far / (far - v * sin)
+  const project = (x: number, y: number): [number, number] => {
+    const u = x - frame.minX
+    const v = y - frame.minY
+    const s = scaleAt(v)
+    return [frame.minX + midU + (u - midU) * s, frame.minY + midV + (v * cos - midV) * s]
+  }
+  const place = (x: number, y: number): Affine => {
+    const u = x - frame.minX
+    const v = y - frame.minY
+    const s = scaleAt(v)
+    const growth = (s * s * sin) / far
+    const [px, py] = project(x, y)
+    return [s, 0, (u - midU) * growth, cos * s + (v * cos - midV) * growth, px, py]
+  }
+  const corners = points.flatMap((p) => HEX_CORNERS.map(([dx, dy]) => project(p.x + dx, p.y + dy)))
+  const xs = corners.map(([x]) => x)
+  const ys = corners.map(([, y]) => y)
+  const minX = Math.min(...xs) - margin
+  const minY = Math.min(...ys) - margin
+  return { project, place, box: { minX, minY, width: Math.max(...xs) + margin - minX, height: Math.max(...ys) + margin - minY } }
+}
+
+/** How far the map is zoomed (1 shows the whole box it fills) and the point, in the box's units, at the frame's center. */
+export interface MapZoom {
+  zoom: number
+  cx: number
+  cy: number
+}
+
+/** A point on the map's frame, as fractions of its width and height (0,0 is the top left). */
+export interface FramePoint {
+  fx: number
+  fy: number
+}
+
+/** Below this the zoom is float noise on top of 1 (zooming in and back out by the same steps). */
+const ZOOM_NOISE = 1e-6 // rules-ok: float tolerance, not a rule
+
+/** The whole realm, centered. */
+export function wholeMap(box: MapBox): MapZoom {
+  return { zoom: 1, cx: box.minX + box.width / 2, cy: box.minY + box.height / 2 }
+}
+
+/** A zoom between 1 and `maxZoom`, panned no further than the realm's edge. */
+export function clampMapZoom(view: MapZoom, box: MapBox, maxZoom: number): MapZoom {
+  const zoom = view.zoom < 1 + ZOOM_NOISE ? 1 : Math.min(maxZoom, view.zoom)
+  const halfW = box.width / zoom / 2
+  const halfH = box.height / zoom / 2
+  return {
+    zoom,
+    cx: Math.min(box.minX + box.width - halfW, Math.max(box.minX + halfW, view.cx)),
+    cy: Math.min(box.minY + box.height - halfH, Math.max(box.minY + halfH, view.cy))
+  }
+}
+
+/** The part of the realm a zoom shows: the SVG's viewBox. It keeps the realm's proportions, so the frame never changes size. */
+export function mapViewBox(view: MapZoom, box: MapBox): { x: number; y: number; width: number; height: number } {
+  const width = box.width / view.zoom
+  const height = box.height / view.zoom
+  return { x: view.cx - width / 2, y: view.cy - height / 2, width, height }
+}
+
+/** Zooms by `factor`, keeping the map point under `at` where it is on the frame (as a wheel zooms toward the pointer). */
+export function zoomMapAt(view: MapZoom, factor: number, at: FramePoint, box: MapBox, maxZoom: number): MapZoom {
+  const before = mapViewBox(view, box)
+  const x = before.x + at.fx * before.width
+  const y = before.y + at.fy * before.height
+  const zoom = clampMapZoom({ ...view, zoom: view.zoom * factor }, box, maxZoom).zoom
+  const after = mapViewBox({ ...view, zoom }, box)
+  return clampMapZoom({ zoom, cx: x + (1 / 2 - at.fx) * after.width, cy: y + (1 / 2 - at.fy) * after.height }, box, maxZoom)
+}
+
+/** Pans `start` so the map point that was under `from` on the frame is under `to` (a drag). */
+export function panMap(start: MapZoom, from: FramePoint, to: FramePoint, box: MapBox, maxZoom: number): MapZoom {
+  const shown = mapViewBox(start, box)
+  return clampMapZoom({ ...start, cx: start.cx - (to.fx - from.fx) * shown.width, cy: start.cy - (to.fy - from.fy) * shown.height }, box, maxZoom)
+}
+
 /** The art slot of a hex's terrain (Ch 17's hex set). */
 export function terrainSlot(hex: Pick<HexState, 'kind' | 'ring' | 'village' | 'ruins'>): string {
   if (hex.ruins) return 'hex.ruins'

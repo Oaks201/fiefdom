@@ -227,6 +227,10 @@ export function HowToPlay(): React.JSX.Element | null {
             Your castle sits at the center with its four buildings around it; the rivals hold the far corners. Choose any hex to see who holds it, its garrison, and what you can do
             there. Every hex you take must touch land you already hold. Rings 0 to {RULES.land.protectedThroughRing} around the castle can never be taken from you.
           </p>
+          <p>
+            To see the hexes larger, scroll over the map or use its <b>+</b> and <b>−</b> buttons; drag to move around while zoomed in, and the third button shows the whole
+            realm again.
+          </p>
           <ul>
             <li>
               <b>Assault</b> a neighboring hex with your day’s orders. You take it if your assault beats its garrison at the close. A failed assault still wears the garrison down until

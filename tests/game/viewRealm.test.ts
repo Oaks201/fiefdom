@@ -18,7 +18,25 @@ import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
-import { HEX_WIDTH, buildingsView, castleView, companyArt, crossingsView, effectLines, hexLayout, hexPanel, mapView, rosterView, suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
+import {
+  HEX_WIDTH,
+  buildingsView,
+  castleView,
+  clampMapZoom,
+  companyArt,
+  crossingsView,
+  effectLines,
+  hexLayout,
+  hexPanel,
+  mapView,
+  mapViewBox,
+  panMap,
+  rosterView,
+  suggestedBid,
+  tiltedBoard,
+  wholeMap,
+  zoomMapAt
+} from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
@@ -40,6 +58,95 @@ test('T15: no two of the 127 hex centers are closer than the hex width × 0.9; n
   }
   assert.ok(least >= HEX_WIDTH * 0.9)
   assert.ok(Math.abs(least - HEX_WIDTH) < 1e-9)
+})
+
+test('Map tilt: each hex is drawn where the perspective puts it, and neighbors meet within a hundredth of a side', () => {
+  const layout = hexLayout(realm().hexes)
+  const board = tiltedBoard(layout.points, layout, (18 * Math.PI) / 180, 2, 0.4)
+  const corners = [0, 1, 2, 3, 4, 5].map((i) => [Math.cos(((2 * i - 1) * Math.PI) / 6), Math.sin(((2 * i - 1) * Math.PI) / 6)])
+  const at = ([a, b, c, d, e, f]: number[], x: number, y: number): [number, number] => [a * x + c * y + e, b * x + d * y + f]
+  let seam = 0
+  for (const p of layout.points) {
+    const [cx, cy] = at(board.place(p.x, p.y), 0, 0)
+    const [px, py] = board.project(p.x, p.y)
+    assert.ok(Math.hypot(cx - px, cy - py) < 1e-9)
+    for (const q of layout.points) {
+      if (p === q || Math.hypot(p.x - q.x, p.y - q.y) > HEX_WIDTH + 1e-9) continue
+      for (const [dx, dy] of corners) {
+        const [ox, oy] = [p.x + dx - q.x, p.y + dy - q.y]
+        if (!corners.some(([kx, ky]) => Math.hypot(kx - ox, ky - oy) < 1e-9)) continue
+        const [ax, ay] = at(board.place(p.x, p.y), dx, dy)
+        const [bx, by] = at(board.place(q.x, q.y), ox, oy)
+        seam = Math.max(seam, Math.hypot(ax - bx, ay - by))
+      }
+    }
+  }
+  assert.ok(seam < 0.01, `neighbors' corners ${seam} apart`)
+  // The far (top) edge keeps its width; the near rows are wider; every hex corner is inside the box.
+  const top = layout.points.filter((p) => p.y === Math.min(...layout.points.map((q) => q.y)))
+  const bottom = layout.points.filter((p) => p.y === Math.max(...layout.points.map((q) => q.y)))
+  const span = (row: typeof top): number => board.project(Math.max(...row.map((p) => p.x)), row[0].y)[0] - board.project(Math.min(...row.map((p) => p.x)), row[0].y)[0]
+  assert.ok(span(bottom) > span(top) * 1.05)
+  for (const p of layout.points) {
+    for (const [dx, dy] of corners) {
+      const [x, y] = board.project(p.x + dx, p.y + dy)
+      assert.ok(x > board.box.minX && x < board.box.minX + board.box.width && y > board.box.minY && y < board.box.minY + board.box.height)
+    }
+  }
+  // Untilted, the board is the plain map.
+  const flat = tiltedBoard(layout.points, layout, 0, 2, 0)
+  flat.place(3, 4).forEach((v, i) => assert.ok(Math.abs(v - [1, 0, 0, 1, 3, 4][i]) < 1e-9))
+})
+
+test('Map zoom: at 1 the frame shows the whole realm, and every zoom keeps its proportions', () => {
+  const box = hexLayout(realm().hexes)
+  assert.deepEqual(mapViewBox(wholeMap(box), box), { x: box.minX, y: box.minY, width: box.width, height: box.height })
+  for (const zoom of [1.3, 2, 3.7]) {
+    const shown = mapViewBox(clampMapZoom({ ...wholeMap(box), zoom }, box, 4), box)
+    assert.ok(Math.abs(shown.width / shown.height - box.width / box.height) < 1e-9)
+    assert.ok(Math.abs(shown.width - box.width / zoom) < 1e-9)
+  }
+})
+
+test('Map zoom: the wheel keeps the map point under the pointer where it is on the frame', () => {
+  const box = hexLayout(realm().hexes)
+  const at = { fx: 0.3, fy: 0.6 }
+  let view = wholeMap(box)
+  for (const factor of [1.5, 1.2, 0.9]) {
+    const before = mapViewBox(view, box)
+    const next = zoomMapAt(view, factor, at, box, 4)
+    const after = mapViewBox(next, box)
+    assert.ok(Math.abs(before.x + at.fx * before.width - (after.x + at.fx * after.width)) < 1e-9)
+    assert.ok(Math.abs(before.y + at.fy * before.height - (after.y + at.fy * after.height)) < 1e-9)
+    view = next
+  }
+})
+
+test('Map zoom: never below the whole realm or above the limit, and never panned past the edge', () => {
+  const box = hexLayout(realm().hexes)
+  const center = { fx: 0.5, fy: 0.5 }
+  assert.deepEqual(zoomMapAt(wholeMap(box), 0.5, center, box, 4), wholeMap(box))
+  assert.equal(zoomMapAt(wholeMap(box), 10, center, box, 4).zoom, 4)
+  // Zooming in and back out by the same steps lands exactly on the whole realm.
+  let view = wholeMap(box)
+  for (let i = 0; i < 3; i++) view = zoomMapAt(view, 1.4, { fx: 0.2, fy: 0.8 }, box, 4)
+  for (let i = 0; i < 3; i++) view = zoomMapAt(view, 1 / 1.4, { fx: 0.7, fy: 0.1 }, box, 4)
+  assert.deepEqual(view, wholeMap(box))
+  // A long drag stops at the realm's edge.
+  const zoomed = clampMapZoom({ ...wholeMap(box), zoom: 2 }, box, 4)
+  const shown = mapViewBox(panMap(zoomed, { fx: 0.5, fy: 0.5 }, { fx: 5, fy: 5 }, box, 4), box)
+  assert.ok(Math.abs(shown.x - box.minX) < 1e-9 && Math.abs(shown.y - box.minY) < 1e-9)
+})
+
+test('Map zoom: a drag moves the grabbed map point with the pointer', () => {
+  const box = hexLayout(realm().hexes)
+  const start = clampMapZoom({ ...wholeMap(box), zoom: 3 }, box, 4)
+  const from = { fx: 0.5, fy: 0.5 }
+  const to = { fx: 0.6, fy: 0.45 }
+  const before = mapViewBox(start, box)
+  const after = mapViewBox(panMap(start, from, to, box, 4), box)
+  assert.ok(Math.abs(before.x + from.fx * before.width - (after.x + to.fx * after.width)) < 1e-9)
+  assert.ok(Math.abs(before.y + from.fy * before.height - (after.y + to.fy * after.height)) < 1e-9)
 })
 
 test('T15: every action the hex panel offers matches the engine, for 200 seeded hexes in mid-game states', () => {
