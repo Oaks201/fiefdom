@@ -74,11 +74,31 @@ function inventory() {
   for (const t of ['castle', 'building', 'wild', 'den', 'village', 'road', 'gate', 'lairMouth', 'capital', 'realm', 'lair', 'battlefield', 'ruins']) add(`hex.${t}`, 'hex', `Hex terrain: ${t}`)
   for (const o of ['contested', 'scorched']) add(`hex.overlay.${o}`, 'overlay', `Hex overlay: ${o}`)
 
+  // Regional terrain (D-09): each region redraws the shared tiles in its own look, and each border
+  // between two regions blends both in its village and battlefield. Clockwise from the NW, as
+  // map.ts's regionsOf walks the rim: the rivals at the ends of the roads and the two lairs.
+  const rivals = read('rivals.json').rivals
+  const lairs = read('mythics.json').lairs
+  const rim = [['road', 'barracks'], ['road', 'merchantHall'], ['lair', 'east'], ['road', 'foundry'], ['road', 'mageTower'], ['lair', 'west']]
+  const regions = rim.map(([by, at]) => {
+    if (by === 'road') {
+      const r = rivals.find((x) => x.road === at)
+      return { id: r.id, name: r.realm.replace(/^The /, 'the '), terrains: ['village', 'road', 'gate', 'realm', 'battlefield', 'capital'] }
+    }
+    const l = lairs.find((x) => x.land === at)
+    return { id: l.id, name: l.name, terrains: ['village', 'lairMouth', 'lair', 'battlefield'] }
+  })
+  regions.forEach((region, i) => {
+    for (const reach of ['near', 'far']) add(`hex.wilds.${region.id}.${reach}`, 'hex', `Hex terrain: wilds (${reach}) in ${region.name}`)
+    for (const t of region.terrains) add(`hex.${t}.${region.id}`, 'hex', `Hex terrain: ${t} in ${region.name}`)
+    const next = regions[(i + 1) % regions.length]
+    for (const t of ['village', 'battlefield']) add(`hex.${t}.${region.id}-${next.id}`, 'hex', `Hex terrain: ${t} where ${region.name} meets ${next.name}`)
+  })
+
   const companies = read('companies.json')
   for (const b of companies.buildings) for (let tier = 1; tier <= 5; tier++) add(`building.${b.id}.${tier}`, 'building', `${b.name}, Tier ${tier}`)
   for (let tier = 1; tier <= 5; tier++) add(`castle.${tier}`, 'castle', `Castle, Tier ${tier}`)
 
-  const rivals = read('rivals.json').rivals
   for (const r of rivals) for (const mood of ['calm', 'angry', 'humbled']) add(`rival.${r.id}.${mood}`, 'rival', `${r.ruler}, ${mood}`)
 
   const lines = []
@@ -241,4 +261,6 @@ function main() {
   if (args.has('--strict') && bad) process.exit(1)
 }
 
-main()
+if (require.main === module) main()
+
+module.exports = { inventory }

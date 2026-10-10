@@ -17,6 +17,7 @@ import {
   isClaimableKind,
   lairOf,
   neighbors,
+  regionsOf,
   ringHexes,
   ringOf,
   seedVillages,
@@ -293,6 +294,32 @@ test('hexName reads the codex for an id, coordinates or a hex (D-07)', () => {
   assert.equal(hexName({ q: -6, r: 6 }), 'Caer Emrys') // the Archmage's capital, SW
   assert.equal(hexName(hex(map, 0, 6)), 'Kaldor Deep') // the Dwarf's capital, SE
   assert.notEqual(hexName('0,-3'), hexLabel('0,-3'))
+})
+
+test('every hex beyond the heartland lies in the region of its nearest corner ray, a halfway hex on the border of both (D-07, D-09)', () => {
+  // The corner rays clockwise from the NW, by screen angle (y grows downward), and their regions.
+  const rays: [string, number][] = [['orc', -120], ['goblin', -60], ['thornwild', 0], ['dwarf', 60], ['archmage', 120], ['wyrmfells', 180]]
+  const count = new Map<string, number>()
+  for (const h of map) {
+    const regions = regionsOf(h)
+    const key = regions.join('-') || 'heartland'
+    count.set(key, (count.get(key) ?? 0) + 1)
+    if (h.ring <= 2) {
+      assert.deepEqual(regions, [], h.id)
+      continue
+    }
+    const angle = (Math.atan2(1.5 * h.r, Math.sqrt(3) * (h.q + h.r / 2)) * 180) / Math.PI
+    const gap = (ray: number): number => Math.abs(((angle - ray + 540) % 360) - 180)
+    const least = Math.min(...rays.map(([, ray]) => gap(ray)))
+    const nearest = rays.filter(([, ray]) => gap(ray) - least < 1e-6).map(([id]) => id)
+    assert.deepEqual([...regions].sort(), nearest.sort(), h.id)
+  }
+  assert.equal(count.get('heartland'), 19)
+  for (const [id] of rays) assert.equal(count.get(id), 16, id)
+  // Each border is listed clockwise and has two hexes: a ring-4 village and a Rim battlefield.
+  rays.forEach(([id], i) => assert.equal(count.get(`${id}-${rays[(i + 1) % rays.length][0]}`), 2, `${id} border`))
+  assert.deepEqual(regionsOf('2,-4'), ['orc', 'goblin']) // Raiders’ Toll
+  assert.deepEqual(regionsOf(hex(map, -6, 6)), ['archmage']) // Caer Emrys
 })
 
 // ── Starting garrisons and loyalty ───────────────────────────────────────────

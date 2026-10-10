@@ -101,7 +101,7 @@ const HexCell = memo(
     const threat = hex.threats?.[0]
     return (
       <g className={`hex hex--${hex.kind} hex--${hex.owner}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.id}>
-        <GameArt slot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
+        <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
         {hex.status === 'contested' && <GameArt slot="hex.overlay.contested" place={TERRAIN} />}
         {hex.status === 'scorched' && <GameArt slot="hex.overlay.scorched" place={TERRAIN} />}
         {!unowned && (

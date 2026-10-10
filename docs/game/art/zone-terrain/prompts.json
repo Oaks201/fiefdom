@@ -1,0 +1,1010 @@
+[
+  {
+    "slot": "hex.wilds.orc.near",
+    "file": "hex.wilds.orc.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Ashfall, Grimtusk Rise, Cinderheath, Redbarrow",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.orc.near.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: Burnt grassland: ochre dead grass fading into gray ash, two charred tree stumps, a toppled barricade of sharpened logs, a rusted broken blade stuck upright in the ground, a thin wisp of smoke.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.orc.far",
+    "file": "hex.wilds.orc.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Scorchmoor, Howling Tor (and Gorehollow, Blackfang when not villages)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.orc.far.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: War-wrecked badlands: cracked charcoal earth with glowing ember fissures, a burnt-out watchtower of jagged timber and iron plates, a row of sharpened stakes, a broken siege wheel, a heavy column of black smoke.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.orc",
+    "file": "hex.village.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Orc-land villages (e.g. Gorehollow, Blackfang, Gallowsway)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: An orc war-camp village: three longhuts of hide and dark timber with jagged scrap-iron roofs, ringed by a sharpened-log palisade, a smoking cookfire in the middle, a totem pole topped with a horned beast skull.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.road.orc",
+    "file": "hex.road.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Skullcairn",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.road.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: A rutted dark-mud road through ash, lined with sharpened stakes, a cairn of horned beast skulls at the roadside, a wrecked war-wagon with an iron-banded wheel.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.gate.orc",
+    "file": "hex.gate.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Ashgate",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.gate.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: A hulking gatehouse of lashed black logs armored with riveted, jagged iron plates; two huge curved tusks arch over the gate; a fire brazier on each side; spikes along the top.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.realm.orc",
+    "file": "hex.realm.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Ember Waste, Charnel Plain",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.realm.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: The warlord's war-forge grounds: a fighting pit ringed with spikes, a crude forge belching black smoke beside heaps of scrap armor and weapons, a half-built battering ram.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.orc",
+    "file": "hex.battlefield.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Redfield, Crowfield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: Churned ash-and-mud field: shattered shields, broken spears, a toppled tattered plain banner, scorch craters, crows perched on a stake.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.capital.orc",
+    "file": "hex.capital.orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Skullthrone",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.capital.orc.\nRegion: The Ashen Steppe (Orc, north-west). War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: Ugrak's stronghold: a towering, jagged, asymmetric fortress of black iron plates and huge timbers, spiked battlements and hooked blades, a giant horned beast skull mounted over the gate, red forge glow in the windows, smoke and embers rising. Aggressive silhouette.\nThe game draws a round crown badge over the middle of this tile, so the stronghold should fill the hexagon and still read around the center.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.goblin.near",
+    "file": "hex.wilds.goblin.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Copperdell, Tinker’s Hollow, Crookback, Rustpenny",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.goblin.near.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: Green rolling hills dotted with round brass-rimmed burrow doors and little chimneys puffing steam, copper pipes snaking through the grass, a short mine-cart track, a little surveyor's boundary post hung with a wax-sealed tag.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.goblin.far",
+    "file": "hex.wilds.goblin.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Pilfer’s End, Smuggler’s Notch (and Brasswick, Gobbet’s Burrow when not villages)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.goblin.far.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: Hills cut open for industry: terraced mine pits, a tall brick smokestack and a riveted steam boiler, a crane hoisting a cart of gold ore onto a big brass weighing scale beside a clerk's shed, soot-darkened ground glinting with dropped coins.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.goblin",
+    "file": "hex.village.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Goblin-land villages (e.g. Brasswick, Tollbridge)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: A crowded goblin town: tall, narrow, crooked houses with copper roofs and many chimneys, a counting-house with a clerk at an open window stamping papers and a short queue outside, strings of warm lanterns, a big brass cog set into a wall.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.road.goblin",
+    "file": "hex.road.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Haggler’s Way",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.road.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: A neat cobbled toll road with a mine-cart rail alongside, a striped toll barrier beside a small booth where a clerk stamps a scroll over an open chest of gold coins, a notice board pinned with blank parchment, brass lamp posts.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.gate.goblin",
+    "file": "hex.gate.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Gildgate",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.gate.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: A huge round gilded vault door set into a hillside as the gate, framed by brass pipes and pressure gauges, a customs desk under a striped awning in front of it stacked with ribbon-tied scrolls and a brass scale, a glowing lantern on each side, gold trim on dark iron.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.realm.goblin",
+    "file": "hex.realm.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Tallow Deeps, Glimmerdell",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.realm.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: The works: two smokestacks, a copper smelter pouring molten gold into molds, rails of loaded carts, stacked gold ingots being weighed and tallied at an assay office's brass scales, glowing furnace light.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.goblin",
+    "file": "hex.battlefield.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Dicer’s Field, Swindler’s Field",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: A trampled field strewn with wrecked clockwork contraptions, a burst boiler hissing steam, spilled coins, broken crossbows, torn scrolls and red ribbons blowing across the mud.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.capital.goblin",
+    "file": "hex.capital.goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Hoardhollow",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.capital.goblin.\nRegion: The Gilded Warren (Goblin, north-east). Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: Skivvet's trade capital burrowed into a hill: golden domes and brass towers bristling with chimneys, an enormous round vault door at the front, beside it a grand columned exchange hall with a long queue of petitioners on its steps and towers of filed scrolls in its windows, coins spilling down the slope, steam and warm light everywhere. Opulent and official.\nThe game draws a round crown badge over the middle of this tile, so the stronghold should fill the hexagon and still read around the center.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.dwarf.near",
+    "file": "hex.wilds.dwarf.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Flintholm, Cragmoor, Granitefast, Bergholm",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.dwarf.near.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: Foothills: grassy slopes broken by gray granite outcrops, a few dark pines, a small cold stream, a neat stone cairn.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.dwarf.far",
+    "file": "hex.wilds.dwarf.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Emberdelve, Coldforge (and Jarnholt, Grimholt when not villages)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.dwarf.far.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: High crags: steep slate-gray peaks with snowcaps and scree, a mine entrance with a bronze-banded door cut into the rock, a thin trail of forge smoke.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.dwarf",
+    "file": "hex.village.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Dwarf-land villages (e.g. Jarnholt, Grimholt, Kaldor Road)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: Stone longhouses with turf roofs set into a hillside, round bronze-banded doors, smoking chimneys, forge glow in one doorway, a stacked woodpile.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.road.dwarf",
+    "file": "hex.road.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Deepway",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.road.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: A precisely paved stone road switchbacking up a slope, a carved stone milestone with geometric knotwork, a small arched stone bridge over a stream.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.gate.dwarf",
+    "file": "hex.gate.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Stonegate",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.gate.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: A massive gate carved into a cliff face, flanked by two stern dwarf guardian statues holding axes, great bronze-banded doors, geometric knotwork around the arch.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.realm.dwarf",
+    "file": "hex.realm.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Hrimgard, Gullhall",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.realm.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: Snowy high mountains with terraced quarries and halls cut into the rock, warm glowing windows, a waterfall, bronze rails for mine carts.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.dwarf",
+    "file": "hex.battlefield.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Cairnfield, Anvilfield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: A rocky mountain pass with shattered boulders and siege rubble, broken axes and round shields, a toppled stone pillar.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.capital.dwarf",
+    "file": "hex.capital.dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Kaldor Deep",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.capital.dwarf.\nRegion: Dun Kaldor (Dwarf, south-east). Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: A masterwork fortress carved into a snowcapped peak: tier upon tier of geometric stone halls, great doors trimmed in gold and bronze glowing with forge light, twin waterfalls, stout towers with plain banners. Grand and symmetrical; the most elaborate tile in the zone.\nThe game draws a round crown badge over the middle of this tile, so the stronghold should fill the hexagon and still read around the center.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.archmage.near",
+    "file": "hex.wilds.archmage.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Llyn Seren, Glasmere, Cwm Hud, Silverveil",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.archmage.near.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Misty moorland with heather and a still lake; the first signs of magic: a few violet crystal shards poking through the grass, faint cyan glowing lines in the earth, one small stone floating just above the ground.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.archmage.far",
+    "file": "hex.wilds.archmage.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Bryn Rhith, Moonwell (and Whisperwood, Pen Dinas when not villages)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.archmage.far.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Magic-warped land: chunks of earth floating above the ground, large violet crystals, trees turned to silvery glass, glowing cyan cracks, drifting motes of light.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.archmage",
+    "file": "hex.village.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Villages of the Reach (e.g. Whisperwood, Pen Dinas, Lantern Way)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Whitewashed stone cottages with slate roofs, a violet crystal growing up through one roof, small lanterns floating above the lane, a softly glowing well.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.road.archmage",
+    "file": "hex.road.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Mistway",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.road.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: A path of flat stepping stones hovering over drifting mist, lit by tall lantern posts burning with cyan flame.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.gate.archmage",
+    "file": "hex.gate.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Veilgate",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.gate.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Two great standing stones joined by a shimmering violet curtain of light, a glowing circle on the ground between them.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.realm.archmage",
+    "file": "hex.realm.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Ynys Wen, Elderglass",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.realm.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Heavily warped: a waterfall pouring upward into the sky, small floating islands with tiny trees, a glassy lake reflecting stars, giant crystals.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.archmage",
+    "file": "hex.battlefield.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Starfall Field, Mistfield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Spell-scarred ground: patches melted into dark glass, a crater crackling with violet energy, broken staves, a fallen star fragment still glowing.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.capital.archmage",
+    "file": "hex.capital.archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Caer Emrys",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.capital.archmage.\nRegion: Emrys’ Reach (Archmage, south-west). Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Emrys' compound, the source of it all: a slender spiralling white-and-violet tower complex on a floating rock above a lake, a beam of cyan-violet light shooting into the sky, plain standing stones orbiting it in a ring. The brightest tile in the zone.\nThe game draws a round crown badge over the middle of this tile, so the stronghold should fill the hexagon and still read around the center.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.thornwild.near",
+    "file": "hex.wilds.thornwild.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Briarholt, Nettlecombe, Hagthorn, Witchbriar, Rosethorn (and Bramblegloom when not a village)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.thornwild.near.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: The forest edge: dark green trees, thick bramble hedges with black thorns and red wild roses, nettles, a mossy path vanishing into the trees.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.thornwild.far",
+    "file": "hex.wilds.thornwild.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Blackthorn, Wolfsbane Dell, Hemlock Hollow, Gloaming Glade",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.thornwild.far.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: Deep thornwood: giant twisted black thorn vines arching overhead, gloom, a few pale green wisp lights, purple wolfsbane flowers, a pair of glowing eyes in the shadows.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.thornwild",
+    "file": "hex.village.thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Thornwild villages (e.g. Bramblegloom)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.thornwild.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: A hamlet of crooked thatched huts behind a thorn hedge, bundles of herbs and antlers hung as charms, a smoking cauldron.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.lairMouth.thornwild",
+    "file": "hex.lairMouth.thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Thornmaw",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.lairMouth.thornwild.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: Enormous thorned branches knotted into a gaping, fanged archway leading into darkness, golden griffin feathers caught on the thorns, deep claw marks in the bark.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.lair.thornwild",
+    "file": "hex.lair.thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Witchwood, Thornheart, Rootdeep",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.lair.thornwild.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: The heart of the wood: a colossal ancient tree strangled in thorns, a griffin's nest of branches at the top with golden feathers, roots like walls, a faint red glow in a hollow (the Manticore's den).\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.thornwild",
+    "file": "hex.battlefield.thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Bramblefield, Thornfield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.thornwild.\nRegion: The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt). A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: A trampled clearing ringed by brambles: broken hunting spears, scattered griffin feathers, torn plain banners caught on thorns, hoofprints.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.wyrmfells.near",
+    "file": "hex.wilds.wyrmfells.near.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Scaleby, Raventhwaite, Gloomfell (and Drakesfell, Coldfell, Wyrmscar when not villages)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.wyrmfells.near.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Bleak open fells: heather and dark rock, a dry-stone wall, a raven on a crag, long black scorch marks raked across the hillside.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.wilds.wyrmfells.far",
+    "file": "hex.wilds.wyrmfells.far.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Drakehowe, Worm Tor, Knucklebone Crag, Brimstone Scar",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.wilds.wyrmfells.far.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Dragon country: jagged basalt crags, sulfur vents puffing yellow steam, a giant old beast skeleton half sunk in the ground, a small wyvern circling overhead.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.wyrmfells",
+    "file": "hex.village.wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Fells villages (e.g. Drakesfell, Coldfell, Wyrmscar)",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.wyrmfells.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Hardy stone huts with turf roofs huddled behind a dry-stone wall, one roof scorched, a lit beacon on a rock.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.lairMouth.wyrmfells",
+    "file": "hex.lairMouth.wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Fellmaw",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.lairMouth.wyrmfells.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: A huge cave mouth in a scorched cliff, smoke curling out, claw gouges on the rock, old dented armor and bones at the entrance.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.lair.wyrmfells",
+    "file": "hex.lair.wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Gold Barrow, Wyrmhall, Black Eyrie",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.lair.wyrmfells.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: A volcanic peak with a wyvern eyrie on the summit, a cave glittering with a heap of gold, sulfur vents, a stone figure frozen mid-stride (the Basilisk's work).\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.wyrmfells",
+    "file": "hex.battlefield.wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Wyrmfield, Smoulderfield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.wyrmfells.\nRegion: The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon). Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Burnt ground cut by a long fire trail, melted shields, a huge three-toed claw print, smoking craters.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.orc-goblin",
+    "file": "hex.village.orc-goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Raiders’ Toll",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.orc-goblin.\nRegion: a border tile where The Ashen Steppe (Orc, north-west) meets The Gilded Warren (Goblin, north-east); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Ashen Steppe (Orc, north-west): War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nThe Gilded Warren (Goblin, north-east): Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: Orc (left) meets Goblin (right): hide-and-iron orc huts behind spikes on the left, copper-roofed goblin houses with chimneys on the right, a toll gate between them piled with coin sacks, a goblin clerk at a desk stamping papers on one side and a spiked orc barricade on the other.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.orc-goblin",
+    "file": "hex.battlefield.orc-goblin.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Plunder Field",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.orc-goblin.\nRegion: a border tile where The Ashen Steppe (Orc, north-west) meets The Gilded Warren (Goblin, north-east); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Ashen Steppe (Orc, north-west): War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nThe Gilded Warren (Goblin, north-east): Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nSubject: A looted battlefield: orc stakes and broken axes on the left, smashed goblin clockwork and spilled gold on the right.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.goblin-thornwild",
+    "file": "hex.village.goblin-thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Pricklepurse",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.goblin-thornwild.\nRegion: a border tile where The Gilded Warren (Goblin, north-east) meets The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Gilded Warren (Goblin, north-east): Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nThe Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt): A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: Goblin (top) meets Thornwild (bottom): a goblin trading post with copper pipes, chimneys and a customs shed with a brass scale, being swallowed from below by black brambles and red roses.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.goblin-thornwild",
+    "file": "hex.battlefield.goblin-thornwild.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Tanglefield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.goblin-thornwild.\nRegion: a border tile where The Gilded Warren (Goblin, north-east) meets The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Gilded Warren (Goblin, north-east): Industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.\nThe Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt): A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nSubject: Wrecked goblin machines at the top, dragged down into thorn vines that thicken toward the bottom.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.thornwild-dwarf",
+    "file": "hex.village.thornwild-dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Stonebriar",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.thornwild-dwarf.\nRegion: a border tile where The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt) meets Dun Kaldor (Dwarf, south-east); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt): A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nDun Kaldor (Dwarf, south-east): Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: Thornwild (top) meets Dwarf (bottom): dwarf stone longhouses at the foot of granite rocks, with thorn hedges and briars climbing down over their walls from above.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.thornwild-dwarf",
+    "file": "hex.battlefield.thornwild-dwarf.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Rockthorn Field",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.thornwild-dwarf.\nRegion: a border tile where The Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt) meets Dun Kaldor (Dwarf, south-east); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Thornwild (east, the lairs of the Griffins, the Manticore and the Wild Hunt): A dark fey forest of giant briars. Deep forest green, black-purple thorns, blood-red roses, twilight blue shadow, pale green wisp light. Thorns, brambles, roots and antlers; the deeper in, the darker and bigger.\nDun Kaldor (Dwarf, south-east): Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nSubject: A rocky pass where thorn vines crack through the boulders; broken dwarf axes among the brambles.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.dwarf-archmage",
+    "file": "hex.village.dwarf-archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Runestone",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.dwarf-archmage.\nRegion: a border tile where Dun Kaldor (Dwarf, south-east) meets Emrys’ Reach (Archmage, south-west); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nDun Kaldor (Dwarf, south-east): Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nEmrys’ Reach (Archmage, south-west): Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: Emrys' Reach (left) meets Dwarf (right): precise dwarf stone longhouses on the right with violet crystals sprouting from their masonry, a dwarf-carved standing stone glowing cyan, the misty moor with floating stones on the left.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.dwarf-archmage",
+    "file": "hex.battlefield.dwarf-archmage.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Runefield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.dwarf-archmage.\nRegion: a border tile where Dun Kaldor (Dwarf, south-east) meets Emrys’ Reach (Archmage, south-west); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nDun Kaldor (Dwarf, south-east): Mountains that climb toward a masterwork fortress. Slate blue-gray granite, snow white, dark pine green, bronze and gold trim, warm forge orange. Precisely cut stone blocks, geometric carving (no letters or runes), bronze bands. Cold and solid; craftsmanship increases toward the capital.\nEmrys’ Reach (Archmage, south-west): Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nSubject: A mountain pass scarred by spells: shattered dwarf shields and rubble on the right, glassed rock and floating boulders on the left.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.archmage-wyrmfells",
+    "file": "hex.village.archmage-wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Dreamfell",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.archmage-wyrmfells.\nRegion: a border tile where Emrys’ Reach (Archmage, south-west) meets The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nEmrys’ Reach (Archmage, south-west): Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nThe Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon): Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Wyrmfells (top) meets Emrys' Reach (bottom): fell-side stone huts with scorched turf roofs at the top, violet mist and floating lanterns drifting up from below.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.archmage-wyrmfells",
+    "file": "hex.battlefield.archmage-wyrmfells.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Veilfire",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.archmage-wyrmfells.\nRegion: a border tile where Emrys’ Reach (Archmage, south-west) meets The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nEmrys’ Reach (Archmage, south-west): Welsh moorland bent by the magic pouring out of Emrys' compound, more strongly the closer you get. Heather violet, deep indigo, moonlit silver, mist white, glowing cyan arcane light. Whitewashed stone, slate, standing stones, mist; then crystals, floating earth and glass. Eerie and beautiful rather than ruined.\nThe Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon): Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nSubject: Dragon fire meets magic: burnt ground and a fire trail at the top, glassy crystal ground at the bottom, violet flames where they meet.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.village.wyrmfells-orc",
+    "file": "hex.village.wyrmfells-orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Smokefell",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.village.wyrmfells-orc.\nRegion: a border tile where The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon) meets The Ashen Steppe (Orc, north-west); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon): Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nThe Ashen Steppe (Orc, north-west): War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: Orc (top) meets Wyrmfells (bottom): spiked timber-and-iron orc huts on the bleak heather hill, scorch marks, a lit beacon.\nThe game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  },
+  {
+    "slot": "hex.battlefield.wyrmfells-orc",
+    "file": "hex.battlefield.wyrmfells-orc.png",
+    "size": [
+      222,
+      256
+    ],
+    "logical": [
+      111,
+      128
+    ],
+    "where": "Bonefield",
+    "references": [
+      "src/renderer/public/game-assets/hex.wild.png",
+      "docs/game/art/reference/owner-portrait.png"
+    ],
+    "prompt": "Use case: stylized-concept. Production raster art asset for the Fiefdom medieval strategy game's realm map. Input images are visual STYLE references: the first is an existing map tile whose hexagon outline and proportions this tile must match exactly; the second sets the pixel-art style. Asset id: hex.battlefield.wyrmfells-orc.\nRegion: a border tile where The Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon) meets The Ashen Steppe (Orc, north-west); blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.\nThe Wyrmfells (west, the lairs of the Wyverns, the Basilisk and the Dragon): Bleak dragon-scarred fells: bare, high northern hills. Dark basalt and slate, heather purple-brown, scorched black, sulfur yellow, ember red, bone white, glints of gold. Unlike the Ashen Steppe, the damage here comes from beasts: claw gouges, fire trails and old bones, on wild land with few buildings.\nThe Ashen Steppe (Orc, north-west): War-torn. Ash gray and charcoal ground, ochre dead grass, rust-orange iron, raw dark timber, ember red-orange glow, bone white. Everything built is jagged: riveted iron plates, sharpened logs lashed with rope and chain, spikes, tusks and horns. Smoke and embers everywhere. Unlike the Wyrmfells, the damage here is made by orcs: structures, weapons and fire, not beasts.\nSubject: Ash steppe at the top giving way to scorched fells at the bottom, huge old beast bones, broken orc blades.\nThe game draws a small pill-shaped marker over the middle of this tile, so keep the telling details toward the edges.\nFormat: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.\nStyle: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.\nReadability: the tile is seen at about 60 pixels wide on the map next to tiles of other regions, so use one large landmark and two or three supporting details, never clutter, in the region palette.\nNever: writing, letters, numbers, readable runes, logos, coats of arms, UI, frame, or watermark; banners are plain cloth; no bodies or gore.\nComposition: pointy-top 222:256 canvas. Genuinely transparent background, clean entire silhouette with a little clear margin, no background rectangle or checkerboard painted into art. Logical pixel canvas 256 pixels on shorter edge nearest enlarged."
+  }
+]

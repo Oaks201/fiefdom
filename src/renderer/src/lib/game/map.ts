@@ -154,6 +154,40 @@ export function hexName(hex: string | Axial | HexState): string {
   return NAME_OF.get(id) ?? hexLabel(hex)
 }
 
+// ── Regions (D-07, D-09) ─────────────────────────────────────────────────────
+
+/** The heartland's outer ring: rings 0 to 2 belong to no region. */
+const HEARTLAND_RINGS = 2 // rules-ok: where the regions begin (D-07, D-09), not a rule
+
+/** The region at the end of a corner ray: a rival's on the four roads, a lair's on the W and E rays. */
+function regionOfCorner(dir: Direction): string {
+  const road = ROAD_OF_CORNER[dir]
+  if (road) return rivalOfRoad(road)
+  const lair = CODEX.lairs.find((l) => l.land === LAND_OF_LAIR_CORNER[dir])
+  if (!lair) throw new Error(`No lair on the ${dir} ray`)
+  return lair.id
+}
+
+/**
+ * The region a hex lies in (D-07, D-09), as a rival id or a lair id: the region at the end of the
+ * corner ray nearest it along its ring (clockwise from the NW: the Orc, the Goblin, the Thornwild,
+ * the Dwarf, the Archmage, the Wyrmfells). A hex halfway between two corners lies on the border
+ * of both, listed clockwise; a heartland hex (rings 0 to 2) lies in none.
+ */
+export function regionsOf(hex: string | Axial): string[] {
+  const at = toAxial(hex)
+  const k = ringOf(at)
+  if (k <= HEARTLAND_RINGS) return []
+  const p = ringIndex(at)
+  const side = Math.floor(p / k)
+  const here = regionOfCorner(CLOCKWISE_CORNERS[side])
+  const next = regionOfCorner(CLOCKWISE_CORNERS[(side + 1) % CLOCKWISE_CORNERS.length])
+  const twice = 2 * (p % k)
+  if (twice < k) return [here]
+  if (twice > k) return [next]
+  return [here, next]
+}
+
 // ── Building the map ─────────────────────────────────────────────────────────
 
 /** Where a hex sits in the layout, before anyone owns it. */

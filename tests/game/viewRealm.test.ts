@@ -5,18 +5,19 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
 import { tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { CODEX } from '../../src/renderer/src/lib/game/codex'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { ordersEstimate, ordersValidity, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { challenge } from '../../src/renderer/src/lib/game/grand'
 import { bidCheck, fortifyOffer, offerDeal, reclaimOffer } from '../../src/renderer/src/lib/game/land'
-import { dominion, dominionSources } from '../../src/renderer/src/lib/game/map'
+import { buildMap, dominion, dominionSources } from '../../src/renderer/src/lib/game/map'
 import { shuffle } from '../../src/renderer/src/lib/game/rng'
 import { rosterDetail } from '../../src/renderer/src/lib/game/roster'
 import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
-import { BUILDING_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
+import { BUILDING_IDS, type CampaignState, type HexState, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
 import {
   HEX_WIDTH,
@@ -31,6 +32,7 @@ import {
   mapView,
   mapViewBox,
   panMap,
+  regionTerrainSlot,
   rosterView,
   suggestedBid,
   tiltedBoard,
@@ -58,6 +60,41 @@ test('T15: no two of the 127 hex centers are closer than the hex width × 0.9; n
   }
   assert.ok(least >= HEX_WIDTH * 0.9)
   assert.ok(Math.abs(least - HEX_WIDTH) < 1e-9)
+})
+
+test('D-09: each hex asks for its region’s terrain, near or far, and the heartland and ruins keep the shared tiles', () => {
+  const hexes = buildMap(7)
+  const at = (id: string): HexState => hexes.find((h) => h.id === id)!
+  assert.equal(regionTerrainSlot(at('0,6')), 'hex.capital.dwarf') // Kaldor Deep
+  assert.equal(regionTerrainSlot(at('-5,5')), 'hex.gate.archmage') // Veilgate
+  assert.equal(regionTerrainSlot(at('1,-3')), 'hex.wilds.orc.near') // Ashfall, ring 3
+  assert.equal(regionTerrainSlot(at('2,-5')), 'hex.wilds.orc.far') // Scorchmoor, ring 5
+  assert.equal(regionTerrainSlot(at('5,0')), 'hex.lairMouth.thornwild') // Thornmaw
+  assert.equal(regionTerrainSlot(at('2,-4')), 'hex.village.orc-goblin') // Raiders’ Toll
+  assert.equal(regionTerrainSlot(at('-3,-3')), 'hex.battlefield.wyrmfells-orc') // Bonefield
+  assert.equal(regionTerrainSlot(at('2,0')), undefined) // Elderbrook, in the heartland
+  assert.equal(regionTerrainSlot({ ...at('1,-3'), ruins: true }), undefined)
+  const view = mapView(realm())
+  assert.equal(view.find((h) => h.id === '0,6')?.regionSlot, 'hex.capital.dwarf')
+  assert.equal(view.find((h) => h.id === '0,6')?.slot, 'hex.capital')
+  assert.equal(view.find((h) => h.id === '0,0')?.regionSlot, undefined)
+})
+
+test('D-09: the art checklist lists every regional terrain the map can ask for, and nothing else', () => {
+  const require = createRequire(__filename)
+  const { inventory } = require('../../scripts/check-assets.cjs') as { inventory: () => { id: string }[] }
+  const listed = inventory()
+    .map((s) => s.id)
+    .filter((id) => /^hex\.[A-Za-z]+\.[a-z]/.test(id) && !id.startsWith('hex.overlay.'))
+  const asked = new Set<string>()
+  for (let seed = 1; seed <= 40; seed++) {
+    for (const h of buildMap(seed)) {
+      const slot = regionTerrainSlot(h)
+      if (slot) asked.add(slot)
+    }
+  }
+  assert.equal(listed.length, 56)
+  assert.deepEqual([...asked].sort(), [...listed].sort())
 })
 
 test('Map tilt: each hex is drawn where the perspective puts it, and neighbors meet within a hundredth of a side', () => {

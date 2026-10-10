@@ -12,7 +12,7 @@ import { combatOf, effectiveGarrison, ordersValidity, tidings, type Band } from 
 import { numeral, realmEffects, sourceLabel } from '../effects'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
-import { dominionOf, dominionSources, fronts, hexName, isClaimableKind, parseHexId } from '../map'
+import { dominionOf, dominionSources, fronts, hexName, isClaimableKind, parseHexId, regionsOf } from '../map'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
 import { openDayOf } from '../state'
@@ -194,6 +194,27 @@ export function terrainSlot(hex: Pick<HexState, 'kind' | 'ring' | 'village' | 'r
   return `hex.${hex.kind}`
 }
 
+/** The shared terrains each region draws in its own look (D-09); the rest keep the shared tile. */
+const REGIONAL_TERRAINS = new Set(['hex.road', 'hex.gate', 'hex.realm', 'hex.capital', 'hex.lairMouth', 'hex.lair'])
+
+/**
+ * A hex's terrain in its region's own look (D-09), or undefined where the shared tile from
+ * `terrainSlot` serves: the heartland, ruins, and the shared kinds a region does not redraw. Wilds
+ * are near (rings 3 and 4) or far (the Frontier ring); a border hex's village and battlefield
+ * blend its two regions (`hex.village.orc-goblin`). Until a regional tile's file exists, the map
+ * draws the shared one.
+ */
+export function regionTerrainSlot(hex: Pick<HexState, 'q' | 'r' | 'kind' | 'ring' | 'village' | 'ruins'>): string | undefined {
+  const regions = regionsOf(hex)
+  if (hex.ruins || regions.length === 0) return undefined
+  const shared = terrainSlot(hex)
+  const region = regions.join('-')
+  if (shared === 'hex.village' || shared === 'hex.battlefield') return `${shared}.${region}`
+  if (regions.length > 1) return undefined
+  if (shared === 'hex.den') return `hex.wilds.${region}.${hex.ring === RULES.land.claimableRings.max ? 'far' : 'near'}`
+  return REGIONAL_TERRAINS.has(shared) ? `${shared}.${region}` : undefined
+}
+
 export interface MapThreat {
   kind: ThreatKind
   rival?: RivalId
@@ -207,6 +228,8 @@ export interface MapHex extends HexPoint {
   kind: HexState['kind']
   owner: Owner
   slot: string
+  /** The terrain in its region's look (D-09), drawn once its file exists; `slot` serves until then. */
+  regionSlot?: string
   village?: { loyalty: number }
   fortification: number
   status: HexState['status']
@@ -251,6 +274,8 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
       fortification: h.fortification,
       status: h.status
     }
+    const regional = regionTerrainSlot(h)
+    if (regional) out.regionSlot = regional
     if (h.village) out.village = { loyalty: h.village.loyalty }
     if (h.status !== 'held' && h.statusUntil) out.daysLeft = diffDays(today, h.statusUntil) + 1
     if (h.mythic) out.mythic = true

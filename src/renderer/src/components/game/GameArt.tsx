@@ -45,6 +45,8 @@ export interface SvgPlace {
 interface GameArtProps {
   /** The slot id in the manifest (`hex.village`, `rival.orc.calm`, `item.whetstones`, …). */
   slot: string
+  /** The slot drawn instead while `slot` has no file: a regional variant's shared tile (`hex.den` for `hex.wilds.dwarf.near`). */
+  orSlot?: string
   /** Draw inside an SVG at this box instead of as an HTML element. A hex placeholder there is a plain terrain fill. */
   place?: SvgPlace
   /** The owner whose banner color a placeholder takes. */
@@ -85,7 +87,8 @@ const DEFAULT_SIZE: Record<Look, [number, number]> = { hex: [222, 256], token: [
  * owner's banner color, a lettered token, a banner, or initials on a parchment card). A missing
  * file, or one that fails to load, falls back to the placeholder and never throws.
  */
-export function GameArt({ slot, owner = 'neutral', label, width, className, title, place, fallback }: GameArtProps): React.JSX.Element {
+export function GameArt({ slot: wanted, orSlot, owner = 'neutral', label, width, className, title, place, fallback }: GameArtProps): React.JSX.Element {
+  const slot = useArt((s) => (orSlot && !s.slots[wanted]?.file ? orSlot : wanted))
   const entry = useArt((s) => s.slots[slot])
   const load = useArt((s) => s.load)
   const revision = useArt((s) => s.revision)

@@ -193,13 +193,13 @@ test('Appendix C: 4 Rituals in order and 14 world events', () => {
   )
 })
 
-test('Ch 12: the four rivals, their realms and roads', () => {
+test('Ch 12: the four rivals, their realms (Emrys’ renamed, D-08) and roads', () => {
   assert.deepEqual(
     CODEX.rivals.map((r) => [r.id, r.ruler, r.realm, r.road]),
     [
       ['orc', 'Ugrak the Unbowed', 'The Ashen Steppe', 'barracks'],
       ['goblin', 'Skivvet Goldtooth', 'The Gilded Warren', 'merchantHall'],
-      ['archmage', 'Emrys the Ageless', 'The Veiled Vale', 'mageTower'],
+      ['archmage', 'Emrys the Ageless', 'Emrys’ Reach', 'mageTower'],
       ['dwarf', 'Hrodgar Anvilborn', 'Dun Kaldor', 'foundry']
     ]
   )
