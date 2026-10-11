@@ -112,7 +112,7 @@ interface TargetRow {
   target: string
   range: Range | null
   /** greedy, smarter, push */
-  values: Record<PolicyId, { value: number; lo: number; hi: number; n: number }>
+  values: Record<ReportPolicy, { value: number; lo: number; hi: number; n: number }>
   kind: 'week' | 'share' | 'rate' | 'count'
 }
 
@@ -124,7 +124,9 @@ const BOOK_TARGETS: { profile: ProfileId; winWeek: [string, Range | null]; win70
   { profile: 'casual', winWeek: ['never', null], win70: ['0%', { hi: 0 }], loss: ['85% or more', { lo: 0.85 }] }
 ]
 
-const POLICIES: PolicyId[] = ['greedy', 'smarter', 'push']
+/** The policies the report compares; `skirmish` (D-12) has its own run, sim/skirmish-calibrate.ts. */
+type ReportPolicy = 'greedy' | 'smarter' | 'push'
+const POLICIES: ReportPolicy[] = ['greedy', 'smarter', 'push']
 
 function inRange(v: number, r: Range | null): boolean | null {
   if (!r || !Number.isFinite(v)) return null
@@ -207,7 +209,7 @@ function targetRows(results: readonly RunResult[]): TargetRow[] {
   return rows
 }
 
-function cell(row: TargetRow, p: PolicyId): string {
+function cell(row: TargetRow, p: ReportPolicy): string {
   const v = row.values[p]
   if (row.kind === 'week') return v.n === 0 ? 'none' : `${fmt(v.value)}${Number.isFinite(v.lo) ? ` [${fmt(v.lo)}–${fmt(v.hi)}]` : ''}`
   if (row.kind === 'rate') return `${fmt(v.value, 2)} [${fmt(v.lo, 2)}–${fmt(v.hi, 2)}]`

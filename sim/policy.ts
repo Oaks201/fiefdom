@@ -37,12 +37,14 @@ import { RULES } from '../src/renderer/src/lib/game/rules'
 import { rivalView } from '../src/renderer/src/lib/game/rivals'
 import { roster } from '../src/renderer/src/lib/game/roster'
 import { readinessValors, valorOn } from '../src/renderer/src/lib/game/settle'
+import { marshalAllFights } from '../src/renderer/src/lib/game/skirmish'
 import { inCoalition } from '../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type HexState, type ISODate, type RivalId, type Tag } from '../src/renderer/src/lib/game/types'
 import { trustNow } from '../src/renderer/src/lib/game/view/realm'
 import { accordGate, bendTheKnee, sealAccord, ultimatumView } from '../src/renderer/src/lib/game/world'
 
-export type PolicyId = 'greedy' | 'smarter' | 'push'
+/** `skirmish` (D-12): the greedy player who also presses "Start battle" each day and fights every fight with the Marshal's play. */
+export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish'
 
 export interface PolicyDay {
   policy: PolicyId
@@ -50,6 +52,8 @@ export interface PolicyDay {
   rough: boolean
   /** A counter for contract ids, kept by the caller. */
   nextId(): string
+  /** The day's Valor once its inputs are in (the `skirmish` player fights at it). */
+  valor?: number
 }
 
 /** Wings in order of preference, one per building per wave (a fixed list, Ch 15 step 2). */
@@ -333,6 +337,7 @@ export function act(input: CampaignState, today: ISODate, day: PolicyDay): Campa
   if (day.policy === 'smarter') state = smarterDaily(state, today, day)
   state = fightBattles(state, today)
   state = orders(state, today, day.policy === 'push')
+  if (day.policy === 'skirmish') state = marshalAllFights(state, today, day.valor ?? 0)
   if (day.rough) {
     const c = state.contracts.active
     if (c && c.startDate <= today && today <= c.endDate && state.contracts.respiteBank > 0) {

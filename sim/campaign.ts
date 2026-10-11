@@ -21,6 +21,7 @@ import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome } fr
 import { draw } from '../src/renderer/src/lib/game/rng'
 import { settle } from '../src/renderer/src/lib/game/settle'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type GraceLevel, type ISODate } from '../src/renderer/src/lib/game/types'
+import { liveValor } from '../src/renderer/src/lib/game/view/chronicle'
 import { FOUNDED_AT, START, TZ, isRoughDay, ledgerFor } from './ledgerGen'
 import { act, type PolicyId } from './policy'
 import { JOURNEY, profileOf, type ProfileId } from './profiles'
@@ -161,7 +162,8 @@ export function runCampaign(o: RunOptions): RunResult {
       })
       if (held) tierIVDominionWeeks += 1
     }
-    state = act(state, today, { policy: o.policy, rough: isRoughDay(profile, o.seed, today), nextId })
+    const valor = o.policy === 'skirmish' ? { valor: liveValor(state, ledger, today) } : {}
+    state = act(state, today, { policy: o.policy, rough: isRoughDay(profile, o.seed, today), nextId, ...valor })
     bonusOn.set(today, realmEffects(state).reputationBonus.value)
     const now = after(today)
     const before = state

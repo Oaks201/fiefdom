@@ -14,6 +14,7 @@ import wingsJson from '../../data/codex/wings.json'
 import ordersJson from '../../data/codex/orders.json'
 import doctrinesJson from '../../data/codex/doctrines.json'
 import hostsJson from '../../data/codex/hosts.json'
+import skirmishJson from '../../data/codex/skirmish.json'
 import mythicsJson from '../../data/codex/mythics.json'
 import ritualsJson from '../../data/codex/rituals.json'
 import eventsJson from '../../data/codex/events.json'
@@ -178,6 +179,23 @@ export interface HostEntry {
   specials: Effect[]
 }
 
+/** An enemy company type in a daily skirmish (D-12); `weight` is its share of the host's power. Names from Ch 10. */
+export interface SkirmishFoeUnit {
+  id: string
+  name: string
+  weight: number
+  reach: Reach
+}
+
+/** The beasts and a village's militia as they stand in a daily skirmish (D-12); rivals and mythics use their hosts and quarries. */
+export interface SkirmishFoeEntry {
+  id: 'beasts' | 'militia'
+  units: SkirmishFoeUnit[]
+  /** The intent each lane shows, by skirmish round. */
+  intentPattern: Intent[]
+  specials: Effect[]
+}
+
 /** Enemy types for matching (Ch 10): the tags they are weak to (×1.5) and resist (×0.6). */
 export type MatchupId = 'beasts' | 'mythic' | 'militia' | RivalId
 
@@ -277,6 +295,7 @@ export interface CodexData {
   doctrines: DoctrineEntry[]
   matchups: Record<MatchupId, Matchup>
   hosts: HostEntry[]
+  skirmishFoes: SkirmishFoeEntry[]
   lairs: LairEntry[]
   quarries: QuarryEntry[]
   rituals: RitualEntry[]
@@ -307,6 +326,7 @@ export const CODEX: Codex = deepFreeze<CodexData>({
   doctrines: load(doctrinesJson),
   matchups: load(hostsJson.matchups),
   hosts: load(hostsJson.hosts),
+  skirmishFoes: load(skirmishJson.foes),
   lairs: load(mythicsJson.lairs),
   quarries: load(mythicsJson.quarries),
   rituals: load(ritualsJson),
@@ -677,6 +697,20 @@ export function validateCodex(codex: Codex = CODEX): string[] {
     if (h.intentPattern.length !== RULES.grandBattles.rounds) fail(at, `needs an intent for each of ${RULES.grandBattles.rounds} rounds`)
     for (const intent of h.intentPattern) if (!isOneOf(INTENTS, intent)) fail(at, `unknown intent "${intent}"`)
     effects(at, h.specials, units.map((u) => u.id))
+  }
+  // The daily skirmish's beasts and militia (D-12).
+  if (!sameSet(codex.skirmishFoes.map((f) => f.id), ['beasts', 'militia'])) fail('skirmishFoes', 'needs the beasts and the militia, once each')
+  for (const f of codex.skirmishFoes) {
+    const at = `skirmish foe ${f.id}`
+    if (f.units.length === 0) fail(at, 'needs a unit')
+    unique(at, f.units.map((u) => u.id))
+    for (const u of f.units) {
+      reach(`${at} unit ${u.id}`, u.reach)
+      positive(`${at} unit ${u.id}`, u.weight)
+    }
+    if (f.intentPattern.length !== RULES.skirmish.rounds) fail(at, `needs an intent for each of ${RULES.skirmish.rounds} rounds`)
+    for (const intent of f.intentPattern) if (!isOneOf(INTENTS, intent)) fail(at, `unknown intent "${intent}"`)
+    if (f.specials.length > 0) effects(at, f.specials, f.units.map((u) => u.id))
   }
   unique('lairs', codex.lairs.map((l) => l.id))
   for (const l of codex.lairs) if (!isOneOf(LANDS, l.land)) fail(`lair ${l.id}`, `invalid land "${l.land}"`)

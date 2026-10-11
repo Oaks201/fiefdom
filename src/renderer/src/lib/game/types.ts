@@ -313,8 +313,8 @@ export interface FieldUnit {
   tags: Tag[]
   reach: Reach
   slot: SlotKey
-  /** An enemy's type for matching: its rival, or mythic (A-29). */
-  foe?: RivalId | 'mythic'
+  /** An enemy's type for matching: its rival, or mythic (A-29); in a daily skirmish also beasts or a village's militia (D-12). */
+  foe?: RivalId | 'mythic' | 'beasts' | 'militia'
   /** An enemy's codex unit id (host company, commander or mythic). */
   unit?: string
   /** A company hired for this battle only (Mercenary Contract, Reserves). */
@@ -366,6 +366,42 @@ export interface BattleSetup {
   hire: { power: number; name: string }
   /** The stage behind each Crossing Order in the deck (Earthshatter's damage). */
   orderStages: Record<string, number>
+  /** Rounds the battle lasts; absent, a Grand Battle's 4. A daily skirmish has its own (D-12). */
+  rounds?: number
+}
+
+/**
+ * One of the day's fights the player leads on the battle map (D-12): a defense battle (the day's
+ * threat, or a rival's conquest attempt) or an assault. Its result replaces the day-close
+ * formula's for that battle; everything it brings is posted at the close as usual.
+ */
+export interface Skirmish {
+  /** Unique within its day: side, threat, rival and hex. */
+  id: string
+  side: 'defense' | 'assault'
+  hexId: string
+  /** A defense: the threat it meets, its rival, and whether it is the strike on a hex already contested. */
+  threat?: ThreatKind
+  rival?: RivalId
+  restrike?: boolean
+  /** The companies the day-close formula would field, in its order. */
+  companies: string[]
+  enemy: Company[]
+  setup: BattleSetup
+  /** Set when the player opens the fight. One begun and not finished by the close is finished by the Marshal. */
+  begun?: boolean
+  log: BattleRoundLog[]
+  result?: 'rout' | 'victory' | 'defeat'
+  /** Companies hired by an Order (Reserves) during the fight; their fee posts at the close. */
+  hired?: number
+}
+
+/** The fights of one day the player chose to lead (D-12), and the day's Valor when they began. */
+export interface SkirmishDay {
+  day: ISODate
+  /** Today's Valor so far when the player pressed "Start battle": these fights use it. */
+  valor: number
+  fights: Skirmish[]
 }
 
 export interface GrandBattle {
@@ -619,9 +655,11 @@ export interface GameEventMap {
     grandIllusion?: boolean
     /** T08: the Royal Hunt turned this beast attack into a hunt worth this much. */
     hunt?: number
+    /** D-12: the player led this fight on the battle map. */
+    led?: boolean
   }
-  /** The player's daily assault (Ch 6). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number }
+  /** The player's daily assault (Ch 6); `led` when the player fought it on the battle map (D-12). */
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; led?: boolean }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
@@ -777,6 +815,8 @@ export interface CampaignState {
   armory?: ArmoryState
   /** The threat schedule, the dawn tidings, conquest attempts and contested hexes (T08). Absent means none yet. */
   combat?: CombatState
+  /** D-12: the days' fights the player led on the battle map, kept a week for their replays. Absent means none yet. */
+  skirmishes?: SkirmishDay[]
   /** What the living world remembers between week closes (T12). Absent means nothing yet. */
   world?: WorldState
 }

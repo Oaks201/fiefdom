@@ -147,6 +147,8 @@ export function orderProblemLabel(p: OrderProblem): string {
       return `${rival(p.rival)} sends an envoy only at Respect 50.`
     case 'cannotAfford':
       return `Hired help costs ${amount(p.needed)} a battle; the purse holds ${purse(p.have)}.`
+    case 'ordersLocked':
+      return 'Today’s battles have begun, so the orders hold until the day’s close.'
   }
 }
 

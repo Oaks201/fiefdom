@@ -507,6 +507,15 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
   const army = roster(state, { day: battle.battleDate }, effects).filter((c) => !allyUsed(state, battle, c.id))
   const matchup = CODEX.matchups[mainFoe(battle)]
   const chosen = [...army].sort((a, b) => b.power * tagMatch(b.tags, matchup) - a.power * tagMatch(a.tags, matchup)).slice(0, companyLimit(effects, battle))
+  return placeFormation(chosen, doctrineEffects(doctrine).freeHires > 0)
+}
+
+/**
+ * Where the Marshal stands chosen companies (A-159): melee by health in the fronts (center,
+ * left, right), ranged by power in the rears, then the rest; with a free hire, it takes the first
+ * free slot. Also used for a daily skirmish's companies (D-12).
+ */
+export function placeFormation(chosen: readonly Company[], freeHire = false): Record<string, string> {
   const health = (c: Company): number => c.power * unitMods(c.id, c.items, c.reach).healthMult
   const melee = chosen.filter((c) => c.reach === 'melee').sort((a, b) => health(b) - health(a))
   const ranged = chosen.filter((c) => c.reach === 'ranged').sort((a, b) => b.power - a.power)
@@ -524,7 +533,7 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
     if (!next) break
     out[slot] = next.id
   }
-  if (doctrineEffects(doctrine).freeHires > 0) {
+  if (freeHire) {
     const free = [...fronts, ...rears].find((s) => !(s in out))
     if (free) out[free] = FREE_HIRE
   }
@@ -532,9 +541,44 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
 }
 
 /** The Merchant Hall's company as a hired company fields it (A-19). */
-function hireOf(state: CampaignState, effects: Effects): { power: number; name: string } {
+export function hireOf(state: CampaignState, effects: Effects): { power: number; name: string } {
   const hired = roster(state, { hired: 1 }, effects).find((c) => c.source === 'hired') as Company
   return { power: hired.power, name: hired.name }
+}
+
+/** A battle's start: the Doctrine's effects and the realm's battle grants (the Shield Forge). */
+export function battleStart(doctrine: string | undefined, effects: Effects): StartMods {
+  const start = doctrineEffects(doctrine)
+  for (const g of effects.battle) interpret(g.effect, { kind: 'start', mods: start })
+  return start
+}
+
+/** The start's health multiplier for a company standing in `slot`. */
+export function startHealthAt(start: StartMods, slot: SlotKey): number {
+  return start.health.reduce((m, h) => ((h.who.rank === undefined || h.who.rank === rankOf(slot)) && (h.who.lane === undefined || h.who.lane === laneOf(slot)) ? m * h.mult : m), 1)
+}
+
+/**
+ * A player company as it stands on the field: health 4 × p with its own and the start's
+ * multipliers, plus `extraHealth` (walls counted as health), its power times `powerMult`.
+ */
+export function companyUnit(c: Company, slot: SlotKey, start: StartMods, extraHealth = 0, powerMult = 1): FieldUnit {
+  const own = unitMods(c.id, c.items, c.reach)
+  const health = G.healthPerPower * c.power * own.healthMult * startHealthAt(start, slot) + extraHealth
+  const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power * powerMult, health, tags: [...c.tags], reach: c.reach, slot }
+  if (Object.keys(own.mods).length > 0) unit.mods = own.mods
+  return unit
+}
+
+/** A battle's Order deck in its seeded order (`label` names the draw), and the Crossing stage behind each Crossing Order. */
+export function orderDeck(state: CampaignState, day: ISODate, label: string, effects: Effects): { deck: string[]; orderStages: Record<string, number> } {
+  const deck = shuffle(state.campaign.seed, day, label, effects.orders.map((u) => u.id))
+  const orderStages: Record<string, number> = {}
+  for (const id of deck) {
+    const order = CODEX.orders.find((x) => x.id === id)
+    if (order?.source.kind === 'crossing') orderStages[id] = state.crossings[order.source.id] ?? 0
+  }
+  return { deck, orderStages }
 }
 
 export interface BeginOptions {
@@ -561,11 +605,8 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
   if (problem) return refused(state, `formation:${problem}`)
 
   // The battle's start: the Doctrine and the realm's battle grants (the Shield Forge). The Siege counts the walls in full (A-164).
-  const start = doctrineEffects(doctrine)
-  for (const g of effects.battle) interpret(g.effect, { kind: 'start', mods: start })
+  const start = battleStart(doctrine, effects)
   if (battle.trigger === 'siege') start.wallsAsHealth = true
-  const startHealth = (slot: SlotKey): number =>
-    start.health.reduce((m, h) => ((h.who.rank === undefined || h.who.rank === rankOf(slot)) && (h.who.lane === undefined || h.who.lane === laneOf(slot)) ? m * h.mult : m), 1)
   const centerFront = slotOf('center', 'front')
 
   const army = new Map(roster(state, { day: battle.battleDate }, effects).map((c) => [c.id, c]))
@@ -578,16 +619,12 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
     const slot = key as SlotKey
     const walls = start.wallsAsHealth && slot === centerFront ? effects.walls.value : 0
     if (id === FREE_HIRE) {
-      const health = G.healthPerPower * hire.power * startHealth(slot) + walls
+      const health = G.healthPerPower * hire.power * startHealthAt(start, slot) + walls
       units.push({ id: FREE_HIRE, side: 'player', name: hire.name, power: hire.power, health, tags: [RULES.rivals.hired.tag], reach: RULES.rivals.hired.reach, slot, hired: true })
       continue
     }
     const c = army.get(id) as Company
-    const own = unitMods(c.id, c.items, c.reach)
-    const health = G.healthPerPower * c.power * own.healthMult * startHealth(slot) + walls
-    const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power, health, tags: [...c.tags], reach: c.reach, slot }
-    if (Object.keys(own.mods).length > 0) unit.mods = own.mods
-    units.push(unit)
+    units.push(companyUnit(c, slot, start, walls))
     // The Herald's Horn: once a month, Readiness +0.1 for the whole battle (A-157).
     for (const item of c.items) {
       for (const e of CODEX.items.find((i) => i.id === item)?.effects ?? []) {
@@ -600,12 +637,7 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
   }
   units.push(...placeHost(battle.enemy))
 
-  const deck = shuffle(state.campaign.seed, battle.battleDate, `grand:${battle.id}:deck`, effects.orders.map((u) => u.id))
-  const orderStages: Record<string, number> = {}
-  for (const id of deck) {
-    const order = CODEX.orders.find((x) => x.id === id)
-    if (order?.source.kind === 'crossing') orderStages[id] = state.crossings[order.source.id] ?? 0
-  }
+  const { deck, orderStages } = orderDeck(state, battle.battleDate, `grand:${battle.id}:deck`, effects)
   const setup: BattleSetup = {
     readiness: readiness(o.valors, effects, marshal) + hornAdd,
     marshal,

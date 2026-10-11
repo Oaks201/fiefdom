@@ -374,6 +374,20 @@ const RULES_TABLE = {
     monthWeeks: 4 // TUNE (A-157)
   },
 
+  /** D-12: the day's fights a player chooses to lead on the battle map ("Start battle"). */
+  skirmish: {
+    rounds: 2,
+    /**
+     * The enemy's total power as a multiple of the threat's strength (or the garrison), by the
+     * number of companies fielded (1 to 6), so that the Marshal's play about matches the
+     * day-close formula. TUNE: from `sim/skirmish-calibrate.ts sample` (3,849 fights, 15 greedy
+     * campaigns; 1 and 6 companies were too rare to fit and take their neighbors' values).
+     */
+    hostScale: [0.79, 0.79, 0.76, 0.71, 0.79, 0.79],
+    /** Days a led fight is kept for its replay. */
+    keepDays: 7
+  },
+
   rivals: {
     /** The hidden benchmark consistency b by campaign week, and the contract L it assumes. */
     benchmark: {

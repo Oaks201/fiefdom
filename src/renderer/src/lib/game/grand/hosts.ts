@@ -53,7 +53,7 @@ export function sentBy(enemy: readonly Company[]): Partial<Record<RivalId, numbe
   const out: Partial<Record<RivalId, number>> = {}
   for (const c of enemy) {
     const rival = foeOf(c)
-    if (rival !== 'mythic') out[rival] = (out[rival] ?? 0) + c.power
+    if (rival !== 'mythic' && rival !== 'beasts' && rival !== 'militia') out[rival] = (out[rival] ?? 0) + c.power
   }
   return out
 }
@@ -72,9 +72,9 @@ export function mythicHost(quarryId: string, week: number): Company[] {
   return out
 }
 
-/** The side an enemy company fights for, from its id: a rival, or mythic beasts. */
-export function foeOf(company: Pick<Company, 'id'>): RivalId | 'mythic' {
-  return company.id.slice(0, company.id.indexOf(':')) as RivalId | 'mythic'
+/** The side an enemy company fights for, from its id: a rival, or mythic beasts; in a daily skirmish also beasts or militia (D-12). */
+export function foeOf(company: Pick<Company, 'id'>): RivalId | 'mythic' | 'beasts' | 'militia' {
+  return company.id.slice(0, company.id.indexOf(':')) as RivalId | 'mythic' | 'beasts' | 'militia'
 }
 
 /** An enemy company's codex unit id, from its id. */

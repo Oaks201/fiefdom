@@ -22,6 +22,7 @@ import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './lan
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
+import { finishSkirmishes } from './skirmish'
 import { EventBuffer, isPlayable } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
@@ -264,7 +265,9 @@ export function readinessValors(state: CampaignState, day: ISODate): number[] {
  * creatures revealed, and Incursions for hexes conquered, each announced for the next dawn.
  */
 const combatPhase: Phase = (state, ctx) => {
-  const result = settleCombat(state, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
+  // The fights the player led and left unfinished, the Marshal finishes first; their results stand in for the formula's (D-12).
+  const led = finishSkirmishes(state, ctx.day)
+  const result = settleCombat(led, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
   ctx.hooks.grandBattleRequests.push(...result.grandBattles)
   const dawnAfter = addDays(ctx.day, 1)
   const announced = announceRequests(result.state, result.grandBattles, dawnAfter, ctx.emit)

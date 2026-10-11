@@ -31,7 +31,7 @@ import { RULES } from '../rules'
 import { rosterDetail } from '../roster'
 import { readinessValors } from '../settle'
 import { openDayOf } from '../state'
-import type { BattleLogLine, CampaignState, GrandBattle, GrandTrigger, Intent, ISODate, Lane, OrderTarget, RivalId, SlotKey } from '../types'
+import type { BattleLogLine, CampaignState, GrandBattle, GrandTrigger, Intent, ISODate, Lane, OrderTarget, SlotKey } from '../types'
 import { companyArt } from './realm'
 import { amount, factor } from './refusals'
 import { rivalName, rivalNames } from './shell'
@@ -510,7 +510,7 @@ function unitName(field: Field, id: string): string {
   return field.units.find((u) => u.id === id)?.name ?? id
 }
 
-function enemyArt(unit: string | undefined, foe: RivalId | 'mythic' | undefined): string {
+function enemyArt(unit: string | undefined, foe: Field['units'][number]['foe']): string {
   if (!unit) return 'banner.neutral'
   return foe === 'mythic' ? `portrait.${unit}` : `company.${unit}.token`
 }
