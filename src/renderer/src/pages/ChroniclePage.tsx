@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { GiScrollUnfurled, GiScales } from 'react-icons/gi'
 import { CalendarButton } from '../components/chronicle/MonthCalendar'
-import { DayLedger, WeightField } from '../components/chronicle/DayLedger'
-import { CampaignWeek, HealerCards, ValorPanel, WeighInBanner } from '../components/campaign/ChronicleCampaign'
+import { DayLedger } from '../components/chronicle/DayLedger'
+import { CampaignWeek, CampaignWeight, HealerCards, ValorPanel, WeighInBanner } from '../components/campaign/ChronicleCampaign'
 import { MilestonePanel } from '../components/campaign/MilestonePanel'
 import { Herald } from '../components/game/Herald'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
@@ -184,7 +184,7 @@ export function ChroniclePage(): React.JSX.Element {
           <div className="chronicle__side">
             <ValorPanel campaign={campaign} ledger={ledger} date={date} today={today} />
             <section className="panel">
-              <WeightField date={date} today={today} />
+              <CampaignWeight campaign={campaign} ledger={ledger} date={date} today={today} />
             </section>
           </div>
         ) : (

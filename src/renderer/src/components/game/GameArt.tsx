@@ -4,7 +4,7 @@ import { artUrl, useArt } from '../../state/art'
 
 /** Ch 17's banner colors, one per owner. */
 export const OWNER_COLORS: Record<Owner, { fill: string; edge: string; text: string }> = {
-  player: { fill: '#b8322a', edge: '#e2b24a', text: '#fff3d6' },
+  player: { fill: '#25633f', edge: '#c6d0cf', text: '#f5fff8' },
   orc: { fill: '#7d1414', edge: '#3a0808', text: '#ffe6dc' },
   goblin: { fill: '#c79a2a', edge: '#6b4e0c', text: '#2a1a05' },
   dwarf: { fill: '#9c6430', edge: '#4a2c12', text: '#fff0dc' },
@@ -82,6 +82,34 @@ function initials(text: string): string {
 /** Default placeholder sizes when the manifest hasn't loaded yet (width, height). */
 const DEFAULT_SIZE: Record<Look, [number, number]> = { hex: [222, 256], token: [128, 128], banner: [256, 512], card: [512, 512] }
 
+// These company tokens are smaller exports of the same approved portrait art. Use the portrait
+// pixels when drawing them at UI size so faces and equipment retain their detail.
+const PORTRAIT_BACKED_TOKENS = new Set([
+  'company.militia.token',
+  'company.menAtArms.token',
+  'company.pikemen.token',
+  'company.knights.token',
+  'company.champions.token',
+  'company.watchmen.token',
+  'company.sellswords.token',
+  'company.caravanGuard.token',
+  'company.freeLances.token',
+  'company.gildedHost.token',
+  'company.hedgeWardens.token',
+  'company.acolytes.token',
+  'company.wardens.token',
+  'company.magi.token',
+  'company.archmagi.token',
+  'company.palisadeCrew.token',
+  'company.crossbowmen.token',
+  'company.ballistaCrew.token',
+  'company.trebuchetBattery.token',
+  'company.ironColossus.token',
+  'company.wisps.token',
+  'company.shadowHounds.token',
+  'company.stoneSentinels.token'
+])
+
 /**
  * Draws an art slot: its file when the manifest lists one, otherwise a placeholder (a hex in the
  * owner's banner color, a lettered token, a banner, or initials on a parchment card). A missing
@@ -90,6 +118,8 @@ const DEFAULT_SIZE: Record<Look, [number, number]> = { hex: [222, 256], token: [
 export function GameArt({ slot: wanted, orSlot, owner = 'neutral', label, width, className, title, place, fallback }: GameArtProps): React.JSX.Element {
   const slot = useArt((s) => (orSlot && !s.slots[wanted]?.file ? orSlot : wanted))
   const entry = useArt((s) => s.slots[slot])
+  const portraitSlot = PORTRAIT_BACKED_TOKENS.has(slot) ? slot.replace(/\.token$/, '.portrait') : null
+  const portraitEntry = useArt((s) => portraitSlot ? s.slots[portraitSlot] : undefined)
   const load = useArt((s) => s.load)
   const revision = useArt((s) => s.revision)
   const [broken, setBroken] = useState<string | null>(null)
@@ -99,8 +129,9 @@ export function GameArt({ slot: wanted, orSlot, owner = 'neutral', label, width,
   const [w, h] = entry?.size ?? DEFAULT_SIZE[look]
   const shownWidth = width ?? w
   const shownHeight = Math.round((shownWidth * h) / w)
-  const url = artUrl(entry, revision)
-  const classes = `game-art game-art--${look} ${className ?? ''}`
+  const usePortraitPixels = PORTRAIT_BACKED_TOKENS.has(slot) && !!entry?.file && !!portraitEntry?.file
+  const url = artUrl(usePortraitPixels ? portraitEntry : entry, revision)
+  const classes = `game-art game-art--${look} ${usePortraitPixels ? 'game-art--portrait-backed-token' : ''} ${className ?? ''}`
 
   if (place) {
     if (url && broken !== url) {

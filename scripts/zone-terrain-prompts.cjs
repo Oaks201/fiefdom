@@ -25,6 +25,14 @@ const BADGE_ROOM = {
   village: 'The game draws a small round badge near the upper-left corner of this tile, so keep the main buildings clear of that corner.'
 }
 
+/** Entrances and travel lines face the central castle from each rival's corner. */
+const INWARD = {
+  orc: 'Northwest corner, facing inward toward the southeast: place the approach or entrance toward the lower-right side of the tile. Point roads and structures that have a front in that direction; do not rotate the hex outline.',
+  goblin: 'Northeast corner, facing inward toward the southwest: place the approach or entrance toward the lower-left side of the tile. Point roads and structures that have a front in that direction; do not rotate the hex outline.',
+  archmage: 'Southwest corner, facing inward toward the northeast: place the approach or entrance toward the upper-right side of the tile. Point roads and structures that have a front in that direction; do not rotate the hex outline.',
+  dwarf: 'Southeast corner, facing inward toward the northwest: place the approach or entrance toward the upper-left side of the tile. Point roads and structures that have a front in that direction; do not rotate the hex outline.'
+}
+
 const HOUSE_STYLE = [
   'Format: one pointy-top HEXAGON terrain tile exactly like the supporting terrain input, flat overhead/isometric hybrid; fill only the hex silhouette with points top and bottom and vertical side edges; no pedestal, no extruded base, no perspective diamond, no outer glow. The supporting terrain image determines the outline and proportions.',
   "Style: match the supplied owner's portrait: genuine hand-painted PIXEL ART, connected square pixel clusters, crisp stepped contours, warm dark brown outline, broad 4-5 discrete shade facets per material, golden upper-left light, rich earthy saturated colors. Low resolution hand-placed pixels nearest enlarged; NO blended smooth gradients, NO 3D render, NO photography, NO noisy fine scratches, NO blurry pixels, NO dithering.",
@@ -66,6 +74,7 @@ function prompt(tile, regions) {
   if (pair.length === 1) {
     const r = regions.get(tile.region)
     lines.push(`Region: ${r.heading}. ${r.look}`)
+    if (INWARD[tile.region]) lines.push(`Map orientation: ${INWARD[tile.region]}`)
   } else {
     const [a, b] = pair.map((id) => regions.get(id))
     lines.push(`Region: a border tile where ${a.heading} meets ${b.heading}; blend both looks, each half facing its own region as the subject says, meeting in the middle rather than at a hard seam.`)

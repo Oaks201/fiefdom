@@ -124,7 +124,7 @@ export function HowToPlay(): React.JSX.Element | null {
             <b>Look at the map</b> on the Realm tab. Choose the hexes touching your land to see their garrisons, and assault one your companies can beat.
           </li>
           <li>
-            <b>Weigh in once a week</b> in the Chronicle. It reminds you on the week’s last day.
+            <b>Weigh in once a week</b>, on the week’s last day: that day the Chronicle shows the weight box and reminds you.
           </li>
         </ol>
       )
@@ -432,7 +432,8 @@ export function HowToPlay(): React.JSX.Element | null {
             more. When habits stay strong through a plateau, Momentum still pays part.
           </p>
           <p>
-            <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. Each one, once reached and its earliest week has come,
+            <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark reaches it.
+            Each one, once reached and its earliest week has come,
             opens something new: the Armory first, then building Wings, Elite companies and more items. A Milestone is never taken back.
           </p>
           <p>

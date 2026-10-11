@@ -1,0 +1,35 @@
+[
+  {
+    "id": "watchmen",
+    "name": "Watchmen",
+    "mode": "built-in image_gen",
+    "status": "approved for installation",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-ce62a8d1-e925-48c1-83e8-666e138a86bc.png",
+    "prompt": "Use case: precise-object-edit. Refine this preview-only game unit portrait. Keep exact approved face, salt-and-pepper hair and mustache, wary expression, helmet, ochre hood and brown coat. Remove the exposed thick club striking end on right. Add a modest worn brown leather BACKPACK behind that shoulder, clearly behind the body. The club is stowed HEAD DOWN inside this backpack: ONLY its slim short wooden HANDLE protrudes upward from the pack opening, with a simple wrapped grip and rounded butt. Thick striking head is entirely hidden inside backpack. Show enough of the pack top and strap to make storage believable. No club held in hand, no floating weapon. Keep everything else unchanged. Preserve established crisp painterly PIXEL ART with connected square clusters, stepped contours, warm dark outlines, broad discrete shade planes, golden upper-left light. Square native high-resolution image, tight readable bust, genuine transparent background, silhouette contained with small margin. No smooth rendering, blur, tiny noise, text or border. One portrait."
+  },
+  {
+    "id": "palisadeCrew",
+    "name": "Palisade Crew",
+    "mode": "built-in image_gen",
+    "status": "approved for installation",
+    "revision": "v7",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-59e39d61-30b6-4721-b721-705b56192a2c.png",
+    "prompt": "Precise object and hand edit of the supplied Fiefdom Palisade Crew pixel-art portrait. Preserve his exact identity and overall look: broad redheaded middle-aged builder, curled red mustache, stern angry tired face, soot on cheek, green tunic, iron cap, brown leather apron, warm upper-left lighting, chunky painterly connected pixel clusters, crisp stepped edges, transparent square canvas. Change only his left-side construction beam and hand. Move the blunt squared-off oak palisade beam upright, slightly leaning against and resting on the shoulder on the left side of the image, behind his body. The beam rises nearly vertically near the far left canvas edge and its broad flat sawn end is at the upper left, with the lower portion descending behind his shoulder and torso; it must clearly contact the shoulder, not float. Keep the entire beam to the left of his ear/cheek and never overlap the face or cap. Completely erase the large hand, forearm and gripping gesture in front of the beam. Reconstruct his left shoulder, green sleeve, apron edge and natural torso silhouette where the hand used to be. His arms can be out of frame. No hand visible anywhere, no hammer, no pointed stake or weapon. The face stays prominent and unobstructed. True transparent background, same framing, readable silhouette at 48px. No extra props, text, frame, gradient, smooth blur or photo texture."
+  },
+  {
+    "id": "militia",
+    "name": "Militia",
+    "mode": "built-in image_gen",
+    "status": "approved for installation",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-fa62ed08-714c-447e-8930-72845abed8ce.png",
+    "prompt": "Use case: precise-object-edit. Refine this preview-only game unit portrait. KEEP the current sword hilt behind left shoulder EXACTLY as it is: user approved it. Completely REMOVE the round shield behind right shoulder, restore transparent silhouette and cloak naturally; no shield anywhere. Give the face a distinctive, rugged ordinary soldier identity rather than a generic handsome hero: slightly crooked previously broken nose, asymmetrical eyebrows with a small healed notch/scar through one, one blue eye more narrowed than other, weathered cheek planes, faint under-eye fatigue, slightly uneven tight mouth with a stubborn determined set. Keep BLOND hair, BLUE eyes and short blond SCRUFF, current age around 30, no full beard. Do not exaggerate into grotesque caricature. Strong characterful Warcraft-style anatomy in the existing crisp pixel-art rendering. Keep kettle helmet, green tabard, silver shoulder armor, sword and all other costume details unchanged. Preserve established crisp painterly PIXEL ART with connected square clusters, stepped contours, warm dark outlines, broad discrete shade planes, golden upper-left light. Square native high-resolution image, tight readable bust, genuine transparent background, silhouette contained with small margin. No smooth rendering, blur, tiny noise, text or border. One portrait."
+  },
+  {
+    "id": "hedgeWardens",
+    "name": "Hedge-wardens",
+    "mode": "built-in image_gen",
+    "status": "approved for installation",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-be28b4ac-419f-47c2-92c4-7e4f557f7c0d.png",
+    "prompt": "Use case: precise-object-edit. Redesign ONLY the human character's face, hair, eyebrows, facial hair and expression to make this unit clearly distinct from other units. Young adult human man around 28 with deeper warm brown skin, slender narrow oval face, pronounced high cheekbones and tapered chin, slim long nose, alert amber eyes, thin elegantly arched BLACK eyebrows one raised in curiosity, short wavy jet-BLACK hair, completely clean-shaven. Thoughtful curious knowing expression with slight asymmetric smile, no angry scowl. Keep green hood, brown leather robe and violet crystal wooden staff. No beard, no broad square jaw, no brown spiky hair. The facial redesign must be substantial: change facial proportions and age cues, not merely recolor existing hair. Keep original equipment, outfit, role, composition, scale, square framing and transparent background. Preserve exactly the approved crisp chunky pixel-art style: square clusters, stepped edges, warm brown contours, broad discrete shading, warm upper-left highlights. Readable large face and simple silhouette even at 48px icon size. No realistic painting, no blur, no tiny noisy texture, no text, no frame. One portrait, square high-resolution source with clean transparent margins."
+  }
+]

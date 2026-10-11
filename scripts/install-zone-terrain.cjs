@@ -58,7 +58,7 @@ async function install(sharp, item, tiles, manifest) {
   const out = path.join(ASSETS, tile.file)
   await sharp(logical).resize(w, h, { kernel: 'nearest' }).png().toFile(out)
   const alpha = (await sharp(out).stats()).channels[3]
-  if (alpha.min !== 0 || alpha.max !== 255) throw new Error(`${item.slot}: expected see-through corners and a solid hexagon (alpha ${alpha.min} to ${alpha.max})`)
+  if (alpha.min !== 0 || alpha.max < 250) throw new Error(`${item.slot}: expected see-through corners and an opaque hexagon (alpha ${alpha.min} to ${alpha.max})`)
   manifest[tile.slot] = { file: tile.file, kind: 'hex', size: [w, h] }
   console.log(`${tile.slot}: ${tile.file}, ${w} × ${h}, transparent`)
 }

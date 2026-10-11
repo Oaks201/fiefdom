@@ -12,6 +12,7 @@
 - **Readable at about 60 px:** one big landmark and two or three supporting details, never clutter. Each zone has its own dominant palette (listed below), so the zones read apart at a glance.
 - **Leave room for the game's badges:** capitals get a crown badge in the middle, battlefields a war-track pill in the middle, villages a small badge near the top-left corner. The landmark should still read around them.
 - **Never:** writing, letters, numbers, readable runes, coats of arms or banner symbols (banners are plain cloth). No bodies or gore; bones are fine where noted.
+- **Inward-facing rivals:** Orc (northwest) faces southeast; Goblin (northeast) faces southwest; Emrys (southwest) faces northeast; Dwarf (southeast) faces northwest. Aim roads, gate approaches, and building entrances toward the map center when the subject permits. Keep the pointy-top hex itself unrotated.
 
 ## The Ashen Steppe (Orc, north-west)
 
@@ -30,18 +31,18 @@
 
 ## The Gilded Warren (Goblin, north-east)
 
-**Look:** industrial, rich and run on paperwork, burrowed into green hills. The Warren is the realm's trade capital, so its buildings look official as well as wealthy. Brass and gold, copper with verdigris teal, red brick, soot black, warm lamplight yellow, white steam. Brass pipes, cogs, chimneys, riveted copper, coins; and the trappings of trade bureaucracy: counting-houses, ledgers, scrolls tied with red ribbon, plain wax seals, brass scales and stamps, clerks and queues. All paper is blank or scribbled with wavy lines, never readable. Busy and glittering rather than grim.
+**Look:** rich and run on trade and paperwork, burrowed into green hills. Goods are weighed and minted, deals are sealed in public, and wealth is kept behind vault doors. Copper with verdigris teal, brass and gold, red brick and timber, cream parchment, crimson ribbon and wax, warm lamplight yellow. Counting-houses, blank contract bundles, brass balances, orderly queues, mine carts, mint presses and locked vaults tell the story. Pipes, cogs, chimneys and white steam support the main landmark instead of crowding it. All paper is blank or scribbled with wavy lines, never readable. Prosperous, calculating and visibly Goblin-built.
 
 | Tile | Where | What it shows |
 | --- | --- | --- |
 | `hex.wilds.goblin.near` | Copperdell, Tinker’s Hollow, Crookback, Rustpenny | Green rolling hills dotted with round brass-rimmed burrow doors and little chimneys puffing steam, copper pipes snaking through the grass, a short mine-cart track, a little surveyor's boundary post hung with a wax-sealed tag. |
 | `hex.wilds.goblin.far` | Pilfer’s End, Smuggler’s Notch (and Brasswick, Gobbet’s Burrow when not villages) | Hills cut open for industry: terraced mine pits, a tall brick smokestack and a riveted steam boiler, a crane hoisting a cart of gold ore onto a big brass weighing scale beside a clerk's shed, soot-darkened ground glinting with dropped coins. |
-| `hex.village.goblin` | Goblin-land villages (e.g. Brasswick, Tollbridge) | A crowded goblin town: tall, narrow, crooked houses with copper roofs and many chimneys, a counting-house with a clerk at an open window stamping papers and a short queue outside, strings of warm lanterns, a big brass cog set into a wall. |
+| `hex.village.goblin` | Goblin-land villages (e.g. Brasswick, Tollbridge) | A copper-roofed counting-house is the main landmark: clerks at a broad public window, a short orderly queue, a prominent brass balance and cream contract bundles tied with crimson ribbon and plain wax seals. A loaded handcart and warm lanterns show active trade. The entrance path aims southwest. |
 | `hex.road.goblin` | Haggler’s Way | A neat cobbled toll road with a mine-cart rail alongside, a striped toll barrier beside a small booth where a clerk stamps a scroll over an open chest of gold coins, a notice board pinned with blank parchment, brass lamp posts. |
 | `hex.gate.goblin` | Gildgate | A huge round gilded vault door set into a hillside as the gate, framed by brass pipes and pressure gauges, a customs desk under a striped awning in front of it stacked with ribbon-tied scrolls and a brass scale, a glowing lantern on each side, gold trim on dark iron. |
-| `hex.realm.goblin` | Tallow Deeps, Glimmerdell | The works: two smokestacks, a copper smelter pouring molten gold into molds, rails of loaded carts, stacked gold ingots being weighed and tallied at an assay office's brass scales, glowing furnace light. |
+| `hex.realm.goblin` | Tallow Deeps, Glimmerdell | The works: one large brass-and-timber coin mint press is the landmark, fed by a short rail of ore carts and a compact furnace. Beside it, an assay counter weighs neat stacks of ingots and coins on brass scales and keeps a blank wax-sealed tally bundle. The approach aims southwest. |
 | `hex.battlefield.goblin` | Dicer’s Field, Swindler’s Field | A trampled field strewn with wrecked clockwork contraptions, a burst boiler hissing steam, spilled coins, broken crossbows, torn scrolls and red ribbons blowing across the mud. |
-| `hex.capital.goblin` | Hoardhollow | Skivvet's trade capital burrowed into a hill: golden domes and brass towers bristling with chimneys, an enormous round vault door at the front, beside it a grand columned exchange hall with a long queue of petitioners on its steps and towers of filed scrolls in its windows, coins spilling down the slope, steam and warm light everywhere. Opulent and official. |
+| `hex.capital.goblin` | Hoardhollow | Skivvet's trade capital burrowed into a hill: a crooked, copper-roofed Goblin exchange hall with an oversized brass balance at its public steps and an enormous round teal-and-gold vault door behind it. A short queue, cream wax-sealed contract bundles and guarded coin chests show deals in front and reserves behind. The approach aims southwest. Opulent, official and shrewd, with one clear exchange-and-vault silhouette rather than many small chimneys. |
 
 ## Dun Kaldor (Dwarf, south-east)
 

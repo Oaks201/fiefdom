@@ -13,6 +13,10 @@
   image-rendering: pixelated;
 }
 
+.game-art--portrait-backed-token {
+  image-rendering: auto;
+}
+
 .game-art--placeholder {
   filter: drop-shadow(0 2px 2px rgba(42, 26, 12, 0.25));
 }
@@ -710,6 +714,14 @@
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+.weigh-in-day {
+  margin: 0;
+}
+
+.ledger__weight + .weigh-in-day {
+  margin-top: 8px;
 }
 
 /* -- Page shells ---------------------------------------------------------- */

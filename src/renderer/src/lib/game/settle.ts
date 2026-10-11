@@ -175,7 +175,7 @@ function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStarts
   const qw = pillarScore(pillars)
   const { campaign } = state
   const momentum = weekMomentum({
-    weighIns: weighInsOf(state.settlement.snapshots),
+    weighIns: weighInsOf(state.settlement.snapshots, weekStartsOn),
     day,
     qw,
     goal: toLb(campaign.goalWeight, campaign.unit),
@@ -337,7 +337,7 @@ const weightPhase: Phase = (state, ctx) => {
   const result = closeWeightWeek(state.campaign, state.weight, {
     day: ctx.day,
     week: ctx.week,
-    weighIns: weighInsOf(state.settlement.snapshots),
+    weighIns: weighInsOf(state.settlement.snapshots, ctx.weekStartsOn),
     days: state.settlement.snapshots.map(toHealerDay),
     qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
     realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)

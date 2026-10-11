@@ -148,8 +148,7 @@ const RULES_TABLE = {
     /** Journeys over 100 lb: 10 Milestones over the first 100 lb. */
     largeJourneyOverLb: 100,
     keeping: { weeks: 4, withinShare: 0.02 },
-    /** Lock 1: two weigh-ins at least 6 days apart, or the 7-day average. */
-    lock: { minSpanDays: 6, averageDays: 7 },
+    // Lock 1 (D-11): a single weekly weigh-in at or below the mark. It has no numbers of its own.
     dispensation: { weeks: 8, minRealmConsistency: 0.85, oncePerWeeks: 8 },
     goalChangeEveryDays: 28,
     minBmi: 18.5,

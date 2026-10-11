@@ -6,8 +6,8 @@
  */
 import { dayLog } from '../ledger'
 import type { Habit, Ledger } from '../types'
-import { toLb } from './weight'
-import type { Charter, DayRecord, DaySnapshot, HealerDay, ISODate, WeighIn } from './types'
+import { toLb, weeklyWeighIns } from './weight'
+import type { Charter, DayRecord, DaySnapshot, HealerDay, ISODate, WeekStartsOn, WeighIn } from './types'
 
 function sameName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -80,12 +80,10 @@ export function toHealerDay(s: DaySnapshot): HealerDay {
   }
 }
 
-/** The snapshots' weigh-ins in lb, oldest first (T05 reads weights in lb). */
-export function weighInsOf(snapshots: readonly DaySnapshot[]): WeighIn[] {
-  return snapshots
-    .filter((s) => s.weightLb !== undefined)
-    .map((s) => ({ date: s.date, weight: s.weightLb as number }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+/** The snapshots' weigh-ins in lb, one a week (D-11), oldest first (T05 reads weights in lb). */
+export function weighInsOf(snapshots: readonly DaySnapshot[], weekStartsOn: WeekStartsOn): WeighIn[] {
+  const all = snapshots.filter((s) => s.weightLb !== undefined).map((s) => ({ date: s.date, weight: s.weightLb as number }))
+  return weeklyWeighIns(all, weekStartsOn)
 }
 
 /** Snapshots from `from` through `to`, both included, oldest first. */

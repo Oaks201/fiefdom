@@ -129,7 +129,7 @@ export function foundingHealer(input: Omit<FoundingInput, 'charter'> & { charter
   for (let back = RULES.settlement.preludeDays; back >= 1; back--) {
     prelude.push(snapshotDay(ledger, addDays(startDate, -back), charter))
   }
-  const weighIns = weighInsOf(prelude)
+  const weighIns = weighInsOf(prelude, input.weekStartsOn ?? ledger.settings.weekStartsOn)
   const range = healerRange(prelude.map(toHealerDay), today, trend(weighIns, today), {
     sex: input.sex,
     birthYear: input.birthYear,

@@ -7,7 +7,7 @@
  * Every weight here is in lb with loss positive (A-05): turn ledger weigh-ins into lb with
  * `weighInsInLb` first. What each Milestone unlocks is T14's; when the week close runs is T06's.
  */
-import { addDays, diffDays } from './clock'
+import { addDays, diffDays, weekOf } from './clock'
 import { CampaignError } from './errors'
 import { RULES } from './rules'
 import { HEALER_CHECK_INS, t, type HealerCheckIn, type TextFacts } from './text'
@@ -18,6 +18,7 @@ import type {
   HealerDay,
   ISODate,
   MilestoneState,
+  WeekStartsOn,
   WeighIn,
   WeightState,
   WeightWeek
@@ -52,6 +53,17 @@ export function weighInsInLb(weighIns: readonly WeighIn[], unit: Unit): WeighIn[
   return weighIns
     .map((w) => ({ date: w.date, weight: toLb(w.weight, unit) }))
     .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * The one weigh-in a week the game reads (D-11): the last of each calendar week, oldest first.
+ * The Chronicle takes a weigh-in only on the week's last day, so that is the weigh-in day's; a
+ * week logged before D-11 counts its last reading. Every other reading stays in the ledger.
+ */
+export function weeklyWeighIns(weighIns: readonly WeighIn[], weekStartsOn: WeekStartsOn): WeighIn[] {
+  const byWeek = new Map<ISODate, WeighIn>()
+  for (const w of [...weighIns].sort((a, b) => a.date.localeCompare(b.date))) byWeek.set(weekOf(w.date, weekStartsOn), w)
+  return [...byWeek.values()]
 }
 
 // ── The trend and the target pace (Ch 5 rules 1 and 2) ───────────────────────
@@ -233,41 +245,13 @@ export function buildMilestones(start: number, goal: number): MilestoneState[] {
 }
 
 /**
- * Lock 1: the first day on or before `upTo` when two weigh-ins at least 6 days apart were both at
- * or below `mark`, or the 7-day average of two or more weigh-ins was. Null when it never was. Reaching a mark is
- * remembered: a Milestone reached early waits for its week (Ch 9 rule 5).
+ * Lock 1 (D-11): the first weekly weigh-in on or before `upTo` at or below `mark`, or null. Pass
+ * `weeklyWeighIns`. Reaching a mark is remembered: a Milestone reached early waits for its week
+ * (Ch 9 rule 5).
  */
 export function markReachedOn(weighIns: readonly WeighIn[], mark: number, upTo: ISODate): ISODate | null {
   const list = weighIns.filter((w) => w.date <= upTo).sort((a, b) => a.date.localeCompare(b.date))
-  let reached: ISODate | null = null
-  let firstAtMark: ISODate | null = null
-  for (const w of list) {
-    if (w.weight > mark) continue
-    if (firstAtMark === null) firstAtMark = w.date
-    else if (diffDays(firstAtMark, w.date) >= RULES.milestones.lock.minSpanDays) {
-      reached = w.date
-      break
-    }
-  }
-  // The 7-day average only changes on a weigh-in day or the day one leaves the window.
-  const averageDays = RULES.milestones.lock.averageDays
-  const candidates = new Set<ISODate>()
-  for (const w of list) {
-    candidates.add(w.date)
-    const leaves = addDays(w.date, averageDays)
-    if (leaves <= upTo) candidates.add(leaves)
-  }
-  for (const day of [...candidates].sort()) {
-    if (reached !== null && day >= reached) break
-    // One weigh-in alone is not an average; it would skip the two-weigh-in rule (A-115).
-    const recent = inWindow(list, day, averageDays)
-    const average = recent.length < RULES.momentum.minWeighIns ? null : mean(recent.map((w) => w.weight))
-    if (average !== null && average <= mark) {
-      reached = day
-      break
-    }
-  }
-  return reached
+  return list.find((w) => w.weight <= mark)?.date ?? null
 }
 
 /** Within 2% of the goal, as Keeping Milestones count it. */

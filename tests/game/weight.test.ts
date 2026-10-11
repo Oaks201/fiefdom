@@ -27,6 +27,7 @@ import {
   tdeeFromLogs,
   toLb,
   trend,
+  weeklyWeighIns,
   weekMomentum,
   weighInsInLb
 } from '../../src/renderer/src/lib/game/weight'
@@ -262,31 +263,37 @@ test('Ch 9: a goal that lands on a whole number of steps is the last mark; an od
   assert.equal(buildMilestones(200, 150)[2].earliestWeek, 10)
 })
 
-test('Lock 1: two weigh-ins at least 6 days apart at or below the mark, or the 7-day average', () => {
-  const twoApart = [
-    { date: day(3), weight: 211.8 },
-    { date: day(6), weight: 213 },
-    { date: day(9), weight: 211.5 }
+test('Lock 1 (D-11): a single weekly weigh-in at or below the mark reaches it', () => {
+  const weekly = [
+    { date: weekEnd(1), weight: 213 },
+    { date: weekEnd(2), weight: 211.8 },
+    { date: weekEnd(3), weight: 212.4 }
   ]
-  assert.equal(markReachedOn(twoApart, 212, day(30)), day(9))
-  assert.equal(markReachedOn(twoApart, 212, day(8)), null)
-  // Five days apart is not enough, but the 7-day average gets there.
-  const average = [
-    { date: day(10), weight: 213.5 },
-    { date: day(12), weight: 211 },
-    { date: day(15), weight: 211 }
+  assert.equal(markReachedOn(weekly, 212, day(30)), weekEnd(2))
+  assert.equal(markReachedOn(weekly, 212, addDays(weekEnd(2), -1)), null)
+  // Reaching it is remembered: a heavier weigh-in the week after doesn't undo it.
+  assert.equal(markReachedOn(weekly, 212, weekEnd(3)), weekEnd(2))
+  // The mark itself counts.
+  assert.equal(markReachedOn([{ date: weekEnd(1), weight: 212 }], 212, day(30)), weekEnd(1))
+})
+
+test('D-11: the game reads one weigh-in a week, the last of each calendar week', () => {
+  // START is a Monday: with Monday weeks, weekEnd(k) is week k's Sunday.
+  const logged = [
+    { date: day(1), weight: 215 },
+    { date: weekEnd(1), weight: 214 },
+    { date: day(9), weight: 211 },
+    { date: weekEnd(3), weight: 212 },
+    { date: day(15), weight: 213 }
   ]
-  assert.equal(markReachedOn(average, 212, day(30)), day(15))
-  // A lone weigh-in is not an average (A-115).
-  assert.equal(markReachedOn([{ date: day(3), weight: 200 }], 212, day(30)), null)
-  // The average also falls when a heavy weigh-in leaves the window.
-  const leaving = [
-    { date: day(0), weight: 230 },
-    { date: day(5), weight: 211 },
-    { date: day(6), weight: 211.5 }
-  ]
-  assert.equal(markReachedOn(leaving, 212, day(6)), null)
-  assert.equal(markReachedOn(leaving, 212, day(7)), day(7))
+  assert.deepEqual(weeklyWeighIns(logged, 1), [
+    { date: weekEnd(1), weight: 214 },
+    { date: day(9), weight: 211 },
+    { date: weekEnd(3), weight: 212 }
+  ])
+  // With Sunday weeks, each Sunday starts a new week instead of ending one.
+  assert.deepEqual(weeklyWeighIns(logged, 0).map((w) => w.date), [day(1), day(9), day(15), weekEnd(3)])
+  assert.deepEqual(weeklyWeighIns([], 1), [])
 })
 
 test('Locks: reaching 212 in week 2 waits until week 4; a broken Milestone stays broken after a 6 lb regain', () => {

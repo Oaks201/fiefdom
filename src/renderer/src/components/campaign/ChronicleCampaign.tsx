@@ -1,14 +1,15 @@
 import { GiBootPrints, GiHealthPotion, GiKnifeFork, GiLaurelCrown, GiScales, GiSwordman } from 'react-icons/gi'
-import { diffDays } from '../../lib/dates'
+import { diffDays, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep } from '../../lib/format'
 import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
 import type { CampaignState, ISODate } from '../../lib/game/types'
-import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
+import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInDay, weighInPrompt } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
-import { weighIns } from '../../lib/ledger'
+import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
 import { WaxSeal } from '../WaxSeal'
+import { WeightField } from '../chronicle/DayLedger'
 
 /** The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4). */
 export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignState; ledger: Ledger; date: ISODate }): React.JSX.Element {
@@ -98,7 +99,27 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
   )
 }
 
-/** The weekly weigh-in prompt, on the week's last day when none is logged (Ch 2). More often stays optional. */
+/**
+ * The weight box, on the week's weigh-in day only (D-11); any other day names that day instead. A
+ * weight logged on another day before D-11 stays shown, so it can still be corrected.
+ */
+export function CampaignWeight({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
+  const day = weighInDay(date, campaign.campaign.weekStartsOn)
+  const label = `${WEEKDAYS[weekday(day)]}, ${formatShort(day)}`
+  const note = day < today ? `This week’s weigh-in day was ${label}.` : day === today ? 'This week’s weigh-in is today.' : `This week’s weigh-in is on ${label}.`
+  return (
+    <>
+      {(date === day || dayLog(ledger, date).weight !== undefined) && <WeightField date={date} today={today} />}
+      {date !== day && (
+        <p className="muted weigh-in-day">
+          <GiScales aria-hidden="true" /> {note}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** The weekly weigh-in prompt, on the weigh-in day until its weight is logged (Ch 2, D-11). */
 export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
   const prompt = weighInPrompt(weighIns(ledger), today, campaign.campaign.weekStartsOn)
   if (!prompt.due) return null

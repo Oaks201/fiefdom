@@ -1,0 +1,94 @@
+[
+  {
+    "slot": "rival.orc.calm",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-6e066f23-05bd-4527-b0c5-ba60cc53ba16.png",
+    "mode": "built-in image_gen",
+    "prompt": "Approved calm portrait from the iterative art review in this chat. Green muscular orc, black mane, tusks, red wraps and spiked shoulder armor, leather harness. No foreground axe.",
+    "file": "rival.orc.calm-revised-v4.png"
+  },
+  {
+    "slot": "rival.orc.angry",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-beb8dd99-5010-41a9-9bcb-dd508a5f8fa6.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-6e066f23-05bd-4527-b0c5-ba60cc53ba16.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait orc.angry. Input is exact approved character identity and pixel ART STYLE. Green muscular orc, black mane, tusks, red wraps and spiked shoulder armor, leather harness. No foreground axe. Create ONLY a angry expression variant. Hostile furious glare, sharply lowered brows, tense jaw and bared teeth where appropriate, threatening slight forward inclination. Clearly angry rather than default composure. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.orc.angry-revised-v4.png"
+  },
+  {
+    "slot": "rival.orc.humbled",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-f896f042-d5a8-4622-af96-5530067d0226.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-6e066f23-05bd-4527-b0c5-ba60cc53ba16.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait orc.humbled. Input is exact approved character identity and pixel ART STYLE. Green muscular orc, black mane, tusks, red wraps and spiked shoulder armor, leather harness. No foreground axe. Create ONLY a humbled expression variant. Chastened grim expression, lowered chin and gaze, subdued mouth, pride wounded but dignity intact. Clearly humbled rather than angry. No tears, injuries or costume damage. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.orc.humbled-revised-v4.png"
+  },
+  {
+    "slot": "rival.goblin.calm",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-0e75f9eb-61e5-401a-9b2a-7c64e26052aa.png",
+    "mode": "built-in image_gen",
+    "prompt": "Approved calm portrait from the iterative art review in this chat. Goblin with GREEN nose matching face, brown hair, gold earrings, ornate gold and brown fur-trimmed merchant clothes.",
+    "file": "rival.goblin.calm-revised-v4.png"
+  },
+  {
+    "slot": "rival.goblin.angry",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-050feb77-9cea-4097-9f64-2c1204858108.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-0e75f9eb-61e5-401a-9b2a-7c64e26052aa.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait goblin.angry. Input is exact approved character identity and pixel ART STYLE. Goblin with GREEN nose matching face, brown hair, gold earrings, ornate gold and brown fur-trimmed merchant clothes. Create ONLY a angry expression variant. Hostile furious glare, sharply lowered brows, tense jaw and bared teeth where appropriate, threatening slight forward inclination. Clearly angry rather than default composure. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.goblin.angry-revised-v4.png"
+  },
+  {
+    "slot": "rival.goblin.humbled",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-54038ce5-7866-4229-a320-dd6b2b140006.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-0e75f9eb-61e5-401a-9b2a-7c64e26052aa.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait goblin.humbled. Input is exact approved character identity and pixel ART STYLE. Goblin with GREEN nose matching face, brown hair, gold earrings, ornate gold and brown fur-trimmed merchant clothes. Create ONLY a humbled expression variant. Chastened grim expression, lowered chin and gaze, subdued mouth, pride wounded but dignity intact. Clearly humbled rather than angry. No tears, injuries or costume damage. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.goblin.humbled-revised-v4.png"
+  },
+  {
+    "slot": "rival.dwarf.calm",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-80ac9f13-aebe-42ec-8e59-52b0e620ffd3.png",
+    "mode": "built-in image_gen",
+    "prompt": "Approved calm portrait from the iterative art review in this chat. Stocky dwarf, hornless bronze and steel helmet and armor, massive rust-red beard with two braids and metal cuffs.",
+    "file": "rival.dwarf.calm-revised-v4.png"
+  },
+  {
+    "slot": "rival.dwarf.angry",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-eefbb896-054d-4612-ae11-0a342aead628.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-80ac9f13-aebe-42ec-8e59-52b0e620ffd3.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait dwarf.angry. Input is exact approved character identity and pixel ART STYLE. Stocky dwarf, hornless bronze and steel helmet and armor, massive rust-red beard with two braids and metal cuffs. Create ONLY a angry expression variant. Hostile furious glare, sharply lowered brows, tense jaw and bared teeth where appropriate, threatening slight forward inclination. Clearly angry rather than default composure. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.dwarf.angry-revised-v4.png"
+  },
+  {
+    "slot": "rival.dwarf.humbled",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-749fdbd1-abd5-4d29-945c-19c89fddc944.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-80ac9f13-aebe-42ec-8e59-52b0e620ffd3.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait dwarf.humbled. Input is exact approved character identity and pixel ART STYLE. Stocky dwarf, hornless bronze and steel helmet and armor, massive rust-red beard with two braids and metal cuffs. Create ONLY a humbled expression variant. Chastened grim expression, lowered chin and gaze, subdued mouth, pride wounded but dignity intact. Clearly humbled rather than angry. No tears, injuries or costume damage. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.dwarf.humbled-revised-v4.png"
+  },
+  {
+    "slot": "rival.archmage.calm",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-3548dc30-d8bc-4eb7-a119-f54497fc36ea.png",
+    "mode": "built-in image_gen",
+    "prompt": "Approved calm portrait from the iterative art review in this chat. Young clean-shaven human mage, short blond hair with tidy chunky edges, angular face, violet eyes, purple silver-edged robes, wooden violet crystal staff and gripping hand.",
+    "file": "rival.archmage.calm-revised-v4.png"
+  },
+  {
+    "slot": "rival.archmage.angry",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-507c6791-099d-47d1-bf79-f47f4d8ee0da.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-3548dc30-d8bc-4eb7-a119-f54497fc36ea.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait archmage.angry. Input is exact approved character identity and pixel ART STYLE. Young clean-shaven human mage, short blond hair with tidy chunky edges, angular face, violet eyes, purple silver-edged robes, wooden violet crystal staff and gripping hand. Create ONLY a angry expression variant. Hostile furious glare, sharply lowered brows, tense jaw and bared teeth where appropriate, threatening slight forward inclination. Clearly angry rather than default composure. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.archmage.angry-revised-v4.png"
+  },
+  {
+    "slot": "rival.archmage.humbled",
+    "source": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-8dfe6050-055d-4927-a98e-821a54806391.png",
+    "mode": "built-in image_gen",
+    "reference": "C:/Users/lykin/.codex/generated_images/01a122f2-6f3c-7b60-9e78-a76a24cbeab4/exec-3548dc30-d8bc-4eb7-a119-f54497fc36ea.png",
+    "prompt": "Use case: identity-preserve. Production Fiefdom rival portrait archmage.humbled. Input is exact approved character identity and pixel ART STYLE. Young clean-shaven human mage, short blond hair with tidy chunky edges, angular face, violet eyes, purple silver-edged robes, wooden violet crystal staff and gripping hand. Create ONLY a humbled expression variant. Chastened grim expression, lowered chin and gaze, subdued mouth, pride wounded but dignity intact. Clearly humbled rather than angry. No tears, injuries or costume damage. Preserve exact character identity, age, facial proportions, hairstyle, skin colors, costume geometry, ornament, props, silhouette scale and composition. Only expression and subtle head inclination change. Match crisp painterly pixel art with connected square clusters, stepped edges, broad discrete shade planes, warm dark outlines, warm upper-left lighting. Logical 256x320 pixel art enlarged cleanly; no smooth rendering, blur, airbrush, fine noise or 3D. Same upright 4:5 bust framing with whole existing silhouette contained. Genuine transparent background. No scene, text or frame. One portrait.",
+    "file": "rival.archmage.humbled-revised-v4.png"
+  }
+]

@@ -17,7 +17,7 @@ import { dutiesPillar, poolShare, stepsPillar, termsOf, valor, weekScores } from
 import { charterOn, snapshotOf } from '../settle'
 import { openDayOf, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
-import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weekMomentum, type HealerSituation } from '../weight'
+import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
 import type { CampaignState, DayRecord, GraceLevel, ISODate, WeekStartsOn, WeighIn } from '../types'
 import type { Ledger } from '../../types'
 
@@ -116,21 +116,24 @@ export function liveValor(state: CampaignState, ledger: Ledger, date: ISODate): 
 
 // ── The weigh-in ─────────────────────────────────────────────────────────────
 
+/** The weigh-in day of `date`'s week (D-11): the week's last day, whose close is the week close. */
+export function weighInDay(date: ISODate, weekStartsOn: WeekStartsOn): ISODate {
+  return addDays(weekOf(date, weekStartsOn), RULES.clock.daysPerWeek - 1)
+}
+
 export interface WeighInPrompt {
-  /** Ask for the week's weigh-in: today closes the week and none is logged this week. */
+  /** Ask for the week's weigh-in: today is the weigh-in day and nothing is logged on it yet. */
   due: boolean
   weekEnds: ISODate
   /** The latest weigh-in, in the ledger's unit. */
   last: WeighIn | null
 }
 
-/** The weekly weigh-in prompt (Ch 2): on the week's last day, when the week has none yet. More often stays optional. */
+/** The weekly weigh-in prompt (Ch 2, D-11): on the weigh-in day, until its weight is logged. */
 export function weighInPrompt(weighIns: readonly WeighIn[], today: ISODate, weekStartsOn: WeekStartsOn): WeighInPrompt {
-  const from = weekOf(today, weekStartsOn)
-  const weekEnds = addDays(from, RULES.clock.daysPerWeek - 1)
+  const weekEnds = weighInDay(today, weekStartsOn)
   const sorted = [...weighIns].filter((w) => w.date <= today).sort((a, b) => a.date.localeCompare(b.date))
-  const thisWeek = sorted.filter((w) => w.date >= from)
-  return { due: today === weekEnds && thisWeek.length === 0, weekEnds, last: sorted.at(-1) ?? null }
+  return { due: today === weekEnds && sorted.at(-1)?.date !== today, weekEnds, last: sorted.at(-1) ?? null }
 }
 
 // ── Reputation a day earned ──────────────────────────────────────────────────
@@ -193,6 +196,7 @@ function inUnit(lb: number, unit: CampaignState['campaign']['unit']): number {
 export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighIn[], today: ISODate = openDayOf(state)): MilestonePanel {
   const week = weekOn(state, today)
   const unit = state.campaign.unit
+  const weekly = weeklyWeighIns(weighInsLb, state.campaign.weekStartsOn)
   const rows: MilestoneRow[] = state.weight.milestones.map((m) => ({
     index: m.index,
     mark: inUnit(m.mark, unit),
@@ -200,7 +204,7 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
     keeping: m.keeping === true,
     ...(m.brokenOn ? { brokenOn: m.brokenOn } : {}),
     ...(m.byDispensation !== undefined && m.brokenOn ? { byDispensation: m.byDispensation } : {}),
-    lock1: m.brokenOn !== undefined || (!m.keeping && markReachedOn(weighInsLb, m.mark, today) !== null),
+    lock1: m.brokenOn !== undefined || (!m.keeping && markReachedOn(weekly, m.mark, today) !== null),
     lock2: m.brokenOn !== undefined || week >= m.earliestWeek
   }))
   const lastClose = state.weight.weeks.at(-1)?.day
@@ -253,7 +257,7 @@ export function healerCards(state: CampaignState, today: ISODate = openDayOf(sta
   if (lastWeek) {
     const days = snapshotsBetween(snapshots, state.campaign.startDate, lastWeek.day).map(toDayRecord)
     const qw = weekScores(days, termsOf(state.charter, floor), state.campaign.weekStartsOn).at(-1)?.score ?? 0
-    const m = weekMomentum({ weighIns: weighInsOf(snapshots), day: lastWeek.day, qw, goal: toLb(state.campaign.goalWeight, state.campaign.unit), cap: state.campaign.targetPace })
+    const m = weekMomentum({ weighIns: weighInsOf(snapshots, state.campaign.weekStartsOn), day: lastWeek.day, qw, goal: toLb(state.campaign.goalWeight, state.campaign.unit), cap: state.campaign.targetPace })
     situation.momentum = { r: m.r, mw: m.mw, mf: m.mf, qw: m.qw, tooFast: m.tooFast }
   }
   if (settled >= state.campaign.startDate) {

@@ -1,5 +1,9 @@
 # First ten weeks — pixel art
 
+This is a historical batch record. The current Watchmen, Palisade Crew, Militia, and Hedge-warden portrait/token files are documented in [the starter-company revision](../starter-companies-v4/index.html) and listed in the live asset manifest.
+
+The Men-at-Arms portrait and token were subsequently replaced by the [approved chainmail revision](../men-at-arms-v4/README.md); the original pair is archived under `../superseded/men-at-arms-before-v4/`.
+
 Built-in image_gen was used for 36 original source images. 65 slots have installed local PNGs; this early set requires 166 slots. Still pending: banner.archmage, banner.dwarf, banner.goblin, banner.neutral, banner.orc, building.barracks.2, building.barracks.3, building.foundry.1, building.foundry.2, building.foundry.3, building.mageTower.1, building.mageTower.2, building.mageTower.3, building.merchantHall.1, building.merchantHall.2, building.merchantHall.3, castle.2, company.acolytes.portrait, company.acolytes.token, company.alchemists.portrait, company.alchemists.token, company.ballistaCrew.portrait, company.ballistaCrew.token, company.battlemages.portrait, company.battlemages.token, company.beastcatchers.portrait, company.beastcatchers.token, company.bombardBattery.portrait, company.bombardBattery.token, company.brutes.portrait, company.brutes.token, company.caravanGuard.portrait, company.caravanGuard.token, company.cataphracts.portrait, company.cataphracts.token, company.clayGolems.portrait, company.clayGolems.token, company.crossbowmen.portrait, company.crossbowmen.token, company.goldenGuard.portrait, company.goldenGuard.token, company.grunts.portrait, company.grunts.token, company.hedgeWardens.portrait, company.hedgeWardens.token, company.hiredOgres.portrait, company.hiredOgres.token, company.ironclads.portrait, company.ironclads.token, company.menAtArms.portrait, company.menAtArms.token, company.palisadeCrew.portrait, company.palisadeCrew.token, company.pikemen.portrait, company.pikemen.token, company.rangers.portrait, company.rangers.token, company.sellswords.portrait, company.sellswords.token, company.shamans.portrait, company.shamans.token, company.sneaks.portrait, company.sneaks.token, company.spellblades.portrait, company.spellblades.token, company.ugraksWarboss.portrait, company.ugraksWarboss.token, company.wanderingOrder.portrait, company.wanderingOrder.token, company.warWagons.portrait, company.warWagons.token, company.wardens.portrait, company.wardens.token, company.watchmen.portrait, company.watchmen.token, company.wolfRiders.portrait, company.wolfRiders.token, event.beastSurge, event.deepCall, event.envoys, event.fearOfTheCrown, event.grandAuction, event.hungryWinter, event.ugraksChallenge, event.wanderingOrder, hex.battlefield, hex.capital, hex.gate, hex.lair, hex.lairMouth, hex.overlay.scorched, hex.realm, hex.ruins, item.coldIronEdges, item.luckyCoin, item.powderKegs, item.runeChalk, item.towerShields, milestone.2, moment.grandBattleLost, portrait.sappers.
 
 ## Art direction
@@ -52,6 +56,10 @@ All active files are in `src/renderer/public/game-assets/`, mapped by `manifest.
 | `rival.orc.angry` | [rival.orc.angry.json](rival.orc.angry.json) | `rival.orc.angry-early-v3.png` (512 × 640) |
 | `rival.orc.calm` | [rival.orc.calm.json](rival.orc.calm.json) | `rival.orc.calm-early-v3.png` (512 × 640) |
 | `rival.orc.humbled` | [rival.orc.humbled.json](rival.orc.humbled.json) | `rival.orc.humbled-early-v3.png` (512 × 640) |
+
+## Revised rival portraits
+
+The twelve rival portraits listed above are historical generation records. Their runtime replacements, approved on 2026-10-09, are documented in [rivals-v4](../rivals-v4/README.md), with [all expressions compared here](../rivals-v4/index.html). Original rival PNGs are archived under `../superseded/rivals-v3/`; the runtime manifest points to the new `-revised-v4.png` files.
 
 ## Preview and verification
 

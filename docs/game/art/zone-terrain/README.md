@@ -9,6 +9,10 @@
 | `batch.json` | You create it: the approved images to install (step 2 below). |
 | `index.html` | Created by the install script: every tile side by side, installed or still to make. |
 
+The 32 individual rival-zone tiles are installed. [Review the installed art side by side](index.html). The two lair zones and border blends remain to be made.
+
+The Goblin village, realm mint and capital were revised to emphasize contracts, production and guarded wealth. [Compare the revisions at map size](../../../../output/art-previews/goblin-trade-prince-v2/index.html). Their previous PNGs and batch record are in [superseded-goblin-v1](superseded-goblin-v1/).
+
 ## How the game uses them
 
 Each hex beyond the heartland belongs to the region of the corner ray it is nearest (`regionsOf` in `map.ts`), and asks for its region's version of its terrain (`regionTerrainSlot` in `view/realm.ts`): `hex.wilds.dwarf.near`, `hex.capital.goblin`, `hex.village.orc-goblin`. Until that file is installed, the hex draws today's shared tile, so tiles can arrive one at a time and the map never breaks. The art follows the land, not the owner: a conquered hex keeps its region's look under the new border color.

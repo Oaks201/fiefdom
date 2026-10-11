@@ -320,7 +320,7 @@
     ]
   },
   "rival.orc.calm": {
-    "file": "rival.orc.calm-early-v3.png",
+    "file": "rival.orc.calm-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -328,7 +328,7 @@
     ]
   },
   "rival.orc.angry": {
-    "file": "rival.orc.angry-early-v3.png",
+    "file": "rival.orc.angry-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -336,7 +336,7 @@
     ]
   },
   "rival.orc.humbled": {
-    "file": "rival.orc.humbled-early-v3.png",
+    "file": "rival.orc.humbled-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -344,7 +344,7 @@
     ]
   },
   "rival.goblin.calm": {
-    "file": "rival.goblin.calm-early-v3.png",
+    "file": "rival.goblin.calm-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -352,7 +352,7 @@
     ]
   },
   "rival.goblin.angry": {
-    "file": "rival.goblin.angry-early-v3.png",
+    "file": "rival.goblin.angry-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -360,7 +360,7 @@
     ]
   },
   "rival.goblin.humbled": {
-    "file": "rival.goblin.humbled-early-v3.png",
+    "file": "rival.goblin.humbled-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -368,7 +368,7 @@
     ]
   },
   "rival.archmage.calm": {
-    "file": "rival.archmage.calm-early-v3.png",
+    "file": "rival.archmage.calm-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -376,7 +376,7 @@
     ]
   },
   "rival.archmage.angry": {
-    "file": "rival.archmage.angry-early-v3.png",
+    "file": "rival.archmage.angry-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -384,7 +384,7 @@
     ]
   },
   "rival.archmage.humbled": {
-    "file": "rival.archmage.humbled-early-v3.png",
+    "file": "rival.archmage.humbled-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -392,7 +392,7 @@
     ]
   },
   "rival.dwarf.calm": {
-    "file": "rival.dwarf.calm-early-v3.png",
+    "file": "rival.dwarf.calm-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -400,7 +400,7 @@
     ]
   },
   "rival.dwarf.angry": {
-    "file": "rival.dwarf.angry-early-v3.png",
+    "file": "rival.dwarf.angry-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -408,7 +408,7 @@
     ]
   },
   "rival.dwarf.humbled": {
-    "file": "rival.dwarf.humbled-early-v3.png",
+    "file": "rival.dwarf.humbled-dominion-v5.png",
     "kind": "rival",
     "size": [
       512,
@@ -416,7 +416,7 @@
     ]
   },
   "company.militia.token": {
-    "file": "company.militia.token-pixel-v2.png",
+    "file": "company.militia.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -424,7 +424,7 @@
     ]
   },
   "company.militia.portrait": {
-    "file": "company.militia.portrait-pixel-v2.png",
+    "file": "company.militia.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -432,7 +432,7 @@
     ]
   },
   "company.menAtArms.token": {
-    "file": "company.menAtArms.token-early-v3.png",
+    "file": "company.menAtArms.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -440,7 +440,7 @@
     ]
   },
   "company.menAtArms.portrait": {
-    "file": "company.menAtArms.portrait-early-v3.png",
+    "file": "company.menAtArms.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -448,7 +448,7 @@
     ]
   },
   "company.pikemen.token": {
-    "file": null,
+    "file": "company.pikemen.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -456,7 +456,7 @@
     ]
   },
   "company.pikemen.portrait": {
-    "file": null,
+    "file": "company.pikemen.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -464,7 +464,7 @@
     ]
   },
   "company.knights.token": {
-    "file": null,
+    "file": "company.knights.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -472,7 +472,7 @@
     ]
   },
   "company.knights.portrait": {
-    "file": null,
+    "file": "company.knights.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -480,7 +480,7 @@
     ]
   },
   "company.champions.token": {
-    "file": null,
+    "file": "company.champions.token-green-silver-orc-skull-v2.png",
     "kind": "token",
     "size": [
       128,
@@ -488,7 +488,7 @@
     ]
   },
   "company.champions.portrait": {
-    "file": null,
+    "file": "company.champions.portrait-green-silver-orc-skull-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -496,7 +496,7 @@
     ]
   },
   "company.watchmen.token": {
-    "file": "company.watchmen.token-early-v3.png",
+    "file": "company.watchmen.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -504,7 +504,7 @@
     ]
   },
   "company.watchmen.portrait": {
-    "file": "company.watchmen.portrait-early-v3.png",
+    "file": "company.watchmen.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -512,7 +512,7 @@
     ]
   },
   "company.sellswords.token": {
-    "file": null,
+    "file": "company.sellswords.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -520,7 +520,7 @@
     ]
   },
   "company.sellswords.portrait": {
-    "file": null,
+    "file": "company.sellswords.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -528,7 +528,7 @@
     ]
   },
   "company.caravanGuard.token": {
-    "file": null,
+    "file": "company.caravanGuard.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -536,7 +536,7 @@
     ]
   },
   "company.caravanGuard.portrait": {
-    "file": null,
+    "file": "company.caravanGuard.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -544,7 +544,7 @@
     ]
   },
   "company.freeLances.token": {
-    "file": null,
+    "file": "company.freeLances.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -552,7 +552,7 @@
     ]
   },
   "company.freeLances.portrait": {
-    "file": null,
+    "file": "company.freeLances.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -560,7 +560,7 @@
     ]
   },
   "company.gildedHost.token": {
-    "file": null,
+    "file": "company.gildedHost.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -568,7 +568,7 @@
     ]
   },
   "company.gildedHost.portrait": {
-    "file": null,
+    "file": "company.gildedHost.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -576,7 +576,7 @@
     ]
   },
   "company.hedgeWardens.token": {
-    "file": "company.hedgeWardens.token-early-v3.png",
+    "file": "company.hedgeWardens.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -584,7 +584,7 @@
     ]
   },
   "company.hedgeWardens.portrait": {
-    "file": "company.hedgeWardens.portrait-early-v3.png",
+    "file": "company.hedgeWardens.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -592,7 +592,7 @@
     ]
   },
   "company.acolytes.token": {
-    "file": null,
+    "file": "company.acolytes.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -600,7 +600,7 @@
     ]
   },
   "company.acolytes.portrait": {
-    "file": null,
+    "file": "company.acolytes.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -608,7 +608,7 @@
     ]
   },
   "company.wardens.token": {
-    "file": null,
+    "file": "company.wardens.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -616,7 +616,7 @@
     ]
   },
   "company.wardens.portrait": {
-    "file": null,
+    "file": "company.wardens.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -624,7 +624,7 @@
     ]
   },
   "company.magi.token": {
-    "file": null,
+    "file": "company.magi.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -632,7 +632,7 @@
     ]
   },
   "company.magi.portrait": {
-    "file": null,
+    "file": "company.magi.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -640,7 +640,7 @@
     ]
   },
   "company.archmagi.token": {
-    "file": null,
+    "file": "company.archmagi.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -648,7 +648,7 @@
     ]
   },
   "company.archmagi.portrait": {
-    "file": null,
+    "file": "company.archmagi.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -656,7 +656,7 @@
     ]
   },
   "company.palisadeCrew.token": {
-    "file": "company.palisadeCrew.token-early-v3.png",
+    "file": "company.palisadeCrew.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -664,7 +664,7 @@
     ]
   },
   "company.palisadeCrew.portrait": {
-    "file": "company.palisadeCrew.portrait-early-v3.png",
+    "file": "company.palisadeCrew.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -672,7 +672,7 @@
     ]
   },
   "company.crossbowmen.token": {
-    "file": null,
+    "file": "company.crossbowmen.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -680,7 +680,7 @@
     ]
   },
   "company.crossbowmen.portrait": {
-    "file": null,
+    "file": "company.crossbowmen.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -688,7 +688,7 @@
     ]
   },
   "company.ballistaCrew.token": {
-    "file": null,
+    "file": "company.ballistaCrew.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -696,7 +696,7 @@
     ]
   },
   "company.ballistaCrew.portrait": {
-    "file": null,
+    "file": "company.ballistaCrew.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -704,7 +704,7 @@
     ]
   },
   "company.trebuchetBattery.token": {
-    "file": null,
+    "file": "company.trebuchetBattery.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -712,7 +712,7 @@
     ]
   },
   "company.trebuchetBattery.portrait": {
-    "file": null,
+    "file": "company.trebuchetBattery.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -720,7 +720,7 @@
     ]
   },
   "company.ironColossus.token": {
-    "file": null,
+    "file": "company.ironColossus.token-green-silver-v1.png",
     "kind": "token",
     "size": [
       128,
@@ -728,7 +728,7 @@
     ]
   },
   "company.ironColossus.portrait": {
-    "file": null,
+    "file": "company.ironColossus.portrait-green-silver-v1.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1656,7 +1656,7 @@
     ]
   },
   "banner.player": {
-    "file": "banner.player.png",
+    "file": "banner.player-green-silver-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -2037,6 +2037,262 @@
     "size": [
       64,
       64
+    ]
+  },
+  "hex.wilds.orc.near": {
+    "file": "hex.wilds.orc.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.orc.far": {
+    "file": "hex.wilds.orc.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.orc": {
+    "file": "hex.village.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.road.orc": {
+    "file": "hex.road.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.gate.orc": {
+    "file": "hex.gate.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.realm.orc": {
+    "file": "hex.realm.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.orc": {
+    "file": "hex.battlefield.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.capital.orc": {
+    "file": "hex.capital.orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.goblin.near": {
+    "file": "hex.wilds.goblin.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.goblin.far": {
+    "file": "hex.wilds.goblin.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.goblin": {
+    "file": "hex.village.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.road.goblin": {
+    "file": "hex.road.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.gate.goblin": {
+    "file": "hex.gate.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.realm.goblin": {
+    "file": "hex.realm.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.goblin": {
+    "file": "hex.battlefield.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.capital.goblin": {
+    "file": "hex.capital.goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.archmage.near": {
+    "file": "hex.wilds.archmage.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.archmage.far": {
+    "file": "hex.wilds.archmage.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.archmage": {
+    "file": "hex.village.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.road.archmage": {
+    "file": "hex.road.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.gate.archmage": {
+    "file": "hex.gate.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.realm.archmage": {
+    "file": "hex.realm.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.archmage": {
+    "file": "hex.battlefield.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.capital.archmage": {
+    "file": "hex.capital.archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.dwarf.near": {
+    "file": "hex.wilds.dwarf.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.dwarf.far": {
+    "file": "hex.wilds.dwarf.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.dwarf": {
+    "file": "hex.village.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.road.dwarf": {
+    "file": "hex.road.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.gate.dwarf": {
+    "file": "hex.gate.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.realm.dwarf": {
+    "file": "hex.realm.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.dwarf": {
+    "file": "hex.battlefield.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.capital.dwarf": {
+    "file": "hex.capital.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
     ]
   }
 }

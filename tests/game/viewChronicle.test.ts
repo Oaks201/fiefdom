@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { valor } from '../../src/renderer/src/lib/game/score'
 import type { CampaignState, DayRecord } from '../../src/renderer/src/lib/game/types'
-import { calorieWeek, dayEarned, dayProjection, healerCards, milestonePanel, stepPace, valorParts, weighInPrompt } from '../../src/renderer/src/lib/game/view/chronicle'
+import { calorieWeek, dayEarned, dayProjection, healerCards, milestonePanel, stepPace, valorParts, weighInDay, weighInPrompt } from '../../src/renderer/src/lib/game/view/chronicle'
 import { START } from './fixtures/ledgers'
 import { realm, withMilestones } from './support/realm'
 
@@ -53,11 +53,15 @@ test('Ch 10: Valor’s three parts match valor()', () => {
   assert.deepEqual(valorParts(week[1], week.slice(0, 2), 50_000).food, 0)
 })
 
-test('Ch 2: the weigh-in prompt comes on the week’s last day, once the week has none', () => {
+test('Ch 2, D-11: the weigh-in prompt comes on the weigh-in day, the week’s last, until its weight is logged', () => {
   const sunday = addDays(MONDAY, 6)
+  assert.equal(weighInDay(THURSDAY, 1), sunday)
+  assert.equal(weighInDay(sunday, 1), sunday)
+  assert.equal(weighInDay(THURSDAY, 0), addDays(MONDAY, 5), 'weeks from Sunday end on Saturday')
   assert.equal(weighInPrompt([], sunday, 1).due, true)
-  assert.equal(weighInPrompt([], THURSDAY, 1).due, false, 'more often stays optional')
-  assert.equal(weighInPrompt([{ date: THURSDAY, weight: 210 }], sunday, 1).due, false)
+  assert.equal(weighInPrompt([], THURSDAY, 1).due, false, 'only the weigh-in day asks')
+  assert.equal(weighInPrompt([{ date: THURSDAY, weight: 210 }], sunday, 1).due, true, 'an earlier reading this week is not the weigh-in')
+  assert.equal(weighInPrompt([{ date: sunday, weight: 210 }], sunday, 1).due, false)
   assert.deepEqual(weighInPrompt([{ date: '2026-10-29', weight: 211 }], sunday, 1).last, { date: '2026-10-29', weight: 211 })
 })
 
@@ -78,6 +82,14 @@ test('Ch 9: the Milestone panel for 217 → 168 at 205 lb in week 5 shows Milest
   assert.equal(panel.grace.text, t('herald.grace.0'))
   // Never what a future Milestone unlocks.
   assert.ok(!JSON.stringify(panel).toLowerCase().includes('unlock'))
+})
+
+test('D-11: the Milestone panel reads one weigh-in a week, and one at or below the mark meets lock 1', () => {
+  const state = withMilestones(realm(), 1)
+  const sunday = addDays(MONDAY, 6)
+  // Milestone 2's mark is 207. A Thursday dip below it doesn't count: the week reads its last weigh-in.
+  assert.equal(milestonePanel(state, [{ date: THURSDAY, weight: 206 }, { date: sunday, weight: 208 }], sunday).next?.lock1, false)
+  assert.equal(milestonePanel(state, [{ date: sunday, weight: 207 }], sunday).next?.lock1, true)
 })
 
 test('Ch 5: a day’s earnings come from the purse; an open day’s projection from its duties, food and streak', () => {
