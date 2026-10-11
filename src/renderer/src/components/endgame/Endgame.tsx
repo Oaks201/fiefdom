@@ -108,8 +108,8 @@ export function CoalitionBanners({ campaign, today }: { campaign: CampaignState;
   )
 }
 
-/** Proposing an Accord (Ch 14, D-01): it takes the contract slot for 30 days and pays both. */
-export function AccordPanel({ campaign, today, rival }: { campaign: CampaignState; today: ISODate; rival: RivalId }): React.JSX.Element {
+/** Proposing an Accord (Ch 14, D-01): it takes the contract slot for 30 days and pays both. `onSealed` hears a sealed one (the Audience). */
+export function AccordPanel({ campaign, today, rival, onSealed }: { campaign: CampaignState; today: ISODate; rival: RivalId; onSealed?(): void }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const view = accordPanel(campaign, rival, today)
   return (
@@ -134,6 +134,7 @@ export function AccordPanel({ campaign, today, rival }: { campaign: CampaignStat
             if (act((s) => sealAccord(s, rival, { id: newId() }, today))) {
               sfx('seal')
               toast(`The Accord with ${view.name} is sealed. It begins at the next dawn.`, 'success')
+              onSealed?.()
             }
           }}
           aria-label={`Hold to propose an Accord to ${view.name}`}

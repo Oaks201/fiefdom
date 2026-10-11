@@ -493,3 +493,150 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* -- The Audience: a court received in person ----------------------------- */
+.modal.audience {
+  width: min(1000px, 100%);
+}
+
+.audience__stage {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px 26px;
+  margin: 4px 0 18px;
+}
+
+.audience__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* The box a court card's portrait fills (150 wide at the rival art's 4:5), framed in its owner's color. */
+.audience__frame {
+  --frame: var(--court);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: content-box;
+  width: 150px;
+  height: 188px;
+  padding: 10px;
+  background: rgba(255, 252, 242, 0.55);
+  border: 3px solid var(--frame);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255, 249, 232, 0.6), 0 6px 14px rgba(40, 22, 8, 0.22);
+}
+
+.audience__side--player .audience__frame {
+  --frame: var(--player);
+}
+
+.audience__name {
+  max-width: 190px;
+  font: 700 18px/1.2 var(--font-caps);
+  text-align: center;
+  color: var(--court);
+}
+
+.audience__side--player .audience__name {
+  color: var(--player);
+}
+
+.audience--goblin .audience__side--rival .audience__name {
+  color: #8a6512;
+}
+
+.audience__speech {
+  position: relative;
+  justify-self: end;
+  max-width: 520px;
+  margin: 0 0 30px;
+  padding: 14px 18px;
+  font-size: 18px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink);
+  background: rgba(255, 252, 242, 0.85);
+  border: 1px solid var(--rule);
+  border-right: 4px solid var(--court);
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(40, 22, 8, 0.15);
+}
+
+/* The tail, toward the rival. */
+.audience__speech::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -24px;
+  border: 10px solid transparent;
+  border-left-color: var(--court);
+  transform: translateY(-50%);
+}
+
+.audience__speech.is-missing {
+  color: var(--ink-3);
+}
+
+.audience__options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* TEMPORARY, development builds only: the Respect override (AudienceDebug). */
+.audience-debug {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  font: 13px ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-2);
+  background: rgba(122, 29, 138, 0.08);
+  border: 1px dashed rgba(122, 29, 138, 0.5);
+  border-radius: 8px;
+}
+
+.audience-debug__tag {
+  padding: 1px 8px;
+  font-weight: 700;
+  color: #fff;
+  background: #7a1d8a;
+  border-radius: 6px;
+}
+
+.audience-debug__range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audience-debug__range output {
+  min-width: 2.5em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .audience__stage {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .audience__speech {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    max-width: none;
+    margin: 0;
+  }
+
+  .audience__speech::after {
+    display: none;
+  }
+}

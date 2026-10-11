@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Audience } from '../components/diplomacy/Audience'
 import { Courtships } from '../components/diplomacy/Courtships'
 import { AccordPanel, CoalitionBanners, EndgameRecord, UltimatumBanners } from '../components/endgame/Endgame'
 import { DealsList } from '../components/diplomacy/DealsList'
@@ -11,14 +12,16 @@ import { useUI } from '../state/ui'
 /**
  * Diplomacy (T15, T16): the four rival courts, the Accord and the deals the chosen court will
  * strike, and the courtships; above them the endgame: an Ultimatum, a coalition, and after the
- * campaign ends its record.
+ * campaign ends its record. Picking a court also opens an audience with it.
  */
 export function DiplomacyPage(): React.JSX.Element | null {
   const campaign = useCampaignState()
   const today = useCampaignToday()
   const focus = useUI((s) => s.rivalFocus)
   const [rival, setRival] = useState<RivalId>(focus?.rival ?? 'orc')
+  const [audience, setAudience] = useState<RivalId | null>(null)
   const panels = useMemo(() => (campaign ? rivalPanels(campaign) : []), [campaign])
+  const audiencePanel = panels.find((p) => p.rival === audience)
 
   // Arriving from the hex panel's "buy": show that court, with the hex picked out.
   useEffect(() => {
@@ -38,7 +41,15 @@ export function DiplomacyPage(): React.JSX.Element | null {
       <CoalitionBanners campaign={campaign} today={today} />
       <div className="courts">
         {panels.map((p) => (
-          <RivalCourt key={p.rival} panel={p} selected={p.rival === rival} onSelect={() => setRival(p.rival)} />
+          <RivalCourt
+            key={p.rival}
+            panel={p}
+            selected={p.rival === rival}
+            onSelect={() => {
+              setRival(p.rival)
+              setAudience(p.rival)
+            }}
+          />
         ))}
       </div>
       <div className="diplomacy-cols">
@@ -48,6 +59,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
         </div>
         <Courtships campaign={campaign} today={today} />
       </div>
+      {audiencePanel && <Audience key={audiencePanel.rival} campaign={campaign} today={today} panel={audiencePanel} onClose={() => setAudience(null)} />}
     </div>
   )
 }

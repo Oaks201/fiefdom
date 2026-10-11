@@ -16,9 +16,10 @@ function keyOf(d: DealLine): string {
 /**
  * What a rival will deal on (Ch 6 "Trade and negotiation"): every line of `availableDeals` with its
  * price, what it needs and what it does. Unavailable lines stay listed with the engine's reason.
- * Striking one asks once more, then shows the rival's one-line reaction.
+ * Striking one asks once more, then shows the rival's one-line reaction. With `onStruck` (the
+ * Audience) the caller voices the rival instead, and the inline reaction is not drawn.
  */
-export function DealsList({ campaign, today, rival, highlight }: { campaign: CampaignState; today: ISODate; rival: RivalId; highlight?: string }): React.JSX.Element {
+export function DealsList({ campaign, today, rival, highlight, onStruck }: { campaign: CampaignState; today: ISODate; rival: RivalId; highlight?: string; onStruck?(deal: DealLine): void }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const deals = useMemo(() => dealsView(campaign, rival, today), [campaign, rival, today])
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -30,7 +31,8 @@ export function DealsList({ campaign, today, rival, highlight }: { campaign: Cam
     setConfirming(null)
     if (!done) return
     sfx('coin')
-    setReaction({ rival, ...dealReaction(rival, d) })
+    if (onStruck) onStruck(d)
+    else setReaction({ rival, ...dealReaction(rival, d) })
   }
 
   return (

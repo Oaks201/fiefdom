@@ -48,3 +48,11 @@ if (import.meta.hot) {
 export function artUrl(slot: ArtSlot | undefined, revision = 0): string | null {
   return slot?.file ? `game-assets/${slot.file}${import.meta.env.DEV ? `?v=${revision}` : ''}` : null
 }
+
+/**
+ * The URL of the player's portrait (the Audience on the Diplomacy page). Not a manifest slot: this
+ * one function picks the image, so a later feature can change which one it returns.
+ */
+export function getPlayerPortrait(): string {
+  return 'game-assets/portraits/player_t1.png'
+}
