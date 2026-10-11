@@ -109,7 +109,7 @@ function line(section: HeraldSection, textId: string, facts: TextFacts, extra: {
 const BAND_WORDS: Record<NonNullable<ThreatNotice['band']>, string> = { weaker: 'weaker', matched: 'matched', stronger: 'stronger', overwhelming: 'overwhelming' }
 
 /** A threat's strength as the player may know it: the exact number when revealed, else its band, else unknown (the Veil). */
-function strengthWord(n: ThreatNotice): string {
+export function strengthWord(n: ThreatNotice): string {
   if (n.strength !== undefined) return String(Math.round(n.strength))
   return n.band ? BAND_WORDS[n.band] : 'unknown'
 }
@@ -143,7 +143,7 @@ function rumorLines(state: CampaignState): HeraldLine[] {
 }
 
 /** A result from the log as a Herald line, or null for events the Herald doesn't report. */
-function resultLine(e: GameEvent): HeraldLine | null {
+export function resultLine(e: GameEvent): HeraldLine | null {
   switch (e.kind) {
     case 'defense': {
       const until = e.scorchedUntil ?? e.contestedUntil

@@ -12,6 +12,7 @@ import { useCampaign } from '../../state/campaign'
 import { campaignNow } from '../../state/campaignClock'
 import { useLedger } from '../../state/store'
 import { toast } from '../../state/toasts'
+import { StartBattles } from '../battle/StartBattles'
 
 const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt' }
 const OUTCOMES: Record<string, string> = { taken: 'taken', rout: 'taken in a rout', repulsed: 'repulsed' }
@@ -58,7 +59,7 @@ function OrdersClock({ campaign, today }: { campaign: CampaignState; today: ISOD
   const lock = ordersLock(campaign, today, useNow())
   return (
     <span className={`orders__clock ${lock.locked ? 'is-locked' : ''}`} title={`They lock at the day’s close, ${new Date(lock.locksAt).toLocaleString()}`}>
-      <GiHourglass aria-hidden="true" /> {lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
+      <GiHourglass aria-hidden="true" /> {lock.held && lock.secondsLeft > 0 ? 'Held: the battles have begun' : lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
     </span>
   )
 }
@@ -67,12 +68,13 @@ function OrdersClock({ campaign, today }: { campaign: CampaignState; today: ISOD
  * The day's orders (Ch 2 rule 2, Ch 6, Ch 10, A-36): the assault targets and who goes, who
  * defends, hired blades and envoys, the Marshal's default and yesterday's orders, the countdown to
  * the 04:00 lock (read-only after it), and an estimate of the day's battles from today's Valor so
- * far.
+ * far. "Start today's battles" (D-12) opens the day's skirmishes; once they begin, the orders hold.
  */
 export function OrdersPanel({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
   const apply = useCampaign((s) => s.apply)
   const ledger = useLedger((s) => s.ledger)
   const locked = useLocked(campaign, today)
+  const held = ordersLock(campaign, today, campaignNow()).held
   const valor = useMemo(() => liveValor(campaign, ledger, today), [campaign, ledger, today])
   const view = useMemo(() => ordersView(campaign, valor, today), [campaign, valor, today])
   const names = new Map(view.companies.map((c) => [c.id, c.name]))
@@ -95,7 +97,9 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         <OrdersClock campaign={campaign} today={today} />
       </header>
 
-      {locked && <p className="banner">These orders are locked; they settle with the day.</p>}
+      {locked && <p className="banner">{held ? 'Today’s battles have begun, so these orders hold until the day’s close.' : 'These orders are locked; they settle with the day.'}</p>}
+
+      <StartBattles campaign={campaign} today={today} valor={valor} />
 
       <p className="orders__state">
         {view.allDefend ? (
@@ -215,7 +219,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         </div>
       )}
 
-      <Estimate view={view} name={name} />
+      <Estimate view={view} name={name} held={held} />
 
       {view.problems.length > 0 && (
         <ul className="orders__problems">
@@ -264,14 +268,14 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
   )
 }
 
-function Estimate({ view, name }: { view: OrdersView; name(id: string): string }): React.JSX.Element {
+function Estimate({ view, name, held }: { view: OrdersView; name(id: string): string; held: boolean }): React.JSX.Element {
   const e = view.estimate
   return (
     <div className="orders__estimate">
       <h4>
         Estimate at today’s Valor so far ({percent(e.valor)}%)
       </h4>
-      <p className="muted">An estimate: the close uses the day’s final Valor.</p>
+      <p className="muted">An estimate: the close uses the day’s final Valor{held ? ', and a battle you finish on the field stands in for its line here' : ''}.</p>
       {e.defenses.length === 0 && e.assaults.length === 0 && <p>No battle is foretold for today.</p>}
       <ul>
         {e.defenses.map((d, i) => (

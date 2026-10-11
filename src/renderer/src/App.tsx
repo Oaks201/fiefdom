@@ -17,6 +17,7 @@ import { ArmoryPage } from './pages/ArmoryPage'
 import { BattlePage } from './pages/BattlePage'
 import { DiplomacyPage } from './pages/DiplomacyPage'
 import { RealmPage } from './pages/RealmPage'
+import { SkirmishPage } from './pages/SkirmishPage'
 import { ChroniclePage } from './pages/ChroniclePage'
 import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
@@ -38,6 +39,7 @@ export default function App(): React.JSX.Element {
   const load = useLedger((s) => s.load)
   const page = useUI((s) => s.page)
   const battle = useUI((s) => s.battle)
+  const skirmish = useUI((s) => s.skirmish)
   const campaignStatus = useCampaign((s) => s.status)
   const hasCampaign = useCampaign((s) => s.campaign !== null)
 
@@ -60,7 +62,7 @@ export default function App(): React.JSX.Element {
   // A new page starts at its top, whatever the last one was scrolled to.
   useEffect(() => {
     document.querySelector('.desk__main')?.scrollTo({ top: 0 })
-  }, [page, battle?.id, battle?.replay])
+  }, [page, battle?.id, battle?.replay, skirmish?.fight, skirmish?.replay])
 
   // A page that no longer exists (no campaign) falls back to the Chronicle.
   useEffect(() => {
@@ -124,6 +126,9 @@ export default function App(): React.JSX.Element {
     }
   }, [status])
 
+  // A Grand Battle or the day's skirmishes (D-12) take the sheet over the pages.
+  const onField = (battle !== null || skirmish !== null) && hasCampaign
+
   return (
     <div className="desk">
       <SvgDefs />
@@ -132,18 +137,19 @@ export default function App(): React.JSX.Element {
         <>
           <TopBar />
           <main className="desk__main">
-            <div className={`sheet page page--${battle && hasCampaign ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : page}>
+            <div className={`sheet page page--${onField ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : skirmish && hasCampaign ? `skirmish-${skirmish.day}` : page}>
               <div className="sheet__paper" aria-hidden="true">
                 <GameArt slot="ui.parchment" width={1024} className="sheet__art" fallback={<></>} />
               </div>
               <div className="page__content">
                 {battle && hasCampaign && <BattlePage />}
-                {!(battle && hasCampaign) && page === 'chronicle' && <ChroniclePage />}
-                {!(battle && hasCampaign) && page === 'contract' && <ContractPage />}
-                {!(battle && hasCampaign) && page === 'archive' && <ArchivePage />}
-                {!(battle && hasCampaign) && page === 'realm' && hasCampaign && <RealmPage />}
-                {!(battle && hasCampaign) && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
-                {!(battle && hasCampaign) && page === 'armory' && hasCampaign && <ArmoryPage />}
+                {!battle && skirmish && hasCampaign && <SkirmishPage />}
+                {!onField && page === 'chronicle' && <ChroniclePage />}
+                {!onField && page === 'contract' && <ContractPage />}
+                {!onField && page === 'archive' && <ArchivePage />}
+                {!onField && page === 'realm' && hasCampaign && <RealmPage />}
+                {!onField && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
+                {!onField && page === 'armory' && hasCampaign && <ArmoryPage />}
               </div>
             </div>
           </main>

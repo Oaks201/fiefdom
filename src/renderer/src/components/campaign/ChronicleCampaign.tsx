@@ -8,7 +8,9 @@ import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace,
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
+import { useCampaignToday } from '../../state/campaignHooks'
 import { WaxSeal } from '../WaxSeal'
+import { StartBattles } from '../battle/StartBattles'
 import { WeightField } from '../chronicle/DayLedger'
 
 /** The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4). */
@@ -57,8 +59,12 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
   )
 }
 
-/** Today's Valor so far in its three parts, and the reputation the day earned (or will, at its close). */
+/**
+ * Today's Valor so far in its three parts, the reputation the day earned (or will, at its close),
+ * and on the campaign's open day "Start today's battles" (D-12).
+ */
 export function ValorPanel({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
+  const openDay = useCampaignToday()
   const days = liveWeek(campaign, ledger, date)
   const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(campaign, date)))
   const parts = valorParts(day, days, charterOn(campaign, date).stepPool)
@@ -90,6 +96,7 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
         </li>
       </ul>
       <p className="muted">Valor rallies the realm’s companies in the day’s battles.</p>
+      {date === openDay && <StartBattles campaign={campaign} today={date} valor={parts.valor} />}
       <div className="ledger__total">
         <span>{settled ? 'Reputation earned' : 'Earned at the day’s close'}</span>
         <WaxSeal color="gold" icon={GiLaurelCrown} size={30} seed={9} />

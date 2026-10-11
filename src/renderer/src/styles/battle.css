@@ -1,6 +1,7 @@
 /* ==========================================================================
    The Grand Battle (T16): preparation, the 3-lane field, Order cards, the
-   result and the replay. Desktop only: below 1024 px a notice replaces it.
+   result and the replay; and the day's skirmishes on the same field (D-12).
+   Desktop only: below 1024 px a notice replaces it.
    ========================================================================== */
 
 .page--battle {
@@ -717,6 +718,138 @@
 
 .replay__back {
   margin-left: auto;
+}
+
+/* -- The day's skirmishes (D-12) ----------------------------------------------- */
+.start-battles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.start-battles__note {
+  margin: 0;
+  font-size: 14px;
+}
+
+.skirmish {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.skirmish__roll ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skirmish__fight {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  color: var(--ink);
+  background: rgba(246, 236, 211, 0.6);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.skirmish__fight:hover {
+  border-color: var(--gold-deep);
+}
+
+.skirmish__fight.is-on {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 3px var(--gold-hi);
+}
+
+.skirmish__num {
+  grid-row: span 2;
+  font: 700 20px var(--font-caps);
+  color: var(--gold-deep);
+}
+
+.skirmish__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.skirmish__status {
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+}
+
+.skirmish__status--underway {
+  color: var(--amber);
+}
+
+.skirmish__status--victory,
+.skirmish__status--rout {
+  color: var(--forest);
+}
+
+.skirmish__status--defeat {
+  color: var(--crimson);
+}
+
+.skirmish__rest {
+  margin-top: 12px;
+}
+
+.skirmish__rest p {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+
+.skirmish__title {
+  margin: 0 0 8px;
+  font: 700 22px var(--font-caps);
+}
+
+.skirmish-opening,
+.skirmish-live {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skirmish-opening__facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+}
+
+.skirmish-opening__facts dt {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.skirmish-opening__facts dd {
+  margin: 0;
+}
+
+.skirmish-opening__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skirmish-result__report {
+  margin: 0 0 6px;
+  font-size: 17px;
 }
 
 /* -- The Herald's battle notice and the top bar's ------------------------------ */

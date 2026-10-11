@@ -12,6 +12,7 @@ import { numeral } from '../effects'
 import type { GrandRefusal } from '../grand'
 import type { LandRefusal } from '../land'
 import { hexName } from '../map'
+import type { SkirmishRefusal } from '../skirmish'
 import type { RivalId } from '../types'
 
 const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
@@ -177,6 +178,28 @@ export function grandRefusalLabel(code: GrandRefusal): string {
       return 'That rival is already resolved.'
     case 'noHost':
       return 'No host stands there to fight.'
+    default:
+      return 'It cannot be done now.'
+  }
+}
+
+/** Why a daily skirmish action is refused (D-12). */
+export function skirmishRefusalLabel(code: SkirmishRefusal | undefined): string {
+  switch (code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'notToday':
+      return 'Only today’s battles can be fought; this day is closed.'
+    case 'started':
+      return 'Today’s battles have already begun.'
+    case 'noFights':
+      return 'No battle can be led today.'
+    case 'unknownFight':
+      return 'That battle is not on today’s roll.'
+    case 'fought':
+      return 'That battle is already fought.'
+    case 'reputation':
+      return 'The purse cannot pay for another hired company.'
     default:
       return 'It cannot be done now.'
   }

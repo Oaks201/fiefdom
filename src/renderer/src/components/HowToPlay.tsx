@@ -143,7 +143,7 @@ export function HowToPlay(): React.JSX.Element | null {
           </p>
           <p>
             <b>The day’s orders</b> (on the Realm) name a hex to assault (a second from Castle Tier {numeral(RULES.castle.secondAssaultTier)}) and which companies go: each company
-            either defends or assaults that day. If you set nothing, every company defends and nothing is assaulted. Orders lock at {dawn}.
+            either defends or assaults that day. If you set nothing, every company defends and nothing is assaulted. Orders lock at {dawn}, or once you start the day’s battles.
           </p>
           <p>
             <b>Banners</b> cap how many companies fight in one battle; your castle sets them. For each defense the Marshal fields the defenders that hit hardest against that
@@ -290,6 +290,13 @@ export function HowToPlay(): React.JSX.Element | null {
           <p>
             <b>Grand Battles</b> are larger fights, announced days ahead (the crossed swords in the top bar). Use the warning to prepare, then fight on the Battle screen, or the Marshal
             fights for you at the close.
+          </p>
+          <p>
+            <b>Start today’s battles</b> (on the Chronicle’s Valor panel and in the day’s orders) lets you fight the day’s battles yourself, as short {RULES.skirmish.rounds}-round
+            battles on the battle field: conquest attempts first, then the day’s threat, then your assaults. Pressing it locks your Valor so far for those fights, and the day’s orders
+            hold from then on. Each fight shows who comes and roughly how strong; fight it, or leave it to the close. A fight you finish replaces the close’s result for that
+            battle; one you open and leave is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. Spoils, tribute and hexes still post at {dawn}.
+            If you never press it, the day closes exactly as before.
           </p>
         </>
       )

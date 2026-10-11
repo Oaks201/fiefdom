@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { addDays } from '../../src/renderer/src/lib/game/clock'
+import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { fieldResult, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
@@ -27,6 +27,10 @@ import {
   type FightPlan
 } from '../../src/renderer/src/lib/game/skirmish'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
+import { skirmishFieldView, skirmishReplayView } from '../../src/renderer/src/lib/game/view/battle'
+import { ordersLock } from '../../src/renderer/src/lib/game/view/orders'
+import { skirmishRefusalLabel } from '../../src/renderer/src/lib/game/view/refusals'
+import { fightIntro, fightResult, skirmishButton, skirmishDayView } from '../../src/renderer/src/lib/game/view/skirmish'
 import type { CampaignState, GameEvent, HexState, ISODate } from '../../src/renderer/src/lib/game/types'
 import { chicago } from './fixtures/ledgers'
 import { driveCampaign, habitLedger } from './support/campaign-driver'
@@ -187,4 +191,75 @@ test('calibration guard: the Marshal’s play mostly reaches the formula’s res
   }
   assert.ok(fights >= 16, `${fights} fights`)
   assert.ok(same / fights >= 0.7, `${same} of ${fights} agree`)
+})
+
+// ── The screens (stage 2): the Start button, the orders lock, the day's fights, a fight's opening and result ──
+
+test('the Start button gives the day’s fight count, then where they stand at the locked Valor; the orders panel holds once they begin', () => {
+  const hourBefore = new Date(dayCloseInstant(today, ordered.campaign.timeZone).getTime() - 3_600_000)
+  const before = skirmishButton(ordered, 0.8, today)
+  assert.deepEqual([before.show, before.started, before.count, before.fought, before.valor], [true, false, todaysFights(ordered, today).length, 0, 0.8])
+  assert.deepEqual([ordersLock(ordered, today, hourBefore).locked, ordersLock(ordered, today, hourBefore).held], [false, false])
+  assert.equal(skirmishButton(ordered, 0.8, addDays(today, 1)).show, false, 'only on the open day')
+
+  const started = startSkirmishes(ordered, today, 0.8)
+  assert.ok(started.ok)
+  const after = skirmishButton(started.state, 0.95, today)
+  assert.deepEqual([after.show, after.started, after.count, after.fought, after.valor], [true, true, before.count, 0, 0.8], 'the Valor shown is the locked one')
+  const lock = ordersLock(started.state, today, hourBefore)
+  assert.deepEqual([lock.locked, lock.held, lock.secondsLeft], [true, true, 3_600])
+  assert.equal(skirmishRefusalLabel('started'), 'Today’s battles have already begun.')
+})
+
+test('the skirmish screen: the fights in order, each one’s opening, its rounds on the field, and its result told as the close then posts it', () => {
+  const started = startSkirmishes(ordered, today, 0.9)
+  assert.ok(started.ok && started.day)
+  let state = started.state
+  const view = skirmishDayView(state, today)
+  assert.ok(view?.open)
+  assert.deepEqual(view.fights.map((f) => f.id), started.day.fights.map((f) => f.id))
+  assert.ok(view.fights.every((f) => f.status === 'waiting'))
+  assert.equal(view.next, view.fights[0].id)
+  assert.equal(view.valor, 0.9)
+
+  const id = view.fights[0].id
+  const first = started.day.fights[0]
+  const intro = fightIntro(state, today, id)
+  assert.ok(intro)
+  assert.equal(intro.enemy.reduce((s, e) => s + e.count, 0), first.enemy.length)
+  assert.equal(intro.yours.length, first.companies.length)
+  assert.deepEqual([intro.rounds, intro.readiness], [RULES.skirmish.rounds, first.setup.readiness])
+  if (intro.side === 'defense' && realmEffects(state).reveals.threatStrength.whom === 'none') assert.ok(!/\d/.test(intro.strength), `a defense shows a band, not a number: ${intro.strength}`)
+  assert.equal(fightResult(state, today, id), null, 'no result before it is fought')
+
+  state = beginFight(state, today, id).state
+  assert.equal(skirmishDayView(state, today)?.fights[0].status, 'underway')
+  for (;;) {
+    const field = skirmishFieldView(state, today, id)
+    assert.ok(field)
+    assert.equal(field.rounds, RULES.skirmish.rounds)
+    if (field.over) break
+    const fight = state.skirmishes?.find((d) => d.day === today)?.fights.find((f) => f.id === id)
+    assert.ok(fight)
+    const played = playFightRound(state, today, id, marshalPlay(skirmishField(fight)))
+    assert.ok(played.ok, played.reason)
+    state = played.state
+  }
+  const fought = state.skirmishes?.find((d) => d.day === today)?.fights.find((f) => f.id === id)
+  assert.ok(fought?.result)
+  const row = skirmishDayView(state, today)
+  assert.equal(row?.fights[0].status, fought.result)
+  assert.equal(row?.next, row?.fights[1]?.id ?? null)
+  assert.equal(skirmishReplayView(state, today, id)?.frames.length, fought.log.length + 1)
+
+  const preview = fightResult(state, today, id)
+  assert.ok(preview?.report, 'a report as the close would post it')
+  assert.deepEqual([preview.result, preview.posted], [fought.result, false])
+  const settled = settle(state, ledger, closeOf(today)).state
+  const posted = fightResult(settled, today, id)
+  assert.equal(posted?.posted, true)
+  assert.deepEqual([posted.report?.textId, posted.report?.facts], [preview.report.textId, preview.report.facts], 'the close posts what the result screen said')
+  const closed = skirmishDayView(settled, today)
+  assert.deepEqual([closed?.open, closed?.next], [false, null])
+  assert.ok(closed?.fights.slice(1).every((f) => f.status === 'left'), 'the rest were left to the close')
 })

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GiNextButton, GiPauseButton, GiPlayButton, GiPreviousButton, GiReturnArrow } from 'react-icons/gi'
 import type { CampaignState, Lane } from '../../lib/game/types'
-import { fieldView, replayView, resultView, type RoundView } from '../../lib/game/view/battle'
+import { fieldView, replayView, resultView, type ReplayView, type RoundView } from '../../lib/game/view/battle'
 import { factor } from '../../lib/game/view/refusals'
 import { useText } from '../../state/text'
 import { useUI } from '../../state/ui'
@@ -96,9 +96,14 @@ export function BattleResult({ campaign, battleId }: { campaign: CampaignState; 
 const SPEEDS = [1, 2, 4] as const
 const FRAME_MS = 1_800
 
-/** Replays a stored battle from its log (Ch 11 rule 4) at 1×, 2× or 4×, or step by step. */
+/** Replays a stored Grand Battle from its log (Ch 11 rule 4). */
 export function Replay({ campaign, battleId }: { campaign: CampaignState; battleId: string }): React.JSX.Element | null {
   const view = useMemo(() => replayView(campaign, battleId), [campaign, battleId])
+  return <ReplayBoard view={view} onBack={() => useUI.getState().openBattle(battleId, false)} />
+}
+
+/** A stored battle's rounds (a Grand Battle's or a daily skirmish's) at 1×, 2× or 4×, or step by step; `onBack` returns to its result. */
+export function ReplayBoard({ view, onBack }: { view: ReplayView | null; onBack(): void }): React.JSX.Element | null {
   const [frame, setFrame] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1)
@@ -136,7 +141,7 @@ export function Replay({ campaign, battleId }: { campaign: CampaignState; battle
           ))}
         </span>
         <span className="replay__where">{frame === 0 ? 'The field as the battle began' : `After round ${frame} of ${last}`}</span>
-        <button type="button" className="btn btn--small btn--ghost replay__back" onClick={() => useUI.getState().openBattle(battleId, false)}>
+        <button type="button" className="btn btn--small btn--ghost replay__back" onClick={onBack}>
           The result
         </button>
       </div>

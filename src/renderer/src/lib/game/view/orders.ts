@@ -3,13 +3,13 @@
  * go and which defend, which defenders always fight (the Marshal fills the rest, D-10), hired
  * blades and envoys, the Marshal's default, "repeat yesterday's orders", the countdown to the 04:00 lock, and
  * an estimate of the day's Defense and Assault from today's Valor so far (labeled as an estimate:
- * the close uses the day's final Valor).
+ * the close uses the day's final Valor). Once the day's battles begin (D-12), the orders hold.
  *
  * The orders are built here as plain values; the page stores them with `setOrders`, which the
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, defenseBanners, effectiveGarrison, envoyAvailable, ordersEstimate, ordersValidity, type OrderProblem, type OrdersEstimate } from '../combat'
+import { assaultBanners, defenseBanners, effectiveGarrison, envoyAvailable, ordersEstimate, ordersValidity, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
 import { realmEffects } from '../effects'
 import { claimableBy, hexName } from '../map'
 import { RULES } from '../rules'
@@ -56,8 +56,10 @@ export interface OrdersLock {
   /** When the orders lock: the day's close, 04:00 the next morning in the campaign's zone (Ch 2 rule 2). */
   locksAt: string
   secondsLeft: number
-  /** Past the close: the orders can only be read. */
+  /** Past the close, or the day's battles have begun (D-12): the orders can only be read. */
   locked: boolean
+  /** The day's battles have begun (D-12), so its orders hold until the close. */
+  held: boolean
 }
 
 export interface OrdersView {
@@ -85,13 +87,15 @@ export interface OrdersView {
   estimate: OrdersEstimate & { valor: number }
 }
 
-/** Whether `date`'s orders are locked at `now`, and how long they have left. */
+/** Whether `date`'s orders are locked at `now` (past the close, or held by the day's battles), and how long they have left. */
 export function ordersLock(state: CampaignState, date: ISODate, now: Date): OrdersLock {
   const close = dayCloseInstant(date, state.campaign.timeZone)
+  const held = skirmishDayOf(state, date) !== undefined
   return {
     locksAt: close.toISOString(),
     secondsLeft: Math.max(0, Math.floor((close.getTime() - now.getTime()) / MS_PER_SECOND)),
-    locked: now.getTime() >= close.getTime()
+    locked: held || now.getTime() >= close.getTime(),
+    held
   }
 }
 

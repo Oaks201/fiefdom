@@ -25,13 +25,15 @@ import {
   result as battleResult,
   type HostView
 } from '../grand'
-import { LANES, SLOTS, isOver, laneOf, onField, orderNeeds, plannedIntents, rankOf, shares, validTargets, type Field } from '../grand/field'
+import { skirmishDayOf } from '../combat'
+import { LANES, SLOTS, isOver, laneOf, offeredOn, onField, orderNeeds, plannedIntents, rankOf, replayField, shares, validTargets, type Field } from '../grand/field'
 import { hexName } from '../map'
 import { RULES } from '../rules'
 import { rosterDetail } from '../roster'
 import { readinessValors } from '../settle'
+import { skirmishField } from '../skirmish'
 import { openDayOf } from '../state'
-import type { BattleLogLine, CampaignState, GrandBattle, GrandTrigger, Intent, ISODate, Lane, OrderTarget, SlotKey } from '../types'
+import type { BattleLogLine, BattleRoundLog, BattleSetup, CampaignState, GrandBattle, GrandTrigger, Intent, ISODate, Lane, OrderTarget, SlotKey } from '../types'
 import { companyArt } from './realm'
 import { amount, factor } from './refusals'
 import { rivalName, rivalNames } from './shell'
@@ -544,16 +546,68 @@ function roundView(field: Field, r: { round: number; order?: string; target?: Or
   }
 }
 
+/** A battle on the field, Grand or a daily skirmish (D-12), as the field view reads it. */
+interface FieldSource {
+  id: string
+  trigger: string
+  hexId: string
+  /** The battle's day, for the roster's Weary companies. */
+  day: ISODate
+  setup: BattleSetup
+  log: readonly BattleRoundLog[]
+  field: Field
+  /** A Doctrine shows every round's intents. */
+  seesAll: boolean
+  /** The stored result, once there is one. */
+  result?: 'rout' | 'victory' | 'defeat'
+}
+
 /** The battle as it stands: who is where with what health, the coming round's intents and the Orders on offer. */
 export function fieldView(state: CampaignState, battleId: string): FieldView | null {
   const battle = battleOf(state, battleId)
   const field = battle ? fieldOf(battle) : null
-  if (!battle || !field) return null
+  if (!battle || !field || !battle.setup) return null
+  const doctrine = CODEX.doctrines.find((d) => d.id === battle.doctrine)
+  const seesAll = doctrine?.effects.some((e) => e.kind === 'revealIntents' && (e as { rounds?: unknown }).rounds === 'all') ?? false
+  const done = isOver(field) ? battleResult(battle) : null
+  return buildFieldView(state, {
+    id: battleId,
+    trigger: triggerName(battle),
+    hexId: battle.hexId,
+    day: battle.battleDate,
+    setup: battle.setup,
+    log: battle.log ?? [],
+    field,
+    seesAll,
+    ...(done ? { result: done.result } : {})
+  })
+}
+
+/** A daily skirmish as it stands (D-12): the same field view as a Grand Battle's, with its own rounds. */
+export function skirmishFieldView(state: CampaignState, day: ISODate, fightId: string): FieldView | null {
+  const fight = skirmishDayOf(state, day)?.fights.find((f) => f.id === fightId)
+  if (!fight) return null
+  return buildFieldView(state, {
+    id: fight.id,
+    trigger: fight.side === 'assault' ? 'Assault' : 'Defense',
+    hexId: fight.hexId,
+    day,
+    setup: fight.setup,
+    log: fight.log,
+    field: skirmishField(fight),
+    seesAll: false,
+    ...(fight.result ? { result: fight.result } : {})
+  })
+}
+
+function buildFieldView(state: CampaignState, src: FieldSource): FieldView {
+  const { field, setup } = src
   const revealed = realmEffects(state).reveals.hostRoster.whom !== 'none'
   const over = isOver(field)
+  const rounds = setup.rounds ?? G.rounds
   const next = field.round + 1
   const planned = over ? undefined : plannedIntents(field, next)
-  const weary = new Set(rosterDetail(state, { day: battle.battleDate }).filter((e) => e.weary).map((e) => e.company.id))
+  const weary = new Set(rosterDetail(state, { day: src.day }).filter((e) => e.weary).map((e) => e.company.id))
   const units: UnitView[] = field.units.map((u) => {
     const status: UnitView['status'] = []
     if (u.side === 'player' && weary.has(u.id)) status.push('weary')
@@ -581,33 +635,30 @@ export function fieldView(state: CampaignState, battleId: string): FieldView | n
     const intent = planned?.lanes[lane]
     return intent ? { lane, intent, name: INTENT_NAMES[intent], text: intentText(intent) } : { lane }
   })
-  const doctrine = CODEX.doctrines.find((d) => d.id === battle.doctrine)
-  const seesAll = doctrine?.effects.some((e) => e.kind === 'revealIntents' && (e as { rounds?: unknown }).rounds === 'all') ?? false
   const later: FieldView['later'] = []
-  if (seesAll && !over) for (let r = next + 1; r <= G.rounds; r++) later.push({ round: r, lanes: plannedIntents(field, r).lanes })
+  if (src.seesAll && !over) for (let r = next + 1; r <= rounds; r++) later.push({ round: r, lanes: plannedIntents(field, r).lanes })
   const offered: OfferedCard[] = over
     ? []
-    : (battle.setup?.deck ?? []).slice(field.round * (battle.setup?.offer ?? G.ordersOffered), next * (battle.setup?.offer ?? G.ordersOffered)).map((id) => ({
-        ...orderCard(id, battle.setup?.orderStages[id] ?? 0),
+    : offeredOn(setup, next).map((id) => ({
+        ...orderCard(id, setup.orderStages[id] ?? 0),
         targets: validTargets(field, id).map((target) => ({ target, label: targetLabel(field, target) ?? '' }))
       }))
-  const log = (battle.log ?? []).map((r) => roundView(field, r))
-  const done = over ? battleResult(battle) : null
+  const log = src.log.map((r) => roundView(field, r))
   return {
-    battleId,
-    trigger: triggerName(battle),
-    hexName: hexName(battle.hexId),
+    battleId: src.id,
+    trigger: src.trigger,
+    hexName: hexName(src.hexId),
     round: field.round,
-    rounds: G.rounds,
+    rounds,
     over,
-    readiness: battle.setup?.readiness ?? 0,
+    readiness: setup.readiness,
     units,
     lanes,
     later,
     offered,
     log,
     shares: shares(field),
-    ...(done ? { result: done.result } : over ? { result: shares(field).player > shares(field).enemy ? 'victory' : 'defeat' } : {})
+    ...(src.result ? { result: src.result } : over ? { result: shares(field).player > shares(field).enemy ? 'victory' : 'defeat' } : {})
   }
 }
 
@@ -637,6 +688,18 @@ export function replayView(state: CampaignState, battleId: string): ReplayView |
   const rebuilt = battle ? replay(battle) : null
   const field = battle ? fieldOf(battle) : null
   if (!battle || !rebuilt || !field) return null
+  return buildReplayView(state, { id: battleId, trigger: triggerName(battle), hexId: battle.hexId }, rebuilt, field)
+}
+
+/** A fought daily skirmish's rounds as frames (D-12), rebuilt from its setup and log like a Grand Battle's. */
+export function skirmishReplayView(state: CampaignState, day: ISODate, fightId: string): ReplayView | null {
+  const fight = skirmishDayOf(state, day)?.fights.find((f) => f.id === fightId)
+  if (!fight || fight.log.length === 0) return null
+  const { field, rounds } = replayField(fight.setup, fight.log)
+  return buildReplayView(state, { id: fight.id, trigger: fight.side === 'assault' ? 'Assault' : 'Defense', hexId: fight.hexId }, { setup: fight.setup, rounds }, field)
+}
+
+function buildReplayView(state: CampaignState, src: { id: string; trigger: string; hexId: string }, rebuilt: { setup: BattleSetup; rounds: readonly BattleRoundLog[] }, field: Field): ReplayView {
   const revealed = realmEffects(state).reveals.hostRoster.whom !== 'none'
   const start: ReplayFrame = {
     round: 0,
@@ -650,9 +713,9 @@ export function replayView(state: CampaignState, battleId: string): ReplayView |
     frames.push({ round: r.round, hp, slots: { ...(r.slots ?? {}) }, routed: Object.entries(hp).filter(([, v]) => v <= 0).map(([id]) => id), played: roundView(field, r) })
   }
   return {
-    battleId,
-    trigger: triggerName(battle),
-    hexName: hexName(battle.hexId),
+    battleId: src.id,
+    trigger: src.trigger,
+    hexName: hexName(src.hexId),
     units: field.units.map((u) => ({
       id: u.id,
       name: u.name,
