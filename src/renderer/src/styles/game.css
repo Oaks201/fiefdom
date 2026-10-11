@@ -47,6 +47,13 @@
   object-fit: contain;
 }
 
+/* The standing card: the player's new portrait in place of painted art. */
+.moment__portrait {
+  justify-self: center;
+  width: min(360px, 60vw);
+  max-height: 56vh;
+}
+
 .moment__words {
   display: flex;
   flex-direction: column;

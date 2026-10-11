@@ -16,6 +16,7 @@ import { useCampaign } from './campaign'
 import { appNow, devShiftNow } from './clock'
 import { useHealth } from './health'
 import { useMoments } from './moments'
+import { noticeStanding } from './playerPortrait'
 import { useLedger } from './store'
 
 /** At launch, settle after the first Fitbit sync attempt or this long, whichever comes first. */
@@ -66,6 +67,8 @@ function runSettle(launch: boolean): void {
     // The big moments a settlement raises (Ch 17): Milestones, Grand Battles the Marshal fought and
     // decisive ones, coalitions, Ultimatums, victory and the Fall.
     if (result) useMoments.getState().showAll(momentsFor(result.state, result.events))
+    // And the standing card, when the player's portrait tier or path grew since it was last seen.
+    if (result) noticeStanding(result.state)
   } catch (err) {
     console.error('Settling the campaign failed', err)
   }

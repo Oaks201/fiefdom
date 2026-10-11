@@ -30,6 +30,7 @@ import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 // Development builds only (A-09): the time-travel panel. Production builds drop this import entirely.
 const DevTimeTravel = import.meta.env.DEV ? lazy(() => import('./components/game/DevTimeTravel')) : null
 const DevArtSamples = import.meta.env.DEV ? lazy(() => import('./components/game/DevArtSamples')) : null
+const DevPortraitPaths = import.meta.env.DEV ? lazy(() => import('./components/game/DevPortraitPaths')) : null // TEMPORARY: the player-portrait debug panel
 
 export default function App(): React.JSX.Element {
   const status = useLedger((s) => s.status)
@@ -174,6 +175,12 @@ export default function App(): React.JSX.Element {
       {DevArtSamples && (
         <Suspense fallback={null}>
           <DevArtSamples />
+        </Suspense>
+      )}
+      {DevPortraitPaths && (
+        // TEMPORARY: the player-portrait debug panel
+        <Suspense fallback={null}>
+          <DevPortraitPaths />
         </Suspense>
       )}
       <FloatLayer />

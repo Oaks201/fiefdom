@@ -6,19 +6,13 @@ import { getPlayerPortrait } from '../../state/art'
 import { useLedgerData } from '../../state/hooks'
 import { AccordPanel } from '../endgame/Endgame'
 import { GameArt, OWNER_COLORS } from '../game/GameArt'
+import { PlayerPortrait } from '../game/PlayerPortrait'
 import { Modal } from '../Modal'
 import { AudienceDebug } from './AudienceDebug' // TEMPORARY: the dev Respect override
 import { DealsList } from './DealsList'
 
 /** The width the court cards draw a ruler's portrait at (RivalCourt). */
 const PORTRAIT_WIDTH = 150
-
-/** The player's portrait, drawn as GameArt draws a card's file; its placeholder in the player's color if the file won't load. */
-function PlayerPortrait({ name }: { name: string }): React.JSX.Element {
-  const [broken, setBroken] = useState(false)
-  if (broken) return <GameArt slot="player.portrait" owner="player" width={PORTRAIT_WIDTH} label={name} title={name} />
-  return <img className="game-art game-art--card audience__player-art" src={getPlayerPortrait()} width={PORTRAIT_WIDTH} alt={name} title={name} draggable={false} onError={() => setBroken(true)} />
-}
 
 /**
  * An audience with one rival court, opened from its card on the Diplomacy page: the player's
@@ -42,7 +36,7 @@ export function Audience({ campaign, today, panel, onClose }: { campaign: Campai
       <div className="audience__stage" style={colors}>
         <figure className="audience__side audience__side--player">
           <div className="audience__frame">
-            <PlayerPortrait name={playerName} />
+            <PlayerPortrait choice={getPlayerPortrait(campaign)} width={PORTRAIT_WIDTH} name={playerName} className="audience__player-art" />
           </div>
           <figcaption className="audience__name">{playerName}</figcaption>
         </figure>

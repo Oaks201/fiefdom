@@ -254,5 +254,13 @@
   "herald.reign": {
     "template": "The Reign: the campaign was won in week {week}, and the realm goes on.",
     "final": null
+  },
+  "herald.standing.grown": {
+    "template": "Your standing has grown",
+    "final": null
+  },
+  "herald.standing.grownBody": {
+    "template": "Tier {tier}, {path}.",
+    "final": null
   }
 }

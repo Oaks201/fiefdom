@@ -5,6 +5,8 @@
  */
 import { create } from 'zustand'
 import manifest from '../../public/game-assets/manifest.json'
+import type { CampaignState } from '../lib/game/types'
+import { portraitChoice, standingOf, type PortraitChoice } from '../lib/game/view/playerPortrait'
 
 export interface ArtSlot {
   file: string | null
@@ -50,9 +52,10 @@ export function artUrl(slot: ArtSlot | undefined, revision = 0): string | null {
 }
 
 /**
- * The URL of the player's portrait (the Audience on the Diplomacy page). Not a manifest slot: this
- * one function picks the image, so a later feature can change which one it returns.
+ * The player's portrait wherever it appears (the Audience, the standing card): the file their tier
+ * and path call for, and the files to try while it is missing, from playerPortraits.json. This one
+ * function picks it. Not a manifest slot: the files are found by name in the portraits folder.
  */
-export function getPlayerPortrait(): string {
-  return 'game-assets/portraits/player_t1.png'
+export function getPlayerPortrait(campaign: CampaignState | null): PortraitChoice {
+  return portraitChoice(campaign ? standingOf(campaign) : null)
 }
