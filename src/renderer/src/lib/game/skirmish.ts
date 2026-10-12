@@ -11,7 +11,7 @@
  *   (r + (1 − r) × V) at the Valor locked when the day's fights began.
  * - **The enemy** fields as many companies as the player, of its own kinds (the rival's host,
  *   the lair's quarry, or the codex's beasts and militia), their power together the threat's
- *   strength (or the garrison) × `hostScale` for that count.
+ *   strength (or the garrison) × `hostScale` for that count (mythic foes × `mythicScale` too).
  * - **Nothing posts here.** A fight's result is kept with its day; the close reads it in place of
  *   the formula's (combat.ts) and posts spoils, tribute, hexes and Weary as on any day. A fight
  *   begun and not finished by the close is finished by the Marshal (`finishSkirmishes`); one never
@@ -146,6 +146,11 @@ export function hostScale(count: number): number {
   return table[Math.min(table.length, Math.max(1, count)) - 1]
 }
 
+/** The enemy's size for a fight: `hostScale` for the count, and for mythic foes `mythicScale` of that. */
+export function enemyScale(plan: Pick<FightPlan, 'enemy'>, count: number): number {
+  return hostScale(count) * (plan.enemy.kind === 'mythic' ? SK.mythicScale : 1)
+}
+
 /** The kinds of company the enemy fields, strongest share first: each with its id prefix, unit, name, share of the power and reach. */
 function enemyKinds(state: CampaignState, plan: FightPlan, day: ISODate): { side: string; unit: string; name: string; weight: number; reach: Reach }[] {
   const e = plan.enemy
@@ -163,7 +168,7 @@ function enemyKinds(state: CampaignState, plan: FightPlan, day: ISODate): { side
 }
 
 /** The enemy for a fight: `count` companies of its kinds (cycling), sharing `strength × scale` power by their weights. */
-export function skirmishHost(state: CampaignState, plan: FightPlan, count: number, day: ISODate, scale: number = hostScale(count)): Company[] {
+export function skirmishHost(state: CampaignState, plan: FightPlan, count: number, day: ISODate, scale: number = enemyScale(plan, count)): Company[] {
   const kinds = enemyKinds(state, plan, day)
   if (kinds.length === 0) return []
   const picks = Array.from({ length: count }, (_, i) => kinds[i % kinds.length])
@@ -175,7 +180,7 @@ export function skirmishHost(state: CampaignState, plan: FightPlan, count: numbe
 /** A fight set on the field: the player's companies as the Marshal stands them, the enemy, the deck, Readiness from the locked Valor. */
 export function fightSetup(state: CampaignState, plan: FightPlan, valor: number, day: ISODate, effects: Effects = realmEffects(state), scale?: number): { enemy: Company[]; setup: BattleSetup } {
   const count = Math.max(1, plan.companies.length)
-  const enemy = skirmishHost(state, plan, count, day, scale ?? hostScale(count))
+  const enemy = skirmishHost(state, plan, count, day, scale ?? enemyScale(plan, count))
   const start = battleStart(undefined, effects)
   const byId = new Map(plan.companies.map((c) => [c.id, c]))
   const centerFront = slotOf('center', 'front')

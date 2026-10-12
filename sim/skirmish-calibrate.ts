@@ -151,7 +151,7 @@ function report(rows: readonly Sample[]): void {
     console.log(`  n=${n}: ${at.length} fights | formula win ${pct(at.filter((r) => r.formulaWin).length / at.length)}, rout ${pct(at.filter((r) => r.formulaRout).length / at.length)} | scale ${scale.toFixed(2)} | Marshal win ${pct(win)}, rout ${pct(rout)} | same result ${pct(agree)}`)
   }
   const scaleFor = (n: number): number => table[n] ?? table[Math.max(...counts.filter((c) => c <= n), counts[0])]
-  console.log('\nAt those scales, by side and enemy: formula win vs Marshal win, and the multiple of those scales at which the Marshal would win as often as the formula')
+  console.log('\nAt those scales, by side and enemy: formula win vs Marshal win, and the multiple of those scales at which the Marshal would win as often as the formula (for mythic foes: what RULES.skirmish.mythicScale should be; these sizes leave it out)')
   for (const side of ['defense', 'assault'] as const) {
     for (const enemy of [...new Set(rows.map((r) => r.enemy))]) {
       const at = rows.filter((r) => r.side === side && r.enemy === enemy)

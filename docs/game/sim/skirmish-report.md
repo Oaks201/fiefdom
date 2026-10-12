@@ -1,6 +1,6 @@
 # Daily skirmishes (D-12): verification report
 
-*Stage 3 of the daily-battles plan, 2026-10-11. Per D-02 this report only proposes: no value in `rules.ts` changed.*
+*Stage 3 of the daily-battles plan, 2026-10-11. Per D-02 this report only proposed; the owner then approved its one proposal (`RULES.skirmish.mythicScale` 0.85, below). The measurements here were taken before it.*
 
 ## A day you don't fight is the day it always was
 
@@ -34,7 +34,7 @@ On the same fights from fixed campaign states (12 seeds × 2 habits × weeks 8 t
 
 At low Valor the field is, if anything, kinder than the formula: at Valor 0.2 the Marshal holds 54% of defenses to the formula's 40%.
 
-**Proposal (owner's decision, D-02):** size mythic enemies separately, for example a TUNE `RULES.skirmish.mythicScale` of about 0.85 applied on top of `hostScale` for mythic foes. `npx tsx sim/skirmish-calibrate.ts sample` now prints, for each side and enemy, the multiple of `hostScale` at which the Marshal would win as often as the formula:
+**Applied (owner-approved 2026-10-11):** mythic enemies are sized separately, a TUNE `RULES.skirmish.mythicScale` of 0.85 on top of `hostScale`. The wider balance pass (the other enemies and sides below, and the campaign's Ch 15 targets) is left for a later patch. `npx tsx sim/skirmish-calibrate.ts sample` now prints, for each side and enemy, the multiple of `hostScale` at which the Marshal would win as often as the formula:
 
 | Fights (`sample --seeds 3 --every 3`: 1,560 fights) | Formula wins | Marshal wins | Multiple to match |
 | --- | --- | --- | --- |

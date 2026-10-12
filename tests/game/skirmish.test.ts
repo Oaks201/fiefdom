@@ -17,6 +17,7 @@ import { roster } from '../../src/renderer/src/lib/game/roster'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import {
   beginFight,
+  enemyScale,
   fightSetup,
   hostScale,
   marshalAllFights,
@@ -71,7 +72,7 @@ test('the day’s fights: the defense battles first, then the assaults, each wit
   }
 })
 
-test('the enemy fields as many companies as the player, its power the strength × the scale for that count', () => {
+test('the enemy fields as many companies as the player, its power the strength × the scale for that count (mythic foes smaller)', () => {
   const plans = todaysFights(ordered, today)
   const started = startSkirmishes(ordered, today, 0.8)
   assert.ok(started.ok && started.day)
@@ -79,11 +80,14 @@ test('the enemy fields as many companies as the player, its power the strength �
     const n = f.companies.length
     assert.equal(f.enemy.length, n)
     const total = f.enemy.reduce((s, c) => s + c.power, 0)
-    assert.ok(Math.abs(total - plans[i].strength * hostScale(n)) <= 0.1 * n, `${f.id}: ${total} vs ${plans[i].strength * hostScale(n)}`)
+    const want = plans[i].strength * enemyScale(plans[i], n)
+    assert.ok(Math.abs(total - want) <= 0.1 * n, `${f.id}: ${total} vs ${want}`)
     assert.equal(f.setup.rounds, RULES.skirmish.rounds)
   })
   assert.equal(hostScale(0), RULES.skirmish.hostScale[0])
   assert.equal(hostScale(9), RULES.skirmish.hostScale.at(-1))
+  assert.equal(enemyScale({ enemy: { kind: 'mythic' } }, 3), hostScale(3) * RULES.skirmish.mythicScale)
+  assert.equal(enemyScale({ enemy: { kind: 'beasts' } }, 3), hostScale(3))
 })
 
 test('Start battle locks the Valor and the orders; it is refused again, on another day, and its Valor is 0 to 1', () => {

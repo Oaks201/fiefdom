@@ -384,6 +384,12 @@ const RULES_TABLE = {
      * campaigns; 1 and 6 companies were too rare to fit and take their neighbors' values).
      */
     hostScale: [0.79, 0.79, 0.76, 0.71, 0.79, 0.79],
+    /**
+     * Mythic foes field this share of `hostScale`: on the field the Marshal held fewer mythic
+     * attacks than the formula (43% to 49% on the same fights), and the trophies lost compounded.
+     * TUNE: owner-approved 2026-10-11 from `docs/game/sim/skirmish-report.md` (0.85 to 0.88).
+     */
+    mythicScale: 0.85,
     /** Days a led fight is kept for its replay. */
     keepDays: 7
   },
