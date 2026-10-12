@@ -296,7 +296,8 @@ export function HowToPlay(): React.JSX.Element | null {
             battles on the battle field: conquest attempts first, then the day’s threat, then your assaults. Pressing it locks your Valor so far for those fights, and the day’s orders
             hold from then on. Each fight shows who comes and roughly how strong; fight it, or leave it to the close. A fight you finish replaces the close’s result for that
             battle; one you open and leave is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. Spoils, tribute and hexes still post at {dawn}.
-            If you never press it, the day closes exactly as before.
+            The next day the Herald marks the battles you led, with their results and replays (kept {RULES.skirmish.keepDays} days). If you never press it, the day closes exactly
+            as before.
           </p>
         </>
       )

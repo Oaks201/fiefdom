@@ -71,9 +71,11 @@ export function SkirmishPage(): React.JSX.Element | null {
         </p>
       </header>
       <p className="battle-narrow banner banner--urgent">The battle field needs a wider window: widen it to at least 1024 pixels to see it.</p>
-      <div className="battle-wide skirmish">
-        <FightRoll day={day} current={current} />
-        <div className="skirmish__stage">{current && <FightStage key={current} campaign={campaign} day={day} fightId={current} replay={route.replay} />}</div>
+      <div className="battle-wide">
+        <div className="skirmish">
+          <FightRoll day={day} current={current} />
+          <div className="skirmish__stage">{current && <FightStage key={current} campaign={campaign} day={day} fightId={current} replay={route.replay} />}</div>
+        </div>
       </div>
     </div>
   )
@@ -208,6 +210,7 @@ function ResultCard({ campaign, day, result }: { campaign: CampaignState; day: S
               {text(result.report.textId, result.report.facts)}
             </p>
           )}
+          {result.marshal && <p className="muted">You opened it and left it; the Marshal finished it at the day’s close.</p>}
           {result.weary.length > 0 && <p>Weary from the day’s close: {result.weary.join(', ')}.</p>}
           <p className="muted">{result.posted ? 'Posted at the day’s close.' : 'This posts at the day’s close, with the rest of the day’s battles.'}</p>
           <div className="battle-result__actions">

@@ -852,6 +852,18 @@
   font-size: 17px;
 }
 
+.chip-mini--led {
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+  background: var(--crimson);
+}
+
+.herald__led {
+  margin: 2px 0 6px;
+}
+
 /* -- The Herald's battle notice and the top bar's ------------------------------ */
 .herald__battles {
   display: flex;

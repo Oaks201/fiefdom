@@ -150,16 +150,17 @@ function report(rows: readonly Sample[]): void {
     const agree = at.filter((r) => (scale <= r.edgeWin) === r.formulaWin).length / at.length
     console.log(`  n=${n}: ${at.length} fights | formula win ${pct(at.filter((r) => r.formulaWin).length / at.length)}, rout ${pct(at.filter((r) => r.formulaRout).length / at.length)} | scale ${scale.toFixed(2)} | Marshal win ${pct(win)}, rout ${pct(rout)} | same result ${pct(agree)}`)
   }
-  console.log('\nAt those scales, by side and enemy: formula win vs Marshal win')
+  const scaleFor = (n: number): number => table[n] ?? table[Math.max(...counts.filter((c) => c <= n), counts[0])]
+  console.log('\nAt those scales, by side and enemy: formula win vs Marshal win, and the multiple of those scales at which the Marshal would win as often as the formula')
   for (const side of ['defense', 'assault'] as const) {
     for (const enemy of [...new Set(rows.map((r) => r.enemy))]) {
       const at = rows.filter((r) => r.side === side && r.enemy === enemy)
       if (at.length === 0) continue
-      const marshal = at.filter((r) => (table[r.n] ?? HI) <= r.edgeWin).length / at.length
-      console.log(`  ${side} vs ${enemy}: ${at.length} fights | formula ${pct(at.filter((r) => r.formulaWin).length / at.length)} | Marshal ${pct(marshal)}`)
+      const marshal = at.filter((r) => scaleFor(r.n) <= r.edgeWin).length / at.length
+      const multiple = matchScale(at.map((r) => ({ ...r, edgeWin: r.edgeWin / scaleFor(r.n) })))
+      console.log(`  ${side} vs ${enemy}: ${at.length} fights | formula ${pct(at.filter((r) => r.formulaWin).length / at.length)} | Marshal ${pct(marshal)} | to match: ×${multiple.toFixed(2)}`)
     }
   }
-  const scaleFor = (n: number): number => table[n] ?? table[Math.max(...counts.filter((c) => c <= n), counts[0])]
   console.log(`\nProposed hostScale (1 to 6 companies): [${[1, 2, 3, 4, 5, 6].map((n) => scaleFor(n).toFixed(2)).join(', ')}]`)
 }
 

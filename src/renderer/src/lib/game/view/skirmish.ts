@@ -10,7 +10,7 @@
  * revealed), the enemy companies' power only when the host roster is revealed (the field view),
  * and under the Veil of Fog the button gives no count.
  */
-import { campaignWeek } from '../clock'
+import { addDays, campaignWeek } from '../clock'
 import { effectiveGarrison, settleCombat, skirmishDayOf, tidings } from '../combat'
 import { hexName } from '../map'
 import { RULES } from '../rules'
@@ -137,6 +137,8 @@ export interface FightResult {
   /** The day's battle report for it: as the close posted it, or as it would post it now. */
   report: HeraldLine | null
   posted: boolean
+  /** The Marshal finished it at the close: it was opened and left unfinished. */
+  marshal: boolean
   /** The companies left Weary at the close by a repulsed assault. */
   weary: string[]
 }
@@ -172,6 +174,14 @@ export function fightResult(state: CampaignState, day: ISODate, fightId: string)
     won: f.result !== 'defeat',
     report: event ? resultLine(event) : null,
     posted,
+    marshal: f.marshal === true,
     weary: repulsed ? f.companies.map((id) => names.get(id) ?? id) : []
   }
+}
+
+/** Yesterday's battles the player led, for the Herald's link to their results and replays; null when none were finished. */
+export function ledYesterday(state: CampaignState, today: ISODate = openDayOf(state)): { day: ISODate; fought: number } | null {
+  const day = addDays(today, -1)
+  const fought = skirmishDayOf(state, day)?.fights.filter((f) => f.result !== undefined).length ?? 0
+  return fought > 0 ? { day, fought } : null
 }

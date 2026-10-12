@@ -7,10 +7,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
-import { assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { fieldResult, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
 import { claimableBy } from '../../src/renderer/src/lib/game/map'
+import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { roster } from '../../src/renderer/src/lib/game/roster'
 import { settle } from '../../src/renderer/src/lib/game/settle'
@@ -30,7 +31,8 @@ import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { skirmishFieldView, skirmishReplayView } from '../../src/renderer/src/lib/game/view/battle'
 import { ordersLock } from '../../src/renderer/src/lib/game/view/orders'
 import { skirmishRefusalLabel } from '../../src/renderer/src/lib/game/view/refusals'
-import { fightIntro, fightResult, skirmishButton, skirmishDayView } from '../../src/renderer/src/lib/game/view/skirmish'
+import { heraldView } from '../../src/renderer/src/lib/game/view/shell'
+import { fightIntro, fightResult, ledYesterday, skirmishButton, skirmishDayView } from '../../src/renderer/src/lib/game/view/skirmish'
 import type { CampaignState, GameEvent, HexState, ISODate } from '../../src/renderer/src/lib/game/types'
 import { chicago } from './fixtures/ledgers'
 import { driveCampaign, habitLedger } from './support/campaign-driver'
@@ -262,4 +264,42 @@ test('the skirmish screen: the fights in order, each one’s opening, its rounds
   const closed = skirmishDayView(settled, today)
   assert.deepEqual([closed?.open, closed?.next], [false, null])
   assert.ok(closed?.fights.slice(1).every((f) => f.status === 'left'), 'the rest were left to the close')
+})
+
+test('a den assault: the close’s own reveal roll leaves a revealing den to its Mythic Hunt, and sets any other den on the field', () => {
+  const dens = base.hexes.filter((h) => isRevealDen(h) && claimableBy(base.hexes, h.id, 'player', 'assault'))
+  const reveals = (h: HexState): boolean => chance(base.campaign.seed, today, `reveal:${h.id}`, RULES.grandBattles.mythicReveal.chance)
+  const revealing = dens.find(reveals)
+  const plain = dens.find((h) => !reveals(h))
+  assert.ok(revealing && plain, 'the fixture has a den of each kind today')
+  const sent = [...roster(base, { day: today }, realmEffects(base))].sort((a, b) => b.power - a.power).slice(0, 2).map((c) => c.id)
+  const orderOn = (hexId: string): CampaignState => setOrders(base, { date: today, assaultTarget: hexId, assault: sent, defense: [] }).state
+
+  const onPlain = todaysFights(orderOn(plain.id), today).find((p) => p.side === 'assault')
+  assert.deepEqual([onPlain?.hexId, onPlain?.enemy.kind], [plain.id, 'beasts'])
+
+  const revealState = orderOn(revealing.id)
+  assert.equal(todaysFights(revealState, today).some((p) => p.side === 'assault'), false, 'no skirmish for it')
+  const settled = settle(marshalAllFights(revealState, today, 0.9), ledger, closeOf(today)).state
+  assert.equal(eventsOn(settled, today).find((e) => e.kind === 'assault')?.outcome, 'revealed')
+  assert.ok(settled.grandBattles.some((b) => b.trigger === 'mythicHunt' && b.hexId === revealing.id), 'the close raises its Mythic Hunt')
+})
+
+test('the next dawn: the Herald marks the battles the player led and links to them; one opened and left says the Marshal finished it', () => {
+  const started = startSkirmishes(ordered, today, 0.9)
+  assert.ok(started.ok && started.day && started.day.fights.length >= 2)
+  const [first, second] = started.day.fights
+  let state = beginFight(started.state, today, first.id).state
+  for (;;) {
+    const fight = state.skirmishes?.find((d) => d.day === today)?.fights.find((f) => f.id === first.id)
+    if (!fight || fight.result !== undefined) break
+    state = playFightRound(state, today, first.id, marshalPlay(skirmishField(fight))).state
+  }
+  state = beginFight(state, today, second.id).state
+  const settled = settle(state, ledger, closeOf(today)).state
+  const tomorrow = addDays(today, 1)
+  assert.deepEqual(ledYesterday(settled, tomorrow), { day: today, fought: 2 })
+  assert.equal(heraldView(settled, tomorrow).lines.filter((l) => l.led).length, 2)
+  assert.deepEqual([fightResult(settled, today, first.id)?.marshal, fightResult(settled, today, second.id)?.marshal], [false, true])
+  assert.equal(ledYesterday(settle(ordered, ledger, closeOf(today)).state, tomorrow), null, 'nothing led, no link')
 })

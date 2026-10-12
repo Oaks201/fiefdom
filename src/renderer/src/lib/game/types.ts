@@ -394,6 +394,8 @@ export interface Skirmish {
   result?: 'rout' | 'victory' | 'defeat'
   /** Companies hired by an Order (Reserves) during the fight; their fee posts at the close. */
   hired?: number
+  /** The Marshal finished it at the close: the player opened it and left it unfinished. */
+  marshal?: boolean
 }
 
 /** The fights of one day the player chose to lead (D-12), and the day's Valor when they began. */

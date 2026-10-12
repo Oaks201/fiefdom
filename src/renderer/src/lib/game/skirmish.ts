@@ -303,7 +303,7 @@ function marshalFinish(fight: Skirmish): Skirmish {
 export function finishSkirmishes(state: CampaignState, day: ISODate): CampaignState {
   const sd = skirmishDayOf(state, day)
   if (!sd || !sd.fights.some((f) => f.begun && f.result === undefined)) return state
-  return withDay(state, { ...sd, fights: sd.fights.map((f) => (f.begun && f.result === undefined ? marshalFinish(f) : f)) })
+  return withDay(state, { ...sd, fights: sd.fights.map((f) => (f.begun && f.result === undefined ? { ...marshalFinish(f), marshal: true } : f)) })
 }
 
 /** The simulator's player, and a test's: starts the day's fights and has the Marshal play every one. */

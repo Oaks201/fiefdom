@@ -3,6 +3,7 @@ import { GiCrossedSwords, GiHornInternal, GiScrollQuill, GiSwordClash, GiSpeaker
 import type { ISODate } from '../../lib/game/types'
 import { battleNotices } from '../../lib/game/view/battle'
 import { heraldView, type HeraldSection } from '../../lib/game/view/shell'
+import { ledYesterday } from '../../lib/game/view/skirmish'
 import { useCampaignState } from '../../state/campaignHooks'
 import { useUI } from '../../state/ui'
 
@@ -16,7 +17,8 @@ const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
 
 /**
  * The Herald's dawn tidings (Ch 2): today's threats with their targets and bands, Grand Battle
- * warnings, yesterday's results, the world's news and rumors. In-app only (D-04): no
+ * warnings, yesterday's results (a battle the player led marked, with a link to its result and
+ * replay, D-12), the world's news and rumors. In-app only (D-04): no
  * notification ever leaves the window.
  */
 export function Herald({ today, compact = false }: { today: ISODate; compact?: boolean }): React.JSX.Element | null {
@@ -24,6 +26,7 @@ export function Herald({ today, compact = false }: { today: ISODate; compact?: b
   if (!campaign) return null
   const view = heraldView(campaign, today)
   const notices = battleNotices(campaign, today)
+  const led = ledYesterday(campaign, today)
   return (
     <section className={`panel herald ${compact ? 'herald--compact' : ''}`} aria-label="The Herald">
       <header className="panel__head">
@@ -61,9 +64,15 @@ export function Herald({ today, compact = false }: { today: ISODate; compact?: b
                 {lines.map((l, i) => (
                   <li key={`${l.textId}-${i}`} className="herald__line" data-text-id={l.textId}>
                     {l.text}
+                    {l.led && <span className="chip-mini chip-mini--led">You led it</span>}
                   </li>
                 ))}
               </ul>
+              {id === 'result' && led && (
+                <button type="button" className="btn btn--small btn--ghost herald__led" onClick={() => useUI.getState().openSkirmish(led.day)}>
+                  <GiSwordClash aria-hidden="true" /> {led.fought === 1 ? 'The battle you led: result and replay' : `The ${led.fought} battles you led: results and replays`}
+                </button>
+              )}
             </div>
           )
         })

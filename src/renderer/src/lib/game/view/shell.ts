@@ -93,6 +93,8 @@ export interface HeraldLine {
   /** A hex the line points at, for the map. */
   hexId?: string
   rival?: RivalId
+  /** A battle the player led on the battle map (D-12). */
+  led?: boolean
 }
 
 export interface HeraldView {
@@ -102,7 +104,7 @@ export interface HeraldView {
   lines: HeraldLine[]
 }
 
-function line(section: HeraldSection, textId: string, facts: TextFacts, extra: { hexId?: string; rival?: RivalId } = {}): HeraldLine {
+function line(section: HeraldSection, textId: string, facts: TextFacts, extra: { hexId?: string; rival?: RivalId; led?: boolean } = {}): HeraldLine {
   return { section, textId, facts, text: t(textId, facts), ...extra }
 }
 
@@ -150,17 +152,18 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       const facts: TextFacts = { hex: hexName(e.hexId), spoils: e.spoils ?? 0, tribute: e.tribute ?? 0 }
       if (e.rival) facts.rival = rivalName(e.rival)
       if (until) facts.until = until
-      if (e.grandIllusion) return line('result', 'battle.grandIllusion', facts, { hexId: e.hexId })
+      const led = e.led ? { led: true } : {}
+      if (e.grandIllusion) return line('result', 'battle.grandIllusion', facts, { hexId: e.hexId, ...led })
       if (e.threat === 'conquest') {
         const won = e.outcome !== 'defeat'
         const id = won ? (e.broken ? 'battle.conquest.broken' : 'battle.conquest.repelled') : e.contested ? 'battle.conquest.contested' : e.scorchedUntil ? 'battle.conquest.coreHeld' : 'battle.conquest.lost'
-        return line('result', id, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}) })
+        return line('result', id, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
       }
-      return line('result', `battle.${e.threat}.${e.outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}) })
+      return line('result', `battle.${e.threat}.${e.outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
     }
     case 'assault':
       if (e.outcome === 'revealed') return null
-      return line('result', `battle.assault.${e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId })
+      return line('result', `battle.assault.${e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
     case 'borderCampaign':
       return line('world', e.taken ? 'herald.borderCampaign.taken' : 'herald.borderCampaign.held', { rival: rivalName(e.attacker), other: rivalName(e.defender), hex: hexName(e.hexId) }, { hexId: e.hexId })
     case 'coalition':
