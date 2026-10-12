@@ -80,7 +80,7 @@ export function toHealerDay(s: DaySnapshot): HealerDay {
   }
 }
 
-/** The snapshots' weigh-ins in lb, one a week (D-11), oldest first (T05 reads weights in lb). */
+/** The snapshots' weigh-ins in lb, one a week (D-11, D-13), oldest first (T05 reads weights in lb). */
 export function weighInsOf(snapshots: readonly DaySnapshot[], weekStartsOn: WeekStartsOn): WeighIn[] {
   const all = snapshots.filter((s) => s.weightLb !== undefined).map((s) => ({ date: s.date, weight: s.weightLb as number }))
   return weeklyWeighIns(all, weekStartsOn)

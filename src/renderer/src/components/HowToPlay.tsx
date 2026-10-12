@@ -1,11 +1,16 @@
 import { useRef, type ReactNode } from 'react'
+import { WEEKDAYS } from '../lib/dates'
 import { formatNumber } from '../lib/format'
 import { numeral } from '../lib/game/effects'
 import { trust } from '../lib/game/land'
 import { RULES } from '../lib/game/rules'
 import { RIVAL_IDS } from '../lib/game/types'
 import { amount } from '../lib/game/view/refusals'
+import { weekCloseView } from '../lib/game/view/shell'
+import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
+import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
+import { weekCloseAt, weekCloseLeft } from './game/WeekClose'
 import { Modal } from './Modal'
 
 /** A share as a whole percent, e.g. 0.4 → "40%". */
@@ -77,7 +82,17 @@ export function HowToPlay(): React.JSX.Element | null {
   const open = useUI((s) => s.helpOpen)
   const setOpen = useUI((s) => s.setHelpOpen)
   const body = useRef<HTMLDivElement>(null)
+  const campaign = useCampaignState()
+  const campaignToday = useCampaignToday()
+  const ledgerWeekStartsOn = useLedgerData().settings.weekStartsOn
   if (!open) return null
+
+  // The campaign keeps the week it was founded with; without one, the ledger's setting.
+  const weekStartsOn = campaign?.campaign.weekStartsOn ?? ledgerWeekStartsOn
+  const firstDay = WEEKDAYS[weekStartsOn]
+  const lastDay = WEEKDAYS[(weekStartsOn + RULES.clock.daysPerWeek - 1) % RULES.clock.daysPerWeek]
+  const weighInDay = WEEKDAYS[RULES.clock.weighInWeekday]
+  const thisWeek = campaignToday ? weekCloseView(weekStartsOn, campaignToday) : null
 
   const rivals = RIVAL_IDS.length
   const c = RULES.contracts
@@ -124,7 +139,7 @@ export function HowToPlay(): React.JSX.Element | null {
             <b>Look at the map</b> on the Realm tab. Choose the hexes touching your land to see their garrisons, and assault one your companies can beat.
           </li>
           <li>
-            <b>Weigh in once a week</b>, on the week’s last day: that day the Chronicle shows the weight box and reminds you.
+            <b>Weigh in once a week</b>, on {weighInDay}: that day the Chronicle shows the weight box and reminds you, and that week’s close reads it.
           </li>
         </ol>
       )
@@ -164,10 +179,16 @@ export function HowToPlay(): React.JSX.Element | null {
       id: 'week',
       title: 'Every week',
       body: (
-        <p>
-          At the week’s close the step pool and the calorie average are judged, Momentum pays for your weight trend, villages you hold pay tithes, village courtships are decided, the
-          rivals take their turn, and the Crown’s Grace is checked.
-        </p>
+        <>
+          <p>
+            <b>The week</b> runs {firstDay} to {lastDay}. It closes at {dawn} on {firstDay} morning, the same moment that closes {lastDay}.
+            {thisWeek && ` This week closes at ${weekCloseAt(thisWeek)} (${weekCloseLeft(thisWeek)}).`} The Realm and Diplomacy pages show the date too.
+          </p>
+          <p>
+            At the week’s close the step pool and the calorie average are judged, Momentum pays for your weight trend, villages you hold pay tithes, village courtships are decided,
+            the rivals take their turn, and the Crown’s Grace is checked.
+          </p>
+        </>
       )
     },
     {
@@ -443,6 +464,10 @@ export function HowToPlay(): React.JSX.Element | null {
             <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark reaches it.
             Each one, once reached and its earliest week has come,
             opens something new: the Armory first, then building Wings, Elite companies and more items. A Milestone is never taken back.
+          </p>
+          <p>
+            <b>The weigh-in log</b> in the Chronicle lists each week’s weigh-in with its change since the one before, and notes the week each Milestone’s mark was reached and the
+            week it broke. Below it are the next Milestone, the Crown’s Grace and what Momentum paid at the last week’s close.
           </p>
           <p>
             <b>The Crown’s Grace</b> rises with steady Momentum over the weeks (levels I to {numeral(RULES.grace.thresholds.length)}) and makes the world gentler: lost land is easier to

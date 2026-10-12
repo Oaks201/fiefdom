@@ -34,7 +34,7 @@
  */
 import { grantTrophy, heldItems, nextTrophy } from './armory'
 import { CODEX, type Matchup, type MatchupId } from './codex'
-import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
+import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
@@ -382,7 +382,7 @@ function maxForetold(effects: Effects): number {
  */
 export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): CampaignState {
   if (!isPlayable(state) || day < state.campaign.startDate) return state
-  const lastOfWeek = addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
+  const lastOfWeek = weekCloseDay(day, weekStartsOn)
   const next = scheduleThreats(state, day, lastOfWeek)
   const combat = combatOf(next)
   const effects = realmEffects(next)

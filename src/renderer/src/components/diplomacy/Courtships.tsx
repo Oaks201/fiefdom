@@ -5,16 +5,18 @@ import { formatNumber } from '../../lib/format'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
 import { courtshipsView } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
-import { rivalName } from '../../lib/game/view/shell'
+import { rivalName, weekCloseView } from '../../lib/game/view/shell'
+import { weekCloseAt, weekCloseLeft } from '../game/WeekClose'
 import { BidForm } from './BidForm'
 
 /**
  * Courtships (Ch 6 "Influence"): open bids with their Offer at today's Trust and the slots used, a
  * new bid on any village touching your land, and past results from the log. Offers resolve at the
- * week close.
+ * week close, named with its date.
  */
 export function Courtships({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
   const view = useMemo(() => courtshipsView(campaign), [campaign])
+  const close = weekCloseView(campaign.campaign.weekStartsOn, today)
   const [chosen, setChosen] = useState<string>('')
   const village = view.villages.find((v) => v.hexId === chosen)
   return (
@@ -55,7 +57,10 @@ export function Courtships({ campaign, today }: { campaign: CampaignState; today
           </tbody>
         </table>
       )}
-      <p className="muted courtships__when">Offers resolve at the week close: the village defects when the Offer reaches its resistance; if it holds, half the bid comes back and its loyalty drops.</p>
+      <p className="muted courtships__when">
+        Offers resolve at the week close, {weekCloseAt(close)} ({weekCloseLeft(close)}): the village defects when the Offer reaches its resistance; if it holds, half the bid
+        comes back and its loyalty drops.
+      </p>
 
       <div className="courtships__new">
         <label className="field">

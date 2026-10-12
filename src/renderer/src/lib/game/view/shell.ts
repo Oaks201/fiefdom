@@ -1,13 +1,13 @@
 /**
- * View models for the campaign shell (T14): which pages show, the top bar, the Herald's dawn
- * tidings and the Homecoming after an absence. Pure; components only render what these return.
+ * View models for the campaign shell (T14): which pages show, the top bar, when the week closes,
+ * the Herald's dawn tidings and the Homecoming after an absence. Pure; components only render what these return.
  *
  * Hidden stays hidden (Convention 6): nothing here carries the benchmark, a rival's income,
  * Steadiness, or (unrevealed) a rival's treasury, army or a threat's exact strength. Every line of
  * narrative is a catalog slot with plain facts (`t(id, facts)`).
  */
 import { CODEX } from '../codex'
-import { addDays } from '../clock'
+import { addDays, diffDays, weekCloseDay } from '../clock'
 import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
@@ -19,7 +19,7 @@ import { realmConsistencyOn, type SettleSummary } from '../settle'
 import { isPlayable, openDayOf, weekOn } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId } from '../types'
+import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type WeekStartsOn } from '../types'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +79,25 @@ export function topBarView(state: CampaignState, today: ISODate = openDayOf(stat
     realmConsistencyPercent: percent(rc),
     grace: { level, textId: graceTextId(level), text: t(graceTextId(level)) }
   }
+}
+
+// ── The week close ───────────────────────────────────────────────────────────
+
+export interface WeekCloseView {
+  /** The week's last day; its close is the week close (A-04). */
+  lastDay: ISODate
+  /** The date on whose morning, at `time`, the week closes. */
+  closesOn: ISODate
+  /** The close's wall-clock time, "04:00". */
+  time: string
+  /** Days left in the week, today included: 1 when the week closes tonight. */
+  daysLeft: number
+}
+
+/** When the week holding `today` closes: at 04:00 on the morning after its last day (A-04). */
+export function weekCloseView(weekStartsOn: WeekStartsOn, today: ISODate): WeekCloseView {
+  const lastDay = weekCloseDay(today, weekStartsOn)
+  return { lastDay, closesOn: addDays(lastDay, 1), time: `${String(RULES.clock.dayCloseHour).padStart(2, '0')}:00`, daysLeft: diffDays(today, lastDay) + 1 }
 }
 
 // ── The Herald ───────────────────────────────────────────────────────────────

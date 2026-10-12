@@ -4,7 +4,8 @@ import { formatNumber, formatRep } from '../../lib/format'
 import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
 import type { CampaignState, ISODate } from '../../lib/game/types'
-import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInDay, weighInPrompt } from '../../lib/game/view/chronicle'
+import { weighInDay } from '../../lib/game/clock'
+import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
@@ -107,8 +108,8 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
 }
 
 /**
- * The weight box, on the week's weigh-in day only (D-11); any other day names that day instead. A
- * weight logged on another day before D-11 stays shown, so it can still be corrected.
+ * The weight box, on the week's weigh-in day (Monday, D-13) only; any other day names that day
+ * instead. A weight logged on another day stays shown, so it can still be corrected.
  */
 export function CampaignWeight({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
   const day = weighInDay(date, campaign.campaign.weekStartsOn)
@@ -126,7 +127,7 @@ export function CampaignWeight({ campaign, ledger, date, today }: { campaign: Ca
   )
 }
 
-/** The weekly weigh-in prompt, on the weigh-in day until its weight is logged (Ch 2, D-11). */
+/** The weekly weigh-in prompt, on the weigh-in day (Monday) until its weight is logged (Ch 2, D-13). */
 export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
   const prompt = weighInPrompt(weighIns(ledger), today, campaign.campaign.weekStartsOn)
   if (!prompt.due) return null
@@ -135,7 +136,7 @@ export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignS
     <div className="banner">
       <GiScales className="banner__icon" aria-hidden="true" />
       <span>
-        The week closes tonight. Step on the scale and note your weight below
+        Today is weigh-in day. Step on the scale and note your weight below
         {since !== null ? ` (the last weigh-in was ${since} ${since === 1 ? 'day' : 'days'} ago)` : ''}.
       </span>
     </div>

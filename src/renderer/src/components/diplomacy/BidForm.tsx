@@ -6,8 +6,10 @@ import { bidCheck, placeBid } from '../../lib/game/land'
 import { hexName } from '../../lib/game/map'
 import type { CampaignState, ISODate } from '../../lib/game/types'
 import { landRefusalLabel } from '../../lib/game/view/refusals'
+import { weekCloseView } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
 import { toast } from '../../state/toasts'
+import { weekCloseAt } from '../game/WeekClose'
 
 export interface BidFormProps {
   campaign: CampaignState
@@ -37,7 +39,7 @@ export function BidForm({ campaign, today, hexId, suggested, resistance, trust, 
     if (!valid) return
     if (!act((s) => placeBid(s, hexId, bid, today))) return
     sfx('quill')
-    toast(`Bid of ${formatNumber(bid)} placed on ${hexName(hexId)}. It resolves at the week close.`, 'success')
+    toast(`Bid of ${formatNumber(bid)} placed on ${hexName(hexId)}. It resolves at the week close, ${weekCloseAt(weekCloseView(campaign.campaign.weekStartsOn, today))}.`, 'success')
     onDone?.()
   }
 

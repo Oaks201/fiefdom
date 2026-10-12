@@ -12,6 +12,7 @@ import {
   isWeekCloseDay,
   nextDawnDay,
   openDay,
+  weekCloseDay,
   weekOf,
   weekdayOf
 } from '../../src/renderer/src/lib/game/clock'
@@ -116,10 +117,14 @@ test('A-04: week 1 is a full week when the campaign starts on weekStartsOn', () 
   assert.equal(campaignWeek('2026-10-11', '2026-10-12', 1), 2)
 })
 
-test('weekOf and isWeekCloseDay follow settings.weekStartsOn', () => {
+test('weekOf, weekCloseDay and isWeekCloseDay follow settings.weekStartsOn', () => {
   assert.equal(weekOf('2026-10-08', 1), '2026-10-05')
   assert.equal(weekOf('2026-10-08', 0), '2026-10-04')
   assert.equal(weekOf('2026-10-05', 1), '2026-10-05')
+  assert.equal(weekCloseDay('2026-10-08', 1), '2026-10-11')
+  assert.equal(weekCloseDay('2026-10-11', 1), '2026-10-11')
+  assert.equal(weekCloseDay('2026-10-08', 0), '2026-10-10')
+  assert.equal(isWeekCloseDay(weekCloseDay('2026-10-06', 1), 1), true)
   assert.equal(isWeekCloseDay('2026-10-11', 1), true) // Sunday closes a Monday week
   assert.equal(isWeekCloseDay('2026-10-10', 1), false)
   assert.equal(isWeekCloseDay('2026-10-10', 0), true) // Saturday closes a Sunday week

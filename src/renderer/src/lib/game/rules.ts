@@ -45,6 +45,8 @@ const RULES_TABLE = {
     correctionGraceDays: 1,
     foundingGrant: 100,
     daysPerWeek: 7,
+    /** The weekly weigh-in day (D-13): Monday, whatever day the week starts on (0 = Sunday). */
+    weighInWeekday: 1,
     /** "Away" means no launch for this many days (A-10); also opens the Homecoming (A-45). */
     absenceDays: 14,
     /** Homecoming shows after settling this many days in catch-up (A-45). */

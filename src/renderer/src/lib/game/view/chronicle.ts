@@ -2,12 +2,12 @@
  * View models for the Chronicle and its Milestones and Grace panel (T14; Ch 2, Ch 4, Ch 5, Ch 9,
  * Ch 10, Ch 16): the week's step pace, the week's calories against the limit with the floor
  * marked, today's Valor in its three parts, the weekly weigh-in prompt, the Healer's check-ins,
- * the reputation a day earned, and the Milestones.
+ * the reputation a day earned, the Milestones and the weigh-in log.
  *
  * Plain and never shaming: a short day is a fact, not a verdict. The Milestone panel never says
  * what a future Milestone unlocks, and the Grace shows as its plain description, never Steadiness.
  */
-import { addDays, diffDays, weekOf } from '../clock'
+import { addDays, diffDays, weekCloseDay, weekOf, weighInDay } from '../clock'
 import { dailyIncome, roundPosting } from '../economy'
 import { realmEffects } from '../effects'
 import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
@@ -116,24 +116,20 @@ export function liveValor(state: CampaignState, ledger: Ledger, date: ISODate): 
 
 // ── The weigh-in ─────────────────────────────────────────────────────────────
 
-/** The weigh-in day of `date`'s week (D-11): the week's last day, whose close is the week close. */
-export function weighInDay(date: ISODate, weekStartsOn: WeekStartsOn): ISODate {
-  return addDays(weekOf(date, weekStartsOn), RULES.clock.daysPerWeek - 1)
-}
-
 export interface WeighInPrompt {
   /** Ask for the week's weigh-in: today is the weigh-in day and nothing is logged on it yet. */
   due: boolean
-  weekEnds: ISODate
+  /** This week's weigh-in day. */
+  day: ISODate
   /** The latest weigh-in, in the ledger's unit. */
   last: WeighIn | null
 }
 
-/** The weekly weigh-in prompt (Ch 2, D-11): on the weigh-in day, until its weight is logged. */
+/** The weekly weigh-in prompt (Ch 2, D-13): on the weigh-in day, until its weight is logged. */
 export function weighInPrompt(weighIns: readonly WeighIn[], today: ISODate, weekStartsOn: WeekStartsOn): WeighInPrompt {
-  const weekEnds = weighInDay(today, weekStartsOn)
+  const day = weighInDay(today, weekStartsOn)
   const sorted = [...weighIns].filter((w) => w.date <= today).sort((a, b) => a.date.localeCompare(b.date))
-  return { due: today === weekEnds && sorted.at(-1)?.date !== today, weekEnds, last: sorted.at(-1) ?? null }
+  return { due: today === day && sorted.at(-1)?.date !== today, day, last: sorted.at(-1) ?? null }
 }
 
 // ── Reputation a day earned ──────────────────────────────────────────────────
@@ -221,6 +217,65 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
     grace: { level, textId: graceTextId(level), text: t(graceTextId(level)) },
     momentumReputation: momentum === null ? null : roundPosting(momentum)
   }
+}
+
+// ── The weigh-in log (D-13) ──────────────────────────────────────────────────
+
+export interface WeighInNote {
+  /** Broken at this week's close, or its mark reached by this weigh-in while its week was still to come. */
+  kind: 'broken' | 'reached'
+  index: number
+  /** The mark in the campaign's unit. */
+  mark: number
+  keeping: boolean
+  earliestWeek: number
+  byDispensation?: boolean
+}
+
+export interface WeighInRow {
+  /** The week's weigh-in day, its Monday (D-13): the row's label. */
+  day: ISODate
+  /** The day the counted reading was taken: the weigh-in day itself from D-13 on; null for a week with no weigh-in. */
+  date: ISODate | null
+  /** The campaign week; 0 for a week that closed before the campaign began. */
+  week: number
+  /** In the campaign's unit; null for a week with no weigh-in. */
+  weight: number | null
+  /** Since the weigh-in before it, in the campaign's unit; null for the first. */
+  change: number | null
+  notes: WeighInNote[]
+}
+
+/**
+ * The Chronicle's weigh-in log (D-13), newest first: one row for each week's weigh-in day, with the
+ * weigh-in the game reads for that week (`weeklyWeighIns`) and its change since the one before,
+ * noting each Milestone broken at that week's close and each mark reached while its week was still
+ * to come. A Milestone broken in a week with no weigh-in (by Dispensation, or a mark reached
+ * earlier) gets a row of its own. `weighInsLb` are the player's weigh-ins in lb.
+ */
+export function weighInLog(state: CampaignState, weighInsLb: readonly WeighIn[]): WeighInRow[] {
+  const { weekStartsOn, unit } = state.campaign
+  const weekly = weeklyWeighIns(weighInsLb, weekStartsOn)
+  const rows = new Map<ISODate, WeighInRow>()
+  const rowOf = (date: ISODate): WeighInRow => {
+    const day = weighInDay(date, weekStartsOn)
+    const row = rows.get(day) ?? { day, date: null, week: weekOn(state, weekCloseDay(day, weekStartsOn)), weight: null, change: null, notes: [] }
+    rows.set(day, row)
+    return row
+  }
+  weekly.forEach((w, i) => {
+    const change = i === 0 ? null : Math.round(lbTo(w.weight - weekly[i - 1].weight, unit) * 10) / 10 // rules-ok: a tenth
+    Object.assign(rowOf(w.date), { date: w.date, weight: inUnit(w.weight, unit), change })
+  })
+  for (const m of state.weight.milestones) {
+    const note = { index: m.index, mark: inUnit(m.mark, unit), keeping: m.keeping === true, earliestWeek: m.earliestWeek }
+    if (m.brokenOn) rowOf(m.brokenOn).notes.push({ ...note, kind: 'broken', byDispensation: m.byDispensation === true })
+    // A Milestone broken by Dispensation may have its mark reached only later; that is no longer news.
+    const upTo = m.brokenOn ?? weekly.at(-1)?.date
+    const reached = m.keeping || !upTo ? null : markReachedOn(weekly, m.mark, upTo)
+    if (reached && (!m.brokenOn || weekOf(reached, weekStartsOn) !== weekOf(m.brokenOn, weekStartsOn))) rowOf(reached).notes.push({ ...note, kind: 'reached' })
+  }
+  return [...rows.values()].sort((a, b) => b.day.localeCompare(a.day))
 }
 
 // ── The Healer's check-ins (Ch 16) ───────────────────────────────────────────

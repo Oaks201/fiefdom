@@ -568,64 +568,75 @@
   gap: 14px;
 }
 
-/* -- Milestones ----------------------------------------------------------- */
-.milestones__list {
+/* -- The weigh-in log (D-13) --------------------------------------------- */
+.weighin-log__list {
+  max-height: 360px;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
 }
 
-.milestone {
+.weighin-log__row {
   display: grid;
-  grid-template-columns: 26px 92px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  grid-template-columns: 1fr auto 52px;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 5px 4px;
   border-bottom: 1px solid var(--rule-soft);
   font-size: 15px;
 }
 
-.milestone__index {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  font: 700 13px var(--font-caps);
-  border: 1px solid var(--rule);
-  border-radius: 50%;
-}
-
-.milestone.is-broken .milestone__index {
-  color: #fff4d6;
-  background: var(--gold-deep);
-  border-color: var(--gold-deep);
-}
-
-.milestone.is-next {
+.weighin-log__row.is-milestone {
   background: rgba(201, 150, 46, 0.12);
 }
 
-.milestone__mark {
-  font-weight: 700;
-}
-
-.milestone__state {
+.weighin-log__week {
+  margin-left: 8px;
+  font-size: 13px;
   color: var(--ink-3);
 }
 
-.lock {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.lock.is-met {
-  color: var(--forest);
+.weighin-log__weight {
   font-weight: 700;
+  text-align: right;
 }
 
-.milestones__grace {
+.weighin-log__change {
+  font-weight: 600;
+  text-align: right;
+  color: var(--ink-3);
+}
+
+.weighin-log__change.is-down {
+  color: var(--forest);
+}
+
+.weighin-log__change.is-up {
+  color: var(--crimson);
+}
+
+.weighin-log__notes {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--gold-deep);
+}
+
+.weighin-log__notes li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.weighin-log__next {
   margin-top: 10px;
+}
+
+.weighin-log__grace {
+  margin-top: 8px;
   font-style: italic;
 }
 
@@ -732,6 +743,19 @@
 }
 
 /* -- Page shells ---------------------------------------------------------- */
+.week-close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-week {
+  justify-content: center;
+  margin: 6px auto 0;
+  font-size: 15px;
+  color: var(--ink-3);
+}
+
 .game-page__art {
   display: flex;
   justify-content: center;
