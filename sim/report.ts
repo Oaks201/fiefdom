@@ -648,7 +648,9 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
       ])
     )
   )
-  say('*Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. Until a player takes land, its purse can buy nothing but courtships of the villages in reach and, once Milestone 1 breaks, Armory items: no tier, castle tier or Crossing.*')
+  say(
+    `*Near the founding land, Tier II needs ${RULES.buildings.tierDominion[1]} Dominion in its own direction (the Hearth's two wild hexes give each building 1), the founding grant is ${RULES.clock.foundingGrant}, and a ring-2 den's garrison is ${fmt(RULES.land.garrison.beasts * RULES.land.baseGarrison[1], 1)} (D-14).*`
+  )
 
   say('### Border Campaigns, the first month, Grand Battles and Ascendancy (greedy)')
   const measureRows: string[][] = []

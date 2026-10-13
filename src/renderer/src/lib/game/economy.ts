@@ -190,7 +190,7 @@ export function tribute(purse: PurseState, date: ISODate, amount: number, source
   return post(purse, { date, kind: 'tribute', amount, source })
 }
 
-/** A new campaign's purse: the founding grant of 100. */
+/** A new campaign's purse: the founding grant (Ch 5 rule 3; 250 by D-14). */
 export function foundingPurse(date: ISODate): PurseState {
   return post({ events: [] }, { date, kind: 'earn', amount: RULES.clock.foundingGrant, source: 'founding' })
 }

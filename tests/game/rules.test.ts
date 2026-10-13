@@ -20,7 +20,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Clock',
     parameter: 'Day close; correction grace; founding grant',
-    keys: { 'clock.dayCloseHour': 4, 'clock.correctionGraceDays': 1, 'clock.foundingGrant': 100 }
+    keys: { 'clock.dayCloseHour': 4, 'clock.correctionGraceDays': 1, 'clock.foundingGrant': 250 } // D-14: the book's 100
   },
   {
     area: 'Contracts',
@@ -154,7 +154,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Buildings',
     parameter: 'Tier II / III / IV / V Dominion',
-    keys: { 'buildings.tierDominion': [0, 8, 24, 68, 68] }
+    keys: { 'buildings.tierDominion': [0, 1, 24, 68, 68] } // D-14: the book's Tier II is 8
   },
   {
     area: 'Buildings',
@@ -189,7 +189,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Land',
     parameter: 'Base garrison, rings 1–5',
-    keys: { 'land.baseGarrison': [15, 22, 55, 115, 200] }
+    keys: { 'land.baseGarrison': [15, 18, 55, 115, 200] } // D-14: the book's ring 2 is 22
   },
   {
     area: 'Land',
@@ -323,11 +323,12 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
     area: 'Rivals',
     parameter: 'Benchmark b by weeks 1–8 / 9–20 / 21–36 / 37+',
     keys: {
+      // D-14: the book's 72 / 78 / 82 / 86% × 1.05
       'rivals.benchmark.phases': [
-        { fromWeek: 1, b: 0.72 },
-        { fromWeek: 9, b: 0.78 },
-        { fromWeek: 21, b: 0.82 },
-        { fromWeek: 37, b: 0.86 }
+        { fromWeek: 1, b: 0.756 },
+        { fromWeek: 9, b: 0.819 },
+        { fromWeek: 21, b: 0.861 },
+        { fromWeek: 37, b: 0.903 }
       ],
       'rivals.benchmark.graceEase': [0, 0, 0.03, 0.06],
       'rivals.benchmark.floor': 0.7
@@ -492,8 +493,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 2.0.0', () => {
-  assert.equal(RULES.ruleVersion, '2.0.0')
+test('RULES is versioned 2.1.0 (D-14)', () => {
+  assert.equal(RULES.ruleVersion, '2.1.0')
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {
@@ -520,8 +521,8 @@ test('RULES is deep-frozen: mutating it throws in strict mode', () => {
   assert.ok(Object.isFrozen(RULES.rivals.budget.orc))
 })
 
-test('base(ring) is 15 / 22 / 55 / 115 / 200 for rings 1 to 5', () => {
-  assert.deepEqual([1, 2, 3, 4, 5].map(base), [15, 22, 55, 115, 200])
+test('base(ring) is 15 / 18 / 55 / 115 / 200 for rings 1 to 5 (ring 2 by D-14)', () => {
+  assert.deepEqual([1, 2, 3, 4, 5].map(base), [15, 18, 55, 115, 200])
   assert.throws(() => base(0), RangeError)
   assert.throws(() => base(6), RangeError)
 })

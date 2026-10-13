@@ -210,7 +210,7 @@ test('A ledger with no data settles without throwing and pays no behavior income
   // Daily battles (T08) still pay spoils and take tribute; nothing else moves the purse.
   const behavior = state.purse.events.filter((e) => !COMBAT_PURSE.includes(e.kind))
   assert.deepEqual(behavior.map((e) => e.source), ['founding'])
-  assert.equal(balance({ events: behavior }), 100)
+  assert.equal(balance({ events: behavior }), 250)
   assert.deepEqual(state.weight.weeks.map((w) => [w.week, w.momentum]), [[1, 0], [2, 0], [3, 0], [4, 0]])
   assert.deepEqual(events.filter((e) => e.kind === 'weekClosed').map((e) => e.kind === 'weekClosed' && [e.week, e.income]), [
     [1, 0],

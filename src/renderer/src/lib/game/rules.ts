@@ -36,14 +36,15 @@ export type LengthUnlock =
 type PerRival<T> = Record<RivalId, T>
 
 const RULES_TABLE = {
-  ruleVersion: '2.0.0',
+  ruleVersion: '2.1.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
     dayCloseHour: 4,
     /** A settled day can be corrected until the following close (Ch 2 rule 4, A-02). */
     correctionGraceDays: 1,
-    foundingGrant: 100,
+    /** D-14: a first courtship and a first Tier II in the opening days (the book's 100 couldn't buy Tier II at 150). */
+    foundingGrant: 250,
     daysPerWeek: 7,
     /** The weekly weigh-in day (D-13): Monday, whatever day the week starts on (0 = Sunday). */
     weighInWeekday: 1,
@@ -189,7 +190,8 @@ const RULES_TABLE = {
   },
 
   buildings: {
-    tierDominion: [0, 8, 24, 68, 68],
+    /** D-14: Tier II needs 1 (the Hearth's wild hexes give each building 1; the book's 8 needed a ring-2 den first). */
+    tierDominion: [0, 1, 24, 68, 68],
     tierCost: [0, 150, 450, 1_100, 1_800],
     pureCompanyPower: [5, 9, 14, 21, 30],
     /** Ch 7: each tier's effect is that tier's total, not cumulative (A-31). */
@@ -239,8 +241,8 @@ const RULES_TABLE = {
   },
 
   land: {
-    /** base(ring) for rings 1 to 5: garrisons and threat strength. */
-    baseGarrison: [15, 22, 55, 115, 200],
+    /** base(ring) for rings 1 to 5: garrisons and threat strength. D-14: ring 2 is 18 (the book's 22). */
+    baseGarrison: [15, 18, 55, 115, 200],
     garrison: { beasts: 0.9, villageMilitia: 0.6, fortificationPerLevel: 0.25 },
     rivalGarrisonMult: { orc: 1.0, goblin: 0.9, dwarf: 1.3, archmage: 1.1 } as PerRival<number>, // TUNE (A-17)
     /** Fortification cost × ring, levels 1 to 3. */
@@ -397,13 +399,16 @@ const RULES_TABLE = {
   },
 
   rivals: {
-    /** The hidden benchmark consistency b by campaign week, and the contract L it assumes. */
+    /**
+     * The hidden benchmark consistency b by campaign week, and the contract L it assumes. D-14:
+     * the book's 72 / 78 / 82 / 86% × 1.05, so weak habits still fall behind after the faster opening.
+     */
     benchmark: {
       phases: [
-        { fromWeek: 1, b: 0.72 },
-        { fromWeek: 9, b: 0.78 },
-        { fromWeek: 21, b: 0.82 },
-        { fromWeek: 37, b: 0.86 }
+        { fromWeek: 1, b: 0.756 },
+        { fromWeek: 9, b: 0.819 },
+        { fromWeek: 21, b: 0.861 },
+        { fromWeek: 37, b: 0.903 }
       ],
       contractMultiplier: [
         { fromWeek: 1, L: 1.0 },

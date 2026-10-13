@@ -328,9 +328,9 @@ test('Ch 6 and A-17: starting garrisons by holder', () => {
   const close = (actual: number, expected: number, what: string): void =>
     assert.ok(Math.abs(actual - expected) < 1e-9, `${what}: ${actual} ≠ ${expected}`)
   close(hex(map, -1, 0).garrison, 0.9 * 15, 'Hearth wild hex (beasts)')
-  close(hex(map, 0, -2).garrison, 0.9 * 22, 'ring-2 road den')
+  close(hex(map, 0, -2).garrison, 0.9 * 18, 'ring-2 road den') // D-14: ring 2's base is 18
   for (const v of map.filter((h) => h.village && h.owner === 'neutral')) {
-    close(v.garrison, 0.6 * [15, 22, 55, 115, 200][v.ring - 1], `village militia ${v.id}`)
+    close(v.garrison, 0.6 * [15, 18, 55, 115, 200][v.ring - 1], `village militia ${v.id}`)
   }
   const mult: Record<RivalId, number> = { orc: 1.0, goblin: 0.9, dwarf: 1.3, archmage: 1.1 }
   for (const rival of RIVALS) {

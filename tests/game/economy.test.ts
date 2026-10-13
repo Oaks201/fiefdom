@@ -139,10 +139,10 @@ test('The Merchant Hall Tier I bonus turns a 70 gain into 71.4 (Ch 5)', () => {
 
 // ── The purse ────────────────────────────────────────────────────────────────
 
-test('The founding grant is 100 (Ch 5 rule 3)', () => {
+test('The founding grant is 250 (Ch 5 rule 3, D-14)', () => {
   const purse = foundingPurse(DAY)
-  assert.equal(balance(purse), 100)
-  assert.deepEqual(purse.events[0], { id: 'pe-1', date: DAY, kind: 'earn', amount: 100, source: 'founding' })
+  assert.equal(balance(purse), 250)
+  assert.deepEqual(purse.events[0], { id: 'pe-1', date: DAY, kind: 'earn', amount: 250, source: 'founding' })
 })
 
 test('Purse: a 50 tribute on a 30 balance takes 30 and leaves 0 (Ch 5 rule 2)', () => {

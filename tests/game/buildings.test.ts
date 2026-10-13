@@ -31,18 +31,18 @@ function company(state: CampaignState, id: string) {
 
 // ── Building tiers ───────────────────────────────────────────────────────────
 
-test('Ch 7: Tier II is refused at Dominion 7 or 149 reputation and bought at Dominion 8 and 150', () => {
-  const short = withPurse(withDominion(realm(), 'barracks', 7), 500)
-  assert.equal(dominion(short.hexes, 'player').barracks, 7)
-  const atSeven = buyTier(short, 'barracks', TODAY)
-  assert.equal(atSeven.ok, false)
-  assert.deepEqual(atSeven.reason, { code: 'dominion', needed: 8, have: 7 })
-  assert.equal(atSeven.state, short)
+test('Ch 7, D-14: Tier II is refused at Dominion 0 or 149 reputation and bought at Dominion 1 and 150', () => {
+  const short = withPurse(realm(), 500)
+  assert.equal(dominion(short.hexes, 'player').barracks, 0)
+  const atZero = buyTier(short, 'barracks', TODAY)
+  assert.equal(atZero.ok, false)
+  assert.deepEqual(atZero.reason, { code: 'dominion', needed: 1, have: 0 })
+  assert.equal(atZero.state, short)
 
-  const poor = withPurse(withDominion(realm(), 'barracks', 8), 149)
+  const poor = withPurse(withDominion(realm(), 'barracks', 1), 149)
   assert.deepEqual(buyTier(poor, 'barracks', TODAY).reason, { code: 'reputation', needed: 150, have: 149 })
 
-  const ready = withPurse(withDominion(realm(), 'barracks', 8), 150)
+  const ready = withPurse(withDominion(realm(), 'barracks', 1), 150)
   const bought = buyTier(ready, 'barracks', TODAY)
   assert.equal(bought.ok, true)
   assert.equal(bought.cost, 150)
@@ -87,9 +87,9 @@ test('Ch 7 / A-42: Tier V needs the matching rival resolved and Milestone 6', ()
   assert.deepEqual(tierOffer(bought.state, 'foundry'), { ok: false, reason: { code: 'maxed' }, next: 5, cost: 0 })
 })
 
-test('Ch 7: the Dominion and reputation table for Tiers II to V', () => {
+test('Ch 7: the Dominion and reputation table for Tiers II to V (Tier II by D-14)', () => {
   const needs = [
-    [1, 8, 150],
+    [1, 1, 150],
     [2, 24, 450],
     [3, 68, 1_100]
   ]

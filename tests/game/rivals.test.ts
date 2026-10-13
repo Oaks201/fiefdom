@@ -101,18 +101,18 @@ test('Test 5: BI(0.80, 1.7) = 344.53', () => {
   near(benchmarkIncome(0.8, 1.7), 344.53, 0.01)
 })
 
-test('Ch 12: b and L by week — 1 → 0.72 / 1.0; 3 → 0.72 / 1.4; 9 → 0.78 / 1.4; 10 → 0.78 / 1.7; 21 → 0.82 / 2.0; 37 → 0.86 / 2.0', () => {
+test('Ch 12, D-14: b and L by week — 1 → 0.756 / 1.0; 3 → 0.756 / 1.4; 9 → 0.819 / 1.4; 10 → 0.819 / 1.7; 21 → 0.861 / 2.0; 37 → 0.903 / 2.0', () => {
   const cases: [number, number, number][] = [
-    [1, 0.72, 1.0],
-    [2, 0.72, 1.0],
-    [3, 0.72, 1.4],
-    [8, 0.72, 1.4],
-    [9, 0.78, 1.4],
-    [10, 0.78, 1.7],
-    [20, 0.78, 1.7],
-    [21, 0.82, 2.0],
-    [36, 0.82, 2.0],
-    [37, 0.86, 2.0]
+    [1, 0.756, 1.0],
+    [2, 0.756, 1.0],
+    [3, 0.756, 1.4],
+    [8, 0.756, 1.4],
+    [9, 0.819, 1.4],
+    [10, 0.819, 1.7],
+    [20, 0.819, 1.7],
+    [21, 0.861, 2.0],
+    [36, 0.861, 2.0],
+    [37, 0.903, 2.0]
   ]
   for (const [w, b, L] of cases) {
     near(benchmarkConsistency(w), b)
@@ -120,22 +120,22 @@ test('Ch 12: b and L by week — 1 → 0.72 / 1.0; 3 → 0.72 / 1.4; 9 → 0.78 
   }
 })
 
-test('Ch 12: Grace II lowers b 3 points and Grace III 6 (week 40 at Grace III → 0.80); a forced Grace III in week 1 stops at the 0.70 floor', () => {
-  near(benchmarkConsistency(40, 3), 0.8)
-  near(benchmarkConsistency(40, 2), 0.83)
-  near(benchmarkConsistency(40, 1), 0.86)
+test('Ch 12, D-14: Grace II lowers b 3 points and Grace III 6 (week 40 at Grace III → 0.843); a forced Grace III in week 1 stops at the 0.70 floor', () => {
+  near(benchmarkConsistency(40, 3), 0.843)
+  near(benchmarkConsistency(40, 2), 0.873)
+  near(benchmarkConsistency(40, 1), 0.903)
   near(benchmarkConsistency(1, 3), 0.7)
-  near(benchmarkConsistency(1, 2), 0.7)
+  near(benchmarkConsistency(1, 2), 0.726)
 })
 
 test('Ch 12: rival income is BI × its multiplier + 4 × ring per village it holds, prorated in a partial week 1 (A-04)', () => {
   const state = realm()
-  const bi = benchmarkIncome(0.72, 1.0)
+  const bi = benchmarkIncome(0.756, 1.0)
   // Every rival starts with its Gate and two March villages, all in ring 5: 3 × 4 × 5 = 60.
   near(rivalIncome(state, 'goblin', 1), bi * 1.1 + 60)
   near(rivalIncome(state, 'orc', 1), bi * 0.95 + 60)
   near(rivalIncome(state, 'orc', 1, 4), ((bi * 0.95 + 60) * 4) / 7)
-  near(rivalIncome(withGrace(state, 3), 'dwarf', 40), benchmarkIncome(0.8, 2.0) + 60)
+  near(rivalIncome(withGrace(state, 3), 'dwarf', 40), benchmarkIncome(0.843, 2.0) + 60)
 })
 
 test('Ch 12: each point of army power costs 10 at AV 0 and 20 at AV 150', () => {

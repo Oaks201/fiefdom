@@ -34,7 +34,7 @@ test('T14: the new pages appear only once a campaign exists', () => {
 test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consistency and the Grace in plain words', () => {
   const state = founded()
   const bar = topBarView(state)
-  assert.equal(bar.purse, 100)
+  assert.equal(bar.purse, 250)
   assert.equal(bar.realmConsistency, 0)
   assert.deepEqual(bar.grace, { level: 0, textId: 'herald.grace.0', text: t('herald.grace.0') })
   const later = settle(state, LEDGER, chicago(addDays(START, 14))).state
