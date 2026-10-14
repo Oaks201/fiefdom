@@ -10,7 +10,7 @@
  * Shared by many tasks: append, don't reorganize. Change values between campaigns, never
  * during one, and bump `ruleVersion` when you do.
  */
-import type { BuildingTier, CastleTier, Disposition, Reach, RivalId, Tag } from './types'
+import type { BuildingTier, CastleTier, Disposition, Reach, RivalId, Tag, ThreatKind } from './types'
 
 export type DeepReadonly<T> = T extends (infer U)[]
   ? readonly DeepReadonly<U>[]
@@ -36,7 +36,7 @@ export type LengthUnlock =
 type PerRival<T> = Record<RivalId, T>
 
 const RULES_TABLE = {
-  ruleVersion: '2.1.0',
+  ruleVersion: '2.2.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -192,7 +192,8 @@ const RULES_TABLE = {
   buildings: {
     /** D-14: Tier II needs 1 (the Hearth's wild hexes give each building 1; the book's 8 needed a ring-2 den first). */
     tierDominion: [0, 1, 24, 68, 68],
-    tierCost: [0, 150, 450, 1_100, 1_800],
+    /** D-15: Tiers III to V cost twice the book's 450 / 1,100 / 1,800, so the build lasts the campaign. */
+    tierCost: [0, 150, 900, 2_200, 3_600],
     pureCompanyPower: [5, 9, 14, 21, 30],
     /** Ch 7: each tier's effect is that tier's total, not cumulative (A-31). */
     merchantHall: {
@@ -217,7 +218,8 @@ const RULES_TABLE = {
     /** Building tiers needed for castle tiers I to IV. Tier V needs every rival resolved. */
     tierSum: [0, 8, 12, 16],
     /** Cost of castle tiers I to IV. Tier V is never bought. */
-    tierCost: [0, 250, 750, 1_500],
+    /** D-15: Castle III costs 1.5 × the book's 750 and Castle IV twice its 1,500. */
+    tierCost: [0, 250, 1_125, 3_000],
     banners: [2, 3, 4, 5, 6],
     walls: [4, 8, 14, 22, 30],
     /** Castle IV allows a second daily assault. */
@@ -225,7 +227,8 @@ const RULES_TABLE = {
   },
 
   crossings: {
-    stageCost: [200, 600, 1_200],
+    /** D-15: stages II and III cost twice the book's 600 / 1,200. */
+    stageCost: [200, 1_200, 2_400],
     hybridPower: [12, 18, 27],
     /** Both buildings need this tier for stages I, II and III. */
     stageBuildingTier: [2, 3, 4]
@@ -243,6 +246,12 @@ const RULES_TABLE = {
   land: {
     /** base(ring) for rings 1 to 5: garrisons and threat strength. D-14: ring 2 is 18 (the book's 22). */
     baseGarrison: [15, 18, 55, 115, 200],
+    /**
+     * D-15: the wilds grow stronger hex by hex. A neutral hex's garrison is its kind's share (beasts
+     * or militia, below) of a value spread evenly, in a seeded order, from `low` to `high` across its
+     * ring, so there is always a next hex just past the army's reach. By ring, 1 to 5. TUNE.
+     */
+    wildRange: { low: [15, 18, 28, 50, 110], high: [15, 18, 95, 200, 280] },
     garrison: { beasts: 0.9, villageMilitia: 0.6, fortificationPerLevel: 0.25 },
     rivalGarrisonMult: { orc: 1.0, goblin: 0.9, dwarf: 1.3, archmage: 1.1 } as PerRival<number>, // TUNE (A-17)
     /** Fortification cost × ring, levels 1 to 3. */
@@ -336,6 +345,12 @@ const RULES_TABLE = {
     targetRingExponent: 1.5,
     /** T08: tidings band a threat by its strength over the defense's Army: Weaker, Matched, Stronger, Overwhelming. */
     strengthBands: [0.8, 1.25, 2], // TUNE (A-133)
+    /**
+     * D-15: a defense routed by these threats (their strength at least `routedAt` × the Defense) on a
+     * hex in this ring or beyond that is not a village returns the hex to the wilds instead of
+     * scorching it. A narrower loss scorches it as before. TUNE.
+     */
+    wildsReclaim: { minRing: 3, threats: ['beasts', 'mythic'] as ThreatKind[], routedAt: 1.25 },
     /** T08: tidings are fixed for every foretold day, but never further ahead than this. */
     maxForetellDays: 3
   },

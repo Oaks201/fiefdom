@@ -26,8 +26,8 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { GRAND_HOOKS, announceGrandBattle, firstFreeDay, pendingBattles, siegeNotBefore, type OutcomeContext } from './grand'
 import { defectionTally, sellPrice } from './land'
-import { borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches } from './map'
-import { RULES, base } from './rules'
+import { borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches, wildGarrison } from './map'
+import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { holdings, playerPower, rivalIncome, rivalPower, sharedBorder, threatOf, treasuryBand } from './rivals'
 import { refreshRoster } from './roster'
@@ -90,7 +90,7 @@ function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, 
         if (h.owner !== rival) return h
         emit('hexTransfer', { hexId: h.id, from: rival, to: 'neutral', how: 'event' })
         if (h.id === capital || h.kind === 'realm' || h.kind === 'capital') return { ...h, owner: 'neutral', garrison: 0, garrisonDamage: 0, fortification: 0, ruins: true }
-        const garrison = h.ring >= 1 && h.ring <= RULES.land.claimableRings.max ? base(h.ring) * (h.village ? RULES.land.garrison.villageMilitia : RULES.land.garrison.beasts) : 0
+        const garrison = h.ring >= 1 && h.ring <= RULES.land.claimableRings.max ? wildGarrison(state.campaign.seed, h, h.village !== undefined) : 0
         const out: HexState = { ...h, owner: 'neutral', garrison, garrisonDamage: 0, fortification: 0 }
         if (h.village) out.village = { loyalty: h.village.loyalty * RULES.world.fallout.conqueredLoyaltyMult }
         return out

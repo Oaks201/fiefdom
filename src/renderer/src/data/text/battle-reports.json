@@ -11,6 +11,10 @@
     "template": "Beasts attacked {hex}: lost. Tribute {tribute}. Scorched until {until}.",
     "final": null
   },
+  "battle.beasts.overrun": {
+    "template": "Beasts attacked {hex}: lost. Tribute {tribute}. {hex} returns to the wilds.",
+    "final": null
+  },
   "battle.mythic.rout": {
     "template": "Mythic attack on {hex}: routed. Spoils {spoils}.",
     "final": null
@@ -21,6 +25,10 @@
   },
   "battle.mythic.defeat": {
     "template": "Mythic attack on {hex}: lost. Tribute {tribute}. Scorched until {until}.",
+    "final": null
+  },
+  "battle.mythic.overrun": {
+    "template": "Mythic attack on {hex}: lost. Tribute {tribute}. {hex} returns to the wilds.",
     "final": null
   },
   "battle.raid.rout": {

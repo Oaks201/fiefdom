@@ -12,7 +12,7 @@
  */
 import { CODEX } from './codex'
 import { RULES, base } from './rules'
-import { stream } from './rng'
+import { shuffle, stream } from './rng'
 import { RIVAL_IDS, type BuildingId, type FrontId, type HexKind, type HexState, type ISODate, type Land, type Owner, type RivalId } from './types'
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
@@ -291,6 +291,45 @@ export function isClaimableKind(hex: Pick<HexState, 'ring' | 'kind'>): boolean {
 /** The day seeded map draws use: the map depends on the seed alone, never on the founding date. */
 const MAP_DRAW_DAY: ISODate = '0000-01-01'
 
+// ── The wilds' strength (D-15) ───────────────────────────────────────────────
+
+/** Each hex's place on its ring's ramp, (k + 0.5) / n for the k-th of n in a seeded order; by seed. */
+const wildPlaces = new Map<number, ReadonlyMap<string, number>>()
+
+function wildPlace(seed: number, id: string): number {
+  let places = wildPlaces.get(seed)
+  if (!places) {
+    const out = new Map<string, number>()
+    const slots = layout()
+    for (let ring = 1; ring <= MAP_RADIUS; ring++) {
+      const ids = slots.filter((s) => s.ring === ring).map((s) => hexId(s.q, s.r))
+      shuffle(seed, MAP_DRAW_DAY, `wild:${ring}`, ids).forEach((hid, k, all) => out.set(hid, (k + 0.5) / all.length)) // rules-ok: the middle of the k-th of n equal slots
+    }
+    places = out
+    wildPlaces.set(seed, places)
+  }
+  const place = places.get(id)
+  if (place === undefined) throw new RangeError(`No hex "${id}" on the map`)
+  return place
+}
+
+/**
+ * The wilds' strength on a hex before its kind's share (D-15): spread evenly across its ring from
+ * `RULES.land.wildRange.low` to `.high`, in an order the map's seed fixes. Rings 1 and 2 are flat.
+ */
+export function wildBase(seed: number, hex: Pick<HexState, 'id' | 'ring'>): number {
+  const { low, high } = RULES.land.wildRange
+  const lo = low[hex.ring - 1]
+  const hi = high[hex.ring - 1]
+  if (lo === undefined || hi === undefined) throw new RangeError(`No wild range for ring ${hex.ring}`)
+  return lo + (hi - lo) * wildPlace(seed, hex.id)
+}
+
+/** A neutral hex's garrison (Ch 6, D-15): beasts hold 0.9 of the wilds' strength, a village's militia 0.6. */
+export function wildGarrison(seed: number, hex: Pick<HexState, 'id' | 'ring'>, village: boolean): number {
+  return wildBase(seed, hex) * (village ? RULES.land.garrison.villageMilitia : RULES.land.garrison.beasts)
+}
+
 /** Per-building village credit (A-13): 1 for a road village, 0.5 for each shared between-land village. */
 export function villageCredits(hexes: readonly Pick<HexState, 'village' | 'road' | 'land' | 'kind'>[]): Record<BuildingId, number> {
   const credit: Record<BuildingId, number> = { barracks: 0, merchantHall: 0, mageTower: 0, foundry: 0 }
@@ -376,13 +415,13 @@ export function seedVillages(seed: number): VillageSeeding {
   throw new Error(`No village seeding fits after ${rules.maxAttempts} attempts (seed ${seed})`)
 }
 
-/** The starting garrison of a hex (Ch 6 garrison table, A-17). */
-function startingGarrison(slot: Slot, owner: Owner, village: boolean): number {
+/** The starting garrison of a hex (Ch 6 garrison table, A-17; the wilds' ramp, D-15). */
+function startingGarrison(seed: number, id: string, slot: Slot, owner: Owner, village: boolean): number {
   if (!inClaimableRings(slot.ring) || FIXED_KINDS.has(slot.kind) || owner === 'player') return 0
   const b = base(slot.ring)
   if (slot.kind === 'lairMouth') return b * RULES.combat.strength.mythic
   if (owner !== 'neutral') return b * RULES.land.rivalGarrisonMult[owner]
-  return b * (village ? RULES.land.garrison.villageMilitia : RULES.land.garrison.beasts)
+  return wildGarrison(seed, { id, ring: slot.ring }, village)
 }
 
 /**
@@ -415,7 +454,7 @@ export function buildMap(seed: number): HexState[] {
       const perRing = owner === 'neutral' ? RULES.influence.loyalty.neutralPerRing : RULES.influence.loyalty.rivalPerRing
       hex.village = { loyalty: perRing * slot.ring }
     }
-    hex.garrison = startingGarrison(slot, owner, isVillage)
+    hex.garrison = startingGarrison(seed, id, slot, owner, isVillage)
     if (slot.land) hex.land = slot.land
     if (slot.road) hex.road = slot.road
     if (slot.kind === 'lairMouth') hex.mythic = true

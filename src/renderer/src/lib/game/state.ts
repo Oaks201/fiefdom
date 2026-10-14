@@ -127,6 +127,13 @@ export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexSta
   return out
 }
 
+/** A hex the wilds take back (D-15): neutral again, held by beasts at `garrison` (its place on the wilds' ramp), unfortified. */
+export function toWilds(hex: HexState, garrison: number): HexState {
+  const out: HexState = { ...heldHex(hex), owner: 'neutral', garrison, garrisonDamage: 0, fortification: 0 }
+  delete out.rebels
+  return out
+}
+
 /** A hex that passes to a rival: its garrison (A-17), a village's loyalty 30 × ring, no fortification (A-136). */
 export function toRival(hex: HexState, rival: RivalId): HexState {
   const out: HexState = { ...heldHex(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }

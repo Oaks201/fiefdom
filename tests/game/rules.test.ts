@@ -159,7 +159,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Buildings',
     parameter: 'Tier II / III / IV / V cost',
-    keys: { 'buildings.tierCost': [0, 150, 450, 1100, 1800] }
+    keys: { 'buildings.tierCost': [0, 150, 900, 2200, 3600] } // D-15: twice the book's III to V
   },
   {
     area: 'Buildings',
@@ -169,7 +169,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Castle',
     parameter: 'Tiers II / III / IV: tier sum; cost',
-    keys: { 'castle.tierSum': [0, 8, 12, 16], 'castle.tierCost': [0, 250, 750, 1500] }
+    keys: { 'castle.tierSum': [0, 8, 12, 16], 'castle.tierCost': [0, 250, 1125, 3000] } // D-15: the book's 750 × 1.5 and 1,500 × 2
   },
   {
     area: 'Castle',
@@ -179,7 +179,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Crossings',
     parameter: 'Stage cost; hybrid power',
-    keys: { 'crossings.stageCost': [200, 600, 1200], 'crossings.hybridPower': [12, 18, 27] }
+    keys: { 'crossings.stageCost': [200, 1200, 2400], 'crossings.hybridPower': [12, 18, 27] } // D-15: stages II and III × 2
   },
   {
     area: 'Crownguard',
@@ -493,8 +493,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 2.1.0 (D-14)', () => {
-  assert.equal(RULES.ruleVersion, '2.1.0')
+test('RULES is versioned 2.2.0 (D-15)', () => {
+  assert.equal(RULES.ruleVersion, '2.2.0')
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {

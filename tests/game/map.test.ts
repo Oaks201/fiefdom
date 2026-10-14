@@ -22,9 +22,12 @@ import {
   ringOf,
   seedVillages,
   touchesOwner,
-  villageCredits
+  villageCredits,
+  wildBase,
+  wildGarrison
 } from '../../src/renderer/src/lib/game/map'
 import { CODEX } from '../../src/renderer/src/lib/game/codex'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { MAP_ASCII_LEGEND, mapAscii } from '../../src/renderer/src/lib/game/dev/mapAscii'
 import { BUILDING_IDS, type BuildingId, type HexState, type Land, type Owner, type RivalId } from '../../src/renderer/src/lib/game/types'
 
@@ -330,7 +333,10 @@ test('Ch 6 and A-17: starting garrisons by holder', () => {
   close(hex(map, -1, 0).garrison, 0.9 * 15, 'Hearth wild hex (beasts)')
   close(hex(map, 0, -2).garrison, 0.9 * 18, 'ring-2 road den') // D-14: ring 2's base is 18
   for (const v of map.filter((h) => h.village && h.owner === 'neutral')) {
-    close(v.garrison, 0.6 * [15, 18, 55, 115, 200][v.ring - 1], `village militia ${v.id}`)
+    close(v.garrison, 0.6 * wildBase(7, v), `village militia ${v.id}`)
+  }
+  for (const d of map.filter((h) => !h.village && h.owner === 'neutral' && isClaimableKind(h) && h.kind !== 'lairMouth')) {
+    close(d.garrison, 0.9 * wildBase(7, d), `beast den ${d.id}`)
   }
   const mult: Record<RivalId, number> = { orc: 1.0, goblin: 0.9, dwarf: 1.3, archmage: 1.1 }
   for (const rival of RIVALS) {
@@ -387,6 +393,23 @@ test('Ch 3: each rival’s founding Dominion comes from its Gate and March', () 
 })
 
 // ── Determinism and village seeding ──────────────────────────────────────────
+
+test('D-15: the wilds ramp hex by hex: rings 1 and 2 are flat; each outer ring is spread evenly from low to high in an order the seed fixes', () => {
+  const { low, high } = RULES.land.wildRange
+  for (let ring = 1; ring <= 5; ring++) {
+    const ids = map.filter((h) => h.ring === ring)
+    const values = ids.map((h) => wildBase(7, h)).sort((x, y) => x - y)
+    const n = values.length
+    values.forEach((v, k) => assert.ok(Math.abs(v - (low[ring - 1] + ((high[ring - 1] - low[ring - 1]) * (k + 0.5)) / n)) < 1e-9, `ring ${ring} slot ${k}`))
+  }
+  assert.deepEqual([low[0], high[0], low[1], high[1]], [15, 15, 18, 18])
+  const ring3 = map.filter((h) => h.ring === 3)
+  assert.deepEqual(ring3.map((h) => wildBase(7, h)), ring3.map((h) => wildBase(7, h)), 'the same seed, the same order')
+  assert.notDeepEqual(ring3.map((h) => wildBase(7, h)), ring3.map((h) => wildBase(8, h)), 'another seed, another order')
+  const den = ring3.find((h) => !h.village && h.owner === 'neutral') as HexState
+  assert.ok(Math.abs(wildGarrison(7, den, false) - 0.9 * wildBase(7, den)) < 1e-9)
+  assert.ok(Math.abs(wildGarrison(7, den, true) - 0.6 * wildBase(7, den)) < 1e-9)
+})
 
 test('Ch 2 rule 7: buildMap(7) run twice gives identical JSON', () => {
   assert.equal(JSON.stringify(buildMap(7)), JSON.stringify(buildMap(7)))

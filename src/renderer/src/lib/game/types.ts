@@ -655,6 +655,8 @@ export interface GameEventMap {
     contestedUntil?: ISODate
     /** T08: Grand Illusion spared this loss its tribute or its contest. */
     grandIllusion?: boolean
+    /** D-15: the hex was lost to the wilds (a beast or mythic defense lost on a ring-3+ hex that is not a village). */
+    overrun?: boolean
     /** T08: the Royal Hunt turned this beast attack into a hunt worth this much. */
     hunt?: number
     /** D-12: the player led this fight on the battle map. */
@@ -666,8 +668,8 @@ export interface GameEventMap {
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
   trophy: { hexId: string; source: 'mythic' | 'royalHunt' | 'mythicHunt'; lair?: string; item?: string }
-  /** A hex changed hands. */
-  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' }
+  /** A hex changed hands. `wilds` (D-15): a lost beast or mythic defense returned it to the wilds. */
+  hexTransfer: { hexId: string; from: Owner; to: Owner; how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' | 'wilds' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */

@@ -19,6 +19,10 @@
     "template": "Siege day: today's threat strikes harder.",
     "final": null
   },
+  "herald.threat.atStake": {
+    "template": "If this defense is lost, {hex} returns to the wilds.",
+    "final": null
+  },
   "herald.grandBattle.warning": {
     "template": "Grand Battle ({trigger}) at {hex} on {date}. Enemy: {host}.",
     "final": null

@@ -81,17 +81,17 @@ test('Ch 7 / A-42: Tier V needs the matching rival resolved and Milestone 6', ()
 
   const bought = buyTier(resolved, 'foundry', TODAY)
   assert.equal(bought.ok, true)
-  assert.equal(bought.cost, 1_800)
+  assert.equal(bought.cost, 3_600) // D-15: twice the book's 1,800
   assert.equal(bought.state.buildings.foundry, 5)
-  assert.equal(balance(bought.state.purse), 3_200)
+  assert.equal(balance(bought.state.purse), 1_400)
   assert.deepEqual(tierOffer(bought.state, 'foundry'), { ok: false, reason: { code: 'maxed' }, next: 5, cost: 0 })
 })
 
-test('Ch 7: the Dominion and reputation table for Tiers II to V (Tier II by D-14)', () => {
+test('Ch 7: the Dominion and reputation table for Tiers II to V (Tier II by D-14, costs by D-15)', () => {
   const needs = [
     [1, 1, 150],
-    [2, 24, 450],
-    [3, 68, 1_100]
+    [2, 24, 900],
+    [3, 68, 2_200]
   ]
   for (const [from, dom, cost] of needs) {
     const base = withPurse(withBuildings(realm(), { mageTower: from }), 10_000)
@@ -111,11 +111,11 @@ test('Ch 7: the Dominion and reputation table for Tiers II to V (Tier II by D-14
 
 // ── The castle ───────────────────────────────────────────────────────────────
 
-test('Ch 7: Castle II needs a tier sum of 8 and 250; III 12 and 750; IV 16 and 1,500; never V', () => {
+test('Ch 7, D-15: Castle II needs a tier sum of 8 and 250; III 12 and 1,125; IV 16 and 3,000; never V', () => {
   const steps = [
     [1, 8, 250],
-    [2, 12, 750],
-    [3, 16, 1_500]
+    [2, 12, 1_125],
+    [3, 16, 3_000]
   ]
   for (const [from, sum, cost] of steps) {
     const castle = withPurse(withCastle(realm(), from), cost)
@@ -157,8 +157,8 @@ test('Ch 8: a Crossing stage I needs both buildings at Tier II', () => {
   assert.deepEqual(crossingOffer(top, 'barracksFoundry').reason, { code: 'maxed' })
 })
 
-test('Ch 8: hybrid power is 12 / 18 / 27 with both tags, at a cost of 200 / 600 / 1,200', () => {
-  let state = withPurse(allBuildings(realm(), 4), 2_000)
+test('Ch 8, D-15: hybrid power is 12 / 18 / 27 with both tags, at a cost of 200 / 1,200 / 2,400', () => {
+  let state = withPurse(allBuildings(realm(), 4), 3_800)
   const costs: number[] = []
   for (const [stage, power, name] of [
     [1, 12, 'Clay Golems'],
@@ -174,18 +174,18 @@ test('Ch 8: hybrid power is 12 / 18 / 27 with both tags, at a cost of 200 / 600 
     assert.deepEqual([hybrid.name, hybrid.power, hybrid.source, hybrid.reach], [name, power, 'crossing', 'melee'])
     assert.deepEqual(hybrid.tags, ['engine', 'arcane'])
   }
-  assert.deepEqual(costs, [200, 600, 1_200])
+  assert.deepEqual(costs, [200, 1_200, 2_400])
 })
 
-test('Ch 8 / A-31: Trade Roads makes the next Tier III cost 405; with Guild Charters it costs 360, not 315', () => {
+test('Ch 8 / A-31, D-15: Trade Roads makes the next Tier III cost 810; with Guild Charters it costs 720, not 630', () => {
   const base = withPurse(withDominion(withBuildings(realm(), { barracks: 2 }), 'barracks', 24), 1_000)
-  assert.equal(tierOffer(base, 'barracks').cost, 450)
+  assert.equal(tierOffer(base, 'barracks').cost, 900)
   const roads = withCrossings(base, { foundryMerchantHall: 2 })
-  assert.equal(tierOffer(roads, 'barracks').cost, 405)
+  assert.equal(tierOffer(roads, 'barracks').cost, 810)
   const bought = buyTier(roads, 'barracks', TODAY)
-  assert.equal(balance(bought.state.purse), 595)
+  assert.equal(balance(bought.state.purse), 190)
   const charters = withCrossings(base, { foundryMerchantHall: 3 })
-  assert.equal(tierOffer(charters, 'barracks').cost, 360)
+  assert.equal(tierOffer(charters, 'barracks').cost, 720)
   // Crossings are discounted too; the castle is not (A-127).
   assert.equal(crossingOffer(withBuildings(charters, { mageTower: 2 }), 'barracksMageTower').cost, 160)
   assert.equal(castleOffer(withCastle(charters, 1)).cost, 250)

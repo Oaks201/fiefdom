@@ -38,11 +38,11 @@ import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
-import { borderHexesOf, claimableBy, hexDistance, hexIndex, nearestTo, touches } from './map'
+import { borderHexesOf, claimableBy, hexDistance, hexIndex, isClaimableKind, nearestTo, touches, wildBase, wildGarrison } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
-import { adjustRespect, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival } from './state'
+import { adjustRespect, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds } from './state'
 import {
   RIVAL_IDS,
   type CampaignState,
@@ -96,6 +96,8 @@ export interface ThreatStrengthInput {
   week: number
   /** The day's daily threat (the siege day applies), not a conquest attempt. */
   daily: boolean
+  /** D-15: the wilds' strength on the target (`wildBase`); beasts and mythics strike at it instead of base(ring). */
+  wild?: number
 }
 
 /**
@@ -259,10 +261,11 @@ function raidMult(state: CampaignState, effects: Effects, rival: RivalId, date: 
  * A threat's strength (Ch 10 "Threat strength"): beasts 0.9 × base; mythics 1.15 × base ×
  * the mythic multiplier for their side; a raid max(0.8 × base, 0.25 × AV × temper) with its
  * multipliers; a conquest attempt max(1.0 × base, 0.5 × AV). Then the roll, the early grace and,
- * for a Saturday's daily threat, the siege day.
+ * for a Saturday's daily threat, the siege day. Beasts and mythics take the wilds' strength on
+ * their target for base (D-15), so a hex is as hard to hold on a good day as it was to take.
  */
 export function threatStrength(state: CampaignState, effects: Effects, t: ThreatStrengthInput): number {
-  const b = base(t.ring)
+  const b = (t.kind === 'beasts' || t.kind === 'mythic') && t.wild !== undefined ? t.wild : base(t.ring)
   const s = RULES.combat.strength
   let value: number
   switch (t.kind) {
@@ -355,7 +358,8 @@ export function dawnTiding(state: CampaignState, date: ISODate, effects: Effects
     ...(side ? { side } : {}),
     roll: roll(state.campaign.seed, date, 'threat:roll', -spread, spread),
     week: weekNumber(state, date),
-    daily: true
+    daily: true,
+    wild: wildBase(state.campaign.seed, hex)
   })
   return { date, kind, hexId: hex.id, ...(rival ? { rival } : {}), strength, siegeDay: isSiegeDay(date) }
 }
@@ -776,6 +780,8 @@ export interface ThreatNotice {
   siegeDay: boolean
   /** A conquest attempt striking a hex it already contests. */
   restrike: boolean
+  /** D-15: losing this defense returns the hex to the wilds. */
+  atStake: boolean
 }
 
 export interface TidingsView {
@@ -783,6 +789,15 @@ export interface TidingsView {
   /** Veil of Fog: the Herald has nothing to report. */
   hidden: boolean
   threats: ThreatNotice[]
+}
+
+/**
+ * Whether losing a defense against `kind` on `hex` returns it to the wilds (D-15): beasts or a
+ * mythic, on a hex the player holds in ring 3 or beyond that is not a village. Rings 0 to 2 are home.
+ */
+export function returnsToWilds(hex: HexState, kind: ThreatKind): boolean {
+  const rule = RULES.combat.wildsReclaim
+  return hex.owner === 'player' && rule.threats.includes(kind) && hex.ring >= rule.minRing && hex.village === undefined && isClaimableKind(hex)
 }
 
 /**
@@ -801,6 +816,7 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
   const ahead = Math.max(0, diffDays(today, date))
   const notice = (t: { kind: ThreatKind; hexId: string; rival?: RivalId; strength: number }, siegeDay: boolean, restrike: boolean): ThreatNotice => {
     const { army } = defenseFor(state, { hexId: t.hexId, kind: t.kind, rival: t.rival, valor: 1, day: date }, effects)
+    const hex = state.hexes.find((h) => h.id === t.hexId)
     return {
       kind: t.kind,
       date,
@@ -809,7 +825,8 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
       ...(veiled ? {} : { band: strengthBand(t.strength, army) }),
       ...(exact ? { strength: t.strength } : {}),
       siegeDay,
-      restrike
+      restrike,
+      atStake: hex !== undefined && returnsToWilds(hex, t.kind)
     }
   }
   const threats: ThreatNotice[] = []
@@ -963,6 +980,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const respect: { rival: RivalId; change: number; reason: string }[] = []
   const contested = new Map(combat.contested.map((c) => [c.hexId, c]))
   const falls: ContestedHex[] = []
+  const overrun: string[] = []
   let illusions = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.grandIllusion === true)
   let hunts = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.hunt !== undefined)
   // Trophies granted today (A-156): each unique, so later victories see the earlier ones.
@@ -1031,7 +1049,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         report.broken = true
       }
     } else if (b.kind !== 'conquest') {
-      // The daily threat: tribute and a scorched hex. Land is never lost to it.
+      // The daily threat: tribute and a scorched hex, or beyond the home rings a wild hex back to the wilds (D-15).
       const illusion = illusions < effects.grandIllusion.value
       if (illusion) {
         illusions++
@@ -1041,9 +1059,26 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         gains.push({ kind: 'tribute', amount, source: `tribute:${b.kind}:${hex.id}` })
         report.tribute = roundPosting(amount)
       }
-      const scorched = scorch(hex, day)
-      setHex(scorched)
-      if (scorched.status === 'scorched') report.scorchedUntil = scorched.statusUntil
+      // A rout returns the hex to the wilds (D-15). A led fight's margin is the formula's, at the Valor locked when it began.
+      const judged = led
+        ? defenseValue({
+            strikes: fielded.map((f) => f.strike),
+            armsBonus: effects.armsBonus.value,
+            walls: wallsFor(effects, { ring: hex.ring, foe }),
+            fortification: fortificationValue(hex),
+            rallyFloor: effects.rallyFloor.value,
+            valor: skirmishDayOf(state, day)?.valor ?? ctx.valor
+          }).defense
+        : defense
+      if (!illusion && returnsToWilds(hex, b.kind) && b.strength >= RULES.combat.wildsReclaim.routedAt * judged) {
+        contested.delete(hex.id)
+        overrun.push(hex.id)
+        report.overrun = true
+      } else {
+        const scorched = scorch(hex, day)
+        setHex(scorched)
+        if (scorched.status === 'scorched') report.scorchedUntil = scorched.statusUntil
+      }
       if (b.kind === 'raid') respect.push({ rival: needRival(b), change: RULES.respect.change.raidLost, reason: 'raidLost' })
     } else if (hex.ring <= RULES.land.protectedThroughRing) {
       // Rings 0 to 2 never pass: a lost conquest battle only scorches (Ch 3 rule 2).
@@ -1106,7 +1141,12 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     }
   }
 
-  // 3. Hex transfers: contested hexes that fell, then captured hexes.
+  // 3. Hex transfers: hexes the wilds took back, contested hexes that fell, then captured hexes.
+  for (const id of overrun) {
+    const hex = byId.get(id) as HexState
+    setHex(toWilds(hex, wildGarrison(state.campaign.seed, hex, false)))
+    emit('hexTransfer', { hexId: id, from: 'player', to: 'neutral', how: 'wilds' })
+  }
   for (const c of falls) {
     contested.delete(c.hexId)
     const hex = byId.get(c.hexId) as HexState

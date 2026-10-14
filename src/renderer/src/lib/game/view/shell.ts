@@ -143,6 +143,7 @@ function threatLines(state: CampaignState, today: ISODate): { hidden: boolean; l
     const id = n.kind === 'conquest' ? 'herald.threat.conquest' : `herald.threat.${n.kind}`
     lines.push(line('threat', id, facts, { hexId: n.hexId, ...(n.rival ? { rival: n.rival } : {}) }))
     if (n.siegeDay) lines.push(line('threat', 'herald.threat.siegeDay', {}, { hexId: n.hexId }))
+    if (n.atStake) lines.push(line('threat', 'herald.threat.atStake', { hex: facts.hex }, { hexId: n.hexId }))
   }
   return { hidden: view.hidden, lines }
 }
@@ -178,7 +179,8 @@ export function resultLine(e: GameEvent): HeraldLine | null {
         const id = won ? (e.broken ? 'battle.conquest.broken' : 'battle.conquest.repelled') : e.contested ? 'battle.conquest.contested' : e.scorchedUntil ? 'battle.conquest.coreHeld' : 'battle.conquest.lost'
         return line('result', id, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
       }
-      return line('result', `battle.${e.threat}.${e.outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
+      const outcome = e.overrun ? 'overrun' : e.outcome
+      return line('result', `battle.${e.threat}.${outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
     }
     case 'assault':
       if (e.outcome === 'revealed') return null
@@ -244,7 +246,7 @@ export function homecomingView(summary: SettleSummary, suggestedTermDays: number
   // A hex lost in battle is told by its battle report; one lost another way gets its own plain line.
   const lost = summary.lost.flatMap((e) => {
     if (e.kind !== 'hexTransfer') return resultLine(e) ?? []
-    if (e.how === 'conquest') return []
+    if (e.how === 'conquest' || e.how === 'wilds') return []
     return [line('result', 'healer.shame', { what: `${hexName(e.hexId)}`, date: e.day }, { hexId: e.hexId })]
   })
   const away = summary.awayDays

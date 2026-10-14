@@ -45,8 +45,8 @@ function orders(state: CampaignState, o: Partial<DailyOrders>): CampaignState {
 
 test('Ch 6: a ring-3 beast den (garrison 49.5) is taken by Assault 50 and repulsed by 49, leaving 49.5 − 12.25 = 37.25 until the week closes', () => {
   const { state, target } = den()
-  const h = hex(state, target)
-  assert.equal(h.garrison, 49.5)
+  // D-15: a den's garrison is its place on the wilds' ramp; the book's worked den is 0.9 × base(3) = 49.5.
+  const h = { ...hex(state, target), garrison: 49.5 }
   assert.equal(effectiveGarrison(h), 49.5)
   assert.equal(assaultOutcome(49.5, 50).outcome, 'taken')
   const repulsed = assaultOutcome(49.5, 49)

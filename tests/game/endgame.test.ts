@@ -12,6 +12,7 @@ import { addDays, diffDays } from '../../src/renderer/src/lib/game/clock'
 import { armyValue, baseArmyValue } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { GRAND_HOOKS, pendingBattles } from '../../src/renderer/src/lib/game/grand'
+import { isClaimableKind } from '../../src/renderer/src/lib/game/map'
 import { rivalHost } from '../../src/renderer/src/lib/game/grand/hosts'
 import { playerPower, rivalPower } from '../../src/renderer/src/lib/game/rivals'
 import { settle } from '../../src/renderer/src/lib/game/settle'
@@ -344,7 +345,8 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
 
   // A Tier V purchase in the Reign: Milestone 6 broken, the Orc resolved, Dominion 68, the purse.
   let shop = withPurse(withMilestones(withBuildings(reign.state, { barracks: 4 }), 6), 5_000)
-  shop = withDominion({ ...shop, hexes: shop.hexes.map((h) => (h.road === 'barracks' && h.owner === 'player' && h.kind !== 'building' ? { ...h, owner: 'neutral' as const } : h)) }, 'barracks', 68)
+  // Every claimable hex on the Barracks road goes back to neutral, whoever holds it, so withDominion can build exactly 68.
+  shop = withDominion({ ...shop, hexes: shop.hexes.map((h) => (h.road === 'barracks' && isClaimableKind(h) ? { ...h, owner: 'neutral' as const } : h)) }, 'barracks', 68)
   const bought = buyTier(shop, 'barracks', addDays(closeOf(38), 1))
   assert.ok(bought.ok, JSON.stringify(bought.reason))
   assert.equal(bought.state.buildings.barracks, 5)

@@ -8,17 +8,18 @@ import { t } from '../../src/renderer/src/lib/game/text'
 import assert from 'node:assert/strict'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
-import { baseArmyValue } from '../../src/renderer/src/lib/game/combat'
+import { baseArmyValue, dawn } from '../../src/renderer/src/lib/game/combat'
 import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome, holdings, rivalIncome } from '../../src/renderer/src/lib/game/rivals'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { RIVAL_IDS, type CampaignState } from '../../src/renderer/src/lib/game/types'
 import { calorieWeek, healerCards, milestonePanel, stepPace, weighInLog } from '../../src/renderer/src/lib/game/view/chronicle'
 import { contractPageView, lengthOptions, payoutPreview } from '../../src/renderer/src/lib/game/view/contract'
-import { heraldView, homecomingView, pagesFor, topBarView, weekCloseView } from '../../src/renderer/src/lib/game/view/shell'
+import { heraldView, homecomingView, pagesFor, resultLine, topBarView, weekCloseView } from '../../src/renderer/src/lib/game/view/shell'
 import { steadiness } from '../../src/renderer/src/lib/game/weight'
 import { accordView, coalitionView, ultimatumView } from '../../src/renderer/src/lib/game/world'
 import { FOUNDED_AT, START, TZ, charter, chicago, ledgerWith } from './fixtures/ledgers'
 import { realm, withCrossings } from './support/realm'
+import { START as WAR_START, plainHex, withHex, withTiding } from './support/war'
 
 const LEDGER = ledgerWith('2026-09-10', 200)
 
@@ -43,6 +44,19 @@ test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consiste
   assert.equal(view.realmConsistencyPercent, Math.round(view.realmConsistency * 100))
   assert.equal(view.week, 3)
   assert.equal(Number.isInteger(view.purse), true)
+})
+
+test('D-15: the Herald warns when a threat puts a hex at stake, and reports a hex lost to the wilds', () => {
+  const base = dawn(realm(), WAR_START)
+  const den = plainHex(base, 3, (h) => h.owner === 'neutral').id
+  const state = withTiding(withHex(base, den, { owner: 'player', garrison: 0 }), { date: WAR_START, kind: 'beasts', hexId: den, strength: 10 })
+  const warning = heraldView(state, WAR_START).lines.find((l) => l.textId === 'herald.threat.atStake')
+  assert.ok(warning, 'the at-stake line')
+  assert.equal(warning.hexId, den)
+  assert.equal(warning.text.includes('{'), false)
+  const lost = resultLine({ id: 'ev-1', day: WAR_START, kind: 'defense', threat: 'beasts', hexId: den, outcome: 'defeat', tribute: 9, overrun: true })
+  assert.equal(lost?.textId, 'battle.beasts.overrun')
+  assert.equal(lost?.text.includes('{'), false)
 })
 
 test('Ch 2 / Ch 10: the Herald gives today’s threat with its band, the exact strength only when revealed, and yesterday’s results', () => {
