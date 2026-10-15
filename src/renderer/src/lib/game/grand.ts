@@ -26,7 +26,7 @@ import { baseArmyValue, scorch, tagMatch, type GrandBattleRequest } from './comb
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { realmEffects } from './effects'
 import { originalVillages } from './land'
-import { hexIndex, neighbors, rivalOfRoad } from './map'
+import { bandOf, hexIndex, neighbors, rivalOfRoad } from './map'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
@@ -786,9 +786,9 @@ export function postSpoils(state: CampaignState, day: ISODate, amount: number, s
   return { ...state, purse: post(state.purse, { date: day, kind: 'spoils', amount, source }) }
 }
 
-/** Tribute of `perRing` × the hex's ring, with the realm's tribute multiplier (Grace II, Oathguard; A-165). */
+/** Tribute of `perRing` × the hex's band, with the realm's tribute multiplier (Grace II, Oathguard; A-165, D-17). */
 export function postTribute(state: CampaignState, day: ISODate, perRing: number, hex: HexState, source: string): { state: CampaignState; amount: number } {
-  const amount = perRing * hex.ring * realmEffects(state).tribute.value
+  const amount = perRing * bandOf(hex) * realmEffects(state).tribute.value
   return { state: { ...state, purse: payTribute(state.purse, day, amount, source) }, amount: roundPosting(amount) }
 }
 
@@ -799,11 +799,11 @@ export const GRAND_HOOKS: GrandOutcomeHooks = {
     const gain = G.outcomes.capitalLoss.armyGain
     return { state: scaleArmy(state, battle.rival as RivalId, 1 + gain), outcome: { armyGain: gain, retryFrom: retryFrom(ctx.day, G.retryDays.capital) } }
   },
-  /** Won: 40 × ring spoils; T12 breaks the coalition 2 weeks early. Lost: T12 passes the outermost border hex. */
+  /** Won: 40 × band spoils (D-17); T12 breaks the coalition 2 weeks early. Lost: T12 passes the outermost border hex. */
   coalitionOffensive: (state, battle, ctx) => {
     if (!ctx.won) return { state, outcome: {} }
     const hex = hexOf(state, battle.hexId) as HexState
-    const amount = withBonus(G.outcomes.coalitionWin.spoilsPerRing * hex.ring * ctx.spoilsMult, realmEffects(state).reputationBonus.value)
+    const amount = withBonus(G.outcomes.coalitionWin.spoilsPerRing * bandOf(hex) * ctx.spoilsMult, realmEffects(state).reputationBonus.value)
     return { state: postSpoils(state, ctx.day, amount, `grandBattle:${battle.id}`), outcome: { spoils: roundPosting(amount) } }
   },
   /** Ch 14: T12. */
@@ -829,7 +829,7 @@ function loseHex(state: CampaignState, hexId: string, rival: RivalId, day: ISODa
 function takeHex(state: CampaignState, hexId: string, day: ISODate, emit: Emit, outcome: GrandOutcome): CampaignState {
   const hex = hexOf(state, hexId)
   if (!hex || hex.owner === 'player') return state
-  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest' })
+  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest', fortification: hex.fortification })
   outcome.hexTaken = hex.id
   return replaceHex(state, toPlayer(hex, day, true))
 }
@@ -882,7 +882,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
         const before = state.rivals[rival].respect
         state = adjustRespect(state, rival, RULES.respect.change.incursionWon, 'incursionWon', emit)
         outcome.respect = state.rivals[rival].respect - before
-        const amount = withBonus(G.outcomes.incursionWin.spoilsPerRing * hex.ring * spoilsMult, bonus)
+        const amount = withBonus(G.outcomes.incursionWin.spoilsPerRing * bandOf(hex) * spoilsMult, bonus)
         state = postSpoils(state, day, amount, `grandBattle:${battle.id}`)
         outcome.spoils = roundPosting(amount)
       } else state = loseHex(state, battle.hexId, rival, day, emit, outcome)

@@ -266,5 +266,33 @@
   "herald.standing.grownBody": {
     "template": "Tier {tier}, {path}.",
     "final": null
+  },
+  "herald.pathRank": {
+    "template": "{rival}’s path reached rank {rank}.",
+    "final": null
+  },
+  "herald.deed.hexTaken": {
+    "template": "{hex} taken: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.battleWon": {
+    "template": "Battle against {rival} won: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.heldAgainstBeasts": {
+    "template": "{hex} held against beasts: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.heldAgainstMythic": {
+    "template": "{hex} held against a mythic: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.grandBattleWon": {
+    "template": "Grand Battle won: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.resolved": {
+    "template": "{rival} resolved: {value} Renown on {rival}’s path.",
+    "final": null
   }
 }

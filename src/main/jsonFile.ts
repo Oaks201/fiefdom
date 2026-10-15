@@ -80,6 +80,32 @@ export class JsonFile {
     this.writeNow(json)
   }
 
+  /**
+   * Copies the file as it stands to `backups/<name>-<tag>.json`, which the daily pruning never
+   * touches, and returns that path (null with nothing to copy). An archive already there is kept,
+   * so a second call never overwrites the first copy.
+   */
+  archive(tag: string): Promise<string | null> {
+    if (!/^[\w.-]+$/.test(tag) || this.backupRe.test(`${this.name}-${tag}.json`)) throw new Error(`Refusing to archive ${this.name} as "${tag}"`)
+    const run = (): string | null => {
+      const current = this.readIfValid(this.file)
+      if (current === null) return null
+      const target = path.join(this.backupDir, `${this.name}-${tag}.json`)
+      if (!fs.existsSync(target)) {
+        fs.mkdirSync(this.backupDir, { recursive: true })
+        fs.writeFileSync(target, current, 'utf8')
+      }
+      return target
+    }
+    // After any save still queued, so the copy is of the file as last written.
+    const done = this.chain.then(run, run)
+    this.chain = done.then(
+      () => undefined,
+      () => undefined
+    )
+    return done
+  }
+
   private writeNow(json: string): void {
     if (typeof json !== 'string' || json.length > MAX_BYTES || !parses(json)) {
       throw new Error(`Refusing to write an invalid ${this.name}`)

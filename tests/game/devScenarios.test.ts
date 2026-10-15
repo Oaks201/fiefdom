@@ -12,7 +12,7 @@ import { setOrders } from '../../src/renderer/src/lib/game/combat'
 import { DEV_SCENARIOS, applyScenario } from '../../src/renderer/src/lib/game/dev/scenarios'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { makeDeal, placeBid } from '../../src/renderer/src/lib/game/land'
-import { dominion } from '../../src/renderer/src/lib/game/map'
+import { pathTotals } from '../../src/renderer/src/lib/game/dominion'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { hexOf, openDayOf } from '../../src/renderer/src/lib/game/state'
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
@@ -40,12 +40,12 @@ test('T15 gap 3: every scenario applies to a fresh campaign and changes it; an u
   assert.equal(applyScenario(state, 'nope', today), null)
 })
 
-test('T15 manual 1: with 160 reputation and Dominion 8 on the Barracks, Tier II is bought and the roster shows Men-at-Arms', () => {
+test('T15 manual 1: with 160 reputation and Dominion 8 on the Barracks’ path (the Orc’s, D-18), Tier II is bought and the roster shows Men-at-Arms', () => {
   const state = fresh()
   const today = openDayOf(state)
   const ready = applyScenario(state, 'barracksII', today) as CampaignState
   assert.equal(balance(ready.purse), 160)
-  assert.ok(dominion(ready.hexes, 'player').barracks >= 8)
+  assert.ok(pathTotals(ready).orc >= 8)
   assert.equal(tierOffer(ready, 'barracks').ok, true)
   const bought = buyTier(ready, 'barracks', today)
   assert.ok(bought.ok)

@@ -198,7 +198,8 @@ test('A-31: Merchant Hall V with the Statue turns a 100 gain into 125', () => {
 
 test('A-156: a daily mythic victory from a lair side grants that lair’s first unheld trophy; off the lair sides, none', () => {
   const state = allBuildings(realm(), 3)
-  const west = plainHex(state, 3, (h) => h.land === 'west').id
+  // D-16: the Wyrmfells' wedge is the west's lair side.
+  const west = state.hexes.find((h) => h.ring >= 3 && h.land === 'west' && (h.kind === 'road' || h.kind === 'between') && !h.village)!.id
   let s = withHex(state, west, { owner: 'player' })
   s = withTiding(s, { date: START, kind: 'mythic', hexId: west, strength: 1 })
   const first = fight(s, START, 1)
@@ -209,7 +210,8 @@ test('A-156: a daily mythic victory from a lair side grants that lair’s first 
   assert.equal(second.of('trophy')[0].item, 'basiliskEye')
   assert.equal(nextTrophy(heldItems(second.state), 'wyrmfells', false), undefined, 'the Dragon’s Heart comes only from the Dragon')
 
-  const north = plainHex(state, 3, (h) => h.land === 'north').id
+  // A rival march hex lies on no lair side.
+  const north = plainHex(state, 3, (h) => h.march === 'orc' && h.land === undefined).id
   const off = fight(withTiding(withHex(state, north, { owner: 'player' }), { date: START, kind: 'mythic', hexId: north, strength: 1 }), START, 1)
   assert.deepEqual(off.of('trophy')[0], { hexId: north, source: 'mythic' })
   assert.equal(off.state.armory, undefined)
@@ -217,7 +219,7 @@ test('A-156: a daily mythic victory from a lair side grants that lair’s first 
 
 test('A-156: the Royal Hunt grants the first unheld trophy from either lair', () => {
   const state = withCrossings(withBuildings(allBuildings(realm(), 4), { barracks: 4, merchantHall: 4 }), { barracksMerchantHall: 3 })
-  const hex = plainHex(state, 3, (h) => h.land === 'north').id
+  const hex = plainHex(state, 3, (h) => h.march === 'orc' && h.land === undefined).id
   const s = withTiding(withHex(state, hex, { owner: 'player' }), { date: START, kind: 'beasts', hexId: hex, strength: 1 })
   const hunted = fight(s, START, 1)
   assert.equal(hunted.of('trophy')[0].source, 'royalHunt')

@@ -2,17 +2,15 @@
  * The player's portrait (the Audience, the standing card): a tier from the player's overall
  * Dominion, and a path from the rival road they lead (pure) or the two they run close on (hybrid).
  *
- * Dominion itself is unchanged. It is each building's (`dominion()`, map.ts), and each building's
- * road leads to one rival (the codex `road`), so a rival's path is its road building's Dominion.
+ * Each rival's path has its own Dominion (D-18: Renown + Holdings, `pathTotals` in dominion.ts).
  * Overall Dominion is the four summed. The tier thresholds, the close margin, the path names and
  * the file names live only in playerPortraits.json at the project root. The file is edited by
  * hand: a broken entry is reported by `PORTRAIT_SETUP.problems`, and the portrait falls back to
  * the base file (or, without one, the caller's placeholder), never a throw.
  */
 import setupJson from '../../../../../../playerPortraits.json'
-import { CODEX } from '../codex'
-import { dominion } from '../map'
-import { RIVAL_IDS, type BuildingId, type CampaignState, type RivalId } from '../types'
+import { pathTotals } from '../dominion'
+import { RIVAL_IDS, type CampaignState, type RivalId } from '../types'
 import { rivalName, rivalNames } from './shell'
 
 export interface PortraitConfig {
@@ -114,21 +112,15 @@ export function tierOf(overall: number, tiers: readonly number[]): number {
   return Math.max(1, tiers.filter((floor) => overall >= floor).length)
 }
 
-function roadOf(rival: RivalId): BuildingId | undefined {
-  return CODEX.rivals.find((r) => r.id === rival)?.road as BuildingId | undefined
-}
-
 /** A tier and path from any per-path Dominion (the debug panel's inputs), the tier from their sum unless given. */
 export function standingFrom(perPath: Record<RivalId, number>, tier?: number, setup: PortraitSetup = PORTRAIT_SETUP): Standing {
   const overall = RIVAL_IDS.reduce((s, r) => s + (perPath[r] ?? 0), 0)
   return { perPath, overall, tier: tier ?? (setup.config ? tierOf(overall, setup.config.tiers) : 1) }
 }
 
-/** The player's standing now: each path's Dominion from the land they hold, the sum, and the tier. */
+/** The player's standing now: each path's Dominion (D-18), the sum, and the tier. */
 export function standingOf(state: CampaignState, setup: PortraitSetup = PORTRAIT_SETUP): Standing {
-  const byBuilding = dominion(state.hexes, 'player')
-  const perPath = Object.fromEntries(RIVAL_IDS.map((r) => [r, byBuilding[roadOf(r) as BuildingId] ?? 0])) as Record<RivalId, number>
-  return standingFrom(perPath, undefined, setup)
+  return standingFrom(pathTotals(state), undefined, setup)
 }
 
 /**

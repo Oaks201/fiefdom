@@ -26,7 +26,8 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { GRAND_HOOKS, announceGrandBattle, firstFreeDay, pendingBattles, siegeNotBefore, type OutcomeContext } from './grand'
 import { defectionTally, sellPrice } from './land'
-import { borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches, wildGarrison } from './map'
+import { pathTotals } from './dominion'
+import { bandOf, borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches, wildGarrison } from './map'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { holdings, playerPower, rivalIncome, rivalPower, sharedBorder, threatOf, treasuryBand } from './rivals'
@@ -90,7 +91,7 @@ function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, 
         if (h.owner !== rival) return h
         emit('hexTransfer', { hexId: h.id, from: rival, to: 'neutral', how: 'event' })
         if (h.id === capital || h.kind === 'realm' || h.kind === 'capital') return { ...h, owner: 'neutral', garrison: 0, garrisonDamage: 0, fortification: 0, ruins: true }
-        const garrison = h.ring >= 1 && h.ring <= RULES.land.claimableRings.max ? wildGarrison(state.campaign.seed, h, h.village !== undefined) : 0
+        const garrison = isClaimableKind(h) ? wildGarrison(h, h.village !== undefined) : 0
         const out: HexState = { ...h, owner: 'neutral', garrison, garrisonDamage: 0, fortification: 0 }
         if (h.village) out.village = { loyalty: h.village.loyalty * RULES.world.fallout.conqueredLoyaltyMult }
         return out
@@ -103,7 +104,7 @@ function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, 
     const ids = new Set(passed.map((h) => h.id))
     state = { ...state, hexes: state.hexes.map((h) => (ids.has(h.id) ? toPlayer(h, day, false) : h)) }
     for (const h of passed) emit('hexTransfer', { hexId: h.id, from: rival, to: 'player', how: 'abdication' })
-    const sellable = passed.filter((h) => h.kind !== 'gate' && h.kind !== 'lairMouth' && h.ring >= RULES.trade.sellMinRing)
+    const sellable = passed.filter((h) => h.kind !== 'gate' && h.kind !== 'lairMouth' && bandOf(h) >= RULES.trade.sellMinRing)
     if (rival !== 'goblin' && state.rivals.goblin.status === 'active' && sellable.length > 0) {
       const hexId = pick(state.campaign.seed, day, `goblinOffer:${rival}`, sellable.map((h) => h.id))
       const price = sellPrice('goblin', hexOf(state, hexId) as HexState)
@@ -292,12 +293,16 @@ function formCoalition(input: CampaignState, members: [RivalId, RivalId], trigge
   return state
 }
 
-/** The between-land where the player holds the most Dominion (A-34), ties in the usual order. */
+/**
+ * The player's strongest direction (A-34, D-18): the pair of neighboring paths (a front's two
+ * rivals) with the most Dominion between them, ties in the usual order.
+ */
 function strongestDirection(state: CampaignState): keyof CampaignState['fronts'] {
+  const totals = pathTotals(state)
   let best: keyof CampaignState['fronts'] = 'north'
   let most = -1
   for (const land of Object.keys(state.fronts) as (keyof CampaignState['fronts'])[]) {
-    const held = state.hexes.filter((h) => h.owner === 'player' && h.land === land && isClaimableKind(h)).reduce((s, h) => s + h.ring, 0)
+    const held = state.fronts[land].rivals.reduce((s, r) => s + totals[r], 0)
     if (held > most) (best = land), (most = held)
   }
   return best

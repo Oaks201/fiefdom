@@ -90,7 +90,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
       'reputation.weekly.calories': 70,
       'reputation.weekly.flawless': 50,
       'reputation.weekly.momentum': 60,
-      'reputation.weekly.tithePerRing': 4
+      'reputation.weekly.tithePerRing': 2.5 // D-17: × band at 2.5
     }
   },
   {
@@ -154,7 +154,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Buildings',
     parameter: 'Tier II / III / IV / V Dominion',
-    keys: { 'buildings.tierDominion': [0, 1, 24, 68, 68] } // D-14: the book's Tier II is 8
+    keys: { 'buildings.tierDominion': [0, 1, 90, 270, 270] } // D-14: Tier II 1; D-18: total Dominion, the book's 24 and 68 summed
   },
   {
     area: 'Buildings',
@@ -189,7 +189,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Land',
     parameter: 'Base garrison, rings 1–5',
-    keys: { 'land.baseGarrison': [15, 18, 55, 115, 200] } // D-14: the book's ring 2 is 22
+    keys: { 'land.baseGarrison': [15, 18] } // D-14: the book's ring 2 is 22; D-17: the heartland only, beyond it each hex's own strength
   },
   {
     area: 'Land',
@@ -412,7 +412,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Defeat',
     parameter: 'Power',
-    keys: { 'defeat.power': { treasury: 0.5, army: 3, perRing: 10 } }
+    keys: { 'defeat.power': { treasury: 0.5, army: 3, perRing: 3 } } // D-17: × band at 3
   },
   {
     area: 'Healer',
@@ -429,17 +429,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'World',
     parameter: 'Border Campaigns',
-    keys: {
-      'world.borderCampaigns': {
-        firstWeek: 10,
-        everyWeeks: 8,
-        jitterWeeks: 1,
-        attackerTrack: 2,
-        armyShare: 0.5,
-        roll: 0.15,
-        armyLoss: 0.05
-      }
-    }
+    keys: {} // R-26 (D-16): Border Campaigns are dropped
   }
 ]
 
@@ -493,8 +483,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 2.2.0 (D-15)', () => {
-  assert.equal(RULES.ruleVersion, '2.2.0')
+test('RULES is versioned 3.0.0 (Patch 2: D-16 to D-21)', () => {
+  assert.equal(RULES.ruleVersion, '3.0.0')
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {
@@ -521,10 +511,10 @@ test('RULES is deep-frozen: mutating it throws in strict mode', () => {
   assert.ok(Object.isFrozen(RULES.rivals.budget.orc))
 })
 
-test('base(ring) is 15 / 18 / 55 / 115 / 200 for rings 1 to 5 (ring 2 by D-14)', () => {
-  assert.deepEqual([1, 2, 3, 4, 5].map(base), [15, 18, 55, 115, 200])
+test('base(ring) is 15 / 18 for the heartland’s rings 1 and 2 (ring 2 by D-14); beyond, hexes have their own strength (D-17)', () => {
+  assert.deepEqual([1, 2].map(base), [15, 18])
   assert.throws(() => base(0), RangeError)
-  assert.throws(() => base(6), RangeError)
+  assert.throws(() => base(3), RangeError)
 })
 
 test('lengthMultiplier gives L for 1 / 3 / 7 / 14 / 30 days', () => {

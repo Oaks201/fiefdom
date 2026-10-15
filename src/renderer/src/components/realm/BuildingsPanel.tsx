@@ -101,17 +101,22 @@ export function BuildingsPanel({ campaign, today }: { campaign: CampaignState; t
               <p>
                 <Company company={b.company} />
               </p>
-              <details className="dominion" title={b.dominionSources.map((s) => `${s.label}: +${s.value}`).join('\n') || 'No hexes give it Dominion yet'}>
+              <details className="dominion" title={`${b.path.name}’s path: Renown ${amount(b.path.renown)}, Holdings ${amount(b.path.holdings)}`}>
                 <summary>
-                  Dominion <strong>{b.dominion}</strong>
+                  {b.path.name}’s path <strong>{amount(b.dominion)}</strong>
+                  {b.path.rank > 0 && <span className="tier"> rank {numeral(b.path.rank)}</span>}
                 </summary>
+                <p className="muted">
+                  Renown {amount(b.path.renown)} (deeds, kept for good) and Holdings {amount(b.path.holdings)} (land held now)
+                  {b.path.nextRank !== undefined ? `; rank ${numeral(b.path.rank + 1)} at ${amount(b.path.nextRank)}` : ''}.
+                </p>
                 {b.dominionSources.length === 0 ? (
-                  <p className="muted">No hex you hold gives it Dominion yet.</p>
+                  <p className="muted">No hex you hold gives this path Holdings yet.</p>
                 ) : (
                   <ul>
                     {b.dominionSources.map((s) => (
                       <li key={s.hexId}>
-                        {s.label}: +{s.value}
+                        {s.label}: +{amount(s.value)}
                       </li>
                     ))}
                   </ul>

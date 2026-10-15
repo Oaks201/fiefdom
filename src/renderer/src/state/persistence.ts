@@ -53,6 +53,16 @@ export function saveCampaignTextSync(json: string): boolean {
   return bridge ? bridge.saveCampaignSync(json) : writeLocalSync(CAMPAIGN_LS_KEY, json)
 }
 
+/** Keeps the campaign as it stands under `tag`, for good (the re-founding, C-15). In a plain browser, under its own localStorage key. */
+export async function archiveCampaignText(tag: string): Promise<string | null> {
+  if (bridge) return bridge.archiveCampaign(tag)
+  const current = readLocal(CAMPAIGN_LS_KEY)
+  const key = `${CAMPAIGN_LS_KEY}:${tag}`
+  if (current === null) return null
+  if (readLocal(key) === null) localStorage.setItem(key, current)
+  return key
+}
+
 export async function revealLedgerFolder(): Promise<void> {
   await bridge?.revealLedger()
 }

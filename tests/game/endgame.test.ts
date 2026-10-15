@@ -8,11 +8,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buyTier } from '../../src/renderer/src/lib/game/buildings'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
+import { totalDominion } from '../../src/renderer/src/lib/game/dominion'
+import { originalVillages } from '../../src/renderer/src/lib/game/land'
 import { addDays, diffDays } from '../../src/renderer/src/lib/game/clock'
 import { armyValue, baseArmyValue } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { GRAND_HOOKS, pendingBattles } from '../../src/renderer/src/lib/game/grand'
-import { isClaimableKind } from '../../src/renderer/src/lib/game/map'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { rivalHost } from '../../src/renderer/src/lib/game/grand/hosts'
 import { playerPower, rivalPower } from '../../src/renderer/src/lib/game/rivals'
 import { settle } from '../../src/renderer/src/lib/game/settle'
@@ -322,7 +324,7 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
     state = { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], status: how, resolvedOn: closeOf(n) } } }
   }
   state = { ...state, world: { ...worldOf(state), resolvedSeen: 3 } }
-  for (const id of ['1,4', '0,5', '-1,5']) {
+  for (const id of originalVillages(7).dwarf) {
     const h = state.hexes.find((x) => x.id === id) as HexState
     if (h.owner === 'dwarf') {
       state = setHex(state, id, { owner: 'player', garrison: 0 })
@@ -343,10 +345,11 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
   assert.ok(reign.events.some((e) => e.kind === 'weekClosed'))
   assert.equal(reign.state.campaign.status, 'won')
 
-  // A Tier V purchase in the Reign: Milestone 6 broken, the Orc resolved, Dominion 68, the purse.
+  // A Tier V purchase in the Reign: Milestone 6 broken, total Dominion at Tier V's gate (D-18, R-27), the purse.
   let shop = withPurse(withMilestones(withBuildings(reign.state, { barracks: 4 }), 6), 5_000)
-  // Every claimable hex on the Barracks road goes back to neutral, whoever holds it, so withDominion can build exactly 68.
-  shop = withDominion({ ...shop, hexes: shop.hexes.map((h) => (h.road === 'barracks' && isClaimableKind(h) ? { ...h, owner: 'neutral' as const } : h)) }, 'barracks', 68)
+  const gate = RULES.buildings.tierDominion[4]
+  if (totalDominion(shop) < gate) shop = withDominion(shop, 'barracks', gate)
+  assert.ok(totalDominion(shop) >= gate)
   const bought = buyTier(shop, 'barracks', addDays(closeOf(38), 1))
   assert.ok(bought.ok, JSON.stringify(bought.reason))
   assert.equal(bought.state.buildings.barracks, 5)

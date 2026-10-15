@@ -3,7 +3,7 @@
  *
  * `foundCampaign` builds the whole starting state: the map, the purse with its founding grant,
  * four buildings at Tier I and Castle I with their four companies, the Milestones, Grace 0, the
- * rivals (T10's `initRivals`), and the hidden Border Campaign weeks. The campaign starts at
+ * rivals (T10's `initRivals`), and every path and march at nothing yet (Patch 2). The campaign starts at
  * the dawn after founding, so `settledThrough` is the founding day itself and nothing settles
  * until that day has closed.
  */
@@ -13,11 +13,12 @@ import type { Ledger } from '../types'
 import { addDays, campaignWeek, nextDawnDay, openDay } from './clock'
 import { CODEX } from './codex'
 import { validateCharter } from './contracts'
+import { emptyPaths } from './dominion'
 import { foundingPurse } from './economy'
 import { CampaignError } from './errors'
 import { snapshotDay, toHealerDay, weighInsOf } from './ledgerDays'
 import { buildMap, fronts as rimFronts } from './map'
-import { int } from './rng'
+import { emptyMarches } from './marches'
 import { initRivals } from './rivals'
 import { RULES, byTier } from './rules'
 import { checkGoal, clampPaceCap, currentWeight, healerRange, initialWeightState, toLb, trend, type HealerRange } from './weight'
@@ -56,22 +57,11 @@ export interface FoundingInput {
   ledger: Ledger
   /** Confirmed medical supervision lets the calorie limit sit below the floor (Ch 4, Ch 16). */
   medicalSupervision?: boolean
-}
-
-// ── The hidden Border Campaign schedule (Ch 12) ──────────────────────────────
-
-/**
- * Border Campaign weeks: week 10, then every 8 weeks, each shifted −1 to +1 by a seeded draw,
- * through `throughWeek`. Each entry's draw depends only on the seed, the start and its index, so
- * extending the schedule later gives the same weeks as fixing it all at once.
- */
-export function borderCampaignWeeks(seed: number, startDate: ISODate, throughWeek: number): number[] {
-  const { firstWeek, everyWeeks, jitterWeeks } = RULES.world.borderCampaigns
-  const weeks: number[] = []
-  for (let k = 0; firstWeek + k * everyWeeks <= throughWeek; k++) {
-    weeks.push(firstWeek + k * everyWeeks + int(seed, startDate, `borderCampaign:${k}`, -jitterWeeks, jitterWeeks))
-  }
-  return weeks
+  /**
+   * D-21: found the campaign as of this earlier day (the re-founding, R-21): it starts at that
+   * day's dawn and every day since is settled by `refound`. Otherwise it starts at the next dawn.
+   */
+  asOf?: ISODate
 }
 
 // ── The starting forces ──────────────────────────────────────────────────────
@@ -122,7 +112,7 @@ export function foundingHealer(input: Omit<FoundingInput, 'charter'> & { charter
   const { ledger } = input
   const unit = input.unit ?? ledger.settings.unit
   const today = zoneDay(now, input.timeZone)
-  const startDate = nextDawnDay(now, input.timeZone)
+  const startDate = input.asOf ?? nextDawnDay(now, input.timeZone)
   const charter = input.charter ?? { stepPool: 0, calorieLimit: 0, duties: [] }
   // The days the weight and Healer windows look back over, founding day included.
   const prelude: DaySnapshot[] = []
@@ -130,11 +120,12 @@ export function foundingHealer(input: Omit<FoundingInput, 'charter'> & { charter
     prelude.push(snapshotDay(ledger, addDays(startDate, -back), charter))
   }
   const weighIns = weighInsOf(prelude, input.weekStartsOn ?? ledger.settings.weekStartsOn)
-  const range = healerRange(prelude.map(toHealerDay), today, trend(weighIns, today), {
+  const asOfDay = input.asOf ? addDays(startDate, -1) : today
+  const range = healerRange(prelude.map(toHealerDay), asOfDay, trend(weighIns, asOfDay), {
     sex: input.sex,
     birthYear: input.birthYear,
     heightCm: input.heightCm,
-    weightLb: currentWeight(weighIns, today) ?? (input.startWeight > 0 ? toLb(input.startWeight, unit) : null)
+    weightLb: currentWeight(weighIns, asOfDay) ?? (input.startWeight > 0 ? toLb(input.startWeight, unit) : null)
   })
   return { range, prelude, today, startDate }
 }
@@ -194,7 +185,8 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     crossings: {},
     roster: foundingRoster(),
     contracts: { history: [], respiteBank: 0 },
-    purse: foundingPurse(today),
+    // Founded as of an earlier day (D-21), the grant is dated the day before it, like the founding day.
+    purse: foundingPurse(input.asOf ? addDays(startDate, -1) : today),
     weight: { ...initialWeightState(startLb, goalLb), healerFloor: healer.floor },
     rivals: initRivals(seed, hexes),
     fronts: foundingFronts(),
@@ -205,10 +197,12 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     coalitions: [],
     worldEvents: [],
     log: [],
+    paths: emptyPaths(),
+    marches: emptyMarches(),
     settledThrough: { day: addDays(startDate, -1), week: campaignWeek(startDate, addDays(startDate, -1), weekStartsOn) },
     settlement: {
       snapshots: prelude,
-      borderCampaignWeeks: borderCampaignWeeks(seed, startDate, RULES.settlement.borderScheduleAheadWeeks),
+      borderCampaignWeeks: [],
       lastLaunch: today
     }
   }

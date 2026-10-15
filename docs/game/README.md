@@ -48,14 +48,18 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `rng.ts`, `clock.ts` | Seeded draws; 04:00 campaign days, weeks and time zones | T01 |
 | `codex.ts`, `text.ts` | Load and validate `data/codex/*.json` and `data/text/*.json` | T01 |
 | `errors.ts` | `CampaignError`, a refusal the store shows as a notice | T02 |
-| `map.ts` | 127 hexes, roads, between-lands, ownership, villages, Dominion, hex queries | T03 |
+| `map.ts` | The four-march map (D-16): 321 hexes, marches, depth, bands, seams and their ruling march, strength by depth (D-17), ownership, villages, hex queries | T03, Patch 2 |
 | `score.ts`, `contracts.ts`, `economy.ts` | Q, Valor, RC; contracts and pledges; reputation and the purse | T04 |
 | `weight.ts` | Trend, target pace, Momentum, Milestones, Grace, the Healer's range | T05 |
 | `campaign.ts`, `settle.ts`, `ledgerDays.ts` | Founding; the day-close and week-close settlement engine; reading ledger days into snapshots | T06 |
 | `buildings.ts`, `roster.ts`, `effects.ts` | Tiers, castle, Crossings, companies, realm-wide effects | T07 |
 | `combat.ts` | Threats, daily battles, the daily assault | T08 |
 | `land.ts` | Courtships, trades, fortification, reclaiming | T09 |
-| `rivals.ts` | Benchmark income, the weekly rival turn, Respect, fronts, Border Campaigns | T10 |
+| `rivals.ts` | Benchmark income, the weekly rival turn, Respect, fronts (Border Campaigns retired, R-26) | T10 |
+| `dominion.ts` | Dominion as the chronicle (D-18): path shares, Holdings, Renown from deeds, path ranks | Patch 2 |
+| `marches.ts` | Neglected marches harden (D-19): each rival march's preparation level | Patch 2 |
+| `autoplay.ts` | The automatic player: the re-founding's catch-up player and the simulator's players (P2-09) | Patch 2 |
+| `refound.ts` | The re-founding (D-21): a campaign founded as of the journey's start, its real contracts carried over and every day since played and settled | Patch 2 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state | quality pass, 2026-10-07 |
 | `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
 | `world.ts`, `world/events.ts` | Resolving rivals, Accords, coalitions, Ascendancy, the Siege, victory, the Chronicle record; the event deck and its effects | T12 |
@@ -150,10 +154,10 @@ The book's "Tests to write first" (Appendix A), as corrected by decisions.md. Ea
 | 4 | Worked exchange: Brute 40.25, Knights 69 (E-03) | T11 |
 | 5 | `BI(0.80, 1.7)` = 344.53 | T10 |
 | 6 | Target pace 0.80 at 217 lb, 0.72 at 180, 0.68 at 170 | T05 |
-| 7 | Map: 127 hexes, 86 claimable, 12 rival-held, 30 villages, adjacency per E-06 | T03 |
+| 7 | Map (D-16, E-06): 321 hexes, 298 claimable, 80 rival-held, 76 villages, adjacency per E-06 | T03, Patch 2 |
 | 8 | Milestones 212 … 168, earliest weeks 4 … 31 (E-04) | T05 |
 | 9 | Settlement is idempotent; reloading never changes a battle, courtship, rival turn, Border Campaign or event | T06, then extended by T08 to T12 |
-| 10 | No loss before week 36; rings 0 to 2 never change owner; Border Campaigns never target a Gate, capital or player hex | T08, T10, T12 |
+| 10 | No loss before week 36; rings 0 to 2 never change owner; Border Campaigns never target a Gate, capital or player hex (retired with them, R-26: none is ever scheduled) | T08, T10, T12 |
 
 ## Quality pass, 2026-10-07
 

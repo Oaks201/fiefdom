@@ -7,6 +7,7 @@
  * narrative is a catalog slot with plain facts (`t(id, facts)`).
  */
 import { CODEX } from '../codex'
+import { numeral } from '../effects'
 import { addDays, diffDays, weekCloseDay } from '../clock'
 import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
@@ -25,9 +26,13 @@ import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type IS
 
 export type PageId = 'chronicle' | 'contract' | 'archive' | 'realm' | 'diplomacy' | 'armory'
 
-/** The pages in tab order (Ctrl+1 to 6). Without a campaign the app is the ledger alone. */
-export function pagesFor(campaign: CampaignState | null): PageId[] {
-  return campaign ? ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory'] : ['chronicle', 'contract', 'archive']
+/**
+ * The pages in tab order (Ctrl+1 to 6). Without a campaign the app is the ledger alone; with one
+ * founded under older rules, the Realm page stays to offer the re-founding (D-21, section 7.1).
+ */
+export function pagesFor(campaign: CampaignState | null, outdated = false): PageId[] {
+  if (campaign) return ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory']
+  return outdated ? ['chronicle', 'contract', 'archive', 'realm'] : ['chronicle', 'contract', 'archive']
 }
 
 // ── Names ────────────────────────────────────────────────────────────────────
@@ -127,6 +132,9 @@ function line(section: HeraldSection, textId: string, facts: TextFacts, extra: {
   return { section, textId, facts, text: t(textId, facts), ...extra }
 }
 
+/** Renown in a Herald line, to a tenth. */
+const TENTHS = 10 // rules-ok: display rounding
+
 const BAND_WORDS: Record<NonNullable<ThreatNotice['band']>, string> = { weaker: 'weaker', matched: 'matched', stronger: 'stronger', overwhelming: 'overwhelming' }
 
 /** A threat's strength as the player may know it: the exact number when revealed, else its band, else unknown (the Veil). */
@@ -196,6 +204,10 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       return line('world', 'herald.worldEvent', { event: t(`events.${e.eventId}.title`) })
     case 'milestone':
       return line('result', 'herald.milestone', { index: e.index })
+    case 'pathRank':
+      return line('result', 'herald.pathRank', { rival: rivalName(e.path), rank: numeral(e.rank) }, { rival: e.path })
+    case 'deed':
+      return line('result', `herald.deed.${e.deed}`, { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}) }, { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) })
     case 'ascendancy':
       if (e.stage === 'warning' || e.stage === 'lifted') return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if ((e.stage === 'delayed' || e.stage === 'humbled') && e.until) return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival), date: e.until }, { rival: e.rival })

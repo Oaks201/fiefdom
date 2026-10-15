@@ -17,6 +17,7 @@ import { RULES, byTier } from './rules'
 import { openDayOf } from './state'
 import {
   BUILDING_IDS,
+  RIVAL_IDS,
   COST_KINDS,
   FOES,
   REVEAL_KINDS,
@@ -243,6 +244,29 @@ export function realmEffects(state: CampaignState): Effects {
     push(e.crownguardBonus, milestone(unlocks.crownguardAscendant, 'crownguardAscendant'), RULES.crownguard.ascendantBonus)
   }
 
+  // Path ranks (D-18): each rank adds a little to its path's building's role, standing in for Patch 4's perks (C-18).
+  const perks = RULES.dominion.rankPerks
+  for (const r of RIVAL_IDS) {
+    const rank = state.paths?.byRival[r].rank ?? 0
+    if (rank <= 0) continue
+    const ref: EffectSourceRef = { kind: 'pathRank', path: r, rank }
+    switch (CODEX.rivals.find((x) => x.id === r)?.road) {
+      case 'barracks':
+        push(e.rallyFloor, ref, perks.rallyFloor * rank)
+        break
+      case 'merchantHall':
+        push(e.reputationBonus, ref, perks.reputationBonus * rank)
+        break
+      case 'mageTower':
+        push(e.mythicStrength, ref, 1 - perks.mythicReduction * rank)
+        break
+      case 'foundry':
+        push(e.armsBonus, ref, perks.armsBonus * rank)
+        push(e.walls, ref, perks.walls * rank)
+        break
+    }
+  }
+
   // The Crown's Grace II: tribute halved, contested hexes hold 2 days (Ch 9).
   if (state.weight.grace >= RULES.effects.graceIILevel) {
     const ref: EffectSourceRef = { kind: 'grace', level: state.weight.grace }
@@ -382,7 +406,8 @@ function apply(e: Effects, g: Grant): void {
 
 /**
  * The walls a battle counts: `walls`, doubled when a Shieldwall or Runed Walls condition holds.
- * Two conditions at once still count the walls double, not four times (A-126).
+ * Two conditions at once still count the walls double, not four times (A-126). `ring` is the
+ * hex's band (D-17): Shieldwall's "rings 4 and 5" are bands 4 and 5.
  */
 export function wallsFor(e: Effects, battle: { ring: number; foe: Foe }): number {
   const doubled = e.wallsDouble.some((d) => (!d.rings || d.rings.includes(battle.ring)) && (!d.against || d.against === battle.foe))
@@ -433,5 +458,7 @@ export function sourceLabel(ref: EffectSourceRef): string {
       return 'Weary'
     case 'event':
       return CODEX.events.find((x) => x.id === ref.id)?.name ?? ref.id
+    case 'pathRank':
+      return `${CODEX.rivals.find((x) => x.id === ref.path)?.people ?? ref.path} path ${numeral(ref.rank)}`
   }
 }

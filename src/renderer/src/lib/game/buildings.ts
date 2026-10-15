@@ -13,11 +13,11 @@
 import { CODEX } from './codex'
 import { balance, roundPosting, spend } from './economy'
 import { milestoneBroken, realmEffects } from './effects'
-import { dominion, rivalOfRoad } from './map'
+import { totalDominion } from './dominion'
 import { refreshRoster } from './roster'
 import { isPlayable } from './state'
 import { RULES, byTier } from './rules'
-import { BUILDING_IDS, type BuildingId, type BuildingTier, type CampaignState, type CastleTier, type CrossingId, type CrossingStage, type ISODate, type RivalId } from './types'
+import { BUILDING_IDS, type BuildingId, type BuildingTier, type CampaignState, type CastleTier, type CrossingId, type CrossingStage, type ISODate } from './types'
 
 export type Refusal =
   | { code: 'campaignOver' }
@@ -25,8 +25,6 @@ export type Refusal =
   | { code: 'maxed' }
   | { code: 'dominion'; needed: number; have: number }
   | { code: 'reputation'; needed: number; have: number }
-  /** Tier V needs the building's own rival resolved (Ch 7). */
-  | { code: 'rivalUnresolved'; rival: RivalId }
   /** Tier V needs Milestone 6 (A-42). */
   | { code: 'milestone'; index: number }
   /** The castle needs the building tiers to sum this high. */
@@ -85,14 +83,12 @@ export function tierOffer(state: CampaignState, building: BuildingId): Offer {
   const next = tier + 1
   const cost = roundPosting(byTier(RULES.buildings.tierCost, next) * realmEffects(state).costs.tiers.value)
   const needed = byTier(RULES.buildings.tierDominion, next)
-  const have = dominion(state.hexes, 'player')[building]
-  const rival = rivalOfRoad(building)
+  const have = totalDominion(state)
   const tierV = RULES.milestones.unlocks.tierV
   return checked(state, next, cost, [
     { need: { code: 'dominion', needed, have }, met: have >= needed },
     ...(next === TOP_TIER
       ? [
-          { need: { code: 'rivalUnresolved', rival } as const, met: state.rivals[rival].status !== 'active' },
           { need: { code: 'milestone', index: tierV } as const, met: milestoneBroken(state, tierV) }
         ]
       : [])

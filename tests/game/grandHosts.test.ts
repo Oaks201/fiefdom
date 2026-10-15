@@ -16,7 +16,7 @@ import {
   warningDays
 } from '../../src/renderer/src/lib/game/grand'
 import { mythicHost, placeHost, rivalHost } from '../../src/renderer/src/lib/game/grand/hosts'
-import { neighbors } from '../../src/renderer/src/lib/game/map'
+import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
@@ -119,7 +119,8 @@ test('Ch 11: a challenge on a Gate the player borders is announced today', () =>
   let state = withArmy(realm(), 'goblin', [100])
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'goblin')!
   assert.equal(challenge(state, gate.id, START).reason, 'notTouching')
-  const beside = neighbors(gate.id).find((id) => hex(state, id).owner === 'neutral')!
+  // D-16: the Gate's neighbors are the Goblin's own land, the outer third of its march.
+  const beside = neighbors(gate.id).find((id) => isClaimableKind(hex(state, id)) && hex(state, id).ring < gate.ring)!
   state = { ...state, hexes: state.hexes.map((h) => (h.id === beside ? { ...h, owner: 'player' as const } : h)) }
   const done = challenge(state, gate.id, START)
   assert.ok(done.ok)
@@ -132,7 +133,7 @@ test('Ch 11: a challenge on a Gate the player borders is announced today', () =>
 test('A-33: taking a hex beside a rival’s Gate raises an Incursion from that rival; at most one per rival every 14 days', () => {
   const state = withArmy(realm(), 'dwarf', [100])
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'dwarf')!
-  const [a, b] = neighbors(gate.id).filter((id) => hex(state, id).owner === 'neutral')
+  const [a, b] = neighbors(gate.id).filter((id) => isClaimableKind(hex(state, id)) && hex(state, id).kind !== 'gate' && hex(state, id).ring <= gate.ring)
   const take = (s: CampaignState, id: string): CampaignState => ({ ...s, hexes: s.hexes.map((h) => (h.id === id ? { ...h, owner: 'player' as const } : h)) })
   assert.equal(incursionRival(take(state, a), a, 'neutral'), 'dwarf')
   const c = collector()

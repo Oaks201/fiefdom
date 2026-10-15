@@ -23,7 +23,7 @@ import {
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { wildGarrison } from '../../src/renderer/src/lib/game/map'
 import { settle } from '../../src/renderer/src/lib/game/settle'
-import { RULES, base } from '../../src/renderer/src/lib/game/rules'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import type { CampaignState, Company, Deal, HexState } from '../../src/renderer/src/lib/game/types'
 import { chicago, steadyLedger, withDay } from './fixtures/ledgers'
 import { allBuildings, realm, withBuildings, withCastle, withCrossings, withGrace } from './support/realm'
@@ -80,12 +80,13 @@ test('Ch 10 early grace: threats strike at 70% in weeks 1 and 2, 85% in weeks 3 
   const state = realm()
   const effects = realmEffects(state)
   const beasts = (week: number, date: string, daily = true): number =>
-    threatStrength(state, effects, { kind: 'beasts', date, ring: 3, roll: 0, week, daily })
+    threatStrength(state, effects, { kind: 'beasts', date, ring: 3, roll: 0, week, daily, wild: 55 })
   const thursday = '2026-10-08'
   const saturday = '2026-10-10'
-  near(beasts(5, thursday), 0.9 * base(3), 1e-9)
-  near(beasts(1, thursday), 0.9 * base(3) * 0.7, 1e-9)
-  near(beasts(3, thursday), 0.9 * base(3) * 0.85, 1e-9)
+  // D-17: a threat strikes at its target's strength (55 here, the book's ring 3).
+  near(beasts(5, thursday), 0.9 * 55, 1e-9)
+  near(beasts(1, thursday), 0.9 * 55 * 0.7, 1e-9)
+  near(beasts(3, thursday), 0.9 * 55 * 0.85, 1e-9)
   assert.deepEqual([1, 2, 3, 4, 5].map(earlyGraceMult), [0.7, 0.7, 0.85, 0.85, 1])
   near(beasts(5, saturday) / beasts(5, thursday), 1.4, 1e-9)
   near(beasts(1, saturday) / beasts(1, thursday), 1.4, 1e-9)
@@ -95,7 +96,7 @@ test('Ch 10 early grace: threats strike at 70% in weeks 1 and 2, 85% in weeks 3 
 test('Ch 10 strength: mythics 1.15 × base, raids max(0.8 × base, 0.25 × AV × temper) with Respect 25 and the Spy Network, conquests max(base, 0.5 × AV)', () => {
   let state = realm()
   const effects = realmEffects(state)
-  const t = { date: '2026-11-12', ring: 4, roll: 0, week: 6, daily: true }
+  const t = { date: '2026-11-12', ring: 4, roll: 0, week: 6, daily: true, wild: 115 } // D-17: the target's strength (the book's ring 4)
   near(threatStrength(state, effects, { ...t, kind: 'mythic' }), 1.15 * 115, 1e-9) // Mage Tower I takes nothing off
   const orcAv = armyValue(state, 'orc')
   near(threatStrength(state, effects, { ...t, kind: 'raid', rival: 'orc' }), Math.max(0.8 * 115, 0.25 * orcAv * 1.2), 1e-9)
@@ -178,7 +179,7 @@ test('Ch 10 rule 6: no conquest attempt is accepted before week 6; one is accept
   assert.ok(ok.ok)
   if (ok.ok) {
     assert.equal(ok.attempt.date, WEEK6)
-    const expected = Math.max(base(3), 0.5 * armyValue(state, 'orc'))
+    const expected = Math.max(hex(state, inner).strength, 0.5 * armyValue(state, 'orc'))
     assert.ok(ok.attempt.strength >= expected * 0.85 && ok.attempt.strength <= expected * 1.15)
   }
 })
@@ -238,7 +239,7 @@ test('Contested flow: lose again the next day and the hex passes to the rival at
   const lost = hex(day2.state, inner)
   assert.equal(lost.owner, 'orc')
   assert.equal(lost.status, 'held')
-  assert.equal(lost.garrison, base(3) * RULES.land.rivalGarrisonMult.orc)
+  assert.equal(lost.garrison, hex(base0, inner).strength * RULES.land.rivalGarrisonMult.orc)
   assert.deepEqual(combatOf(day2.state).contested, [])
 })
 
@@ -324,7 +325,7 @@ test('D-15: returnsToWilds is beasts or a mythic, on the player’s own ring-3+ 
   assert.equal(returnsToWilds({ ...village, owner: 'player' }, 'beasts'), false, 'villages')
 })
 
-test('D-15: a lost beast or mythic defense on a ring-3 hex returns it to the wilds at its place on the ramp, with tribute and no scorch', () => {
+test('D-15, D-17: a lost beast or mythic defense on a ring-3 hex returns it to the wilds at its strength, with tribute and no scorch', () => {
   const state = realm()
   const den = plainHex(state, 3, (h) => h.owner === 'neutral')
   const owned = withHex(state, den.id, { owner: 'player', garrison: 0, fortification: 1 })
@@ -335,7 +336,7 @@ test('D-15: a lost beast or mythic defense on a ring-3 hex returns it to the wil
     assert.deepEqual([report.outcome, report.overrun, report.tribute, report.scorchedUntil], ['defeat', true, 9, undefined], kind)
     const after = hex(lost.state, den.id)
     assert.deepEqual([after.owner, after.status, after.fortification, after.garrisonDamage], ['neutral', 'held', 0, 0], kind)
-    near(after.garrison, wildGarrison(state.campaign.seed, den, false))
+    near(after.garrison, wildGarrison(den, false))
     assert.deepEqual(lost.of('hexTransfer').map((e) => [e.hexId, e.from, e.to, e.how]), [[den.id, 'player', 'neutral', 'wilds']], kind)
   }
   // Held, it stays the player's.

@@ -23,6 +23,7 @@ import { settle } from '../src/renderer/src/lib/game/settle'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type GraceLevel, type ISODate } from '../src/renderer/src/lib/game/types'
 import { liveValor } from '../src/renderer/src/lib/game/view/chronicle'
 import { FOUNDED_AT, START, TZ, isRoughDay, ledgerFor } from './ledgerGen'
+import { Recorder, type Measures } from './measure'
 import { act, type PolicyId } from './policy'
 import { JOURNEY, profileOf, type ProfileId } from './profiles'
 
@@ -89,6 +90,8 @@ export interface RunResult {
   /** Milestones broken by the end. */
   milestones: number
   violations: string[]
+  /** Patch 2: the day labels and week standings behind the blueprint's targets (`measure.ts`). */
+  measures: Measures
 }
 
 const BEHAVIOR: ReadonlySet<string> = new Set(PURSE_SOURCES.behavior)
@@ -146,6 +149,7 @@ export function runCampaign(o: RunOptions): RunResult {
   let tierIVDominionWeeks = 0
   let maxAscendancyStreak = 0
   let contractNo = 0
+  const recorder = new Recorder()
   const nextId = (): string => `sim-${(contractNo += 1)}`
   const countHexes = (): void => {
     hexes.player.push(state.hexes.filter((h) => h.owner === 'player').length)
@@ -162,12 +166,15 @@ export function runCampaign(o: RunOptions): RunResult {
       })
       if (held) tierIVDominionWeeks += 1
     }
+    recorder.dawn(state, today)
     const valor = o.policy === 'skirmish' ? { valor: liveValor(state, ledger, today) } : {}
     state = act(state, today, { policy: o.policy, rough: isRoughDay(profile, o.seed, today), nextId, ...valor })
     bonusOn.set(today, realmEffects(state).reputationBonus.value)
     const now = after(today)
     const before = state
-    state = settle(state, ledger, now).state
+    // The player acts every day, so every day is a launch (A-10: never away).
+    state = settle(state, ledger, now, { launch: true }).state
+    recorder.close(state, today, weekOf(today))
     // The runtime invariants the app checks in development (T17), settling again on a sample of days (Test 9).
     const sampled = draw(o.seed, today, 'sim:idempotence') < IDEMPOTENCE_SAMPLES / days
     for (const v of settleViolations({ before, after: state, ledger, now, resettle: sampled })) violations.push(DATED.test(v) ? v : `${today}: ${v}`)
@@ -251,6 +258,7 @@ export function runCampaign(o: RunOptions): RunResult {
     trophyWeeks: state.log.flatMap((e) => (e.kind === 'trophy' && e.item ? [weekOf(e.day)] : [])),
     q: closes.length > 0 ? Math.round((closes.reduce((s, v) => s + v, 0) / closes.length) * 1000) / 1000 : 0,
     milestones: state.log.filter((e) => e.kind === 'milestone').length,
-    violations
+    violations,
+    measures: recorder.finish(state)
   }
 }

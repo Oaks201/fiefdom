@@ -5,10 +5,11 @@
 import { create } from 'zustand'
 import { settleViolations } from '../lib/game/dev/invariants'
 import { CampaignError } from '../lib/game/errors'
+import { needsRefounding } from '../lib/game/refound'
 import { settle, type SettleResult, type SettleSummary } from '../lib/game/settle'
 import type { CampaignState } from '../lib/game/types'
 import type { Ledger } from '../lib/types'
-import { loadCampaignText, saveCampaignText, saveCampaignTextSync } from './persistence'
+import { archiveCampaignText, loadCampaignText, saveCampaignText, saveCampaignTextSync } from './persistence'
 import { debouncedSaver } from './saver'
 import { toast } from './toasts'
 
@@ -17,6 +18,11 @@ interface CampaignStore {
   error: string | null
   /** null until a campaign is founded */
   campaign: CampaignState | null
+  /**
+   * A campaign founded under older rules (section 7.1): it is never settled or saved, only re-founded.
+   * Its pages stay closed (`campaign` is null) and the ledger keeps working.
+   */
+  outdated: CampaignState | null
   load(): Promise<void>
   /**
    * Applies a pure campaign operation. Rule violations (CampaignError) are shown to the user as a
@@ -32,6 +38,11 @@ interface CampaignStore {
   /** Sets a newly founded campaign (from `foundCampaign`) and saves it. */
   found(campaign: CampaignState): void
   /**
+   * Replaces the outdated campaign with its re-founding (from `refound`, D-21): the old file is
+   * archived for good first, and nothing is written if that fails. Returns whether it was done.
+   */
+  refound(campaign: CampaignState): Promise<boolean>
+  /**
    * Settles every closed day up to `now` against the ledger and saves once (T06). Returns the
    * result, or null with no campaign. A launch records the launch date (A-10).
    */
@@ -45,13 +56,16 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
   status: 'loading',
   error: null,
   campaign: null,
+  outdated: null,
 
   async load() {
     try {
       const text = await loadCampaignText()
       const parsed: unknown = text ? JSON.parse(text) : null
       if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) throw new Error('The campaign file holds no campaign.')
-      set({ campaign: parsed as CampaignState | null, status: 'ready', error: null })
+      const loaded = parsed as CampaignState | null
+      if (loaded && needsRefounding(loaded)) set({ campaign: null, outdated: loaded, status: 'ready', error: null })
+      else set({ campaign: loaded, outdated: null, status: 'ready', error: null })
     } catch (err) {
       set({ status: 'error', error: err instanceof Error ? err.message : String(err) })
     }
@@ -105,6 +119,21 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
   found(campaign) {
     set({ campaign, status: 'ready', error: null })
     scheduleSave(campaign)
+  },
+
+  async refound(campaign) {
+    const old = get().outdated
+    if (old) {
+      try {
+        await archiveCampaignText(`${old.campaign.ruleVersion}-final`)
+      } catch (err) {
+        toast(`The old campaign could not be kept, so nothing was changed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+        return false
+      }
+    }
+    set({ campaign, outdated: null, status: 'ready', error: null })
+    scheduleSave(campaign)
+    return true
   },
 
   settleNow(ledger, now, options) {

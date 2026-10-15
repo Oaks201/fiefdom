@@ -10,7 +10,7 @@ import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { fieldResult, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
-import { claimableBy } from '../../src/renderer/src/lib/game/map'
+import { claimableBy, neighbors } from '../../src/renderer/src/lib/game/map'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { roster } from '../../src/renderer/src/lib/game/roster'
@@ -271,13 +271,17 @@ test('the skirmish screen: the fights in order, each one’s opening, its rounds
 })
 
 test('a den assault: the close’s own reveal roll leaves a revealing den to its Mythic Hunt, and sets any other den on the field', () => {
-  const dens = base.hexes.filter((h) => isRevealDen(h) && claimableBy(base.hexes, h.id, 'player', 'assault'))
   const reveals = (h: HexState): boolean => chance(base.campaign.seed, today, `reveal:${h.id}`, RULES.grandBattles.mythicReveal.chance)
-  const revealing = dens.find(reveals)
-  const plain = dens.find((h) => !reveals(h))
-  assert.ok(revealing && plain, 'the fixture has a den of each kind today')
-  const sent = [...roster(base, { day: today }, realmEffects(base))].sort((a, b) => b.power - a.power).slice(0, 2).map((c) => c.id)
-  const orderOn = (hexId: string): CampaignState => setOrders(base, { date: today, assaultTarget: hexId, assault: sent, defense: [] }).state
+  const all = base.hexes.filter((h) => isRevealDen(h))
+  const revealing = all.find(reveals)
+  const plain = all.find((h) => !reveals(h))
+  assert.ok(revealing && plain, 'the map has a den of each kind today')
+  // D-16: the dens a rare creature turns at bay in lie deep in a lair's wedge; hand the player a hex beside each.
+  const inner = (h: HexState): string => neighbors(h.id).find((n) => (base.hexes.find((x) => x.id === n) as HexState).ring === h.ring - 1) as string
+  const near = { ...base, hexes: base.hexes.map((h) => (h.id === inner(revealing) || h.id === inner(plain) ? { ...h, owner: 'player' as const } : h)) }
+  assert.ok([revealing, plain].every((h) => claimableBy(near.hexes, h.id, 'player', 'assault')))
+  const sent = [...roster(near, { day: today }, realmEffects(near))].sort((a, b) => b.power - a.power).slice(0, 2).map((c) => c.id)
+  const orderOn = (hexId: string): CampaignState => setOrders(near, { date: today, assaultTarget: hexId, assault: sent, defense: [] }).state
 
   const onPlain = todaysFights(orderOn(plain.id), today).find((p) => p.side === 'assault')
   assert.deepEqual([onPlain?.hexId, onPlain?.enemy.kind], [plain.id, 'beasts'])

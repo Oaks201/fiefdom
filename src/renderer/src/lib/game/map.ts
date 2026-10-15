@@ -1,19 +1,32 @@
 /**
- * The realm map (Ch 3): 127 pointy-topped hexes in axial coordinates, radius 6, with roads,
- * between-lands, the Rim, who holds what at the founding, seeded villages, adjacency, borders and
- * Dominion. Every later system asks this module where things are and who owns them.
+ * The realm map (Ch 3, rebuilt by D-16): the heartland (rings 0 to 2, as Ch 3 built it) and, beyond
+ * it, four rival marches and two lair wedges; who holds what at the founding, seeded villages,
+ * seams, adjacency, borders and each hex's strength, band and path shares. Every later system asks
+ * this module where things are and who owns them.
  *
- * Geometry (version 1, Ch 3, as written out in docs/game/tasks/T03): `ring` is the hex distance
- * from the castle at (0, 0); on screen `r` grows downward. The four diagonal corner rays are the
- * roads (NW Barracks → Orc, NE Merchant Hall → Goblin, SW Mage Tower → Archmage, SE Foundry →
- * Dwarf). The W and E rays lead to the lairs and count as the West and East between-lands.
+ * Geometry (axial coordinates, as T03 wrote them out): `ring` is the hex distance from the castle at
+ * (0, 0); on screen `r` grows downward. The six corner rays are, clockwise from the NW: the Orc's
+ * road (Barracks), the Goblin's (Merchant Hall), the Thornwild's ray (E), the Dwarf's road
+ * (Foundry), the Archmage's (Mage Tower) and the Wyrmfells' ray (W).
  *
- * Changing owners over time is T08 to T10's job; this module only builds and reads the map.
+ * Beyond the heartland every hex has a depth, ring − 2 (C-02):
+ * - A **rival march** is, on each ring from 3 to 14, the hexes within 2 positions of that rival's
+ *   corner: rows of 5, depths 1 to 12, its road down the middle, its Gate at depth 12. Its capital
+ *   and the realm hexes beside it are on ring 15, where nobody claims anything.
+ * - A **lair wedge** fills the gap between its two rival marches: on each ring from 3 to 7, the
+ *   hexes within ring − 3 positions of the lair's corner (rows of 1, 3, 5, 7 and 9), its Lair Mouth
+ *   at depth 5 on the corner, its lair hexes on ring 8.
+ * - **Seams** (P2-04, P2-05): the hexes near home within 2 of two rival corners (the Orc and the
+ *   Goblin, the Dwarf and the Archmage), and each wedge's edge hexes from depth 2, along a rival
+ *   march. A seam counts half for each side; each dawn a draw picks whose rules apply.
+ * - Everything else is empty board: on screen only (C-05).
+ *
+ * Changing owners over time is the war's job (combat, land, rivals); this module builds and reads.
  */
 import { CODEX } from './codex'
 import { RULES, base } from './rules'
-import { shuffle, stream } from './rng'
-import { RIVAL_IDS, type BuildingId, type FrontId, type HexKind, type HexState, type ISODate, type Land, type Owner, type RivalId } from './types'
+import { draw, stream } from './rng'
+import { LAIR_IDS, RIVAL_IDS, type BuildingId, type FrontId, type HexKind, type HexState, type ISODate, type LairId, type Land, type MarchId, type Owner, type RivalId } from './types'
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
 
@@ -52,8 +65,8 @@ const ROAD_OF_CORNER: Partial<Record<Direction, BuildingId>> = {
 const LAND_OF_LAIR_CORNER: Partial<Record<Direction, Land>> = { W: 'west', E: 'east' }
 
 /**
- * The between-land of the edge hexes after each clockwise corner (side i runs from corner i to
- * corner i + 1): NW→NE North, NE→E and E→SE East, SE→SW South, SW→W and W→NW West.
+ * The between-land of the heartland's edge hexes after each clockwise corner (side i runs from
+ * corner i to corner i + 1): NW→NE North, NE→E and E→SE East, SE→SW South, SW→W and W→NW West.
  */
 const LAND_OF_SIDE: readonly Land[] = ['north', 'east', 'east', 'south', 'west', 'west']
 
@@ -65,10 +78,17 @@ export const LAND_BUILDINGS: Readonly<Record<Land, readonly [BuildingId, Buildin
   east: ['merchantHall', 'foundry']
 })
 
-/** The map's radius: ring 6 is the Rim. */
-export const MAP_RADIUS = RULES.map.radius
-const FRONTIER_RING = RULES.land.claimableRings.max
-const RIM_RING = MAP_RADIUS
+const M = RULES.map
+/** The heartland's outer ring (D-16): rings 0 to 2 lie in no march. */
+const HEARTLAND = M.heartlandRings
+/** Rival marches: depth 1 is ring 3; the Gate is at depth `marchDepth`; the capital and realm one ring beyond. */
+const GATE_RING = HEARTLAND + M.marchDepth
+const RIM_RING = GATE_RING + 1
+/** Lair wedges: the Lair Mouth at depth `lairDepth`; the lair hexes one ring beyond. */
+const MOUTH_RING = HEARTLAND + M.lairDepth
+const LAIR_RIM_RING = MOUTH_RING + 1
+/** The outermost ring with map hexes. */
+export const MAP_RADIUS = RIM_RING
 
 /** Builds the id of a hex: `"q,r"`. */
 export function hexId(q: number, r: number): string {
@@ -98,17 +118,6 @@ export function hexDistance(a: string | Axial, b: string | Axial): number {
 /** The ring of a hex: its distance from the castle. */
 export function ringOf(hex: string | Axial): number {
   return hexDistance(hex, { q: 0, r: 0 })
-}
-
-/** The ids of the hexes touching this one, on the map only, in the order E, NE, NW, W, SW, SE. */
-export function neighbors(id: string): string[] {
-  const { q, r } = parseHexId(id)
-  const out: string[] = []
-  for (const d of Object.values(DIRECTIONS)) {
-    const n = { q: q + d.q, r: r + d.r }
-    if (ringOf(n) <= MAP_RADIUS) out.push(hexId(n.q, n.r))
-  }
-  return out
 }
 
 /** The hexes of ring k in clockwise order from its NW corner (ring 0 is the castle alone). */
@@ -147,45 +156,64 @@ const NAME_OF = new Map(CODEX.hexes.map((h) => [h.id, h.name]))
 
 /**
  * A hex's place name, as screens and text name it (D-07): "Ashfall", "Caer Emrys". From the codex,
- * themed by the region the hex lies in; the ring label (`hexLabel`) stands in for a hex without one.
+ * themed by the march the hex lies in; the ring label (`hexLabel`) stands in for a hex without one.
  */
 export function hexName(hex: string | Axial | HexState): string {
   const id = typeof hex === 'string' ? hex : hexId(hex.q, hex.r)
   return NAME_OF.get(id) ?? hexLabel(hex)
 }
 
-// ── Regions (D-07, D-09) ─────────────────────────────────────────────────────
+/** The rival at the end of a building's road (Barracks → Orc, Merchant Hall → Goblin, …). */
+export function rivalOfRoad(road: BuildingId): RivalId {
+  const entry = CODEX.rivals.find((rv) => rv.road === road)
+  if (!entry) throw new Error(`No rival on the ${road} road`)
+  return entry.id
+}
 
-/** The heartland's outer ring: rings 0 to 2 belong to no region. */
-const HEARTLAND_RINGS = 2 // rules-ok: where the regions begin (D-07, D-09), not a rule
+// ── Marches (D-16) ───────────────────────────────────────────────────────────
 
-/** The region at the end of a corner ray: a rival's on the four roads, a lair's on the W and E rays. */
-function regionOfCorner(dir: Direction): string {
+/** The march at the end of each corner ray: a rival's on the four roads, a lair's on the W and E rays. */
+function marchOfCorner(dir: Direction): MarchId {
   const road = ROAD_OF_CORNER[dir]
   if (road) return rivalOfRoad(road)
   const lair = CODEX.lairs.find((l) => l.land === LAND_OF_LAIR_CORNER[dir])
-  if (!lair) throw new Error(`No lair on the ${dir} ray`)
-  return lair.id
+  if (!lair || !(LAIR_IDS as readonly string[]).includes(lair.id)) throw new Error(`No lair on the ${dir} ray`)
+  return lair.id as LairId
 }
 
-/**
- * The region a hex lies in (D-07, D-09), as a rival id or a lair id: the region at the end of the
- * corner ray nearest it along its ring (clockwise from the NW: the Orc, the Goblin, the Thornwild,
- * the Dwarf, the Archmage, the Wyrmfells). A hex halfway between two corners lies on the border
- * of both, listed clockwise; a heartland hex (rings 0 to 2) lies in none.
- */
-export function regionsOf(hex: string | Axial): string[] {
-  const at = toAxial(hex)
-  const k = ringOf(at)
-  if (k <= HEARTLAND_RINGS) return []
-  const p = ringIndex(at)
-  const side = Math.floor(p / k)
-  const here = regionOfCorner(CLOCKWISE_CORNERS[side])
-  const next = regionOfCorner(CLOCKWISE_CORNERS[(side + 1) % CLOCKWISE_CORNERS.length])
-  const twice = 2 * (p % k)
-  if (twice < k) return [here]
-  if (twice > k) return [next]
-  return [here, next]
+const CORNER_OF = new Map<MarchId, number>(CLOCKWISE_CORNERS.map((d, i) => [marchOfCorner(d), i]))
+
+/** Whether a march is a lair's wedge. */
+export function isLairMarch(march: MarchId | undefined): march is LairId {
+  return march !== undefined && (LAIR_IDS as readonly string[]).includes(march)
+}
+
+/** The two rivals whose marches flank a lair's wedge, clockwise (the Wyrmfells: the Archmage and the Orc). */
+export function lairNeighbors(lair: LairId): [RivalId, RivalId] {
+  const i = CORNER_OF.get(lair) as number
+  const n = CLOCKWISE_CORNERS.length
+  return [marchOfCorner(CLOCKWISE_CORNERS[(i + n - 1) % n]) as RivalId, marchOfCorner(CLOCKWISE_CORNERS[(i + 1) % n]) as RivalId]
+}
+
+/** How far position p on ring k lies from a corner, along the ring. */
+function offsetFrom(k: number, p: number, corner: number): number {
+  const size = k * CLOCKWISE_CORNERS.length
+  const d = Math.abs(p - corner * k) % size
+  return Math.min(d, size - d)
+}
+
+/** Whether two marches lie side by side around the castle, so their border has its own art (D-09). */
+export function marchesBorder(a: MarchId, b: MarchId): boolean {
+  const n = CLOCKWISE_CORNERS.length
+  const d = ((CORNER_OF.get(b) as number) - (CORNER_OF.get(a) as number) + n) % n
+  return d === 1 || d === n - 1
+}
+
+/** Two marches in clockwise order around the castle (for border art: `orc-goblin`, `wyrmfells-orc`). */
+export function clockwisePair(a: MarchId, b: MarchId): [MarchId, MarchId] {
+  const ia = CORNER_OF.get(a) as number
+  const ib = CORNER_OF.get(b) as number
+  return (ib - ia + CLOCKWISE_CORNERS.length) % CLOCKWISE_CORNERS.length === 1 ? [a, b] : [b, a]
 }
 
 // ── Building the map ─────────────────────────────────────────────────────────
@@ -198,152 +226,257 @@ interface Slot {
   kind: HexKind
   land?: Land
   road?: BuildingId
-  /** The rival whose capital, realm, Gate or March this is. */
+  march?: MarchId
+  seam?: MarchId
+  /** The rival who holds this at the founding: its capital, realm, Gate and the outer third of its march. */
   rival?: RivalId
-  /** One of the 12 rival Frontier villages (a Gate or a March hex). */
-  rivalVillage?: boolean
 }
 
-/** The rival at the end of a building's road (Barracks → Orc, Merchant Hall → Goblin, …). */
-export function rivalOfRoad(road: BuildingId): RivalId {
-  const entry = CODEX.rivals.find((rv) => rv.road === road)
-  if (!entry) throw new Error(`No rival on the ${road} road`)
-  return entry.id
-}
-
-/** The layout of one ring-k hex at clockwise position p. */
-function slotAt(k: number, p: number, at: Axial): Slot {
+/** The heartland's layout (rings 0 to 2), exactly as Ch 3 built it. */
+function heartlandSlot(k: number, p: number, at: Axial): Slot {
   const slot: Slot = { q: at.q, r: at.r, ring: k, kind: 'between' }
   if (k === 0) return { ...slot, kind: 'castle' }
   const side = Math.floor(p / k)
-  const offset = p % k
   const corner = CLOCKWISE_CORNERS[side]
-  if (offset === 0) {
+  if (p % k === 0) {
     const road = ROAD_OF_CORNER[corner]
     if (road) slot.road = road
     else slot.land = LAND_OF_LAIR_CORNER[corner]
   } else {
     slot.land = LAND_OF_SIDE[side]
   }
-
-  const size = k * CLOCKWISE_CORNERS.length
-  /** The corner this hex is, or sits beside on its ring (±1 position). */
-  const nearCorner = (dir: Direction): 'on' | 'beside' | undefined => {
-    const c = CLOCKWISE_CORNERS.indexOf(dir) * k
-    if (p === c) return 'on'
-    if (p === (c + 1) % size || p === (c - 1 + size) % size) return 'beside'
-    return undefined
-  }
-  const diagonal = (Object.keys(ROAD_OF_CORNER) as Direction[]).map((d) => ({ d, near: nearCorner(d) }))
-  const nearRoad = diagonal.find((x) => x.near !== undefined)
-  const nearLair = (Object.keys(LAND_OF_LAIR_CORNER) as Direction[]).find((d) => nearCorner(d) !== undefined)
-
-  if (k === 1) {
-    if (slot.road) slot.kind = 'building'
-    return slot
-  }
-  if (k < FRONTIER_RING) {
-    if (slot.road) slot.kind = 'road'
-    return slot
-  }
-  if (k === FRONTIER_RING) {
-    if (nearRoad) {
-      slot.rival = rivalOfRoad(ROAD_OF_CORNER[nearRoad.d] as BuildingId)
-      slot.rivalVillage = true
-      if (nearRoad.near === 'on') slot.kind = 'gate'
-    } else if (slot.land && offset === 0) {
-      slot.kind = 'lairMouth'
-    }
-    return slot
-  }
-  // The Rim.
-  if (nearRoad) {
-    slot.rival = rivalOfRoad(ROAD_OF_CORNER[nearRoad.d] as BuildingId)
-    slot.kind = nearRoad.near === 'on' ? 'capital' : 'realm'
-  } else if (nearLair) {
-    slot.kind = 'lair'
-  } else {
-    slot.kind = 'battlefield'
-  }
+  if (slot.road) slot.kind = k === 1 ? 'building' : 'road'
   return slot
 }
 
+/** The layout of the ring-k hex at clockwise position p, or null when it is empty board. */
+function slotAt(k: number, p: number, at: Axial): Slot | null {
+  if (k <= HEARTLAND) return heartlandSlot(k, p, at)
+  const base = { q: at.q, r: at.r, ring: k }
+  const rivals = RIVAL_IDS.map((rival) => ({ rival, off: offsetFrom(k, p, CORNER_OF.get(rival) as number) }))
+
+  if (k <= GATE_RING) {
+    const hits = rivals.filter((x) => x.off <= M.marchHalfWidth)
+    if (hits.length > 0) {
+      // The nearer corner leads; halfway, the corner whose side this is (clockwise first).
+      const here = marchOfCorner(CLOCKWISE_CORNERS[Math.floor(p / k)])
+      hits.sort((a, b) => a.off - b.off || (a.rival === here ? -1 : b.rival === here ? 1 : 0))
+      const [first, second] = hits
+      const slot: Slot = { ...base, kind: 'between', march: first.rival }
+      if (second) slot.seam = second.rival
+      if (first.off === 0) {
+        slot.road = CODEX.rivals.find((rv) => rv.id === first.rival)?.road
+        slot.kind = k === GATE_RING ? 'gate' : 'road'
+      }
+      if (k - HEARTLAND >= M.rivalHeldFromDepth) slot.rival = first.rival
+      return slot
+    }
+  }
+  if (k === RIM_RING) {
+    const near = rivals.find((x) => x.off <= 1)
+    if (near) {
+      const slot: Slot = { ...base, kind: near.off === 0 ? 'capital' : 'realm', march: near.rival, rival: near.rival }
+      if (near.off === 0) slot.road = CODEX.rivals.find((rv) => rv.id === near.rival)?.road
+      return slot
+    }
+  }
+  for (const lair of LAIR_IDS) {
+    const corner = CORNER_OF.get(lair) as number
+    const off = offsetFrom(k, p, corner)
+    const land = LAND_OF_LAIR_CORNER[CLOCKWISE_CORNERS[corner]]
+    if (k <= MOUTH_RING && off <= k - (HEARTLAND + 1)) {
+      const slot: Slot = { ...base, kind: k === MOUTH_RING && off === 0 ? 'lairMouth' : 'between', march: lair, ...(land ? { land } : {}) }
+      // A wedge's edge from depth 2 runs along a rival march: a flank seam (the neck at depth 1 touches both, C-03).
+      if (off === k - (HEARTLAND + 1) && k > HEARTLAND + 1) {
+        const size = k * CLOCKWISE_CORNERS.length
+        const clockwise = (p - corner * k + size) % size <= size / 2
+        const [before, after] = lairNeighbors(lair)
+        slot.seam = clockwise ? after : before
+      }
+      return slot
+    }
+    if (k === LAIR_RIM_RING && off <= 1) return { ...base, kind: 'lair', march: lair, ...(land ? { land } : {}) }
+  }
+  return null
+}
+
 /** Every hex's layout, castle first, then ring by ring clockwise from each NW corner. */
-function layout(): Slot[] {
+const LAYOUT: readonly Slot[] = (() => {
   const out: Slot[] = []
-  for (let k = 0; k <= MAP_RADIUS; k++) ringHexes(k).forEach((at, p) => out.push(slotAt(k, p, at)))
+  for (let k = 0; k <= MAP_RADIUS; k++) {
+    ringHexes(k).forEach((at, p) => {
+      const slot = slotAt(k, p, at)
+      if (slot) out.push(slot)
+    })
+  }
+  return out
+})()
+
+const SLOT_OF = new Map(LAYOUT.map((s) => [hexId(s.q, s.r), s]))
+
+/** Whether a hex id is on the map. */
+export function onMap(id: string): boolean {
+  return SLOT_OF.has(id)
+}
+
+/** The ids of the hexes touching this one, on the map only, in the order E, NE, NW, W, SW, SE. */
+export function neighbors(id: string): string[] {
+  const { q, r } = parseHexId(id)
+  const out: string[] = []
+  for (const d of Object.values(DIRECTIONS)) {
+    const n = hexId(q + d.q, r + d.r)
+    if (SLOT_OF.has(n)) out.push(n)
+  }
   return out
 }
 
-/** Whether a ring is claimable at all (rings 1 to 5). */
-function inClaimableRings(ring: number): boolean {
-  return ring >= RULES.land.claimableRings.min && ring <= RULES.land.claimableRings.max
+/**
+ * The march a hex lies in and, for a seam, the second (D-16), clockwise: `['orc', 'goblin']`,
+ * `['wyrmfells', 'orc']`. The art follows it (D-09). A heartland hex, or empty board, lies in none.
+ */
+export function regionsOf(hex: string | Axial): MarchId[] {
+  const at = toAxial(hex)
+  const slot = SLOT_OF.get(hexId(at.q, at.r))
+  if (!slot?.march) return []
+  return slot.seam ? clockwisePair(slot.march, slot.seam) : [slot.march]
 }
 
 /** The kinds that can never change hands by any method in this module. */
 const FIXED_KINDS: ReadonlySet<HexKind> = new Set<HexKind>(['castle', 'building', 'capital', 'realm', 'lair', 'battlefield'])
 
-/** The 86 claimable hexes are rings 1 to 5, minus the castle and the four buildings. */
+/** The claimable hexes: rings 1 and beyond, minus the castle, the buildings, capitals, realms and lairs. */
 export function isClaimableKind(hex: Pick<HexState, 'ring' | 'kind'>): boolean {
-  return inClaimableRings(hex.ring) && !FIXED_KINDS.has(hex.kind)
+  return hex.ring >= 1 && !FIXED_KINDS.has(hex.kind)
 }
 
 /** The day seeded map draws use: the map depends on the seed alone, never on the founding date. */
 const MAP_DRAW_DAY: ISODate = '0000-01-01'
 
-// ── The wilds' strength (D-15) ───────────────────────────────────────────────
+// ── Depth, bands and strength (D-17) ─────────────────────────────────────────
 
-/** Each hex's place on its ring's ramp, (k + 0.5) / n for the k-th of n in a seeded order; by seed. */
-const wildPlaces = new Map<number, ReadonlyMap<string, number>>()
-
-function wildPlace(seed: number, id: string): number {
-  let places = wildPlaces.get(seed)
-  if (!places) {
-    const out = new Map<string, number>()
-    const slots = layout()
-    for (let ring = 1; ring <= MAP_RADIUS; ring++) {
-      const ids = slots.filter((s) => s.ring === ring).map((s) => hexId(s.q, s.r))
-      shuffle(seed, MAP_DRAW_DAY, `wild:${ring}`, ids).forEach((hid, k, all) => out.set(hid, (k + 0.5) / all.length)) // rules-ok: the middle of the k-th of n equal slots
-    }
-    places = out
-    wildPlaces.set(seed, places)
-  }
-  const place = places.get(id)
-  if (place === undefined) throw new RangeError(`No hex "${id}" on the map`)
-  return place
+/** A hex's depth beyond the heartland: ring − 2 (0 in the heartland). */
+export function depthOf(hex: Pick<HexState, 'ring'>): number {
+  return Math.max(0, hex.ring - HEARTLAND)
 }
 
 /**
- * The wilds' strength on a hex before its kind's share (D-15): spread evenly across its ring from
- * `RULES.land.wildRange.low` to `.high`, in an order the map's seed fixes. Rings 1 and 2 are flat.
+ * A hex's band, 1 to 5, for everything that once scaled with its ring (D-17): the heartland's ring,
+ * then a band every 4 depths of a rival march (3, 4, 5) and every 2 of a lair's wedge.
  */
-export function wildBase(seed: number, hex: Pick<HexState, 'id' | 'ring'>): number {
-  const { low, high } = RULES.land.wildRange
-  const lo = low[hex.ring - 1]
-  const hi = high[hex.ring - 1]
-  if (lo === undefined || hi === undefined) throw new RangeError(`No wild range for ring ${hex.ring}`)
-  return lo + (hi - lo) * wildPlace(seed, hex.id)
+export function bandOf(hex: Pick<HexState, 'ring' | 'march'>): number {
+  if (hex.ring <= HEARTLAND) return hex.ring
+  const per = isLairMarch(hex.march) ? M.bands.lairDepthsPerBand : M.bands.rivalDepthsPerBand
+  return Math.min(M.bands.max, HEARTLAND + 1 + Math.floor((depthOf(hex) - 1) / per))
 }
 
-/** A neutral hex's garrison (Ch 6, D-15): beasts hold 0.9 of the wilds' strength, a village's militia 0.6. */
-export function wildGarrison(seed: number, hex: Pick<HexState, 'id' | 'ring'>, village: boolean): number {
-  return wildBase(seed, hex) * (village ? RULES.land.garrison.villageMilitia : RULES.land.garrison.beasts)
+/**
+ * A hex's strength, fixed at founding (D-17): the heartland's base(ring), the buildings' too (threats
+ * strike them); beyond, its march's depth curve with a seeded jitter. The castle and the hexes nobody
+ * can claim beyond the heartland have none.
+ */
+function strengthOf(seed: number, id: string, slot: Slot): number {
+  if (slot.ring <= HEARTLAND) return slot.ring >= 1 ? base(slot.ring) : 0
+  if (!isClaimableKind(slot)) return 0
+  const c = RULES.land.depthCurve
+  const curve = isLairMarch(slot.march) ? c.lair : c.rival
+  const jitter = 1 + c.jitter * (2 * draw(seed, MAP_DRAW_DAY, `strength:${id}`) - 1)
+  return curve.first * depthOf(slot) ** curve.exponent * jitter
 }
 
-/** Per-building village credit (A-13): 1 for a road village, 0.5 for each shared between-land village. */
-export function villageCredits(hexes: readonly Pick<HexState, 'village' | 'road' | 'land' | 'kind'>[]): Record<BuildingId, number> {
-  const credit: Record<BuildingId, number> = { barracks: 0, merchantHall: 0, mageTower: 0, foundry: 0 }
+/** The wilds' strength on a hex (D-15, D-17): its own strength, which every garrison and threat there scales with. */
+export function wildBase(hex: Pick<HexState, 'strength'>): number {
+  return hex.strength
+}
+
+/** A neutral hex's garrison (Ch 6, D-15): beasts hold 0.9 of its strength, a village's militia 0.6. */
+export function wildGarrison(hex: Pick<HexState, 'strength'>, village: boolean): number {
+  return wildBase(hex) * (village ? RULES.land.garrison.villageMilitia : RULES.land.garrison.beasts)
+}
+
+// ── Path shares (D-18) ───────────────────────────────────────────────────────
+
+export type Shares = Partial<Record<RivalId, number>>
+
+/** A march's paths: a rival's own, or a lair's two neighbors half each. */
+export function marchShares(march: MarchId): Shares {
+  if (!isLairMarch(march)) return { [march]: 1 }
+  const [a, b] = lairNeighbors(march)
+  return { [a]: 1 / 2, [b]: 1 / 2 }
+}
+
+function blend(a: Shares, b: Shares): Shares {
+  const out: Shares = {}
+  for (const r of RIVAL_IDS) {
+    const v = ((a[r] ?? 0) + (b[r] ?? 0)) / 2
+    if (v > 0) out[r] = v
+  }
+  return out
+}
+
+/**
+ * Each rival path's share of a hex (D-18, section 5.1 of the spec), summing to 1 for a claimable hex:
+ * a rival march hex is its rival's; a lair's is half each of its two neighbors'; a seam is half each
+ * side's. A heartland hex goes to the march it faces (C-04): a corner hex to that corner's, a ring-2
+ * side hex half each to the two corners it lies between. Hexes nobody can claim have none.
+ */
+export function pathShares(hex: Pick<HexState, 'q' | 'r' | 'ring' | 'kind' | 'march' | 'seam'>): Shares {
+  if (!isClaimableKind(hex)) return {}
+  if (hex.march) return hex.seam ? blend(marchShares(hex.march), marchShares(hex.seam)) : marchShares(hex.march)
+  const k = hex.ring
+  const p = ringIndex(hex)
+  const side = Math.floor(p / k)
+  const corner = marchShares(marchOfCorner(CLOCKWISE_CORNERS[side]))
+  if (p % k === 0) return corner
+  return blend(corner, marchShares(marchOfCorner(CLOCKWISE_CORNERS[(side + 1) % CLOCKWISE_CORNERS.length])))
+}
+
+/** What holding a hex adds to Dominion, over all its paths (D-18): its depth, or 1 in the heartland (C-04). */
+export function hexWorth(hex: Pick<HexState, 'ring' | 'kind'>): number {
+  if (!isClaimableKind(hex)) return 0
+  return hex.ring <= HEARTLAND ? RULES.dominion.heartlandHolding : depthOf(hex)
+}
+
+// ── Villages (D-16, P2-02) ───────────────────────────────────────────────────
+
+/** Each path's village credit: every village's path shares, summed (A-13, rebuilt by D-16). */
+export function villageCredits(hexes: readonly Pick<HexState, 'q' | 'r' | 'ring' | 'kind' | 'march' | 'seam' | 'village'>[]): Record<RivalId, number> {
+  const credit = Object.fromEntries(RIVAL_IDS.map((r) => [r, 0])) as Record<RivalId, number>
   for (const h of hexes) {
     if (!h.village) continue
-    if (h.road) credit[h.road] += RULES.map.villageCredit.road
-    else if (h.land) for (const b of LAND_BUILDINGS[h.land]) credit[b] += RULES.map.villageCredit.between
+    for (const [r, v] of Object.entries(pathShares(h)) as [RivalId, number][]) credit[r] += v
   }
   return credit
 }
 
-function creditSpread(credit: Record<BuildingId, number>): number {
-  const values = Object.values(credit)
-  return Math.max(...values) - Math.min(...values)
+/** A group of hexes that must hold `quota` villages; `forced` must be one of them (a Gate). */
+interface VillageGroup {
+  ids: string[]
+  quota: number
+  forced?: string
+}
+
+/** The village groups (P2-02): the heartland's ring 2, each third of each rival march, each band of each lair's wedge. */
+function villageGroups(): VillageGroup[] {
+  const v = M.villages
+  const groups: VillageGroup[] = []
+  const claimable = LAYOUT.filter((s) => isClaimableKind(s) && s.kind !== 'lairMouth')
+  groups.push({ ids: claimable.filter((s) => s.ring === HEARTLAND).map((s) => hexId(s.q, s.r)), quota: v.heartland })
+  const thirds = M.marchDepth / M.bands.rivalDepthsPerBand
+  for (const rival of RIVAL_IDS) {
+    for (let t = 0; t < thirds; t++) {
+      const from = t * M.bands.rivalDepthsPerBand + 1
+      const slots = claimable.filter((s) => s.march === rival && depthOf(s) >= from && depthOf(s) < from + M.bands.rivalDepthsPerBand)
+      const gate = slots.find((s) => s.kind === 'gate')
+      groups.push({ ids: slots.map((s) => hexId(s.q, s.r)), quota: v.perRivalThird, ...(gate ? { forced: hexId(gate.q, gate.r) } : {}) })
+    }
+  }
+  for (const lair of LAIR_IDS) {
+    for (let from = 1; from <= M.lairDepth; from += M.bands.lairDepthsPerBand) {
+      const slots = claimable.filter((s) => s.march === lair && depthOf(s) >= from && depthOf(s) < from + M.bands.lairDepthsPerBand)
+      groups.push({ ids: slots.map((s) => hexId(s.q, s.r)), quota: Math.min(v.perLairBand, slots.length) })
+    }
+  }
+  return groups
 }
 
 /** The result of seeding villages: the chosen hex ids and which attempt found them. */
@@ -352,91 +485,85 @@ export interface VillageSeeding {
   attempt: number
 }
 
+const seedings = new Map<number, VillageSeeding>()
+
+/** How many pairs of the given hexes touch. */
+export function touchingPairs(ids: readonly string[]): number {
+  const set = new Set(ids)
+  return ids.reduce((n, id) => n + neighbors(id).filter((x) => set.has(x)).length, 0) / 2
+}
+
 /**
- * Seeds the 18 neutral villages (A-13, read with A-108): 4 in ring 2, 6 in ring 3 and 8 in
- * ring 4, with per-building credit within 1. No seeded village touches a rival village or a
- * village in its own ring, and at most 2 pairs of seeded villages touch across neighboring rings.
- * (Fully apart, 4/6/8 does not fit on this map: ring 4 has exactly room for 8 beside the rival
- * villages, and those leave ring 3 room for 4.)
- *
- * Each attempt draws from the stream `villages:<attempt>`: it shuffles each ring's hexes once,
- * then searches depth-first, outermost ring first, in that order. An attempt that runs out of
- * search budget is dropped and the next one starts.
+ * Seeds the villages (P2-02): each group's quota, the Gates included. No two villages of a group
+ * touch; across groups at most `maxTouchingPairs` pairs do; every path's credit is within
+ * `maxCreditSpread` of the others'. Each attempt draws from the stream `villages:<attempt>` and fills
+ * the groups in order, each from its own shuffled hexes, apart from every village where it can and
+ * from its own group's always; an attempt that can't fill a group, or misses a limit, is dropped.
  */
 export function seedVillages(seed: number): VillageSeeding {
-  const slots = layout()
-  const rivalVillages = new Set(slots.filter((s) => s.rivalVillage).map((s) => hexId(s.q, s.r)))
-  const quota = RULES.map.seededVillages
-  const rules = RULES.map.villageSeeding
-  const ringOfId = new Map(slots.map((s) => [hexId(s.q, s.r), s.ring]))
-  // Hexes that may hold a seeded village at all: neutral, claimable, not beside a rival village.
-  const open = slots.filter(
-    (s) =>
-      quota[s.ring - 1] > 0 &&
-      isClaimableKind(s) &&
-      !s.rival &&
-      !neighbors(hexId(s.q, s.r)).some((n) => rivalVillages.has(n))
-  )
-
-  for (let attempt = 0; attempt < rules.maxAttempts; attempt++) {
+  const known = seedings.get(seed)
+  if (known) return known
+  const v = M.villages
+  const groups = villageGroups()
+  for (let attempt = 0; attempt < v.maxAttempts; attempt++) {
     const draws = stream(seed, MAP_DRAW_DAY, `villages:${attempt}`)
-    const order: Slot[] = []
-    for (let ring = quota.length; ring >= 1; ring--) order.push(...draws.shuffle(open.filter((s) => s.ring === ring)))
-    const ids = order.map((s) => hexId(s.q, s.r))
-    const leftInRing = order.map((s, i) => order.slice(i).filter((o) => o.ring === s.ring).length)
-
     const chosen = new Set<string>()
-    const count = quota.map(() => 0)
-    let nodes = 0
-    const search = (i: number, pairs: number): boolean => {
-      if (++nodes > rules.searchBudget) return false
-      if (count.every((c, k) => c === quota[k])) {
-        const credit = villageCredits(order.filter((s) => chosen.has(hexId(s.q, s.r))).map((s) => ({ ...s, village: { loyalty: 0 } })))
-        return creditSpread(credit) <= RULES.map.villageCredit.maxSpread
+    const touching = (id: string, among: ReadonlySet<string>): boolean => neighbors(id).some((n) => among.has(n))
+    let ok = true
+    for (const g of groups) {
+      const mine = new Set<string>()
+      const take = (id: string): void => {
+        chosen.add(id)
+        mine.add(id)
       }
-      if (i === order.length) return false
-      const k = order[i].ring - 1
-      if (count[k] + leftInRing[i] < quota[k]) return false
-      if (count[k] < quota[k]) {
-        const touching = neighbors(ids[i]).filter((n) => chosen.has(n))
-        const sameRing = touching.some((n) => ringOfId.get(n) === order[i].ring)
-        if (!sameRing && pairs + touching.length <= rules.maxTouchingPairs) {
-          chosen.add(ids[i])
-          count[k]++
-          if (search(i + 1, pairs + touching.length)) return true
-          count[k]--
-          chosen.delete(ids[i])
+      if (g.forced) take(g.forced)
+      const order = draws.shuffle(g.ids.filter((id) => id !== g.forced))
+      // Apart from every village first; then apart from this group's own, touching a neighbor group's if it must.
+      for (const pass of [chosen, mine]) {
+        for (const id of order) {
+          if (mine.size >= g.quota) break
+          if (!chosen.has(id) && !touching(id, pass)) take(id)
         }
       }
-      return search(i + 1, pairs)
+      if (mine.size < g.quota) {
+        ok = false
+        break
+      }
     }
-    if (search(0, 0)) return { ids: ids.filter((id) => chosen.has(id)), attempt }
+    if (!ok) continue
+    const placed = [...chosen].map((id) => ({ ...(SLOT_OF.get(id) as Slot), village: { loyalty: 0 } }))
+    const credit = Object.values(villageCredits(placed))
+    if (Math.max(...credit) - Math.min(...credit) > v.maxCreditSpread) continue
+    if (touchingPairs([...chosen]) > v.maxTouchingPairs) continue
+    const out = { ids: LAYOUT.map((s) => hexId(s.q, s.r)).filter((id) => chosen.has(id)), attempt }
+    seedings.set(seed, out)
+    return out
   }
-  throw new Error(`No village seeding fits after ${rules.maxAttempts} attempts (seed ${seed})`)
+  throw new Error(`No village seeding fits after ${v.maxAttempts} attempts (seed ${seed})`)
 }
 
-/** The starting garrison of a hex (Ch 6 garrison table, A-17; the wilds' ramp, D-15). */
-function startingGarrison(seed: number, id: string, slot: Slot, owner: Owner, village: boolean): number {
-  if (!inClaimableRings(slot.ring) || FIXED_KINDS.has(slot.kind) || owner === 'player') return 0
-  const b = base(slot.ring)
-  if (slot.kind === 'lairMouth') return b * RULES.combat.strength.mythic
-  if (owner !== 'neutral') return b * RULES.land.rivalGarrisonMult[owner]
-  return wildGarrison(seed, { id, ring: slot.ring }, village)
+/** The starting garrison of a hex (Ch 6 garrison table, A-17; D-17's strength). */
+function startingGarrison(slot: Slot, strength: number, owner: Owner, village: boolean): number {
+  if (!isClaimableKind(slot) || owner === 'player') return 0
+  if (slot.kind === 'lairMouth') return strength * RULES.combat.strength.mythic
+  if (owner !== 'neutral') return strength * RULES.land.rivalGarrisonMult[owner]
+  return wildGarrison({ strength }, village)
 }
 
 /**
- * The map at the founding (Ch 3): geometry, kinds, `land` and `road` tags, starting owners
- * (A-14, A-15), starting garrisons, villages and their loyalty, fortification 0.
+ * The map at the founding (D-16): geometry, kinds, marches and seams, `land` and `road` tags,
+ * starting owners (the outer third of each rival march is the rival's, P2-01), each hex's strength
+ * and starting garrison (P2-03: unfortified), villages and their loyalty.
  * The same seed always builds the same map.
  */
 export function buildMap(seed: number): HexState[] {
   const villages = new Set(seedVillages(seed).ids)
-  return layout().map((slot) => {
+  return LAYOUT.map((slot) => {
     const id = hexId(slot.q, slot.r)
     let owner: Owner = 'neutral'
     if (slot.kind === 'castle' || slot.kind === 'building') owner = 'player'
-    else if (slot.rival) owner = slot.rival // lairs and battlefields have none: nobody ever holds them
-
+    else if (slot.rival) owner = slot.rival // lairs have none: nobody ever holds them
+    const strength = strengthOf(seed, id, slot)
     const hex: HexState = {
       id,
       q: slot.q,
@@ -447,14 +574,17 @@ export function buildMap(seed: number): HexState[] {
       garrison: 0,
       garrisonDamage: 0,
       fortification: 0,
-      status: 'held'
+      status: 'held',
+      strength
     }
-    const isVillage = slot.rivalVillage === true || villages.has(id)
+    if (slot.march) hex.march = slot.march
+    if (slot.seam) hex.seam = slot.seam
+    const isVillage = villages.has(id)
     if (isVillage) {
-      const perRing = owner === 'neutral' ? RULES.influence.loyalty.neutralPerRing : RULES.influence.loyalty.rivalPerRing
-      hex.village = { loyalty: perRing * slot.ring }
+      const perBand = owner === 'neutral' ? RULES.influence.loyalty.neutralPerRing : RULES.influence.loyalty.rivalPerRing
+      hex.village = { loyalty: perBand * bandOf(slot) }
     }
-    hex.garrison = startingGarrison(seed, id, slot, owner, isVillage)
+    hex.garrison = startingGarrison(slot, strength, owner, isVillage)
     if (slot.land) hex.land = slot.land
     if (slot.road) hex.road = slot.road
     if (slot.kind === 'lairMouth') hex.mythic = true
@@ -467,12 +597,20 @@ export function buildMap(seed: number): HexState[] {
 /** The hexes by id, for the queries below when a caller asks many of them at once. */
 export type HexIndex = ReadonlyMap<string, HexState>
 
+const indexes = new WeakMap<readonly HexState[], HexIndex>()
+
+/** The hexes by id. The index of a given hexes array is built once and kept while the array lives. */
 export function hexIndex(hexes: readonly HexState[]): HexIndex {
-  return new Map(hexes.map((h) => [h.id, h]))
+  let byId = indexes.get(hexes)
+  if (!byId) {
+    byId = new Map(hexes.map((h) => [h.id, h]))
+    indexes.set(hexes, byId)
+  }
+  return byId
 }
 
 function find(hexes: readonly HexState[], id: string): HexState {
-  const hex = hexes.find((h) => h.id === id)
+  const hex = hexIndex(hexes).get(id)
   if (!hex) throw new RangeError(`No hex "${id}" on the map`)
   return hex
 }
@@ -523,38 +661,6 @@ export function nearestTo(from: readonly HexState[], to: readonly (string | Axia
   return from.filter((h) => distance(h) === nearest)
 }
 
-/**
- * What one hex gives each building in Dominion, whoever holds it (Ch 3 rule 3): a road hex in rings
- * 1 to 5 gives its building 2 × ring; a between-land hex gives ring to each of its two buildings.
- * The castle, the buildings and the Rim give nothing.
- */
-export function dominionOf(hex: Pick<HexState, 'ring' | 'kind' | 'road' | 'land'>): Partial<Record<BuildingId, number>> {
-  if (!isClaimableKind(hex)) return {}
-  if (hex.road) return { [hex.road]: RULES.map.dominion.roadPerRing * hex.ring }
-  if (!hex.land) return {}
-  const out: Partial<Record<BuildingId, number>> = {}
-  for (const b of LAND_BUILDINGS[hex.land]) out[b] = RULES.map.dominion.betweenPerRing * hex.ring
-  return out
-}
-
-/** Dominion (Ch 3 rule 3): what every hex `owner` holds gives each building (`dominionOf`), summed. */
-export function dominion(hexes: readonly HexState[], owner: Owner): Record<BuildingId, number> {
-  const out: Record<BuildingId, number> = { barracks: 0, merchantHall: 0, mageTower: 0, foundry: 0 }
-  for (const h of hexes) {
-    if (h.owner !== owner) continue
-    for (const [b, v] of Object.entries(dominionOf(h)) as [BuildingId, number][]) out[b] += v
-  }
-  return out
-}
-
-/** Where `building`'s Dominion comes from: each hex `owner` holds that gives it some, with how much, in map order. */
-export function dominionSources(hexes: readonly HexState[], owner: Owner, building: BuildingId): { hexId: string; value: number }[] {
-  return hexes.flatMap((h) => {
-    const value = h.owner === owner ? dominionOf(h)[building] : undefined
-    return value ? [{ hexId: h.id, value }] : []
-  })
-}
-
 export type ClaimMethod = 'assault' | 'court' | 'buy' | 'rivalExpand'
 
 /**
@@ -562,10 +668,10 @@ export type ClaimMethod = 'assault' | 'court' | 'buy' | 'rivalExpand'
  * (Ch 3, Ch 6, A-13 to A-16, A-23, A-25). Costs, slots, Respect, deal cooldowns and the like
  * belong to the systems that use this.
  *
- * - Always: the hex is claimable (rings 1 to 5, not the castle or a building), someone else holds
- *   it, and it touches land the claimant holds (rule 1).
- * - Never: a Rim hex or a capital (rules 4 and 6), a Lair Mouth (rule 5: Grand Battle only), or,
- *   for a rival, any hex in rings 0 to 2 (rule 2, A-15).
+ * - Always: the hex is claimable (not the castle, a building, a capital, realm or lair hex),
+ *   someone else holds it, and it touches land the claimant holds (rule 1).
+ * - Never: a capital, realm or lair hex (rules 4 and 6), a Lair Mouth (rule 5: Grand Battle only),
+ *   or, for a rival, any hex in rings 0 to 2 (rule 2, A-15).
  * - `assault`: not a Gate (A-16).
  * - `court`: villages only; rivals never court the player's villages (A-23).
  * - `buy`: the player buys an adjacent rival hex that is not a Gate (Ch 6 trade table).
@@ -592,26 +698,30 @@ export function claimableBy(hexes: readonly HexState[], id: string, claimant: Ow
   }
 }
 
+// ── Seams (P2-04 to P2-06) ───────────────────────────────────────────────────
+
+/**
+ * Whose march rules apply on a hex on `day` (P2-06): its march, or for a seam one of its two,
+ * drawn each dawn from the campaign seed (`seam:<id>`). A heartland hex has none.
+ */
+export function rulingMarch(seed: number, hex: Pick<HexState, 'id' | 'march' | 'seam'>, day: ISODate): MarchId | undefined {
+  if (!hex.march || !hex.seam) return hex.march
+  return draw(seed, day, `seam:${hex.id}`) < M.seamFirstChance ? hex.march : hex.seam
+}
+
 // ── The Rim fronts ───────────────────────────────────────────────────────────
 
 export interface FrontInfo {
   front: FrontId
   rivals: [RivalId, RivalId]
-  /** The front's battlefield hex ids, clockwise. */
-  battlefields: string[]
 }
 
-/** The four Rim fronts (Ch 12) with their two rivals and battlefields. A front's battlefields lie in the between-land of the same name. */
+/** The four rival-against-rival fronts (Ch 12; abstract weekly rolls since R-26) with their two rivals. */
 export function fronts(): FrontInfo[] {
-  const rim = layout().filter((s) => s.ring === RIM_RING && s.kind === 'battlefield')
-  return CODEX.fronts.map((f) => ({
-    front: f.id,
-    rivals: [f.rivals[0], f.rivals[1]],
-    battlefields: rim.filter((s) => s.land === f.id).map((s) => hexId(s.q, s.r))
-  }))
+  return CODEX.fronts.map((f) => ({ front: f.id, rivals: [f.rivals[0], f.rivals[1]] }))
 }
 
-/** The lair a Rim hex or Lair Mouth belongs to, by side. */
+/** The lair a lair hex or Lair Mouth belongs to. */
 export function lairOf(hex: Pick<HexState, 'kind' | 'land'>): string | undefined {
   if (hex.kind !== 'lair' && hex.kind !== 'lairMouth') return undefined
   return CODEX.lairs.find((l) => l.land === hex.land)?.id
@@ -621,7 +731,7 @@ export function lairOf(hex: Pick<HexState, 'kind' | 'land'>): string | undefined
 export function capitals(hexes: readonly HexState[]): Record<RivalId, string> {
   const out = {} as Record<RivalId, string>
   for (const rv of RIVAL_IDS) {
-    const cap = hexes.find((h) => h.kind === 'capital' && h.road && rivalOfRoad(h.road) === rv)
+    const cap = hexes.find((h) => h.kind === 'capital' && h.march === rv)
     if (!cap) throw new Error(`No capital for ${rv}`)
     out[rv] = cap.id
   }

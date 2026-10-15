@@ -6,9 +6,9 @@ import { formatNumber } from '../../lib/format'
 import { setOrders } from '../../lib/game/combat'
 import { challenge } from '../../lib/game/grand'
 import { fortify, reclaim } from '../../lib/game/land'
-import type { BuildingId, CampaignState, ISODate, RivalId } from '../../lib/game/types'
+import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
 import { withTarget } from '../../lib/game/view/orders'
-import { buildingName, hexPanel, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
+import { hexPanel, marchName, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
 import { amount } from '../../lib/game/view/refusals'
 import { rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
@@ -48,15 +48,16 @@ function kindName(view: HexPanelView): string {
 }
 
 /**
- * The hex panel (T15): who holds the hex and what it is, its Dominion, the garrison an assault
- * must beat, a village's loyalty, fortification and status, and every action the engine allows
- * here today with its cost, or the engine's own reason why not.
+ * The hex panel (T15): who holds the hex and what it is, its march and depth (a seam's ruling march
+ * today), what it adds to each path, the garrison an assault must beat, its march's preparation, a
+ * village's loyalty, fortification and status, and every action the engine allows here today with
+ * its cost, or the engine's own reason why not.
  */
 export function HexPanel({ campaign, today, hexId, onClose }: { campaign: CampaignState; today: ISODate; hexId: string; onClose(): void }): React.JSX.Element | null {
   const view = hexPanel(campaign, hexId, today)
   const [bidding, setBidding] = useState(false)
   if (!view) return null
-  const dominion = Object.entries(view.dominion) as [BuildingId, number][]
+  const paths = (Object.entries(view.paths) as [RivalId, number][]).filter(([, v]) => v > 0)
   return (
     <section className="panel hex-panel" aria-label={view.label}>
       <header className="panel__head">
@@ -68,19 +69,33 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         </button>
       </header>
       <p className="hex-panel__what">
-        <span className={`owner-badge owner-badge--${view.owner}`}>{view.ownerName}</span> {kindName(view)}, ring {view.ring}
+        <span className={`owner-badge owner-badge--${view.owner}`}>{view.ownerName}</span> {kindName(view)}, {view.march ? `${marchName(view.march)}, depth ${view.depth}` : `ring ${view.ring}`}
       </p>
       <dl className="facts">
-        {dominion.length > 0 && (
+        {view.seam && view.march && (
           <div>
-            <dt>Dominion when held</dt>
-            <dd>{dominion.map(([b, v]) => `${buildingName(b)} +${v}`).join(', ')}</dd>
+            <dt>Seam</dt>
+            <dd title="A seam counts half for each side; each dawn decides whose march rules it">
+              {marchName(view.march)} and {marchName(view.seam)}; today {view.ruling ? marchName(view.ruling) : marchName(view.march)}
+            </dd>
+          </div>
+        )}
+        {paths.length > 0 && (
+          <div>
+            <dt>Holdings when held</dt>
+            <dd>{paths.map(([r, v]) => `${rivalName(r)}’s path +${amount(v)}`).join(', ')}</dd>
+          </div>
+        )}
+        {view.preparation !== undefined && (
+          <div>
+            <dt>Preparation</dt>
+            <dd title="A march left alone prepares: its garrisons grow each quiet week">Level {view.preparation}</dd>
           </div>
         )}
         {view.garrison !== undefined && view.owner !== 'player' && (
           <div>
             <dt>Garrison</dt>
-            <dd title="What an assault must beat today, fortification and this week’s wear counted">{amount(view.garrison)}</dd>
+            <dd title="What an assault must beat today, fortification, preparation and this week’s wear counted">{amount(view.garrison)}</dd>
           </div>
         )}
         {view.village && (

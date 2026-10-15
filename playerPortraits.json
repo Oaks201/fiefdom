@@ -1,6 +1,6 @@
 {
   "folder": "game-assets/portraits",
-  "tiers": [0, 40, 150, 320, 520],
+  "tiers": [0, 300, 1100, 2350, 3850],
   "closeMargin": 0.15,
   "paths": { "orc": "orc", "goblin": "goblin", "dwarf": "dwarf", "archmage": "mage" },
   "files": {

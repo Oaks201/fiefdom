@@ -30,8 +30,8 @@
 import { addDays, diffDays } from './clock'
 import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
-import { buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
-import { RULES, base, byTier } from './rules'
+import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
+import { RULES, byTier } from './rules'
 import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
 import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
@@ -92,9 +92,9 @@ function reputationShort(state: CampaignState, amount: number): LandRefusal | nu
   return affordable(state, amount) ? null : { code: 'reputation', needed: amount, have: balance(state.purse) }
 }
 
-/** A village's full loyalty to the player: 15 × ring (A-22). */
-function fullLoyalty(ring: number): number {
-  return RULES.influence.loyalty.neutralPerRing * ring
+/** A village's full loyalty to the player: 15 × band (A-22, D-17). */
+function fullLoyalty(band: number): number {
+  return RULES.influence.loyalty.neutralPerRing * band
 }
 
 // ── Courtships (Ch 6 "Influence") ────────────────────────────────────────────
@@ -237,7 +237,7 @@ export function resolveCourtships(state: CampaignState, week: CourtshipWeek): Ca
 
     if (winner === 'player') {
       next = replaceHex(next, toPlayer(hex, day, false))
-      emit('hexTransfer', { hexId: hex.id, from: owner, to: 'player', how: 'influence' })
+      emit('hexTransfer', { hexId: hex.id, from: owner, to: 'player', how: 'influence', fortification: hex.fortification })
       if (isRival(owner)) next = adjustRespect(next, owner, RULES.respect.change.villageCourted, 'villageCourted', emit)
       emit('courtship', { hexId: hex.id, outcome: 'defected', bid: c.bid, winner: 'player' })
     } else if (winner !== undefined && isRival(winner)) {
@@ -299,12 +299,12 @@ export function resolveRivalCourtships(state: CampaignState, week: CourtshipWeek
   return next
 }
 
-/** The player's villages recover 5% of 15 × ring loyalty a week, up to 15 × ring (A-22). */
+/** The player's villages recover 5% of 15 × band loyalty a week, up to 15 × band (A-22, D-17). */
 export function recoverLoyalty(state: CampaignState): CampaignState {
   let changed = false
   const hexes = state.hexes.map((h) => {
     if (h.owner !== 'player' || !h.village) return h
-    const full = fullLoyalty(h.ring)
+    const full = fullLoyalty(bandOf(h))
     if (h.village.loyalty >= full) return h
     changed = true
     const loyalty = Math.min(full, h.village.loyalty + RULES.land.villageLoyalty.weeklyRecoveryShare * full)
@@ -407,10 +407,10 @@ export function callToArmsOn(state: CampaignState, day: ISODate): { rival: Rival
     .map((d) => ({ rival: d.rival, target: d.target as RivalId, until: d.until as ISODate }))
 }
 
-/** 50 × ring × greed (the holder's), ×1.5 for a village: a hex's trade price before any discount. */
+/** 50 × band × greed (the holder's), ×1.5 for a village: a hex's trade price before any discount (D-17). */
 export function tradeValue(rival: RivalId, hex: HexState): number {
   const t = RULES.trade
-  return t.hexPricePerRing * hex.ring * t.greed[rival] * (hex.village ? t.villageMult : 1)
+  return t.hexPricePerRing * bandOf(hex) * t.greed[rival] * (hex.village ? t.villageMult : 1)
 }
 
 /** What buying `hex` from `rival` costs: the trade value, −20% with the Exchange Wing. */
@@ -423,12 +423,12 @@ export function sellPrice(rival: RivalId, hex: HexState): number {
   return RULES.trade.sellShare * tradeValue(rival, hex)
 }
 
-/** 30 × the highest ring of the rival's land that touches the player's (or of all its land, when none does). */
+/** 30 × the highest band of the rival's land that touches the player's (or of all its land, when none does) (D-17). */
 export function trucePrice(state: CampaignState, rival: RivalId): number {
   const land = state.hexes.filter((h) => h.owner === rival && isClaimableKind(h))
   const bordering = land.filter((h) => touchesOwner(state.hexes, h.id, 'player'))
-  const ring = Math.max(0, ...(bordering.length > 0 ? bordering : land).map((h) => h.ring))
-  return RULES.trade.truce.costPerRing * ring
+  const band = Math.max(0, ...(bordering.length > 0 ? bordering : land).map((h) => bandOf(h)))
+  return RULES.trade.truce.costPerRing * band
 }
 
 function lastHexDeal(state: CampaignState, rival: RivalId): Deal | undefined {
@@ -503,7 +503,7 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
       if (!hex) return judged(state, offer(0), [dealRefusal('noHex')])
       return judged(state, offer(sellPrice(rival, hex)), [
         hex.owner !== 'player' ? dealRefusal('notPlayerHex') : null,
-        hex.ring < t.sellMinRing ? dealRefusal('innerRing') : null,
+        bandOf(hex) < t.sellMinRing ? dealRefusal('innerRing') : null,
         hex.kind === 'gate' ? dealRefusal('gate') : null,
         !isClaimableKind(hex) || hex.kind === 'lairMouth' || !touchesOwner(state.hexes, hex.id, rival) ? dealRefusal('notClaimable') : null,
         respectBelow(state, rival, th.sellHex),
@@ -586,7 +586,7 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     case 'buyHex': {
       const hex = hexOf(next, request.hexId as string) as HexState
       next = replaceHex(next, toPlayer(hex, today, false))
-      emit('hexTransfer', { hexId: hex.id, from: rival, to: 'player', how: 'trade' })
+      emit('hexTransfer', { hexId: hex.id, from: rival, to: 'player', how: 'trade', fortification: hex.fortification })
       next = adjustRespect(next, rival, RULES.respect.change.tradeOrTruce, 'trade', emit)
       break
     }
@@ -648,14 +648,14 @@ export function fortificationCap(owner: Owner): number {
   return owner === 'dwarf' ? RULES.land.dwarfFortificationMax : RULES.land.fortificationMax
 }
 
-/** F, what a hex's fortification adds to its garrison or defense: level × 0.25 × base(ring) (Ch 6, Ch 10). */
-export function fortificationValue(hex: Pick<HexState, 'fortification' | 'ring'>): number {
-  return hex.fortification * RULES.land.garrison.fortificationPerLevel * base(hex.ring)
+/** F, what a hex's fortification adds to its garrison or defense: level × 0.25 × the hex's strength (Ch 6, Ch 10, D-17). */
+export function fortificationValue(hex: Pick<HexState, 'fortification' | 'strength'>): number {
+  return hex.fortification * RULES.land.garrison.fortificationPerLevel * hex.strength
 }
 
-/** What raising a ring-`ring` hex to `level` (1 to 3) costs: 15 / 35 / 70 × ring, × `mult` (the Kilns 0.75). */
-export function fortificationCost(level: number, ring: number, mult = 1): number {
-  return byTier(RULES.land.fortificationCost, level) * ring * mult
+/** What raising a band-`band` hex to `level` (1 to 3) costs: 15 / 35 / 70 × band, × `mult` (the Kilns 0.75) (D-17). */
+export function fortificationCost(level: number, band: number, mult = 1): number {
+  return byTier(RULES.land.fortificationCost, level) * band * mult
 }
 
 /** The player's next fortification on `hexId`: its level, its exact price, and why not. */
@@ -668,7 +668,7 @@ export function fortifyOffer(state: CampaignState, hexId: string): { ok: boolean
   if (!isClaimableKind(hex)) return no({ code: 'notClaimable' })
   if (hex.fortification >= fortificationCap('player')) return no({ code: 'maxed' }, hex.fortification)
   const next = hex.fortification + 1
-  const cost = fortificationCost(next, hex.ring, realmEffects(state).costs.fortification.value)
+  const cost = fortificationCost(next, bandOf(hex), realmEffects(state).costs.fortification.value)
   const short = reputationShort(state, cost)
   if (short) return no(short, next, cost)
   return { ok: true, next, cost }
@@ -724,7 +724,7 @@ export function reclaim(state: CampaignState, hexId: string, today: ISODate = op
   const events = new EventBuffer()
   let next: CampaignState = { ...state, purse: spend(state.purse, today, offer.cost, `reclaim:${hexId}`) }
   next = replaceHex(next, toPlayer(hex, today, true))
-  events.emitter(today)('hexTransfer', { hexId, from: hex.owner, to: 'player', how: 'reclaim' })
+  events.emitter(today)('hexTransfer', { hexId, from: hex.owner, to: 'player', how: 'reclaim', fortification: hex.fortification })
   return { ok: true, cost: offer.cost, state: events.flush(next) }
 }
 

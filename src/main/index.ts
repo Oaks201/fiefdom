@@ -159,6 +159,12 @@ function registerIpc(): void {
     }
   })
 
+  // The re-founding (D-21, C-15): the old campaign.json is kept for good before the new one is written.
+  ipcMain.handle('campaign:archive', (_event, tag: unknown) => {
+    if (typeof tag !== 'string') throw new Error('Archive tag must be a string')
+    return campaign.archive(tag)
+  })
+
   ipcMain.handle('ledger:reveal', async () => {
     fs.mkdirSync(ledger.dir, { recursive: true })
     await shell.openPath(ledger.dir)

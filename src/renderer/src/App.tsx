@@ -8,6 +8,7 @@ import { SvgDefs } from './components/SvgDefs'
 import { TopBar } from './components/TopBar'
 import { BigMomentCard } from './components/game/BigMomentCard'
 import { FoundingWizard } from './components/game/FoundingWizard'
+import { RefoundOffer } from './components/game/RefoundOffer'
 import { GameArt } from './components/game/GameArt'
 import { HowToPlay } from './components/HowToPlay'
 import { Homecoming } from './components/game/Homecoming'
@@ -42,6 +43,7 @@ export default function App(): React.JSX.Element {
   const skirmish = useUI((s) => s.skirmish)
   const campaignStatus = useCampaign((s) => s.status)
   const hasCampaign = useCampaign((s) => s.campaign !== null)
+  const outdated = useCampaign((s) => s.outdated !== null)
 
   useEffect(() => {
     void load()
@@ -66,8 +68,8 @@ export default function App(): React.JSX.Element {
 
   // A page that no longer exists (no campaign) falls back to the Chronicle.
   useEffect(() => {
-    if (!hasCampaign && (page === 'realm' || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
-  }, [hasCampaign, page])
+    if (!hasCampaign && ((page === 'realm' && !outdated) || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
+  }, [hasCampaign, outdated, page])
 
   // Ctrl+1 to 6 switch pages from anywhere (the campaign's pages once one is founded); M pauses or resumes the music;
   // Esc opens Settings and F1 or ? opens How to play when no dialog is open (an open dialog takes Esc to close).
@@ -90,7 +92,8 @@ export default function App(): React.JSX.Element {
         return
       }
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return
-      const order: Page[] = pagesFor(useCampaign.getState().campaign)
+      const { campaign, outdated } = useCampaign.getState()
+      const order: Page[] = pagesFor(campaign, outdated !== null)
       const i = ['1', '2', '3', '4', '5', '6'].indexOf(e.key)
       if (i >= 0 && i < order.length && !isDialogOpen()) {
         e.preventDefault()
@@ -148,6 +151,7 @@ export default function App(): React.JSX.Element {
                 {!onField && page === 'contract' && <ContractPage />}
                 {!onField && page === 'archive' && <ArchivePage />}
                 {!onField && page === 'realm' && hasCampaign && <RealmPage />}
+                {!onField && page === 'realm' && !hasCampaign && outdated && <RefoundOffer />}
                 {!onField && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
                 {!onField && page === 'armory' && hasCampaign && <ArmoryPage />}
               </div>

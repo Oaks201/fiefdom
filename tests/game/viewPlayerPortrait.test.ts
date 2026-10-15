@@ -6,9 +6,8 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CODEX } from '../../src/renderer/src/lib/game/codex'
-import { dominion } from '../../src/renderer/src/lib/game/map'
-import { RIVAL_IDS, type BuildingId, type RivalId } from '../../src/renderer/src/lib/game/types'
+import { pathTotals } from '../../src/renderer/src/lib/game/dominion'
+import { RIVAL_IDS, type RivalId } from '../../src/renderer/src/lib/game/types'
 import {
   PORTRAIT_SETUP,
   pathOf,
@@ -28,9 +27,9 @@ import { driveCampaign } from './support/campaign-driver'
 const per = (orc: number, goblin: number, dwarf: number, archmage: number): Record<RivalId, number> => ({ orc, goblin, dwarf, archmage })
 const ORDER: RivalId[] = ['orc', 'goblin', 'dwarf', 'archmage']
 
-test('the data file reads cleanly, with the approved thresholds and a 15% margin', () => {
+test('the data file reads cleanly, with the approved thresholds (rescaled to D-18’s Dominion, ×7.4) and a 15% margin', () => {
   assert.deepEqual(PORTRAIT_SETUP.problems, [])
-  assert.deepEqual(PORTRAIT_SETUP.config?.tiers, [0, 40, 150, 320, 520])
+  assert.deepEqual(PORTRAIT_SETUP.config?.tiers, [0, 300, 1100, 2350, 3850])
   assert.equal(PORTRAIT_SETUP.config?.closeMargin, 0.15)
   assert.deepEqual(PORTRAIT_SETUP.config?.paths, [
     ['orc', 'orc'],
@@ -40,23 +39,23 @@ test('the data file reads cleanly, with the approved thresholds and a 15% margin
   ])
 })
 
-test('the tier comes from overall Dominion: 0–39, 40–149, 150–319, 320–519, 520 and up', () => {
+test('the tier comes from overall Dominion: 0–299, 300–1,099, 1,100–2,349, 2,350–3,849, 3,850 and up', () => {
   const tiers = PORTRAIT_SETUP.config?.tiers ?? []
   const cases: [number, number][] = [
     [0, 1],
-    [20, 1],
-    [39, 1],
-    [40, 2],
-    [149, 2],
-    [150, 3],
-    [319, 3],
-    [320, 4],
-    [519, 4],
-    [520, 5],
-    [632, 5]
+    [150, 1],
+    [299, 1],
+    [300, 2],
+    [1_099, 2],
+    [1_100, 3],
+    [2_349, 3],
+    [2_350, 4],
+    [3_849, 4],
+    [3_850, 5],
+    [4_800, 5]
   ]
   for (const [overall, tier] of cases) assert.equal(tierOf(overall, tiers), tier, `Dominion ${overall}`)
-  assert.equal(standingFrom(per(100, 60, 0, 0)).tier, 3, 'the sum of the four paths')
+  assert.equal(standingFrom(per(800, 400, 0, 0)).tier, 3, 'the sum of the four paths')
 })
 
 test('a path leads by more than 15% of its own Dominion: pure; within it: the hybrid of the top two', () => {
@@ -121,15 +120,12 @@ test('the standing card: on a tier rise or a new path, never on a first look or 
   assert.equal(pathWords(portraitChoice(standingFrom(per(0, 0, 200, 0), 2)).path), 'Hrodgar')
 })
 
-test('a played campaign: each path is its rival road building’s Dominion, and the overall their sum', () => {
+test('a played campaign: each path is its rival’s path Dominion (D-18), and the overall their sum', () => {
   const state = driveCampaign({ seed: 7, weeks: 14, habits: 'steady', policy: 'greedy' }).state
-  const byBuilding = dominion(state.hexes, 'player')
+  const totals = pathTotals(state)
   const standing = standingOf(state)
-  for (const rival of RIVAL_IDS) {
-    const road = CODEX.rivals.find((r) => r.id === rival)?.road as BuildingId
-    assert.equal(standing.perPath[rival], byBuilding[road], rival)
-  }
-  assert.equal(standing.overall, Object.values(byBuilding).reduce((s, v) => s + v, 0))
+  for (const rival of RIVAL_IDS) assert.equal(standing.perPath[rival], totals[rival], rival)
+  assert.equal(standing.overall, Object.values(totals).reduce((s, v) => s + v, 0))
   assert.equal(standing.tier, tierOf(standing.overall, PORTRAIT_SETUP.config?.tiers ?? []))
 })
 

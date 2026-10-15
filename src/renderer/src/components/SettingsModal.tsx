@@ -61,6 +61,7 @@ export function SettingsModal(): React.JSX.Element {
   const apply = useLedger((s) => s.apply)
   const { sound, unit, weekStartsOn } = ledger.settings
   const campaign = useCampaign((s) => s.campaign)
+  const outdated = useCampaign((s) => s.outdated)
   const campaignReady = useCampaign((s) => s.status === 'ready')
   const setFoundingOpen = useUI((s) => s.setFoundingOpen)
   const [dataDir, setDataDir] = useState<string | null>(null)
@@ -151,7 +152,27 @@ export function SettingsModal(): React.JSX.Element {
         <p className="settings__note">A contract keeps the unit it was sealed with.</p>
       </section>
 
-      {campaignReady && !campaign && (
+      {campaignReady && outdated && (
+        <section className="settings__section">
+          <h3 className="settings__heading">The campaign</h3>
+          <p className="settings__note">
+            Your campaign was founded under rules {outdated.campaign.ruleVersion} and can’t be settled on the new map. Re-founding starts it again as of your first ledger
+            contract: your real contracts carry over, the days since are played from four answers, and the old campaign file is kept in the backups folder.{' '}
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                setOpen(false)
+                setFoundingOpen(true)
+              }}
+            >
+              Re-found the campaign on the new map…
+            </button>
+          </p>
+        </section>
+      )}
+
+      {campaignReady && !campaign && !outdated && (
         <section className="settings__section">
           <h3 className="settings__heading">The campaign</h3>
           <p className="settings__note">

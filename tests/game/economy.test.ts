@@ -104,12 +104,12 @@ test('Weekly: every amount prorates in a partial 4-day week 1 (A-04)', () => {
 
 // ── Tithes and the Merchant Hall ─────────────────────────────────────────────
 
-test('Tithes: 4 × ring per village; Settling pays half, scorched pays nothing (Ch 5, Ch 6, Ch 10)', () => {
+test('Tithes: 2.5 × band per village (D-17); Settling pays half, scorched pays nothing (Ch 5, Ch 6, Ch 10)', () => {
   const lines = tithes(
     [
-      { hexId: 'a', ring: 3 },
-      { hexId: 'b', ring: 4, settling: true },
-      { hexId: 'c', ring: 5, scorched: true }
+      { hexId: 'a', band: 3 },
+      { hexId: 'b', band: 4, settling: true },
+      { hexId: 'c', band: 5, scorched: true }
     ],
     1,
     0,
@@ -118,12 +118,12 @@ test('Tithes: 4 × ring per village; Settling pays half, scorched pays nothing (
   assert.deepEqual(
     lines.map((l) => [l.kind, l.source, l.amount]),
     [
-      ['tithe', 'tithe:a', 12],
-      ['tithe', 'tithe:b', 8]
+      ['tithe', 'tithe:a', 7.5],
+      ['tithe', 'tithe:b', 5]
     ]
   )
-  assert.equal(roundPosting(total(tithes([{ hexId: 'a', ring: 3 }], 1.2, 0, 7))), 14.4)
-  assert.ok(Math.abs(total(tithes([{ hexId: 'a', ring: 3 }], 1, 0, 4)) - (12 * 4) / 7) < 1e-9)
+  assert.equal(roundPosting(total(tithes([{ hexId: 'a', band: 3 }], 1.2, 0, 7))), 9)
+  assert.ok(Math.abs(total(tithes([{ hexId: 'a', band: 3 }], 1, 0, 4)) - (7.5 * 4) / 7) < 1e-9)
 })
 
 test('The Merchant Hall Tier I bonus turns a 70 gain into 71.4 (Ch 5)', () => {
@@ -134,7 +134,7 @@ test('The Merchant Hall Tier I bonus turns a 70 gain into 71.4 (Ch 5)', () => {
   assert.equal(roundPosting(amountOf(lines, 'steps') as number), 71.4)
   const day = dailyIncome({ dutiesKept: 1, dutiesSworn: 1, foodLogged: true, priorStreak: 0 }, merchantHallBonus(1))
   assert.equal(roundPosting(total(day.lines)), 17.3)
-  assert.equal(roundPosting(total(tithes([{ hexId: 'a', ring: 5 }], 1, merchantHallBonus(1), 7))), 20.4)
+  assert.equal(roundPosting(total(tithes([{ hexId: 'a', band: 5 }], 1, merchantHallBonus(1), 7))), 12.8) // D-17: 2.5 × band 5 × 1.02 = 12.75
 })
 
 // ── The purse ────────────────────────────────────────────────────────────────
@@ -202,4 +202,11 @@ test('Purse: gains post positive and costs post negative, whatever sign they are
     purse.events.slice(1).map((e) => e.amount),
     [12, -20]
   )
+})
+
+test('C-11: a day with no sworn duty pays no duty, perfect-day or streak income, and keeps no streak (D-21)', () => {
+  const day = dailyIncome({ dutiesKept: 0, dutiesSworn: 0, foodLogged: true, priorStreak: 5 }, 0)
+  assert.deepEqual(day.lines, [])
+  assert.equal(day.perfect, false)
+  assert.equal(day.streak, 0)
 })

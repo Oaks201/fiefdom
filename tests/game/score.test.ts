@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   budgetScore,
   consistency,
+  pillarScore,
   poolShare,
   realmConsistency,
   stepsPillar,
@@ -112,4 +113,25 @@ test('Valor = (d + f + s) ÷ 3 with s the week-to-date step pace (Ch 10, A-40)',
   assert.ok(Math.abs(valor(poor, soFar, 50_000) - (1 / 3 + 0 + 2 / 3) / 3) < 1e-12)
   // The day is added when it is missing from the week so far.
   assert.equal(valor(poor, [week[0], week[1]], 50_000), valor(poor, soFar, 50_000))
+})
+
+test('C-11: a week with no sworn duty scores (S + T) ÷ 2, and D_w counts only the days that swore one (D-21)', () => {
+  const none = days(7, MONDAY, () => ({ steps: 50_000 / 7, eaten: 1_900, dutiesKept: 0, dutiesSworn: 0 }))
+  const p = weekPillars(none, TERMS)
+  assert.equal(p.noDuties, true)
+  assert.equal(pillarScore(p), 1, 'nothing sworn is nothing failed')
+  assert.equal(consistency(none, TERMS, 1), 1)
+  // A week that swore duties on its last 3 days only: D_w is over those 3, and q_w is the usual third.
+  const mixed = days(7, MONDAY, (i) => ({ steps: 50_000 / 7, eaten: 1_900, ...(i < 4 ? { dutiesKept: 0, dutiesSworn: 0 } : { dutiesKept: i === 6 ? 0 : 3 }) }))
+  const q = weekPillars(mixed, TERMS)
+  assert.equal(q.noDuties, undefined)
+  assert.ok(Math.abs(q.duties - 6 / 9) < 1e-12)
+  assert.ok(Math.abs(pillarScore(q) - (1 + 1 + 6 / 9) / 3) < 1e-12)
+})
+
+test('C-11: a no-duty day’s Valor is (f + s) ÷ 2 (D-21)', () => {
+  const week = days(3, MONDAY, () => ({ steps: 50_000 / 7, eaten: 1_900, dutiesKept: 0, dutiesSworn: 0 }))
+  assert.ok(Math.abs(valor(week[2], week, 50_000) - 1) < 1e-12)
+  const hungry = { ...week[2], eaten: undefined }
+  assert.ok(Math.abs(valor(hungry, [week[0], week[1], hungry], 50_000) - 0.5) < 1e-12)
 })

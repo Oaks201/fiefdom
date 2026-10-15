@@ -30,6 +30,7 @@ function founded(): CampaignState {
 test('T14: the new pages appear only once a campaign exists', () => {
   assert.deepEqual(pagesFor(null), ['chronicle', 'contract', 'archive'])
   assert.deepEqual(pagesFor(realm()), ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory'])
+  assert.deepEqual(pagesFor(null, true), ['chronicle', 'contract', 'archive', 'realm'], 'an outdated campaign keeps the Realm page to offer the re-founding (D-21)')
 })
 
 test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consistency and the Grace in plain words', () => {

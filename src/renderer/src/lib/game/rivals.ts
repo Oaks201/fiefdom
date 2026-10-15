@@ -35,8 +35,8 @@ import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
 import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, tradeValue } from './land'
-import { borderHexesOf, fronts as rimFronts, hexIndex, isClaimableKind, nearestTo, touches } from './map'
-import { RULES, base, type DeepReadonly } from './rules'
+import { bandOf, borderHexesOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, touches } from './map'
+import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle } from './rng'
 import { refreshRoster, roster } from './roster'
 import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
@@ -94,9 +94,9 @@ function isActive(state: CampaignState, rival: RivalId): boolean {
   return state.rivals[rival].status === 'active'
 }
 
-/** What a hex is worth to a rival choosing where to grow: the Dominion it would give on a road, 2 × ring (A-25). */
+/** What a hex is worth to a rival choosing where to grow: the Dominion it would give (A-25, D-18). */
 function dominionValue(hex: HexState): number {
-  return RULES.map.dominion.roadPerRing * hex.ring
+  return hexWorth(hex)
 }
 
 /** Unspent reputation: the treasury and the special fund it is saving (Ch 12 "treasury"). */
@@ -213,9 +213,9 @@ export function benchmarkIncome(b: number, L: number): number {
   )
 }
 
-/** A rival's tithes: 4 × ring for each village it holds. */
+/** A rival's tithes: tithePerRing × band for each village it holds (D-17). */
 export function rivalTithes(state: CampaignState, rival: RivalId): number {
-  return sum(state.hexes.filter((h) => h.owner === rival && h.village).map((h) => RULES.reputation.weekly.tithePerRing * h.ring))
+  return sum(state.hexes.filter((h) => h.owner === rival && h.village).map((h) => RULES.reputation.weekly.tithePerRing * bandOf(h)))
 }
 
 /** A rival's income for a campaign week of `days` days: BI × its multiplier + its tithes, prorated in a partial week 1 (A-04). */
@@ -226,14 +226,14 @@ export function rivalIncome(state: CampaignState, rival: RivalId, week: number, 
 
 // ── Power, Threat and disposition (Ch 12, Ch 14) ─────────────────────────────
 
-/** Power = 0.5 × treasury + 3 × AV + 10 × Σ ring of hexes held. */
+/** Power = 0.5 × treasury + 3 × AV + perRing × Σ band of hexes held (D-17). */
 export function power(treasury: number, armyValueOf: number, ringsHeld: number): number {
   const p = RULES.defeat.power
   return p.treasury * treasury + p.army * armyValueOf + p.perRing * ringsHeld
 }
 
 function ringsHeld(state: CampaignState, owner: Owner): number {
-  return sum(state.hexes.filter((h) => h.owner === owner).map((h) => h.ring))
+  return sum(state.hexes.filter((h) => h.owner === owner).map((h) => bandOf(h)))
 }
 
 /** The player's Army value for Power and the army bands: only their best (banners + 2) companies (A-24). */
@@ -620,10 +620,10 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
   return { state, spent }
 }
 
-/** What raising a rival hex to `level` costs: 15 / 35 / 70 × ring, the Dwarf's level 4 at 120 × ring (A-145), × `mult`. */
-function rivalFortificationCost(level: number, ring: number, mult: number): number {
-  if (level <= RULES.land.fortificationMax) return fortificationCost(level, ring, mult)
-  return RULES.rivalAi.dwarfLevel4CostPerRing * ring * mult
+/** What raising a rival hex to `level` costs: 15 / 35 / 70 × band, the Dwarf's level 4 at 120 × band (A-145, D-17), × `mult`. */
+function rivalFortificationCost(level: number, band: number, mult: number): number {
+  if (level <= RULES.land.fortificationMax) return fortificationCost(level, band, mult)
+  return RULES.rivalAi.dwarfLevel4CostPerRing * band * mult
 }
 
 /**
@@ -642,7 +642,7 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number):
     const byId = hexIndex(state.hexes)
     const candidates = borderHexesOf(state.hexes, rival)
       .filter((h) => isClaimableKind(h) && h.fortification < cap)
-      .map((h) => ({ hex: h, facing: touches(byId, h.id, 'player'), cost: rivalFortificationCost(h.fortification + 1, h.ring, mult) }))
+      .map((h) => ({ hex: h, facing: touches(byId, h.id, 'player'), cost: rivalFortificationCost(h.fortification + 1, bandOf(h), mult) }))
       .filter((c) => c.cost <= left)
       .sort(
         (a, b) =>
@@ -780,7 +780,7 @@ function rituals(input: CampaignState, w: RivalWeek): CampaignState {
       }
       const hex = byId.get(pick(state.campaign.seed, day, 'summoning:hex', spots.map((h) => h.id))) as HexState
       emit('ritual', { ritualId: entry.id, hexId: hex.id })
-      return replaceHex(state, { ...hex, mythic: true, garrison: RULES.combat.strength.mythic * base(hex.ring), garrisonDamage: 0 })
+      return replaceHex(state, { ...hex, mythic: true, garrison: RULES.combat.strength.mythic * hex.strength, garrisonDamage: 0 })
     }
     case 'curseOfWeariness': {
       let next = refreshRoster(state)
@@ -1013,55 +1013,12 @@ export function drawFronts(input: CampaignState, w: RivalWeek): CampaignState {
 // ── Border Campaigns (Ch 12) ─────────────────────────────────────────────────
 
 /**
- * The hex a Border Campaign strikes: one the defender holds that touches the attacker's land (the
- * weakest garrison, then map order), or else the defender's hex nearest the front's battlefields
- * (ties drawn). Never a Gate, a capital, a Lair Mouth, a hex in rings 0 to 2 or a player's hex.
- */
-export function borderCampaignTarget(state: CampaignState, attacker: RivalId, defender: RivalId, front: FrontId, day: ISODate): HexState | undefined {
-  const byId = hexIndex(state.hexes)
-  const eligible = state.hexes.filter(
-    (h) => h.owner === defender && isClaimableKind(h) && h.kind !== 'gate' && h.kind !== 'capital' && h.kind !== 'lairMouth' && h.ring > RULES.land.protectedThroughRing
-  )
-  if (eligible.length === 0) return undefined
-  const touching = eligible.filter((h) => touches(byId, h.id, attacker))
-  if (touching.length > 0) return touching.reduce((a, b) => (effectiveGarrison(b) < effectiveGarrison(a) ? b : a))
-  const nearest = nearestTo(eligible, rimFronts().find((f) => f.front === front)?.battlefields ?? [])
-  if (nearest.length === 0) return undefined
-  return byId.get(pick(state.campaign.seed, day, `borderCampaign:${front}:target`, nearest.map((h) => h.id)))
-}
-
-/**
- * The `borderCampaigns` week phase. In a hidden Border Campaign week, on each front at War, the
- * rival whose track stands at +2 or more attacks the other (never a coalition partner). The hex
- * falls if 0.5 × AV × roll(0.85–1.15) ≥ its garrison (fortification counted); win or lose, both
- * lose 5% of their AV. Respect toward the player doesn't change. Then the fronts are drawn for the
- * coming week (`drawFronts`).
+ * The `borderCampaigns` week phase: the fronts drawn for the coming week (`drawFronts`). Border
+ * Campaigns are gone (R-26): rival-against-rival fronts stay abstract weekly rolls, and no land
+ * changes hands between rivals.
  */
 export function borderCampaigns(input: CampaignState, w: RivalWeek): CampaignState {
-  let state = input
-  const bc = RULES.world.borderCampaigns
-  if (state.settlement.borderCampaignWeeks.includes(w.week)) {
-    for (const id of FRONT_IDS) {
-      const front = state.fronts[id]
-      if (front.state !== 'war') continue
-      const [a, b] = front.rivals
-      if (!isActive(state, a) || !isActive(state, b) || coalitionPartners(state, a, b, w.day)) continue
-      const sides: [RivalId, RivalId] | null = front.track >= bc.attackerTrack ? [a, b] : front.track <= -bc.attackerTrack ? [b, a] : null
-      if (!sides) continue
-      const [attacker, defender] = sides
-      const target = borderCampaignTarget(state, attacker, defender, id, w.day)
-      if (!target) continue
-      const rolled = roll(state.campaign.seed, w.day, `borderCampaign:${id}`, -bc.roll, bc.roll)
-      const taken = bc.armyShare * armyValue(state, attacker, w.day) * (1 + rolled) >= effectiveGarrison(target)
-      if (taken) {
-        state = replaceHex(state, toRival(target, attacker))
-        w.emit('hexTransfer', { hexId: target.id, from: defender, to: attacker, how: 'borderCampaign' })
-      }
-      w.emit('borderCampaign', { attacker, defender, hexId: target.id, taken })
-      state = loseArmy(loseArmy(state, attacker, bc.armyLoss), defender, bc.armyLoss)
-    }
-  }
-  return drawFronts(state, w)
+  return drawFronts(input, w)
 }
 
 // ── What the player sees (Ch 12) ─────────────────────────────────────────────

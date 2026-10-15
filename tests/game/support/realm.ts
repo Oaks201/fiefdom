@@ -4,8 +4,8 @@
  */
 import { foundCampaign } from '../../../src/renderer/src/lib/game/campaign'
 import { balance, post } from '../../../src/renderer/src/lib/game/economy'
-import { dominion, isClaimableKind, LAND_BUILDINGS } from '../../../src/renderer/src/lib/game/map'
-import { RULES } from '../../../src/renderer/src/lib/game/rules'
+import { totalDominion } from '../../../src/renderer/src/lib/game/dominion'
+import { hexWorth, pathShares, rivalOfRoad } from '../../../src/renderer/src/lib/game/map'
 import type {
   ArmoryState,
   BuildingId,
@@ -71,22 +71,27 @@ export function withPurse(state: CampaignState, amount: number): CampaignState {
   return { ...state, purse: post(state.purse, { date: TODAY, kind: diff > 0 ? 'earn' : 'adjust', amount: diff, source: 'test' }) }
 }
 
-/** What one hex gives `building` in Dominion (Ch 3 rule 3). */
-function credit(h: HexState, building: BuildingId): number {
-  if (!isClaimableKind(h)) return 0
-  if (h.road) return h.road === building ? RULES.map.dominion.roadPerRing * h.ring : 0
-  if (h.land && LAND_BUILDINGS[h.land].includes(building)) return RULES.map.dominion.betweenPerRing * h.ring
-  return 0
+/** Whether a hex lies on `building`'s rival's path (D-18). */
+function onPath(h: HexState, building: BuildingId): boolean {
+  return (pathShares(h)[rivalOfRoad(building)] ?? 0) > 0
 }
 
-/** Gives the player neutral hexes until `building` has exactly `target` Dominion (a small search). */
+/** What one hex adds to total Dominion when held (D-18): its depth, or 1 in the heartland. */
+function credit(h: HexState): number {
+  return hexWorth(h)
+}
+
+/**
+ * Gives the player neutral hexes on `building`'s path until total Dominion (what the tiers need,
+ * D-18) is exactly `target` (a small search).
+ */
 export function withDominion(state: CampaignState, building: BuildingId, target: number): CampaignState {
-  const need = target - dominion(state.hexes, 'player')[building]
-  const pool = state.hexes.filter((h) => h.owner === 'neutral' && credit(h, building) > 0).sort((a, b) => credit(b, building) - credit(a, building))
+  const need = target - totalDominion(state)
+  const pool = state.hexes.filter((h) => h.owner === 'neutral' && onPath(h, building) && credit(h) > 0).sort((a, b) => credit(b) - credit(a))
   const pick = (from: number, left: number): string[] | null => {
     if (left === 0) return []
     for (let i = from; i < pool.length; i++) {
-      const c = credit(pool[i], building)
+      const c = credit(pool[i])
       if (c > left) continue
       const rest = pick(i + 1, left - c)
       if (rest) return [pool[i].id, ...rest]
@@ -98,7 +103,7 @@ export function withDominion(state: CampaignState, building: BuildingId, target:
   return { ...state, hexes: state.hexes.map((h) => (ids.includes(h.id) ? { ...h, owner: 'player' } : h)) }
 }
 
-/** Hands every hex `building` draws Dominion from back to neutral. */
+/** Hands every hex on `building`'s path back to neutral. */
 export function loseLand(state: CampaignState, building: BuildingId): CampaignState {
-  return { ...state, hexes: state.hexes.map((h) => (h.owner === 'player' && credit(h, building) > 0 ? { ...h, owner: 'neutral' } : h)) }
+  return { ...state, hexes: state.hexes.map((h) => (h.owner === 'player' && onPath(h, building) && credit(h) > 0 ? { ...h, owner: 'neutral' } : h)) }
 }

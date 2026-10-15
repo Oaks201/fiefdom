@@ -97,8 +97,6 @@ export function requirementLabel(r: Refusal): string {
       return `Dominion ${amount(r.needed)} (${amount(r.have)} now)`
     case 'reputation':
       return `${amount(r.needed)} reputation`
-    case 'rivalUnresolved':
-      return `${rival(r.rival)} resolved`
     case 'milestone':
       return `Milestone ${r.index} broken`
     case 'tierSum':

@@ -76,7 +76,7 @@ test('Ch 6 taken: Assault ≥ garrison takes the hex at dawn with 4 × ring spoi
   const taken = fight(exact, DAY, 1)
   assert.deepEqual(taken.of('assault'), [{ hexId: target, owner: 'neutral', outcome: 'taken', spoils: Math.round(4 * 3 * bonus * 10) / 10 }])
   assert.equal(hex(taken.state, target).owner, 'player')
-  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: target, from: 'neutral', to: 'player', how: 'conquest' }])
+  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: target, from: 'neutral', to: 'player', how: 'conquest', fortification: 0 }])
 
   // The den's own 49.5 against 54 is taken too; 30 of garrison is a rout.
   const rout = fight(quiet(orders(withHex(s0, target, { garrison: 30 }), { assaultTarget: target, assault: ['barracks'] })), DAY, 1)
@@ -154,7 +154,7 @@ test('Ch 6: an assault needs an adjacent target, companies of its own, and at mo
 test('A-16 / Ch 3: a Gate, capital or Lair Mouth is refused for the daily assault and handed on as a Grand Battle', () => {
   let state = realm()
   const gate = state.hexes.find((h) => h.kind === 'gate') as HexState
-  const beside = neighbors(gate.id).find((n) => hex(state, n).ring === 4) as string
+  const beside = neighbors(gate.id).find((n) => hex(state, n).ring === gate.ring - 1) as string
   state = withOwner(state, [beside], 'player')
   const validity = ordersValidity(state, { date: DAY, assaultTarget: gate.id, assault: ['barracks'], defense: [] })
   assert.deepEqual(validity.problems, [{ code: 'grandBattleRequired', hexId: gate.id }])
@@ -164,7 +164,7 @@ test('A-16 / Ch 3: a Gate, capital or Lair Mouth is refused for the daily assaul
   assert.deepEqual(day.grandBattles, [{ hexId: gate.id, kind: 'gate', owner: gate.owner, day: DAY }])
   assert.deepEqual(day.of('assault'), [])
   const mouth = state.hexes.find((h) => h.kind === 'lairMouth') as HexState
-  const near = neighbors(mouth.id).find((n) => hex(state, n).ring === 4) as string
+  const near = neighbors(mouth.id).find((n) => hex(state, n).ring === mouth.ring - 1) as string
   const lair = ordersValidity(withOwner(state, [near], 'player'), { date: DAY, assaultTarget: mouth.id, assault: ['barracks'], defense: [] })
   assert.deepEqual(lair.grandBattles, [mouth.id])
 })
@@ -178,23 +178,25 @@ test('Ch 6: a captured village Settles at half tithes for 4 weeks with half its 
   assert.deepEqual(village, { loyalty: 0.5 * 15 * 2, settlingUntil: addDays(DAY, 28) })
 
   const { state: s1, target: rivalHex } = den(allBuildings(realm(), 5))
-  const owned = withHex(s1, rivalHex, { owner: 'goblin', garrison: base(3) * RULES.land.rivalGarrisonMult.goblin })
+  const owned = withHex(s1, rivalHex, { owner: 'goblin', garrison: hex(s1, rivalHex).strength * RULES.land.rivalGarrisonMult.goblin })
   const taken = fight(quiet(orders(owned, { assaultTarget: rivalHex, assault: ['foundry', 'merchantHall'] })), DAY, 1)
   assert.notEqual(taken.of('assault')[0].outcome, 'repulsed')
   assert.equal(taken.state.rivals.goblin.respect, owned.rivals.goblin.respect - 5)
-  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: rivalHex, from: 'goblin', to: 'player', how: 'conquest' }])
+  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: rivalHex, from: 'goblin', to: 'player', how: 'conquest', fortification: 0 }])
 })
 
-test('Ch 6 / Ch 8: rival fortification adds 25% of base a level; Siegebreakers and the Sappers ignore it', () => {
+test('Ch 6 / Ch 8, D-17: rival fortification adds 25% of the hex’s strength a level; Siegebreakers and the Sappers ignore it', () => {
   const { state, target } = den()
-  const fortified = { ...hex(state, target), owner: 'dwarf' as const, garrison: base(3) * 1.3, fortification: 2 as const }
-  near(effectiveGarrison(fortified), base(3) * 1.3 + 2 * 0.25 * base(3))
-  near(effectiveGarrison(fortified, true), base(3) * 1.3)
+  const s3 = hex(state, target).strength
+  const fortified = { ...hex(state, target), owner: 'dwarf' as const, garrison: s3 * 1.3, fortification: 2 as const }
+  near(effectiveGarrison(fortified), s3 * 1.3 + 2 * 0.25 * s3)
+  near(effectiveGarrison(fortified, true), s3 * 1.3)
 
   // The same assault fails against the walls, and takes the hex with Siegebreakers or the Sappers.
   let s = allBuildings(realm(), 4)
   const reach = den(s)
-  s = withHex(reach.state, reach.target, { owner: 'dwarf', garrison: 40, fortification: 3 })
+  // The book's worked den: strength 55 (the old base(3)), so three levels add 41.25.
+  s = withHex(reach.state, reach.target, { owner: 'dwarf', garrison: 40, fortification: 3, strength: 55 })
   const plan = (x: CampaignState, companies: string[]): CampaignState => quiet(orders(x, { assaultTarget: reach.target, assault: companies }))
   // Against 40 + 41.25: the Magi (21 Arcane ×1.5) with the Iron Legion (27) or the Sappers (16 Engine ×0.6), × 1.15,
   // make 67.3 and 47.3: enough for the garrison alone, not with its walls.

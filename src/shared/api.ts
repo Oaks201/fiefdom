@@ -72,6 +72,8 @@ export interface FiefdomBridge {
   saveCampaign(json: string): Promise<void>
   /** Synchronous save, used only while the window is closing. */
   saveCampaignSync(json: string): boolean
+  /** Keeps a copy of campaign.json as `backups/campaign-<tag>.json`, never pruned; returns its path, or null with no campaign file. */
+  archiveCampaign(tag: string): Promise<string | null>
   /** Opens the folder that holds the ledger and its backups. */
   revealLedger(): Promise<void>
   appInfo(): Promise<AppInfo>

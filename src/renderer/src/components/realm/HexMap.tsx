@@ -19,8 +19,10 @@ import {
   HEX_WIDTH,
   clampMapZoom,
   hexLayout,
+  mapDecor,
   mapView,
   mapViewBox,
+  marchName,
   ownerName,
   panMap,
   tiltedBoard,
@@ -100,7 +102,7 @@ const HexCell = memo(
     const unowned = hex.kind === 'battlefield' || hex.kind === 'lair'
     const threat = hex.threats?.[0]
     return (
-      <g className={`hex hex--${hex.kind} hex--${hex.owner}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.id}>
+      <g className={`hex hex--${hex.kind} hex--${hex.owner}${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
         <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
         {hex.status === 'contested' && <GameArt slot="hex.overlay.contested" place={TERRAIN} />}
         {hex.status === 'scorched' && <GameArt slot="hex.overlay.scorched" place={TERRAIN} />}
@@ -115,7 +117,7 @@ const HexCell = memo(
           />
         )}
         <polygon className="hex__edge" points={OUTLINE} fill="none" />
-        <polygon className="hex__hit" points={OUTLINE} />
+        {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
         {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={-0.1} size={0.7} color={color.edge} />}
         {hex.mythic && <Mark icon={GiDragonHead} x={0} y={-0.1} size={0.62} color="#4b3e54" />}
         {hex.village && hex.kind !== 'capital' && <Mark icon={GiVillage} x={-0.42} y={-0.4} size={0.44} color="#6b4e0c" />}
@@ -165,7 +167,10 @@ function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Elemen
   const { id, x, y } = useMapHover()
   const hex = id ? hexes.get(id) : undefined
   if (!hex) return null
-  const parts = [hex.label, hex.kind === 'battlefield' ? `${hex.front?.front ?? ''} front`.trim() : ownerName(hex.owner)]
+  const parts = [hex.label, ownerName(hex.owner)]
+  if (hex.march) parts.push(`${marchName(hex.march)}, depth ${hex.depth}`)
+  if (hex.ruling) parts.push(`seam: ${marchName(hex.ruling)} today`)
+  if (hex.preparation) parts.push(`preparation ${hex.preparation}`)
   if (hex.village) parts.push('village')
   if (hex.status !== 'held') parts.push(`${hex.status}${hex.daysLeft !== undefined ? `, ${hex.daysLeft}d` : ''}`)
   if (hex.threats?.length) parts.push(hex.threats.map((t) => `${t.rival ? `${rivalName(t.rival)} ` : ''}${THREAT_WORDS[t.kind]}${t.band ? ` (${t.band})` : ''}`).join(', '))
@@ -185,7 +190,8 @@ export interface HexMapProps {
 }
 
 /**
- * The realm map (Ch 3, Ch 17): 127 pointy-top hexes on a tilted, painted board. Each hex draws its
+ * The realm map (Ch 3, Ch 17, D-16): the heartland, the four rival marches and the two lair wedges on
+ * a tilted, painted board, with the empty board around them drawn as battlefields. Each hex draws its
  * terrain through `<GameArt>`, a thick border in its owner's banner color, villages, fortification,
  * contested torches and scorched ground with days left, today's threats, the assault target, open
  * courtships, Grand Battles and the Rim fronts' war tracks. One set of pointer handlers serves the
@@ -202,13 +208,14 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
   const press = useRef<{ pointer: number; x: number; y: number; from: FramePoint; start: MapZoom; dragging: boolean } | null>(null)
   /** The last press was a drag, so the click that ends it chooses nothing. */
   const dragged = useRef(false)
-  const layout = useMemo(() => hexLayout(campaign.hexes), [campaign.hexes])
+  const decor = useMemo(() => mapDecor(campaign), [campaign])
+  const layout = useMemo(() => hexLayout([...decor, ...campaign.hexes]), [decor, campaign.hexes])
   /** Each hex's place on the tilted board, and the board's extent: what the zoom frames. */
   const { places, box } = useMemo(() => {
     const tilted = tiltedBoard(layout.points, layout, TILT, DISTANCE, MARGIN)
     return { places: new Map(layout.points.map((p) => [p.id, `matrix(${tilted.place(p.x, p.y).join(' ')})`])), box: tilted.box }
   }, [layout])
-  const cells = useMemo(() => mapView(campaign, today).map((hex) => ({ hex, sig: JSON.stringify(hex) })), [campaign, today])
+  const cells = useMemo(() => [...decor, ...mapView(campaign, today)].map((hex) => ({ hex, sig: JSON.stringify(hex) })), [decor, campaign, today])
   const byId = useMemo(() => new Map(cells.map((c) => [c.hex.id, c.hex])), [cells])
   const stored = useMapZoom((s) => s.view)
   const view = stored ? clampMapZoom(stored, box, MAX_ZOOM) : wholeMap(box)

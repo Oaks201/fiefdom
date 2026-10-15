@@ -33,7 +33,7 @@ import {
   validTargets,
   type Holder
 } from '../../src/renderer/src/lib/game/grand/field'
-import { neighbors } from '../../src/renderer/src/lib/game/map'
+import { bandOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import type { CampaignState, Effect, GrandBattle } from '../../src/renderer/src/lib/game/types'
 import { near } from './support/assert'
@@ -328,16 +328,16 @@ test('Ch 11 rule 2: routed companies are Weary for 3 days and the roster keeps i
 
 // ── Outcomes (Ch 11 table) ───────────────────────────────────────────────────
 
-/** The orc's Gate, and a hex beside it the player has just taken. */
+/** The orc's Gate, and a hex beside it the player has just taken (D-16: the Orc's own, in the outer third of its march). */
 function incursionSetup(playerTiers: number, orcPowers: number[]): { state: CampaignState; hexId: string } {
   let state = withArmy(withCastle(allBuildings(realm(), playerTiers), 3), 'orc', orcPowers)
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
-  const beside = neighbors(gate.id).map((id) => hex(state, id)).find((h) => h.owner === 'neutral')!
+  const beside = neighbors(gate.id).map((id) => hex(state, id)).find((h) => isClaimableKind(h) && h.kind !== 'gate' && h.ring < gate.ring)!
   state = { ...state, hexes: state.hexes.map((h) => (h.id === beside.id ? { ...h, owner: 'player' as const } : h)) }
   return { state, hexId: beside.id }
 }
 
-test('Ch 11 outcomes: an Incursion won cuts the rival’s AV by 40% of the host sent, adds 5 Respect and pays 30 × ring', () => {
+test('Ch 11 outcomes, D-17: an Incursion won cuts the rival’s AV by 40% of the host sent, adds 5 Respect and pays 30 × band', () => {
   const { state, hexId } = incursionSetup(4, [20, 20])
   const a = announced(state, { trigger: 'incursion', hexId, announcedOn: START, rival: 'orc' })
   const sent = a.battle.sent!.orc!
@@ -349,8 +349,8 @@ test('Ch 11 outcomes: an Incursion won cuts the rival’s AV by 40% of the host 
   assert.notEqual(b.result, 'defeat')
   near(baseArmyValue(fought, 'orc'), 40 - 0.4 * sent)
   assert.equal(fought.rivals.orc.respect, respect + 5)
-  const ring = hex(state, hexId).ring
-  near(balance(fought.purse) - purse, Math.round(30 * ring * (1 + realmEffects(state).reputationBonus.value) * 10) / 10, 0.05)
+  const band = bandOf(hex(state, hexId))
+  near(balance(fought.purse) - purse, Math.round(30 * band * (1 + realmEffects(state).reputationBonus.value) * 10) / 10, 0.05)
 })
 
 test('Ch 11 outcomes: an Incursion lost returns the hex to that rival', () => {
@@ -363,15 +363,15 @@ test('Ch 11 outcomes: an Incursion lost returns the hex to that rival', () => {
   assert.deepEqual(c.of('hexTransfer')[0], { hexId, from: 'player', to: 'orc', how: 'conquest' })
 })
 
-test('Ch 11 outcomes: a lost Gate costs 5 × ring tribute and blocks a retry for 14 days; a won Gate is the player’s', () => {
+test('Ch 11 outcomes, D-17: a lost Gate costs 5 × band tribute and blocks a retry for 14 days; a won Gate is the player’s', () => {
   let state = withPurse(withArmy(realm(), 'orc', [400]), 500)
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
-  state = { ...state, hexes: state.hexes.map((h) => (neighbors(gate.id).includes(h.id) && h.owner === 'neutral' ? { ...h, owner: 'player' as const } : h)) }
+  state = { ...state, hexes: state.hexes.map((h) => (neighbors(gate.id).includes(h.id) && isClaimableKind(h) && h.ring < gate.ring ? { ...h, owner: 'player' as const } : h)) }
   const a = announced(state, { trigger: 'gate', hexId: gate.id, announcedOn: START, rival: 'orc' })
   const fought = autoResolve(a.state, a.battle.id, a.battle.battleDate, [0, 0, 0, 0, 0, 0, 0], collector().emit)
   const b = battleOf(fought, a.battle.id)!
   assert.equal(b.result, 'defeat')
-  assert.equal(b.outcome?.tribute, 5 * gate.ring)
+  assert.equal(b.outcome?.tribute, 5 * bandOf(gate))
   assert.equal(b.outcome?.retryFrom, addDays(a.battle.battleDate, 14))
   const c = collector()
   assert.equal(announceGrandBattle(fought, { trigger: 'gate', hexId: gate.id, announcedOn: addDays(a.battle.battleDate, 13), rival: 'orc' }, c.emit).reason, 'retryTooSoon')

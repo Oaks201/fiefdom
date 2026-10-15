@@ -30,7 +30,7 @@ import { GRAND_HOOKS, announceGrandBattle, monthOf, postSpoils, postTribute, typ
 import { mythicHost, rivalHost } from '../grand/hosts'
 import { trust } from '../land'
 import { borderHexesOf, capitals, isClaimableKind, nearestTo } from '../map'
-import { RULES, base, type DeepReadonly } from '../rules'
+import { RULES, type DeepReadonly } from '../rules'
 import { chance, pick } from '../rng'
 import { RIVAL_HOOKS } from '../rivals'
 import { EventBuffer, adjustRespect, hexOf, isPlayable, openDayOf, patchRival, replaceHex, toPlayer, toRival, withWorld, worldOf } from '../state'
@@ -380,7 +380,7 @@ function closeOffers(input: CampaignState, w: DeckWeek): CampaignState {
     const rises = chance(state.campaign.seed, w.day, `uprising:${o.hexId}`, num(entry('villageUprising').effect, 'turnsNeutralChance'))
     w.emit('worldEvent', { eventId: 'villageUprising', hexIds: [o.hexId], outcome: rises ? 'neutral' : 'held' })
     if (!rises) continue
-    const garrison = RULES.land.garrison.villageMilitia * base(hex.ring)
+    const garrison = RULES.land.garrison.villageMilitia * hex.strength
     state = replaceHex(state, { ...hex, owner: 'neutral', garrison, garrisonDamage: 0, fortification: 0, status: 'held', village: { loyalty: (hex.village?.loyalty ?? 0) } })
     w.emit('hexTransfer', { hexId: hex.id, from: 'player', to: 'neutral', how: 'event' })
   }

@@ -9,6 +9,29 @@ import { CampaignError } from './errors'
 import { RULES, byTier } from './rules'
 import type { ISODate, PurseEvent, PurseEventKind, PurseLine, PurseState } from './types'
 
+/** Where a reputation gain may come from (Ch 15 invariant 4), by the prefix of its `source`. */
+export const PURSE_SOURCES = {
+  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'contract', 'correction'],
+  battle: ['defense', 'assault', 'grandBattle', 'mythicHunt', 'royalHunt', 'tribute', 'mythic'],
+  land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim'],
+  /** The founding grant, and the Bank's interest on what the player has already earned. */
+  other: ['founding', 'interest']
+} as const
+
+/** The purse event kinds that add to the purse. */
+export const PURSE_GAINS: ReadonlySet<PurseEvent['kind']> = new Set<PurseEvent['kind']>(['earn', 'return', 'spoils', 'tithe', 'adjust'])
+
+/** The prefix of a purse event's source (`steps:2027-01-04` → `steps`). */
+export function sourcePrefix(source: string): string {
+  return source.split(':')[0]
+}
+
+/** Which group of `PURSE_SOURCES` a gain's source falls in, or undefined for none. */
+export function sourceKind(source: string): keyof typeof PURSE_SOURCES | undefined {
+  const prefix = sourcePrefix(source)
+  return (Object.keys(PURSE_SOURCES) as (keyof typeof PURSE_SOURCES)[]).find((k) => (PURSE_SOURCES[k] as readonly string[]).includes(prefix))
+}
+
 // ── Behavior income ──────────────────────────────────────────────────────────
 
 /** The Merchant Hall's reputation bonus at a tier (+2% at I to +15% at V). */
@@ -93,7 +116,8 @@ export function weeklyIncome(week: WeekBehavior, bonus: number): PurseLine[] {
 
 export interface VillageHeld {
   hexId: string
-  ring: number
+  /** The village's band (D-17). */
+  band: number
   /** Settling after a conquest: half tithes (Ch 6). */
   settling?: boolean
   /** Scorched at any point this week: no tithe (Ch 10). */
@@ -101,7 +125,7 @@ export interface VillageHeld {
 }
 
 /**
- * Tithes, 4 × ring per village held, one line per village. A Settling village pays half and a
+ * Tithes, tithePerRing × band per village held (D-17), one line per village. A Settling village pays half and a
  * scorched one nothing. `mult` is the tithe multiplier from effects; tithes prorate in week 1.
  */
 export function tithes(villages: readonly VillageHeld[], mult: number, bonus: number, days: number): PurseLine[] {
@@ -109,7 +133,7 @@ export function tithes(villages: readonly VillageHeld[], mult: number, bonus: nu
   return villages.flatMap((v) => {
     if (v.scorched) return []
     const settling = v.settling ? RULES.land.settling.titheShare : 1
-    const amount = RULES.reputation.weekly.tithePerRing * v.ring * settling * mult * share
+    const amount = RULES.reputation.weekly.tithePerRing * v.band * settling * mult * share
     return amount > 0 ? [{ kind: 'tithe' as const, source: `tithe:${v.hexId}`, amount: withBonus(amount, bonus) }] : []
   })
 }

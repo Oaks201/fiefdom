@@ -8,11 +8,13 @@
 import { castleOffer, crossingOffer, tierOffer, type Offer } from '../buildings'
 import { CODEX } from '../codex'
 import { diffDays } from '../clock'
-import { combatOf, effectiveGarrison, ordersValidity, tidings, type Band } from '../combat'
+import { assaultGarrison, combatOf, ordersValidity, tidings, type Band } from '../combat'
+import { holdingSources, hexWorth, pathRank, pathShares, pathTotals, rankThresholds, renown } from '../dominion'
 import { numeral, realmEffects, sourceLabel } from '../effects'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
-import { dominionOf, dominionSources, fronts, hexName, isClaimableKind, parseHexId, regionsOf } from '../map'
+import { bandOf, clockwisePair, depthOf, fronts, hexDistance, hexId, hexName, isClaimableKind, marchesBorder, onMap, parseHexId, regionsOf, rulingMarch } from '../map'
+import { preparationOf } from '../marches'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
 import { openDayOf } from '../state'
@@ -28,6 +30,7 @@ import {
   type FrontId,
   type HexState,
   type ISODate,
+  type MarchId,
   type Owner,
   type RivalId,
   type ThreatKind
@@ -200,18 +203,17 @@ const REGIONAL_TERRAINS = new Set(['hex.road', 'hex.gate', 'hex.realm', 'hex.cap
 /**
  * A hex's terrain in its region's own look (D-09), or undefined where the shared tile from
  * `terrainSlot` serves: the heartland, ruins, and the shared kinds a region does not redraw. Wilds
- * are near (rings 3 and 4) or far (the Frontier ring); a border hex's village and battlefield
- * blend its two regions (`hex.village.orc-goblin`). Until a regional tile's file exists, the map
- * draws the shared one.
+ * are near (bands 3 and 4) or far (band 5, D-17); a seam's village and battlefield blend its two
+ * marches (`hex.village.orc-goblin`). Until a regional tile's file exists, the map draws the shared one.
  */
-export function regionTerrainSlot(hex: Pick<HexState, 'q' | 'r' | 'kind' | 'ring' | 'village' | 'ruins'>): string | undefined {
+export function regionTerrainSlot(hex: Pick<HexState, 'q' | 'r' | 'kind' | 'ring' | 'village' | 'ruins' | 'march'>): string | undefined {
   const regions = regionsOf(hex)
   if (hex.ruins || regions.length === 0) return undefined
   const shared = terrainSlot(hex)
   const region = regions.join('-')
   if (shared === 'hex.village' || shared === 'hex.battlefield') return `${shared}.${region}`
   if (regions.length > 1) return undefined
-  if (shared === 'hex.den') return `hex.wilds.${region}.${hex.ring === RULES.land.claimableRings.max ? 'far' : 'near'}`
+  if (shared === 'hex.den') return `hex.wilds.${region}.${bandOf(hex) >= RULES.map.bands.max ? 'far' : 'near'}`
   return REGIONAL_TERRAINS.has(shared) ? `${shared}.${region}` : undefined
 }
 
@@ -246,8 +248,17 @@ export interface MapHex extends HexPoint {
   courting?: boolean
   /** A Grand Battle announced here, and its day. */
   battle?: ISODate
-  /** A Rim battlefield: its front's state, the war track (−3 to +3, from the first rival's side) and who it favors. */
+  /** A front's badge on the empty board between its rivals: its state, the war track (−3 to +3, from the first rival's side) and who it favors. */
   front?: { front: FrontId; state: CampaignState['fronts'][FrontId]['state']; track: number; favors?: RivalId }
+  /** The march it lies in, and its depth there (D-16). */
+  march?: MarchId
+  depth?: number
+  /** A seam's march ruling today (P2-06). */
+  ruling?: MarchId
+  /** Its march's preparation level, on a hex the player doesn't hold (D-19). */
+  preparation?: number
+  /** Empty board drawn around the marches (C-05): no rules, no name, never chosen. */
+  decor?: boolean
 }
 
 /** Everything the map draws, hex by hex, on `today`. */
@@ -260,10 +271,8 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
   const targets = new Set([orders?.assaultTarget, ...(orders?.extraAssaults ?? []).map((a) => a.target)].filter(Boolean) as string[])
   const courting = new Set(state.courtships.map((c) => c.hexId))
   const battles = new Map(pendingBattles(state).map((b) => [b.hexId, b.battleDate]))
-  const battlefield = new Map(fronts().flatMap((f) => f.battlefields.map((id) => [id, f.front] as const)))
   return hexLayout(state.hexes).points.map((p, i) => {
     const h = state.hexes[i]
-    const front = battlefield.get(h.id)
     const out: MapHex = {
       ...p,
       label: hexName(h),
@@ -287,6 +296,48 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
     if (courting.has(h.id)) out.courting = true
     const battle = battles.get(h.id)
     if (battle) out.battle = battle
+    if (h.march) {
+      out.march = h.march
+      out.depth = depthOf(h)
+      if (h.seam) out.ruling = rulingMarch(state.campaign.seed, h, today) as MarchId
+      const preparation = preparationOf(state, h, today)
+      if (preparation > 0) out.preparation = preparation
+    }
+    return out
+  })
+}
+
+/**
+ * The empty board around the marches (C-05): every board position touching a map hex that is not
+ * one itself, drawn as a battlefield in the look of the march (or the two marches) it borders.
+ * Nothing here has rules. Each front's war track sits on the one nearest the castle that lies
+ * about as far from both its rivals' Gates.
+ */
+export function mapDecor(state: CampaignState): MapHex[] {
+  const around = new Map<string, MarchId[]>()
+  for (const h of state.hexes) {
+    for (const d of [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]] as const) {
+      const id = hexId(h.q + d[0], h.r + d[1])
+      if (onMap(id)) continue
+      const marches = around.get(id) ?? []
+      for (const m of [h.march, h.seam]) if (m && !marches.includes(m)) marches.push(m)
+      around.set(id, marches)
+    }
+  }
+  const gates = new Map(state.hexes.filter((h) => h.kind === 'gate' && h.march).map((h) => [h.march as MarchId, h.id]))
+  const badges = new Map<string, FrontId>()
+  for (const f of fronts()) {
+    const [a, b] = f.rivals.map((r) => gates.get(r) ?? '0,0')
+    const score = (id: string): number => hexDistance(id, '0,0') + Math.abs(hexDistance(id, a) - hexDistance(id, b))
+    const spot = [...around.keys()].filter((id) => !badges.has(id)).sort((x, y) => score(x) - score(y) || x.localeCompare(y))[0]
+    if (spot) badges.set(spot, f.front)
+  }
+  return [...around.entries()].map(([id, marches]) => {
+    const { q, r } = parseHexId(id)
+    const region = marches.length >= 2 && marchesBorder(marches[0], marches[1]) ? clockwisePair(marches[0], marches[1]).join('-') : marches[0]
+    const out: MapHex = { id, q, r, ...hexCenter(q, r), label: '', ring: hexDistance(id, '0,0'), kind: 'battlefield', owner: 'neutral', slot: 'hex.battlefield', fortification: 0, status: 'held', decor: true }
+    if (region) out.regionSlot = `hex.battlefield.${region}`
+    const front = badges.get(id)
     if (front) {
       const f = state.fronts[front]
       const favors = f.track > 0 ? f.rivals[0] : f.track < 0 ? f.rivals[1] : undefined
@@ -319,9 +370,16 @@ export interface HexPanel {
   ring: number
   land?: HexState['land']
   road?: HexState['road']
-  /** What the hex gives each building in Dominion when the player holds it. */
-  dominion: Partial<Record<BuildingId, number>>
-  /** The exact garrison an assault must beat, wear and fortification counted (rings 1 to 5; the Rim is never assaulted). */
+  /** The march it lies in and its depth there; a seam's second march and the one ruling today (D-16). */
+  march?: MarchId
+  depth?: number
+  seam?: MarchId
+  ruling?: MarchId
+  /** Its march's preparation level today, on a hex the player doesn't hold (D-19). */
+  preparation?: number
+  /** What holding the hex adds to each rival's path in Holdings (D-18). */
+  paths: Partial<Record<RivalId, number>>
+  /** The exact garrison an assault must beat today: wear, fortification and preparation counted (claimable hexes only). */
   garrison?: number
   village?: { loyalty: number; resistance: number; settlingUntil?: ISODate }
   fortification: number
@@ -342,6 +400,11 @@ const GRAND_KINDS = new Set<HexState['kind']>(['gate', 'capital', 'lairMouth'])
 
 function isRival(owner: Owner): owner is RivalId {
   return owner !== 'player' && owner !== 'neutral'
+}
+
+/** A march by the name of its land (D-16): "The Ashen Steppe", "the Wyrmfells". */
+export function marchName(march: MarchId): string {
+  return CODEX.rivals.find((r) => r.id === march)?.realm ?? CODEX.lairs.find((l) => l.id === march)?.name ?? march
 }
 
 /** Who holds a hex, as the panel names them. */
@@ -415,8 +478,11 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     ring: hex.ring,
     ...(hex.land ? { land: hex.land } : {}),
     ...(hex.road ? { road: hex.road } : {}),
-    dominion: dominionOf(hex),
-    ...(isClaimableKind(hex) ? { garrison: effectiveGarrison(hex) } : {}),
+    ...(hex.march ? { march: hex.march, depth: depthOf(hex) } : {}),
+    ...(hex.seam ? { seam: hex.seam, ruling: rulingMarch(state.campaign.seed, hex, today) as MarchId } : {}),
+    ...(preparationOf(state, hex, today) > 0 ? { preparation: preparationOf(state, hex, today) } : {}),
+    paths: Object.fromEntries(Object.entries(pathShares(hex)).map(([r, s]) => [r, hexWorth(hex) * (s ?? 0)])),
+    ...(isClaimableKind(hex) ? { garrison: assaultGarrison(state, hex, today) } : {}),
     ...(hex.village ? { village: { loyalty: hex.village.loyalty, resistance: resistance(hex), ...(hex.village.settlingUntil ? { settlingUntil: hex.village.settlingUntil } : {}) } } : {}),
     fortification: hex.fortification,
     status: hex.status,
@@ -591,8 +657,11 @@ export interface BuildingView {
   /** The art slot of this tier (`building.<id>.<tier>`). */
   slot: string
   company: CompanyCard
-  /** Its Dominion, and where it comes from: each hex with what it gives (gap 2). */
+  /** Its path's Dominion (D-18): Renown + Holdings. */
   dominion: number
+  /** Its path: the rival, its Renown and Holdings, its rank (never falls) and the next rank's threshold. */
+  path: { rival: RivalId; name: string; renown: number; holdings: number; rank: number; nextRank?: number }
+  /** Where its path's Holdings come from: each hex with what it gives (gap 2). */
   dominionSources: { hexId: string; label: string; value: number }[]
   /** What its current tier gives the realm. */
   gives: EffectLine[]
@@ -605,12 +674,17 @@ function companyAt(building: BuildingId, tier: number): CompanyCard {
   return { name: entry?.name ?? building, power: byTier(RULES.buildings.pureCompanyPower, tier), tags: [...(entry?.tags ?? [])], textId, text: t(textId) }
 }
 
-/** The four buildings: tier, company, Dominion and its sources, what the tier gives, and the next tier's offer. */
+/** The four buildings: tier, company, its path's Dominion and Holdings sources, what the tier gives, and the next tier's offer. */
 export function buildingsView(state: CampaignState, effects: Effects = realmEffects(state)): BuildingView[] {
+  const totals = pathTotals(state)
+  const renowned = renown(state)
+  const thresholds = rankThresholds()
   return BUILDING_IDS.map((id) => {
     const tier = state.buildings[id]
-    const fromThis = (ref: EffectSourceRef): boolean => ref.kind === 'building' && ref.id === id
-    const sources = dominionSources(state.hexes, 'player', id)
+    const rival = CODEX.rivals.find((r) => r.id && r.road === id)?.id as RivalId
+    const fromThis = (ref: EffectSourceRef): boolean => (ref.kind === 'building' && ref.id === id) || (ref.kind === 'pathRank' && ref.path === rival)
+    const sources = holdingSources(state, rival)
+    const rank = pathRank(state, rival)
     const next = nextOf(tierOffer(state, id))
     const view: BuildingView = {
       id,
@@ -618,7 +692,15 @@ export function buildingsView(state: CampaignState, effects: Effects = realmEffe
       tier,
       slot: `building.${id}.${tier}`,
       company: companyAt(id, tier),
-      dominion: sources.reduce((s, x) => s + x.value, 0),
+      dominion: totals[rival],
+      path: {
+        rival,
+        name: rivalName(rival),
+        renown: renowned[rival],
+        holdings: totals[rival] - renowned[rival],
+        rank,
+        ...(rank < thresholds.length ? { nextRank: thresholds[rank] } : {})
+      },
       dominionSources: sources.map((s) => ({ ...s, label: hexName(s.hexId) })),
       gives: effectLines(effects, fromThis)
     }

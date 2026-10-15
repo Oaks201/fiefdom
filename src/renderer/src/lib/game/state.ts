@@ -5,7 +5,8 @@
  * exist so that combat, land, the rivals and settlement don't each keep a copy.
  */
 import { addDays, campaignWeek } from './clock'
-import { RULES, base } from './rules'
+import { bandOf } from './map'
+import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
@@ -119,7 +120,7 @@ export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexSta
   delete out.mythic
   delete out.rebels
   if (hex.village) {
-    const full = RULES.influence.loyalty.neutralPerRing * hex.ring
+    const full = RULES.influence.loyalty.neutralPerRing * bandOf(hex)
     out.village = settling
       ? { loyalty: RULES.land.villageLoyalty.afterConquestShare * full, settlingUntil: addDays(day, RULES.land.settling.weeks * RULES.clock.daysPerWeek) }
       : { loyalty: full }
@@ -134,11 +135,11 @@ export function toWilds(hex: HexState, garrison: number): HexState {
   return out
 }
 
-/** A hex that passes to a rival: its garrison (A-17), a village's loyalty 30 × ring, no fortification (A-136). */
+/** A hex that passes to a rival: its garrison (its strength × A-17), a village's loyalty 30 × band, no fortification (A-136, D-17). */
 export function toRival(hex: HexState, rival: RivalId): HexState {
-  const out: HexState = { ...heldHex(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
+  const out: HexState = { ...heldHex(hex), owner: rival, garrison: hex.strength * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
   delete out.rebels
-  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
+  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * bandOf(hex) }
   return out
 }
 

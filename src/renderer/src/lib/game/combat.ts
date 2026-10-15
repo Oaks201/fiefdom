@@ -38,7 +38,8 @@ import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
-import { borderHexesOf, claimableBy, hexDistance, hexIndex, isClaimableKind, nearestTo, touches, wildBase, wildGarrison } from './map'
+import { bandOf, borderHexesOf, claimableBy, hexDistance, hexIndex, isClaimableKind, nearestTo, touches, wildBase, wildGarrison } from './map'
+import { preparationMult } from './marches'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
@@ -96,7 +97,7 @@ export interface ThreatStrengthInput {
   week: number
   /** The day's daily threat (the siege day applies), not a conquest attempt. */
   daily: boolean
-  /** D-15: the wilds' strength on the target (`wildBase`); beasts and mythics strike at it instead of base(ring). */
+  /** D-15, D-17: the target hex's strength (`wildBase`): every threat strikes at it; base(ring) only stands in without one. */
   wild?: number
 }
 
@@ -261,11 +262,11 @@ function raidMult(state: CampaignState, effects: Effects, rival: RivalId, date: 
  * A threat's strength (Ch 10 "Threat strength"): beasts 0.9 × base; mythics 1.15 × base ×
  * the mythic multiplier for their side; a raid max(0.8 × base, 0.25 × AV × temper) with its
  * multipliers; a conquest attempt max(1.0 × base, 0.5 × AV). Then the roll, the early grace and,
- * for a Saturday's daily threat, the siege day. Beasts and mythics take the wilds' strength on
- * their target for base (D-15), so a hex is as hard to hold on a good day as it was to take.
+ * for a Saturday's daily threat, the siege day. Every threat takes its target's strength for base
+ * (D-15, D-17), so a hex is as hard to hold on a good day as it was to take.
  */
 export function threatStrength(state: CampaignState, effects: Effects, t: ThreatStrengthInput): number {
-  const b = (t.kind === 'beasts' || t.kind === 'mythic') && t.wild !== undefined ? t.wild : base(t.ring)
+  const b = t.wild ?? base(t.ring)
   const s = RULES.combat.strength
   let value: number
   switch (t.kind) {
@@ -296,12 +297,12 @@ function needRival(t: { kind: ThreatKind; rival?: RivalId }): RivalId {
 
 // ── Dawn: targets and rolls (A-27, A-28) ─────────────────────────────────────
 
-function ringWeight(ring: number): number {
-  return ring ** RULES.combat.targetRingExponent
+function bandWeight(band: number): number {
+  return band ** RULES.combat.targetRingExponent
 }
 
 /**
- * The day's target among the player's border hexes, weighted by ring^1.5 (Ch 10, A-27). Raids
+ * The day's target among the player's border hexes, weighted by band^1.5 (Ch 10, A-27, D-17). Raids
  * come along the raider's border, or else at the border hex nearest its land (ties drawn);
  * mythics prefer the lair sides. The castle (ring 0) is never a target.
  */
@@ -327,7 +328,7 @@ function pickTarget(state: CampaignState, date: ISODate, kind: DailyThreatKind, 
     date,
     'threat:target',
     pool.map((h) => h.id),
-    pool.map((h) => ringWeight(h.ring))
+    pool.map((h) => bandWeight(bandOf(h)))
   )
   return byId.get(id) ?? null
 }
@@ -359,7 +360,7 @@ export function dawnTiding(state: CampaignState, date: ISODate, effects: Effects
     roll: roll(state.campaign.seed, date, 'threat:roll', -spread, spread),
     week: weekNumber(state, date),
     daily: true,
-    wild: wildBase(state.campaign.seed, hex)
+    wild: wildBase(hex)
   })
   return { date, kind, hexId: hex.id, ...(rival ? { rival } : {}), strength, siegeDay: isSiegeDay(date) }
 }
@@ -449,7 +450,8 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
     rival: a.rival,
     roll: roll(state.campaign.seed, date, `conquest:${a.rival}:roll`, -spread, spread),
     week,
-    daily: false
+    daily: false,
+    wild: wildBase(hex)
   })
   const attempt: ConquestAttempt = { rival: a.rival, hexId: hex.id, announcedOn: a.announcedOn, date, strength }
   return { ok: true, attempt, state: withCombat(state, { ...combat, conquests: [...combat.conquests, attempt] }) }
@@ -523,7 +525,7 @@ export interface DefenseInput {
   armsBonus: number
   /** W, already doubled where Shieldwall or Runed Walls apply. */
   walls: number
-  /** F = fortification level × 0.25 × base(ring). */
+  /** F = fortification level × 0.25 × the hex's strength (D-17). */
   fortification: number
   /** The rally floor `r`. */
   rallyFloor: number
@@ -547,10 +549,18 @@ export function assaultValue(d: Omit<DefenseInput, 'walls' | 'fortification'>): 
   return (1 + d.armsBonus) * d.strikes.reduce((s, x) => s + x, 0) * rally(d.rallyFloor, d.valor)
 }
 
-/** What an assault must beat (Ch 6): the garrison, + fortification unless ignored, − this week's wear. */
-export function effectiveGarrison(hex: HexState, ignoreFortification = false): number {
+/**
+ * What an assault must beat (Ch 6): the garrison, + fortification unless ignored, × its march's
+ * preparation (`prep`, D-19), − this week's wear.
+ */
+export function effectiveGarrison(hex: HexState, ignoreFortification = false, prep = 1): number {
   const fort = ignoreFortification ? 0 : fortificationValue(hex)
-  return Math.max(0, hex.garrison + fort - hex.garrisonDamage)
+  return Math.max(0, (hex.garrison + fort) * prep - hex.garrisonDamage)
+}
+
+/** What an assault on `hex` must beat on `day`, with its march's preparation that day (D-19). */
+export function assaultGarrison(state: CampaignState, hex: HexState, day: ISODate, ignoreFortification = false): number {
+  return effectiveGarrison(hex, ignoreFortification, preparationMult(state, hex, day))
 }
 
 /**
@@ -601,7 +611,7 @@ export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effec
   return defenseValue({
     strikes: fielded.map((f) => f.strike),
     armsBonus: effects.armsBonus.value,
-    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    walls: wallsFor(effects, { ring: bandOf(hex), foe }),
     fortification: fortificationValue(hex),
     rallyFloor: effects.rallyFloor.value,
     valor: q.valor
@@ -793,7 +803,7 @@ export interface TidingsView {
 
 /**
  * Whether losing a defense against `kind` on `hex` returns it to the wilds (D-15): beasts or a
- * mythic, on a hex the player holds in ring 3 or beyond that is not a village. Rings 0 to 2 are home.
+ * mythic, on a hex the player holds in a march (ring 3 or beyond) that is not a village. Rings 0 to 2 are home.
  */
 export function returnsToWilds(hex: HexState, kind: ThreatKind): boolean {
   const rule = RULES.combat.wildsReclaim
@@ -861,15 +871,15 @@ export interface GrandBattleRequest {
   kind: HexKind
   owner: Owner
   day: ISODate
-  /** A rare creature turned at bay on a beast den (Ch 11: 8% of ring 4 to 5 West and East den assaults). */
+  /** A rare creature turned at bay on a beast den (Ch 11, D-17: 8% of band 4 to 5 den assaults in a lair's wedge). */
   reveal?: boolean
 }
 
-/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, ring 4 or 5, on a lair side (Ch 11). */
+/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, band 4 or 5, in a lair's wedge or on its flank (Ch 11, D-17). */
 export function isRevealDen(hex: HexState): boolean {
   const reveal = RULES.grandBattles.mythicReveal
   const den = (hex.kind === 'road' || hex.kind === 'between') && hex.owner === 'neutral' && !hex.village && !hex.mythic
-  return den && hex.ring >= reveal.minRing && hex.ring <= RULES.land.claimableRings.max && lairSide(hex) !== undefined
+  return den && bandOf(hex) >= reveal.minRing && lairSide(hex) !== undefined
 }
 
 export interface CombatOutcome {
@@ -1033,7 +1043,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt', ...trophy(undefined, true) })
       } else {
         const perRing = outcome === 'rout' ? spoilsRules.routPerRing : spoilsRules.winPerRing
-        const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+        const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
         gains.push({ kind: 'spoils', amount, source: `defense:${b.kind}:${hex.id}` })
         report.spoils = roundPosting(amount)
       }
@@ -1055,7 +1065,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         illusions++
         report.grandIllusion = true
       } else {
-        const amount = RULES.combat.tribute.perRing * hex.ring * effects.tribute.value
+        const amount = RULES.combat.tribute.perRing * bandOf(hex) * effects.tribute.value
         gains.push({ kind: 'tribute', amount, source: `tribute:${b.kind}:${hex.id}` })
         report.tribute = roundPosting(amount)
       }
@@ -1064,7 +1074,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         ? defenseValue({
             strikes: fielded.map((f) => f.strike),
             armsBonus: effects.armsBonus.value,
-            walls: wallsFor(effects, { ring: hex.ring, foe }),
+            walls: wallsFor(effects, { ring: bandOf(hex), foe }),
             fortification: fortificationValue(hex),
             rallyFloor: effects.rallyFloor.value,
             valor: skirmishDayOf(state, day)?.valor ?? ctx.valor
@@ -1121,7 +1131,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     const { foe } = garrisonType(hex)
     // A led assault (D-12) gives the outcome; its Assault value (for the wear on a repulse) uses the Valor locked when it began.
     const led = ledAssault(state, day, hex.id)
-    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, led ? (skirmishDayOf(state, day)?.valor ?? ctx.valor) : ctx.valor)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, led ? (skirmishDayOf(state, day)?.valor ?? ctx.valor) : ctx.valor, preparationMult(state, hex, day))
     const result = led ? ledAssaultOutcome(led, value) : assaultOutcome(garrison, value)
     if (led?.hired) purse = spend(purse, day, Math.min(led.hired * RULES.buildings.merchantHall.hiredBlades.costPerBattle, balance(purse)), `hired:${led.id}`)
     const owner = hex.owner
@@ -1129,7 +1139,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
       const perRing = rout ? RULES.combat.spoils.routPerRing : RULES.combat.spoils.winPerRing
-      const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+      const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
       gains.push({ kind: 'spoils', amount, source: `assault:${hex.id}` })
       if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: RULES.respect.change.hexConquered, reason: 'hexConquered' })
       taken.push({ hex, from: owner })
@@ -1144,7 +1154,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   // 3. Hex transfers: hexes the wilds took back, contested hexes that fell, then captured hexes.
   for (const id of overrun) {
     const hex = byId.get(id) as HexState
-    setHex(toWilds(hex, wildGarrison(state.campaign.seed, hex, false)))
+    setHex(toWilds(hex, wildGarrison(hex, false)))
     emit('hexTransfer', { hexId: id, from: 'player', to: 'neutral', how: 'wilds' })
   }
   for (const c of falls) {
@@ -1155,7 +1165,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   }
   for (const t of taken) {
     setHex(toPlayer(byId.get(t.hex.id) as HexState, day, true))
-    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest' })
+    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest', fortification: t.hex.fortification })
   }
 
   // 4. Spoils, tribute and Respect.
@@ -1200,7 +1210,7 @@ export function defenseOf(effects: Effects, pool: readonly Company[], hex: HexSt
   const { defense } = defenseValue({
     strikes: fielded.map((f) => f.strike),
     armsBonus: effects.armsBonus.value,
-    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    walls: wallsFor(effects, { ring: bandOf(hex), foe }),
     fortification: fortificationValue(hex),
     rallyFloor: effects.rallyFloor.value,
     valor
@@ -1209,12 +1219,12 @@ export function defenseOf(effects: Effects, pool: readonly Company[], hex: HexSt
 }
 
 /** The Assault `pool` brings against `hex` (Ch 6), and the garrison it must beat (fortification ignored by Siegebreakers and like effects). */
-export function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number): { fielded: Fielded[]; value: number; garrison: number } {
+export function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number, prep = 1): { fielded: Fielded[]; value: number; garrison: number } {
   const { matchup, foe } = garrisonType(hex)
   const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
   const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor })
   const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
-  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort) }
+  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort, prep) }
 }
 
 export interface OrdersEstimate {
@@ -1243,7 +1253,7 @@ export function ordersEstimate(state: CampaignState, orders: DailyOrders | undef
   }
   const assaults = validity.assaults.map((a) => {
     const hex = byId.get(a.target) as HexState
-    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor, preparationMult(state, hex, day))
     return { hexId: hex.id, value, garrison, outcome: assaultOutcome(garrison, value).outcome, fielded: fielded.map((f) => f.company.id) }
   })
   return { defenses, assaults }

@@ -2,6 +2,7 @@ import type { IconType } from 'react-icons'
 import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiHelp, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
 import { battleNotices } from '../lib/game/view/battle'
 import { pagesFor, topBarView } from '../lib/game/view/shell'
+import { useCampaign } from '../state/campaign'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { contractStatus } from '../lib/contracts'
 import { formatAgo } from '../lib/format'
@@ -38,7 +39,8 @@ export function TopBar(): React.JSX.Element {
   const rep = useReputation()
   const campaign = useCampaignState()
   const campaignToday = useCampaignToday()
-  const tabs = pagesFor(campaign).map((id) => ({ id, ...TAB_INFO[id] }))
+  const outdated = useCampaign((s) => s.outdated !== null)
+  const tabs = pagesFor(campaign, outdated).map((id) => ({ id, ...TAB_INFO[id] }))
   const bar = campaign && campaignToday ? topBarView(campaign, campaignToday) : null
   const battle = campaign && campaignToday ? battleNotices(campaign, campaignToday)[0] : undefined
 

@@ -28,6 +28,8 @@ import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor 
 import { fieldResult, isOver, marshalPlay, offeredOn, orderMods, playProblem, playRoundOn, replayField, slotOf, type Field, type RoundPlay } from './grand/field'
 import { placeHost } from './grand/hosts'
 import { fortificationValue } from './land'
+import { bandOf } from './map'
+import { preparationMult } from './marches'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { hostUnits } from './rivals'
@@ -125,7 +127,7 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
       strength: b.strength,
       enemy: enemyOfThreat(b.kind, b.rival),
       companies: fielded.map((f) => f.company),
-      walls: wallsFor(effects, { ring: hex.ring, foe }) + fortificationValue(hex)
+      walls: wallsFor(effects, { ring: bandOf(hex), foe }) + fortificationValue(hex)
     })
   }
 
@@ -133,7 +135,7 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
     const hex = state.hexes.find((h) => h.id === a.target)
     if (!hex) continue
     if (isRevealDen(hex) && chance(state.campaign.seed, day, `reveal:${hex.id}`, RULES.grandBattles.mythicReveal.chance)) continue
-    const { fielded, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, 1)
+    const { fielded, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, 1, preparationMult(state, hex, day))
     if (fielded.length === 0) continue
     plans.push({ id: fightId('assault', hex.id), side: 'assault', hexId: hex.id, strength: garrison, enemy: enemyOfGarrison(hex), companies: fielded.map((f) => f.company), walls: 0 })
   }
