@@ -12,16 +12,19 @@
 import type { Ledger } from '../types'
 import { milestoneUnlocks } from './armory'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
-import { borderCampaignWeeks } from './campaign'
 import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions } from './grand'
+import { chronicle } from './dominion'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
+import { bandOf } from './map'
+import { prepareMarches } from './marches'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
+import { finishSkirmishes } from './skirmish'
 import { EventBuffer, isPlayable } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
@@ -38,7 +41,8 @@ export const DAY_PHASE_NAMES = [
   'combat',
   'grandBattlesAuto',
   'expireTimers',
-  'contractEnd'
+  'contractEnd',
+  'chronicle'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -50,7 +54,9 @@ export const WEEK_PHASE_NAMES = [
   'fronts',
   'borderCampaigns',
   'world',
-  'resetAndSchedule'
+  'resetAndSchedule',
+  'marches',
+  'chronicle'
 ] as const
 
 export type DayPhaseName = (typeof DAY_PHASE_NAMES)[number]
@@ -109,10 +115,15 @@ function contractsOf(state: CampaignState): LandContract[] {
   return active ? [...history, active] : history
 }
 
-/** The Charter that governs `day`: the contract covering it, or else the campaign's Charter. */
+/**
+ * The Charter that governs `day`: the contract covering it; or else, for a campaign re-founded as of
+ * an earlier day, the terms of that time (D-21, P2-11); or else the campaign's Charter.
+ */
 export function charterOn(state: CampaignState, day: ISODate): Charter {
   const covering = contractsOf(state).filter((c) => c.startDate <= day && day <= c.endDate)
-  return covering.length > 0 ? covering[covering.length - 1].charter : state.charter
+  if (covering.length > 0) return covering[covering.length - 1].charter
+  const span = state.charterHistory?.find((s) => s.from <= day && day <= s.until)
+  return span ? span.charter : state.charter
 }
 
 export function snapshotOf(state: CampaignState, day: ISODate): DaySnapshot | undefined {
@@ -264,7 +275,9 @@ export function readinessValors(state: CampaignState, day: ISODate): number[] {
  * creatures revealed, and Incursions for hexes conquered, each announced for the next dawn.
  */
 const combatPhase: Phase = (state, ctx) => {
-  const result = settleCombat(state, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
+  // The fights the player led and left unfinished, the Marshal finishes first; their results stand in for the formula's (D-12).
+  const led = finishSkirmishes(state, ctx.day)
+  const result = settleCombat(led, { day: ctx.day, week: ctx.week, weekStartsOn: ctx.weekStartsOn, valor: valorOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit })
   ctx.hooks.grandBattleRequests.push(...result.grandBattles)
   const dawnAfter = addDays(ctx.day, 1)
   const announced = announceRequests(result.state, result.grandBattles, dawnAfter, ctx.emit)
@@ -307,7 +320,7 @@ const weeklyIncomePhase: Phase = (input, ctx) => {
     .filter((h) => h.owner === 'player' && h.village)
     .map((h) => ({
       hexId: h.id,
-      ring: h.ring,
+      band: bandOf(h),
       settling: h.village?.settlingUntil !== undefined && h.village.settlingUntil > ctx.day,
       scorched: h.status === 'scorched'
     }))
@@ -379,7 +392,7 @@ const rivalTurnPhase: Phase = (state, ctx) => {
 /** The week's skirmishes on the Rim fronts at War, war losses, and Peace pulling tracks to 0 (T10). */
 const frontsPhase: Phase = (state, ctx) => settleFronts(state, rivalWeek(state, ctx))
 
-/** Border Campaigns in a hidden Border Campaign week, then next week's front states (T10). */
+/** Next week's front states (T10). Border Campaigns are gone (R-26): the fronts stay abstract weekly rolls. */
 const borderCampaignsPhase: Phase = (state, ctx) => borderCampaigns(state, rivalWeek(state, ctx))
 
 /** Coalitions, held resolutions and defections, the event deck, Ascendancy and Ultimatums (T12, Ch 13, Ch 14). */
@@ -392,16 +405,14 @@ const worldPhase: Phase = (state, ctx) =>
     emit: ctx.emit
   })
 
-/** Resets garrison damage, keeps the hidden Border Campaign schedule ahead of the campaign, and draws next week's threats (T08, A-28). */
-const resetAndSchedule: Phase = (state, ctx) => {
-  const hexes = state.hexes.some((h) => h.garrisonDamage !== 0) ? state.hexes.map((h) => (h.garrisonDamage === 0 ? h : { ...h, garrisonDamage: 0 })) : state.hexes
-  const ahead = ctx.week + RULES.settlement.borderScheduleAheadWeeks
-  const scheduled = state.settlement.borderCampaignWeeks
-  const borderWeeks =
-    scheduled.length > 0 && scheduled[scheduled.length - 1] >= ahead ? scheduled : borderCampaignWeeks(state.campaign.seed, state.campaign.startDate, ahead)
-  const reset = { ...state, hexes, settlement: { ...state.settlement, borderCampaignWeeks: borderWeeks } }
-  return scheduleThreats(reset, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
-}
+/** Draws next week's threats (T08, A-28). Patch 3 (D-22, X-07): siege wear no longer resets here; it stays until the hex falls (`sieges.ts`). */
+const resetAndSchedule: Phase = (state, ctx) => scheduleThreats(state, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
+
+/** Each rival march's preparation level: up after a quiet week, down after a pushed one (D-19). */
+const marchesPhase: Phase = (state, ctx) => prepareMarches(state, ctx.day, ctx.emit)
+
+/** The chronicle (D-18): the deeds the log holds since it last read it, their Renown, and new path ranks. */
+const chroniclePhase: Phase = (state, ctx) => chronicle(state, ctx.emit)
 
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
@@ -411,7 +422,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   combat: combatPhase, // T08
   grandBattlesAuto, // T11
   expireTimers,
-  contractEnd
+  contractEnd,
+  chronicle: chroniclePhase // Patch 2 (D-18)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
@@ -423,7 +435,9 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   fronts: frontsPhase, // T10
   borderCampaigns: borderCampaignsPhase, // T10
   world: worldPhase, // T12
-  resetAndSchedule
+  resetAndSchedule,
+  marches: marchesPhase, // Patch 2 (D-19)
+  chronicle: chroniclePhase // Patch 2 (D-18)
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────

@@ -13,10 +13,11 @@
  *    or the habits' plateau floor.
  */
 import type { Ledger } from '../../types'
+import { PURSE_GAINS as GAINS, PURSE_SOURCES, sourcePrefix } from '../economy'
 import { RULES } from '../rules'
 import { settle } from '../settle'
-import { weekOn } from '../state'
-import type { CampaignState, PurseEvent } from '../types'
+import { isPlayable, weekOn } from '../state'
+import type { CampaignState } from '../types'
 
 export interface InvariantInput {
   /** The campaign before this settlement. */
@@ -31,17 +32,7 @@ export interface InvariantInput {
   extraSources?: readonly string[]
 }
 
-/** Where a reputation gain may come from (Ch 15 invariant 4), by the prefix of its `source`. */
-export const PURSE_SOURCES = {
-  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'contract', 'correction'],
-  battle: ['defense', 'assault', 'grandBattle', 'mythicHunt', 'royalHunt', 'tribute', 'mythic'],
-  land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim'],
-  /** The founding grant, and the Bank's interest on what the player has already earned. */
-  other: ['founding', 'interest']
-} as const
-
-/** The purse event kinds that add to the purse. */
-const GAINS: ReadonlySet<PurseEvent['kind']> = new Set<PurseEvent['kind']>(['earn', 'return', 'spoils', 'tithe', 'adjust'])
+export { PURSE_SOURCES, sourcePrefix }
 
 const EPSILON = 1e-9 // rules-ok: a float tolerance for comparisons, not a game number
 
@@ -51,11 +42,6 @@ function added<T extends { id: string }>(before: readonly T[], after: readonly T
   if (after.length >= before.length && (last === undefined || after[before.length - 1]?.id === last.id)) return after.slice(before.length)
   const seen = new Set(before.map((x) => x.id))
   return after.filter((x) => !seen.has(x.id))
-}
-
-/** The prefix of a purse event's source (`steps:2027-01-04` → `steps`). */
-export function sourcePrefix(source: string): string {
-  return source.split(':')[0]
 }
 
 /** Every invariant this settlement broke, as plain sentences; empty when all hold. */
@@ -115,6 +101,14 @@ export function settleViolations(i: InvariantInput): string[] {
     if (seenWeeks.has(w.week)) continue
     if (w.momentum > 1 + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} above the target pace`)
     if (w.tooFast && w.momentum > heldOrFloor + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} while the trend is too fast`)
+  }
+
+  // 7. Every Grand Battle has its own id, and none due by the day settled is left unfought.
+  const battleIds = new Set<string>()
+  for (const b of after.grandBattles) {
+    if (battleIds.has(b.id)) out.push(`two Grand Battles share the id ${b.id}`)
+    battleIds.add(b.id)
+    if (isPlayable(after) && b.result === undefined && b.battleDate <= after.settledThrough.day) out.push(`Grand Battle ${b.id} (${b.trigger}) was due ${b.battleDate} and is still unfought`)
   }
   return out
 }

@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand'
 import type { TextFacts } from '../lib/game/text'
+import type { PortraitChoice } from '../lib/game/view/playerPortrait'
 
 export interface Moment {
   id: string
@@ -20,6 +21,8 @@ export interface Moment {
   lines?: string[]
   /** A second button: watch a battle's replay (T16). */
   action?: { label: string; battleId: string }
+  /** The player's portrait in place of the slot's art (the standing card). */
+  portrait?: PortraitChoice
 }
 
 interface MomentStore {

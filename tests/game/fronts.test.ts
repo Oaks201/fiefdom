@@ -3,12 +3,10 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { raiderWeights, threatStrength } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
-import { borderCampaignTarget, borderCampaigns, drawFronts, frontWarChance, settleFronts, type RivalWeek } from '../../src/renderer/src/lib/game/rivals'
+import { borderCampaigns, drawFronts, frontWarChance, settleFronts, type RivalWeek } from '../../src/renderer/src/lib/game/rivals'
 import type { CampaignState, Coalition, FrontId, GameEvent, RivalId } from '../../src/renderer/src/lib/game/types'
 import { realm } from './support/realm'
 import { eventsOf, simulateRivals } from './support/rival-sim'
-import { hex, withOwner } from './support/war'
 import { near } from './support/assert'
 
 
@@ -45,22 +43,6 @@ function av(state: CampaignState, rival: RivalId): number {
 function withArmy(state: CampaignState, rival: RivalId, power: number): CampaignState {
   const r = state.rivals[rival]
   return { ...state, rivals: { ...state.rivals, [rival]: { ...r, companies: [{ ...r.companies[0], power }] } } }
-}
-
-/** The North front's battleground: the Orc and the Goblin each hold a plain ring-5 hex, side by side. */
-function northBorder(state: CampaignState): { state: CampaignState; orcHex: string; goblinHex: string } {
-  for (const h of state.hexes) {
-    if (h.ring !== 5 || h.owner !== 'neutral' || h.village || !isClaimableKind(h) || h.kind === 'lairMouth') continue
-    const touchingOrc = neighbors(h.id).some((n) => hex(state, n).owner === 'orc')
-    if (!touchingOrc) continue
-    const next = neighbors(h.id).find((n) => {
-      const o = hex(state, n)
-      return o.ring === 5 && o.owner === 'neutral' && !o.village && isClaimableKind(o) && o.kind !== 'lairMouth'
-    })
-    if (!next) continue
-    return { state: withOwner(withOwner(state, [h.id], 'orc'), [next], 'goblin'), orcHex: h.id, goblinHex: next }
-  }
-  throw new Error('No ring-5 border between the Orc and a neutral hex')
 }
 
 const SUNDAY = '2026-11-15'
@@ -104,7 +86,7 @@ test('A-37: a week at Peace moves the track one step toward 0; Tension leaves it
 
 test('Ch 12 fronts: Emboldened at +3 strengthens the rival’s raids by 15%; Humbled at −3 weakens them by 15%', () => {
   const raid = (state: CampaignState): number =>
-    threatStrength(state, realmEffects(state), { kind: 'raid', rival: 'orc', date: '2026-11-16', ring: 4, roll: 0, week: 7, daily: false })
+    threatStrength(state, realmEffects(state), { kind: 'raid', rival: 'orc', date: '2026-11-16', ring: 4, roll: 0, week: 7, daily: false, wild: 115 })
   const plain = raid(realm())
   near(raid(withFront(realm(), 'north', 'tension', 3)), plain * 1.15)
   near(raid(withFront(realm(), 'north', 'tension', -3)), plain * 0.85)
@@ -147,69 +129,21 @@ test('Ch 13: while a coalition stands, its members’ shared front is at Peace',
   }
 })
 
-// ── Border Campaigns (Ch 12) ─────────────────────────────────────────────────
+// ── Border Campaigns are gone (R-26) ─────────────────────────────────────────
 
-test('Ch 12 Border Campaigns: in a scheduled week, on a front at War, the rival at +2 or more takes a touching hex if 0.5 × AV × roll ≥ its garrison; both lose 5% AV', () => {
-  const setup = northBorder(realm())
-  let state = withFront(setup.state, 'north', 'war', 2)
+test('R-26: Border Campaigns are gone: the phase only draws next week’s fronts, and no land changes hands between rivals, even on a front at War at +3', () => {
+  let state = withFront(realm(), 'north', 'war', 3)
   state = withArmy(withArmy(state, 'orc', 1000), 'goblin', 100)
-  state = { ...state, settlement: { ...state.settlement, borderCampaignWeeks: [10] } }
   const events: GameEvent[] = []
   const next = borderCampaigns(state, week(SUNDAY, 10, events))
-  const campaigns = eventsOf(events, 'borderCampaign')
-  assert.equal(campaigns.length, 1)
-  assert.deepEqual([campaigns[0].attacker, campaigns[0].defender, campaigns[0].taken], ['orc', 'goblin', true])
-  const target = campaigns[0].hexId
-  assert.equal(hex(next, target).owner, 'orc')
-  assert.notEqual(hex(state, target).kind, 'gate')
-  assert.ok(neighbors(target).some((n) => hex(state, n).owner === 'orc'))
-  near(av(next, 'orc'), 950)
-  near(av(next, 'goblin'), 95)
-  assert.deepEqual(
-    eventsOf(events, 'hexTransfer').map((e) => [e.hexId, e.from, e.to, e.how]),
-    [[target, 'goblin', 'orc', 'borderCampaign']]
-  )
-  assert.equal(eventsOf(events, 'respect').length, 0, 'Respect toward the player does not change')
-
-  // A weak attacker fails, and both still lose 5%.
-  const weak = withArmy(state, 'orc', 10)
-  const failed: GameEvent[] = []
-  const after = borderCampaigns(weak, week(SUNDAY, 10, failed))
-  assert.equal(eventsOf(failed, 'borderCampaign')[0].taken, false)
-  assert.equal(hex(after, target).owner, 'goblin')
-  near(av(after, 'orc'), 9.5)
-
-  // Not a Border Campaign week, a track short of +2, or coalition partners: nothing.
-  for (const quiet of [
-    { ...state, settlement: { ...state.settlement, borderCampaignWeeks: [18] } },
-    withFront(state, 'north', 'war', 1),
-    withFront(state, 'north', 'tension', 3),
-    { ...state, coalitions: [{ members: ['orc', 'goblin'], trigger: 'risingCrown', warChest: 0 } as Coalition] }
-  ]) {
-    const none: GameEvent[] = []
-    borderCampaigns(quiet, week(SUNDAY, 10, none))
-    assert.equal(eventsOf(none, 'borderCampaign').length, 0)
-  }
-  // At −2 the second rival of the front attacks.
-  const reverse: GameEvent[] = []
-  borderCampaigns(withArmy(withFront(state, 'north', 'war', -2), 'goblin', 1000), week(SUNDAY, 10, reverse))
-  assert.equal(eventsOf(reverse, 'borderCampaign')[0].attacker, 'goblin')
+  assert.equal(eventsOf(events, 'borderCampaign').length, 0)
+  assert.equal(eventsOf(events, 'hexTransfer').length, 0)
+  assert.deepEqual(next.hexes, state.hexes)
+  near(av(next, 'orc'), 1000)
+  assert.deepEqual(next, drawFronts(state, week(SUNDAY, 10, [])), 'nothing but the fronts')
 })
 
-test('Ch 12 Border Campaigns: the target is never a Gate, a capital or a player hex; with no touching hex it is the hex nearest the front’s battlefields', () => {
-  const state = realm()
-  // At the founding the Orc and the Goblin don't touch: the Goblin’s March villages are the candidates.
-  const target = borderCampaignTarget(state, 'orc', 'goblin', 'north', SUNDAY)
-  assert.ok(target)
-  assert.equal(target.owner, 'goblin')
-  assert.notEqual(target.kind, 'gate')
-  assert.notEqual(target.kind, 'capital')
-  // A defender holding nothing but its Gate and capital offers no target.
-  const bare = { ...state, hexes: state.hexes.map((h) => (h.owner === 'goblin' && h.kind !== 'gate' && h.kind !== 'capital' ? { ...h, owner: 'neutral' as const } : h)) }
-  assert.equal(borderCampaignTarget(bare, 'orc', 'goblin', 'north', SUNDAY), undefined)
-})
-
-test('Test 10 (part): across 300 seeded 70-week runs no Border Campaign targets a Gate, a capital or a player hex, and coalition partners never attack each other', (t) => {
+test('Test 10 (part), R-26: across 300 seeded 70-week runs no hex changes hands between rivals but by the Goblin’s Market, and no rival holds rings 0 to 2', (t) => {
   const taken: number[] = []
   const bought: number[] = []
   let campaigns = 0
@@ -244,9 +178,7 @@ test('Test 10 (part): across 300 seeded 70-week runs no Border Campaign targets 
     const s = [...xs].sort((a, b) => a - b)
     return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2
   }
-  const m = median(taken)
-  t.diagnostic(`Border Campaigns: ${campaigns} fought over 300 campaigns; median hexes taken per campaign ${m} (book target 2 to 6)`)
   t.diagnostic(`Goblin Market purchases between rivals: median ${median(bought)} per campaign`)
-  if (m < 2 || m > 6) t.diagnostic(`WARNING: the median of ${m} hexes changing hands by Border Campaign is outside the book's 2 to 6 (report for the owner; D-02)`)
-  assert.ok(campaigns > 0, 'Border Campaigns happen')
+  assert.equal(campaigns, 0, 'no Border Campaign is fought')
+  assert.equal(Math.max(...taken), 0, 'no hex taken by a Border Campaign')
 })

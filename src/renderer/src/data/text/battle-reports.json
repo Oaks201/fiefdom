@@ -11,6 +11,10 @@
     "template": "Beasts attacked {hex}: lost. Tribute {tribute}. Scorched until {until}.",
     "final": null
   },
+  "battle.beasts.overrun": {
+    "template": "Beasts attacked {hex}: lost. Tribute {tribute}. {hex} returns to the wilds.",
+    "final": null
+  },
   "battle.mythic.rout": {
     "template": "Mythic attack on {hex}: routed. Spoils {spoils}.",
     "final": null
@@ -21,6 +25,10 @@
   },
   "battle.mythic.defeat": {
     "template": "Mythic attack on {hex}: lost. Tribute {tribute}. Scorched until {until}.",
+    "final": null
+  },
+  "battle.mythic.overrun": {
+    "template": "Mythic attack on {hex}: lost. Tribute {tribute}. {hex} returns to the wilds.",
     "final": null
   },
   "battle.raid.rout": {
@@ -64,7 +72,23 @@
     "final": null
   },
   "battle.assault.repulsed": {
-    "template": "Assault on {hex}: repulsed. Its garrison is worn down until the week closes.",
+    "template": "Assault on {hex}: repulsed. Its garrison stays worn down until it falls, easing a little each day it is left alone.",
+    "final": null
+  },
+  "battle.counterattack.victory": {
+    "template": "Counterattack on {hex}: held. The force that fell back is scattered. Spoils {spoils}.",
+    "final": null
+  },
+  "battle.counterattack.rout": {
+    "template": "Counterattack on {hex}: routed. The force that fell back is scattered. Spoils {spoils}.",
+    "final": null
+  },
+  "battle.counterattack.defeat": {
+    "template": "Counterattack on {hex}: lost. The hex goes back to those who held it. Tribute {tribute}.",
+    "final": null
+  },
+  "battle.assault.breach": {
+    "template": "Assault on {hex}: repulsed, but its garrison is worn within reach. The same assault would take it.",
     "final": null
   },
   "battle.grandIllusion": {

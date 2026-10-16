@@ -69,13 +69,19 @@ export function dutiesPillar(days: readonly DayRecord[]): number {
   return clamp01(days.reduce((sum, d) => sum + Math.min(d.dutiesKept, d.dutiesSworn), 0) / sworn)
 }
 
-/** The three pillars for a set of days in one calendar week. */
+/**
+ * The three pillars for a set of days in one calendar week. When no day swore a duty (only before
+ * a re-founded campaign's first Charter, D-21), the duties pillar is marked left out.
+ */
 export function weekPillars(days: readonly DayRecord[], terms: ScoreTerms): Pillars {
-  return { steps: stepsPillar(days, terms.stepPool), table: tablePillar(days, terms), duties: dutiesPillar(days) }
+  const pillars: Pillars = { steps: stepsPillar(days, terms.stepPool), table: tablePillar(days, terms), duties: dutiesPillar(days) }
+  if (days.length > 0 && days.every((d) => d.dutiesSworn === 0)) pillars.noDuties = true
+  return pillars
 }
 
-/** q_w = (S_w + T_w + D_w) ÷ 3. */
+/** q_w = (S_w + T_w + D_w) ÷ 3; (S_w + T_w) ÷ 2 with no duty sworn (D-21, C-11). */
 export function pillarScore(p: Pillars): number {
+  if (p.noDuties) return (p.steps + p.table) / (PILLARS - 1)
   return (p.steps + p.table + p.duties) / PILLARS
 }
 
@@ -138,12 +144,14 @@ export function realmConsistency(days: readonly DayRecord[], terms: ScoreTerms, 
  * The day's Valor, V = (d + f + s) ÷ 3 (Ch 10): d is the share of duties kept, f is 1 if food
  * was logged, and s is the week's step pace (A-40): steps since the week began ÷ (pool × days
  * elapsed ÷ 7), capped at 1. `weekSoFar` holds the week's days up to and including `day` (from
- * the campaign start in a partial week 1); `day` is added if it is missing.
+ * the campaign start in a partial week 1); `day` is added if it is missing. A day with no duty
+ * sworn (D-21, C-11) is (f + s) ÷ 2.
  */
 export function valor(day: DayRecord, weekSoFar: readonly DayRecord[], stepPool: number): number {
   const elapsed = weekSoFar.some((d) => d.date === day.date) ? weekSoFar : [...weekSoFar, day]
-  const d = dutiesPillar([day])
   const f = day.eaten !== undefined ? 1 : 0
   const s = stepsPillar(elapsed, stepPool)
+  if (day.dutiesSworn === 0) return (f + s) / (PILLARS - 1)
+  const d = dutiesPillar([day])
   return (d + f + s) / PILLARS
 }

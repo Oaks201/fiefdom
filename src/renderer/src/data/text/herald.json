@@ -11,12 +11,24 @@
     "template": "{rival} raid expected on {hex} today. Strength: {strength}.",
     "final": null
   },
+  "herald.threat.counterattack": {
+    "template": "The garrison that fell back strikes at {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.fallback": {
+    "template": "The garrison beaten at {hex} fell back to {to}: +{strength} there for {days} days.",
+    "final": null
+  },
   "herald.threat.conquest": {
     "template": "{rival} conquest attempt announced on {hex} for {date}. Strength: {strength}.",
     "final": null
   },
   "herald.threat.siegeDay": {
     "template": "Siege day: today's threat strikes harder.",
+    "final": null
+  },
+  "herald.threat.atStake": {
+    "template": "If this defense is lost, {hex} returns to the wilds.",
     "final": null
   },
   "herald.grandBattle.warning": {
@@ -253,6 +265,54 @@
   },
   "herald.reign": {
     "template": "The Reign: the campaign was won in week {week}, and the realm goes on.",
+    "final": null
+  },
+  "herald.standing.grown": {
+    "template": "Your standing has grown",
+    "final": null
+  },
+  "herald.standing.grownBody": {
+    "template": "Tier {tier}, {path}.",
+    "final": null
+  },
+  "herald.pathRank": {
+    "template": "{rival}’s path reached rank {rank}.",
+    "final": null
+  },
+  "herald.siege.lapsed": {
+    "template": "The siege of {hex} is lifted: it can no longer be assaulted.",
+    "final": null
+  },
+  "herald.deed.hexTaken": {
+    "template": "{hex} taken: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.battleWon": {
+    "template": "Battle against {rival} won: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.heldAgainstBeasts": {
+    "template": "{hex} held against beasts: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.heldAgainstMythic": {
+    "template": "{hex} held against a mythic: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.grandBattleWon": {
+    "template": "Grand Battle won: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.resolved": {
+    "template": "{rival} resolved: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.strongholdTaken": {
+    "template": "Stronghold {hex} taken: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.counterattackHeld": {
+    "template": "{hex} held against a counterattack: {value} Renown on {rival}’s path.",
     "final": null
   }
 }

@@ -63,7 +63,10 @@ test('Test 10: 300 seeded 70-week campaigns keep every endgame invariant', { tim
   assert.ok(fallen.length > 0, 'some campaigns fell')
   assert.ok(won.length > 0, 'some campaigns were won')
   assert.ok(audits.some((a) => a.coalitions.length > 0), 'coalitions formed')
-  assert.ok(audits.some((a) => a.resolutions.some((r) => r.how === 'conquered')), 'rivals were conquered')
+  // D-16: a rival's land now lies deep in its march, so conquest rarely comes within 70 weeks (Patches 4 and 5);
+  // Accords and defections still resolve rivals, under the same pacing.
+  assert.ok(audits.some((a) => a.resolutions.length > 0), 'rivals were resolved')
+  t.diagnostic(`rivals conquered in ${audits.filter((a) => a.resolutions.some((r) => r.how === 'conquered')).length} of 300 campaigns`)
   assert.ok(audits.some((a) => a.resolutions.some((r) => r.how === 'allied')), 'rivals were allied')
   assert.ok(Math.min(...fallen.map((a) => a.fallenWeek as number)) >= 36)
   assert.ok(Math.min(...won.map((a) => a.wonWeek as number)) >= 36)

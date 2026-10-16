@@ -4,11 +4,14 @@ import { formatNumber, formatRep } from '../../lib/format'
 import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
 import type { CampaignState, ISODate } from '../../lib/game/types'
-import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInDay, weighInPrompt } from '../../lib/game/view/chronicle'
+import { weighInDay } from '../../lib/game/clock'
+import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
+import { useCampaignToday } from '../../state/campaignHooks'
 import { WaxSeal } from '../WaxSeal'
+import { StartBattles } from '../battle/StartBattles'
 import { WeightField } from '../chronicle/DayLedger'
 
 /** The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4). */
@@ -57,8 +60,12 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
   )
 }
 
-/** Today's Valor so far in its three parts, and the reputation the day earned (or will, at its close). */
+/**
+ * Today's Valor so far in its three parts, the reputation the day earned (or will, at its close),
+ * and on the campaign's open day "Start today's battles" (D-12).
+ */
 export function ValorPanel({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
+  const openDay = useCampaignToday()
   const days = liveWeek(campaign, ledger, date)
   const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(campaign, date)))
   const parts = valorParts(day, days, charterOn(campaign, date).stepPool)
@@ -90,6 +97,7 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
         </li>
       </ul>
       <p className="muted">Valor rallies the realm’s companies in the day’s battles.</p>
+      {date === openDay && <StartBattles campaign={campaign} today={date} valor={parts.valor} />}
       <div className="ledger__total">
         <span>{settled ? 'Reputation earned' : 'Earned at the day’s close'}</span>
         <WaxSeal color="gold" icon={GiLaurelCrown} size={30} seed={9} />
@@ -100,8 +108,8 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
 }
 
 /**
- * The weight box, on the week's weigh-in day only (D-11); any other day names that day instead. A
- * weight logged on another day before D-11 stays shown, so it can still be corrected.
+ * The weight box, on the week's weigh-in day (Monday, D-13) only; any other day names that day
+ * instead. A weight logged on another day stays shown, so it can still be corrected.
  */
 export function CampaignWeight({ campaign, ledger, date, today }: { campaign: CampaignState; ledger: Ledger; date: ISODate; today: ISODate }): React.JSX.Element {
   const day = weighInDay(date, campaign.campaign.weekStartsOn)
@@ -119,7 +127,7 @@ export function CampaignWeight({ campaign, ledger, date, today }: { campaign: Ca
   )
 }
 
-/** The weekly weigh-in prompt, on the weigh-in day until its weight is logged (Ch 2, D-11). */
+/** The weekly weigh-in prompt, on the weigh-in day (Monday) until its weight is logged (Ch 2, D-13). */
 export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
   const prompt = weighInPrompt(weighIns(ledger), today, campaign.campaign.weekStartsOn)
   if (!prompt.due) return null
@@ -128,7 +136,7 @@ export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignS
     <div className="banner">
       <GiScales className="banner__icon" aria-hidden="true" />
       <span>
-        The week closes tonight. Step on the scale and note your weight below
+        Today is weigh-in day. Step on the scale and note your weight below
         {since !== null ? ` (the last weigh-in was ${since} ${since === 1 ? 'day' : 'days'} ago)` : ''}.
       </span>
     </div>

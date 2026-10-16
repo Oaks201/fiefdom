@@ -20,13 +20,13 @@
  * labels `grand:<id>:deck` (on the battle's day) and `grand:quarry:<hex>` (on the day announced).
  */
 import { grantTrophy, heldItems, nextTrophyFor } from './armory'
-import { CODEX } from './codex'
+import { CODEX, type MatchupId } from './codex'
 import { addDays, diffDays } from './clock'
-import { baseArmyValue, scorch, tagMatch, type GrandBattleRequest } from './combat'
+import { assaultGarrison, baseArmyValue, scorch, tagMatch, type GrandBattleRequest } from './combat'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { realmEffects } from './effects'
 import { originalVillages } from './land'
-import { hexIndex, neighbors, rivalOfRoad } from './map'
+import { bandOf, hexIndex, isStronghold, neighbors, rivalOfRoad, strongholdBarring } from './map'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
@@ -72,7 +72,7 @@ import {
   type RoundPlay,
   type StartMods
 } from './grand/field'
-import { combinedHost, mythicHost, placeHost, rivalHost, sentBy } from './grand/hosts'
+import { beastHost, combinedHost, mythicHost, placeHost, rivalHost, sentBy } from './grand/hosts'
 
 export { hostView, type HostView } from './grand/hosts'
 export type { RoundPlay } from './grand/field'
@@ -141,6 +141,8 @@ export type GrandRefusal =
   | 'pacing'
   /** At most one Incursion per rival every 14 days (A-33). */
   | 'cooldown'
+  /** A stronghold of the march, shallower than this hex, still stands (D-23, P3-01). */
+  | 'barred'
   | 'rivalResolved'
   | 'notGrandBattleHex'
   | 'noHost'
@@ -200,6 +202,10 @@ function announceProblem(state: CampaignState, r: GrandRequest, hex: HexState | 
     case 'gate':
       if (hex.kind !== 'gate' || !isRival(hex.owner)) return 'notGrandBattleHex'
       break
+    case 'stronghold':
+      if (!isStronghold(state.hexes, hex.id) || hex.owner === 'player') return 'notGrandBattleHex'
+      if (strongholdBarring(state.hexes, hex.id)) return 'barred'
+      break
     case 'capital': {
       if (hex.kind !== 'capital' || !r.rival) return 'notGrandBattleHex'
       if (gateOf(state, r.rival)?.owner !== 'player') return 'gateNotHeld'
@@ -233,6 +239,42 @@ export function quarryFor(state: CampaignState, hex: HexState, day: ISODate): st
   return pool.length > 0 ? pick(state.campaign.seed, day, `grand:quarry:${hex.id}`, pool) : undefined
 }
 
+/** A battle id's number: `gb-18` → 18 (0 for any other form). */
+function battleNumber(id: string): number {
+  const m = /^gb-(\d+)$/.exec(id)
+  return m ? Number(m[1]) : 0
+}
+
+/**
+ * The id the next battle gets: one past the highest number on the list. Battles leave the list (a
+ * Siege called off when its Ultimatum lifts, a resolved rival's battles), so the list's length + 1
+ * could name a battle still on it, and that later battle could never be found or fought.
+ */
+export function nextBattleId(state: CampaignState): string {
+  return `gb-${topBattleNumber(state.grandBattles) + 1}`
+}
+
+function topBattleNumber(battles: readonly GrandBattle[]): number {
+  return battles.reduce((top, b) => Math.max(top, battleNumber(b.id)), 0)
+}
+
+/**
+ * Gives each battle whose id an earlier battle on the list already has a fresh one (a save from
+ * before `nextBattleId`): it was stuck, never fought, and is fought at the next close instead.
+ */
+export function uniqueBattleIds(state: CampaignState): CampaignState {
+  const ids = state.grandBattles.map((b) => b.id)
+  if (new Set(ids).size === ids.length) return state
+  const seen = new Set<string>()
+  let top = topBattleNumber(state.grandBattles)
+  const grandBattles = state.grandBattles.map((b) => {
+    const id = seen.has(b.id) ? `gb-${(top += 1)}` : b.id
+    seen.add(id)
+    return id === b.id ? b : { ...b, id }
+  })
+  return { ...state, grandBattles }
+}
+
 /**
  * Announces a Grand Battle (Ch 11): fixes its host now (60% of the rival's AV, A-35; a quarry's
  * roster scaled by the week), sets its day after the warning, moves it to the first free day if
@@ -242,7 +284,7 @@ export function quarryFor(state: CampaignState, hex: HexState, day: ISODate): st
 export function announceGrandBattle(state: CampaignState, r: GrandRequest, emit: Emit): GrandAction {
   const hex = hexOf(state, r.hexId)
   const problem = announceProblem(state, r, hex)
-  const id = `gb-${state.grandBattles.length + 1}`
+  const id = nextBattleId(state)
   if (problem) {
     emit('grandBattle', { battleId: id, trigger: r.trigger, hexId: r.hexId, stage: 'refused', reason: problem, ...(r.rival ? { rival: r.rival } : {}) })
     return refused(state, problem)
@@ -264,6 +306,10 @@ export function announceGrandBattle(state: CampaignState, r: GrandRequest, emit:
       break
     case 'event':
       enemy = r.enemy ?? []
+      break
+    case 'stronghold':
+      // D-23 (C-28): its holder's host: a rival's Incursion host, or beasts at a share of the garrison an assault must beat today.
+      enemy = r.enemy ?? (r.rival ? rivalHost(state, r.rival, r.share ?? G.hostShare.rival, r.announcedOn) : beastHost(RULES.sieges.stronghold.beastHostShare * assaultGarrison(state, hex as HexState, r.announcedOn)))
       break
     default:
       enemy = r.enemy ?? (r.rival ? rivalHost(state, r.rival, r.share ?? G.hostShare.rival, r.announcedOn) : [])
@@ -356,11 +402,14 @@ export function challenge(state: CampaignState, hexId: string, today: ISODate = 
   const hex = hexOf(state, hexId)
   if (!hex) return refused(state, 'unknownHex')
   if (!neighbors(hexId).some((n) => hexOf(state, n)?.owner === 'player')) return refused(state, 'notTouching')
+  // A stronghold still standing bars the player's way deeper into its march, its Gate included (D-23).
+  if (hex.owner !== 'player' && strongholdBarring(state.hexes, hexId)) return refused(state, 'barred')
   const owner = hex.owner
   let r: GrandRequest
   if (hex.kind === 'gate' && isRival(owner)) r = { trigger: 'gate', hexId, announcedOn: today, rival: owner }
   else if (hex.kind === 'capital' && isRival(owner)) r = { trigger: 'capital', hexId, announcedOn: today, rival: owner }
   else if (hex.kind === 'lairMouth' && owner !== 'player') r = { trigger: 'mythicHunt', hexId, announcedOn: today }
+  else if (owner !== 'player' && isStronghold(state.hexes, hexId)) r = { trigger: 'stronghold', hexId, announcedOn: today, ...(isRival(owner) ? { rival: owner } : {}) }
   else return refused(state, 'notGrandBattleHex')
   const done = announceGrandBattle(state, r, emit)
   if (!done.ok) return done
@@ -486,13 +535,13 @@ export function setDoctrine(state: CampaignState, battleId: string, doctrine: st
 }
 
 /** The host's main type, by power: what the Marshal matches his companies against. */
-function mainFoe(battle: GrandBattle): RivalId | 'mythic' {
-  const power = new Map<RivalId | 'mythic', number>()
+function mainFoe(battle: GrandBattle): MatchupId {
+  const power = new Map<MatchupId, number>()
   for (const c of battle.enemy) {
-    const foe = c.id.slice(0, c.id.indexOf(':')) as RivalId | 'mythic'
+    const foe = c.id.slice(0, c.id.indexOf(':')) as MatchupId
     power.set(foe, (power.get(foe) ?? 0) + c.power)
   }
-  let best: RivalId | 'mythic' = 'mythic'
+  let best: MatchupId = 'mythic'
   let most = -1
   for (const [foe, p] of power) if (p > most) (best = foe), (most = p)
   return best
@@ -507,6 +556,15 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
   const army = roster(state, { day: battle.battleDate }, effects).filter((c) => !allyUsed(state, battle, c.id))
   const matchup = CODEX.matchups[mainFoe(battle)]
   const chosen = [...army].sort((a, b) => b.power * tagMatch(b.tags, matchup) - a.power * tagMatch(a.tags, matchup)).slice(0, companyLimit(effects, battle))
+  return placeFormation(chosen, doctrineEffects(doctrine).freeHires > 0)
+}
+
+/**
+ * Where the Marshal stands chosen companies (A-159): melee by health in the fronts (center,
+ * left, right), ranged by power in the rears, then the rest; with a free hire, it takes the first
+ * free slot. Also used for a daily skirmish's companies (D-12).
+ */
+export function placeFormation(chosen: readonly Company[], freeHire = false): Record<string, string> {
   const health = (c: Company): number => c.power * unitMods(c.id, c.items, c.reach).healthMult
   const melee = chosen.filter((c) => c.reach === 'melee').sort((a, b) => health(b) - health(a))
   const ranged = chosen.filter((c) => c.reach === 'ranged').sort((a, b) => b.power - a.power)
@@ -524,7 +582,7 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
     if (!next) break
     out[slot] = next.id
   }
-  if (doctrineEffects(doctrine).freeHires > 0) {
+  if (freeHire) {
     const free = [...fronts, ...rears].find((s) => !(s in out))
     if (free) out[free] = FREE_HIRE
   }
@@ -532,9 +590,44 @@ export function marshalFormation(state: CampaignState, battle: GrandBattle, doct
 }
 
 /** The Merchant Hall's company as a hired company fields it (A-19). */
-function hireOf(state: CampaignState, effects: Effects): { power: number; name: string } {
+export function hireOf(state: CampaignState, effects: Effects): { power: number; name: string } {
   const hired = roster(state, { hired: 1 }, effects).find((c) => c.source === 'hired') as Company
   return { power: hired.power, name: hired.name }
+}
+
+/** A battle's start: the Doctrine's effects and the realm's battle grants (the Shield Forge). */
+export function battleStart(doctrine: string | undefined, effects: Effects): StartMods {
+  const start = doctrineEffects(doctrine)
+  for (const g of effects.battle) interpret(g.effect, { kind: 'start', mods: start })
+  return start
+}
+
+/** The start's health multiplier for a company standing in `slot`. */
+export function startHealthAt(start: StartMods, slot: SlotKey): number {
+  return start.health.reduce((m, h) => ((h.who.rank === undefined || h.who.rank === rankOf(slot)) && (h.who.lane === undefined || h.who.lane === laneOf(slot)) ? m * h.mult : m), 1)
+}
+
+/**
+ * A player company as it stands on the field: health 4 × p with its own and the start's
+ * multipliers, plus `extraHealth` (walls counted as health), its power times `powerMult`.
+ */
+export function companyUnit(c: Company, slot: SlotKey, start: StartMods, extraHealth = 0, powerMult = 1): FieldUnit {
+  const own = unitMods(c.id, c.items, c.reach)
+  const health = G.healthPerPower * c.power * own.healthMult * startHealthAt(start, slot) + extraHealth
+  const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power * powerMult, health, tags: [...c.tags], reach: c.reach, slot }
+  if (Object.keys(own.mods).length > 0) unit.mods = own.mods
+  return unit
+}
+
+/** A battle's Order deck in its seeded order (`label` names the draw), and the Crossing stage behind each Crossing Order. */
+export function orderDeck(state: CampaignState, day: ISODate, label: string, effects: Effects): { deck: string[]; orderStages: Record<string, number> } {
+  const deck = shuffle(state.campaign.seed, day, label, effects.orders.map((u) => u.id))
+  const orderStages: Record<string, number> = {}
+  for (const id of deck) {
+    const order = CODEX.orders.find((x) => x.id === id)
+    if (order?.source.kind === 'crossing') orderStages[id] = state.crossings[order.source.id] ?? 0
+  }
+  return { deck, orderStages }
 }
 
 export interface BeginOptions {
@@ -561,11 +654,8 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
   if (problem) return refused(state, `formation:${problem}`)
 
   // The battle's start: the Doctrine and the realm's battle grants (the Shield Forge). The Siege counts the walls in full (A-164).
-  const start = doctrineEffects(doctrine)
-  for (const g of effects.battle) interpret(g.effect, { kind: 'start', mods: start })
+  const start = battleStart(doctrine, effects)
   if (battle.trigger === 'siege') start.wallsAsHealth = true
-  const startHealth = (slot: SlotKey): number =>
-    start.health.reduce((m, h) => ((h.who.rank === undefined || h.who.rank === rankOf(slot)) && (h.who.lane === undefined || h.who.lane === laneOf(slot)) ? m * h.mult : m), 1)
   const centerFront = slotOf('center', 'front')
 
   const army = new Map(roster(state, { day: battle.battleDate }, effects).map((c) => [c.id, c]))
@@ -578,16 +668,12 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
     const slot = key as SlotKey
     const walls = start.wallsAsHealth && slot === centerFront ? effects.walls.value : 0
     if (id === FREE_HIRE) {
-      const health = G.healthPerPower * hire.power * startHealth(slot) + walls
+      const health = G.healthPerPower * hire.power * startHealthAt(start, slot) + walls
       units.push({ id: FREE_HIRE, side: 'player', name: hire.name, power: hire.power, health, tags: [RULES.rivals.hired.tag], reach: RULES.rivals.hired.reach, slot, hired: true })
       continue
     }
     const c = army.get(id) as Company
-    const own = unitMods(c.id, c.items, c.reach)
-    const health = G.healthPerPower * c.power * own.healthMult * startHealth(slot) + walls
-    const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power, health, tags: [...c.tags], reach: c.reach, slot }
-    if (Object.keys(own.mods).length > 0) unit.mods = own.mods
-    units.push(unit)
+    units.push(companyUnit(c, slot, start, walls))
     // The Herald's Horn: once a month, Readiness +0.1 for the whole battle (A-157).
     for (const item of c.items) {
       for (const e of CODEX.items.find((i) => i.id === item)?.effects ?? []) {
@@ -600,12 +686,7 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
   }
   units.push(...placeHost(battle.enemy))
 
-  const deck = shuffle(state.campaign.seed, battle.battleDate, `grand:${battle.id}:deck`, effects.orders.map((u) => u.id))
-  const orderStages: Record<string, number> = {}
-  for (const id of deck) {
-    const order = CODEX.orders.find((x) => x.id === id)
-    if (order?.source.kind === 'crossing') orderStages[id] = state.crossings[order.source.id] ?? 0
-  }
+  const { deck, orderStages } = orderDeck(state, battle.battleDate, `grand:${battle.id}:deck`, effects)
   const setup: BattleSetup = {
     readiness: readiness(o.valors, effects, marshal) + hornAdd,
     marshal,
@@ -719,7 +800,7 @@ export function holdSieges(state: CampaignState, emit: Emit): CampaignState {
 
 /** Fights every battle due on `day` and not yet fought (the `grandBattlesAuto` phase); a hex one takes can raise an Incursion (A-33). */
 export function grandBattlesDue(input: CampaignState, day: ISODate, valorsFor: (battleDate: ISODate) => readonly number[], emit: Emit): CampaignState {
-  const state = holdSieges(input, emit)
+  const state = holdSieges(uniqueBattleIds(input), emit)
   let next = state
   for (const b of pendingBattles(state)) {
     if (b.battleDate <= day) next = autoResolve(next, b.id, day, valorsFor(b.battleDate), emit)
@@ -754,9 +835,9 @@ export function postSpoils(state: CampaignState, day: ISODate, amount: number, s
   return { ...state, purse: post(state.purse, { date: day, kind: 'spoils', amount, source }) }
 }
 
-/** Tribute of `perRing` × the hex's ring, with the realm's tribute multiplier (Grace II, Oathguard; A-165). */
+/** Tribute of `perRing` × the hex's band, with the realm's tribute multiplier (Grace II, Oathguard; A-165, D-17). */
 export function postTribute(state: CampaignState, day: ISODate, perRing: number, hex: HexState, source: string): { state: CampaignState; amount: number } {
-  const amount = perRing * hex.ring * realmEffects(state).tribute.value
+  const amount = perRing * bandOf(hex) * realmEffects(state).tribute.value
   return { state: { ...state, purse: payTribute(state.purse, day, amount, source) }, amount: roundPosting(amount) }
 }
 
@@ -767,11 +848,11 @@ export const GRAND_HOOKS: GrandOutcomeHooks = {
     const gain = G.outcomes.capitalLoss.armyGain
     return { state: scaleArmy(state, battle.rival as RivalId, 1 + gain), outcome: { armyGain: gain, retryFrom: retryFrom(ctx.day, G.retryDays.capital) } }
   },
-  /** Won: 40 × ring spoils; T12 breaks the coalition 2 weeks early. Lost: T12 passes the outermost border hex. */
+  /** Won: 40 × band spoils (D-17); T12 breaks the coalition 2 weeks early. Lost: T12 passes the outermost border hex. */
   coalitionOffensive: (state, battle, ctx) => {
     if (!ctx.won) return { state, outcome: {} }
     const hex = hexOf(state, battle.hexId) as HexState
-    const amount = withBonus(G.outcomes.coalitionWin.spoilsPerRing * hex.ring * ctx.spoilsMult, realmEffects(state).reputationBonus.value)
+    const amount = withBonus(G.outcomes.coalitionWin.spoilsPerRing * bandOf(hex) * ctx.spoilsMult, realmEffects(state).reputationBonus.value)
     return { state: postSpoils(state, ctx.day, amount, `grandBattle:${battle.id}`), outcome: { spoils: roundPosting(amount) } }
   },
   /** Ch 14: T12. */
@@ -797,7 +878,7 @@ function loseHex(state: CampaignState, hexId: string, rival: RivalId, day: ISODa
 function takeHex(state: CampaignState, hexId: string, day: ISODate, emit: Emit, outcome: GrandOutcome): CampaignState {
   const hex = hexOf(state, hexId)
   if (!hex || hex.owner === 'player') return state
-  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest' })
+  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest', fortification: hex.fortification })
   outcome.hexTaken = hex.id
   return replaceHex(state, toPlayer(hex, day, true))
 }
@@ -850,7 +931,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
         const before = state.rivals[rival].respect
         state = adjustRespect(state, rival, RULES.respect.change.incursionWon, 'incursionWon', emit)
         outcome.respect = state.rivals[rival].respect - before
-        const amount = withBonus(G.outcomes.incursionWin.spoilsPerRing * hex.ring * spoilsMult, bonus)
+        const amount = withBonus(G.outcomes.incursionWin.spoilsPerRing * bandOf(hex) * spoilsMult, bonus)
         state = postSpoils(state, day, amount, `grandBattle:${battle.id}`)
         outcome.spoils = roundPosting(amount)
       } else state = loseHex(state, battle.hexId, rival, day, emit, outcome)
@@ -890,6 +971,23 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
         state = paid.state
         outcome.tribute = paid.amount
         outcome.retryFrom = retryFrom(day, G.retryDays.mythicHunt)
+      }
+      break
+    }
+    case 'stronghold': {
+      // D-23 (P3-02): won, the hex is taken and its garrison scatters; lost, tribute and a wait before the next challenge, the siege wear kept.
+      if (won) {
+        state = takeHex(state, battle.hexId, day, emit, outcome)
+        if (battle.rival) {
+          const before = state.rivals[battle.rival].respect
+          state = adjustRespect(state, battle.rival, RULES.respect.change.hexConquered, 'hexConquered', emit)
+          outcome.respect = state.rivals[battle.rival].respect - before
+        }
+      } else {
+        const paid = postTribute(state, day, G.outcomes.strongholdLoss.tributePerRing, hex, `grandBattle:${battle.id}`)
+        state = paid.state
+        outcome.tribute = paid.amount
+        outcome.retryFrom = retryFrom(day, G.retryDays.stronghold)
       }
       break
     }

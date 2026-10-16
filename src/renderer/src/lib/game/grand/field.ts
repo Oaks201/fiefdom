@@ -108,9 +108,9 @@ export function shares(f: Field): { player: number; enemy: number } {
   return { player: f.start.player > 0 ? left('player') / f.start.player : 0, enemy: f.start.enemy > 0 ? left('enemy') / f.start.enemy : 0 }
 }
 
-/** The battle is over after the last round, or as soon as one side has no companies left. */
+/** The battle is over after the last round (a Grand Battle's 4, or the setup's own), or as soon as one side has no companies left. */
 export function isOver(f: Field): boolean {
-  return f.round >= RULES.grandBattles.rounds || onField(f, 'player').length === 0 || onField(f, 'enemy').length === 0
+  return f.round >= (f.setup.rounds ?? RULES.grandBattles.rounds) || onField(f, 'player').length === 0 || onField(f, 'enemy').length === 0
 }
 
 /** Ch 11: the higher remaining health share wins (a tie is not a win); a wipe, or twice the enemy's share, is a Rout. */
@@ -456,6 +456,10 @@ function sourceOf(unit: FieldUnit): { pattern: readonly Intent[]; specials: read
     const quarry = CODEX.quarries.find((q) => q.roster.some((r) => r.id === unit.unit)) as DeepReadonly<QuarryEntry> | undefined
     return quarry ? { pattern: quarry.intentPattern, specials: quarry.specialEffects } : null
   }
+  if (unit.foe === 'beasts' || unit.foe === 'militia') {
+    const foe = CODEX.skirmishFoes.find((s) => s.id === unit.foe)
+    return foe ? { pattern: foe.intentPattern, specials: foe.specials } : null
+  }
   const host = CODEX.hosts.find((h) => h.rival === unit.foe)
   return host ? { pattern: host.intentPattern, specials: host.specials } : null
 }
@@ -648,6 +652,8 @@ function spellLanes(f: Field, unit: LiveUnit, lanes: number | 'all' | undefined)
 }
 
 function foeKind(unit: FieldUnit): Foe {
+  if (unit.foe === 'beasts') return 'beast'
+  if (unit.foe === 'militia') return 'militia'
   return unit.foe === 'mythic' ? 'mythic' : 'rival'
 }
 

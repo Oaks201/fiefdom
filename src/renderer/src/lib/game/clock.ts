@@ -147,6 +147,17 @@ export function weekOf(day: ISODate, weekStartsOn: WeekStartsOn): ISODate {
   return addDays(day, -offset)
 }
 
+/** The last day of the calendar week that holds `day`: its close, at 04:00 the next morning, is the week close (A-04). */
+export function weekCloseDay(day: ISODate, weekStartsOn: WeekStartsOn): ISODate {
+  return addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
+}
+
+/** The weigh-in day of `day`'s calendar week (D-13): its Monday, whatever day the week starts on. */
+export function weighInDay(day: ISODate, weekStartsOn: WeekStartsOn): ISODate {
+  const { daysPerWeek, weighInWeekday } = RULES.clock
+  return addDays(weekOf(day, weekStartsOn), (weighInWeekday - weekStartsOn + daysPerWeek) % daysPerWeek)
+}
+
 /** True when `day` is the last day of its week, so its close is also a week close. */
 export function isWeekCloseDay(day: ISODate, weekStartsOn: WeekStartsOn): boolean {
   return weekOf(addDays(day, 1), weekStartsOn) === addDays(day, 1)

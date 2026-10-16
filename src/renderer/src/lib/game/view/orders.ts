@@ -3,19 +3,21 @@
  * go and which defend, which defenders always fight (the Marshal fills the rest, D-10), hired
  * blades and envoys, the Marshal's default, "repeat yesterday's orders", the countdown to the 04:00 lock, and
  * an estimate of the day's Defense and Assault from today's Valor so far (labeled as an estimate:
- * the close uses the day's final Valor).
+ * the close uses the day's final Valor). Once the day's battles begin (D-12), the orders hold.
  *
  * The orders are built here as plain values; the page stores them with `setOrders`, which the
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, defenseBanners, effectiveGarrison, envoyAvailable, ordersEstimate, ordersValidity, type OrderProblem, type OrdersEstimate } from '../combat'
+import { assaultBanners, assaultGarrison, defenseBanners, envoyAvailable, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
 import { realmEffects } from '../effects'
-import { claimableBy, hexName } from '../map'
+import { fortificationValue } from '../land'
+import { claimableBy, hexIndex, hexName } from '../map'
 import { RULES } from '../rules'
 import { roster } from '../roster'
+import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
 import { openDayOf } from '../state'
-import { RIVAL_IDS, type CampaignState, type DailyOrders, type Effects, type ISODate, type Owner, type RivalId } from '../types'
+import { RIVAL_IDS, type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
 const MS_PER_SECOND = 1_000 // rules-ok: unit conversion
 
@@ -48,16 +50,38 @@ export interface AssaultTarget {
   label: string
   owner: Owner
   ring: number
-  /** The exact garrison an assault must beat today (T15 gap 1), wear and fortification counted. */
+  /** The exact garrison an assault must beat today (T15 gap 1): wear, fortification and its march's preparation counted. */
   garrison: number
+  /** Siege progress: its wear as a share of the garrison it wears (0 to 1; D-22). */
+  worn: number
+  /** The daily assault's flanking multiple on it today (1 = none; D-22). */
+  flank: number
+}
+
+/** The standing siege (D-22, R-16), as the orders panel shows it. */
+export interface SiegeView {
+  hexId: string
+  label: string
+  since: ISODate
+  /** The garrison an assault must beat today, wear counted. */
+  garrison: number
+  /** Its wear as a share of the garrison it wears (0 to 1). */
+  progress: number
+  flank: number
+  /** Today's orders press it: the player's own, or the standing siege's. */
+  pressedToday: boolean
+  /** Assault days, today included, that bring it down at today's Valor so far with today's orders (or the Marshal's pick), Weary aside. */
+  days: number
 }
 
 export interface OrdersLock {
   /** When the orders lock: the day's close, 04:00 the next morning in the campaign's zone (Ch 2 rule 2). */
   locksAt: string
   secondsLeft: number
-  /** Past the close: the orders can only be read. */
+  /** Past the close, or the day's battles have begun (D-12): the orders can only be read. */
   locked: boolean
+  /** The day's battles have begun (D-12), so its orders hold until the close. */
+  held: boolean
 }
 
 export interface OrdersView {
@@ -70,8 +94,12 @@ export interface OrdersView {
   assaults: AssaultSlot[]
   /** Every hex a daily assault may take today, with its garrison. */
   targets: AssaultTarget[]
-  /** The orders as set, or null: no orders means every company defends (A-36). */
+  /** The orders the day settles with: the player's own, else the standing siege's (D-22); null means every company defends (A-36). */
   orders: DailyOrders | null
+  /** Today's orders are the standing siege's: the player set none of their own today. */
+  fromSiege: boolean
+  /** The standing siege, while it stands. */
+  siege?: SiegeView
   problems: OrderProblem[]
   /** No assault goes out: every company defends. */
   allDefend: boolean
@@ -85,13 +113,15 @@ export interface OrdersView {
   estimate: OrdersEstimate & { valor: number }
 }
 
-/** Whether `date`'s orders are locked at `now`, and how long they have left. */
+/** Whether `date`'s orders are locked at `now` (past the close, or held by the day's battles), and how long they have left. */
 export function ordersLock(state: CampaignState, date: ISODate, now: Date): OrdersLock {
   const close = dayCloseInstant(date, state.campaign.timeZone)
+  const held = skirmishDayOf(state, date) !== undefined
   return {
     locksAt: close.toISOString(),
     secondsLeft: Math.max(0, Math.floor((close.getTime() - now.getTime()) / MS_PER_SECOND)),
-    locked: now.getTime() >= close.getTime()
+    locked: held || now.getTime() >= close.getTime(),
+    held
   }
 }
 
@@ -101,16 +131,44 @@ function slotsOf(orders: DailyOrders | null): { target?: string; companies: stri
   return [{ target: orders.assaultTarget, companies: orders.assault }, ...(orders.extraAssaults ?? []).map((a) => ({ target: a.target, companies: a.companies }))]
 }
 
+/** A worn hex's siege progress on `date`: its wear as a share of the garrison it wears (D-22). */
+export function wornShare(state: CampaignState, hex: HexState, date: ISODate): number {
+  return siegeProgress(hex.garrisonDamage, wearCap(hex, fortificationValue(hex), garrisonMult(state, hex, date)))
+}
+
 /** Every hex a daily assault may take today (Ch 6: adjacent, not a Gate, capital or Lair Mouth). */
-export function assaultTargets(state: CampaignState): AssaultTarget[] {
+export function assaultTargets(state: CampaignState, date: ISODate = openDayOf(state)): AssaultTarget[] {
+  const byId = hexIndex(state.hexes)
   return state.hexes
     .filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
-    .map((h) => ({ hexId: h.id, label: hexName(h), owner: h.owner, ring: h.ring, garrison: effectiveGarrison(h) }))
+    .map((h) => ({ hexId: h.id, label: hexName(h), owner: h.owner, ring: h.ring, garrison: assaultGarrison(state, h, date), worn: wornShare(state, h, date), flank: flankingMult(byId, h.id) }))
+}
+
+/** The standing siege as the panel shows it, with today's estimate (`estimate`, from today's orders) or the Marshal's pick at `valor`. */
+function siegeView(state: CampaignState, date: ISODate, valor: number, estimate: OrdersEstimate, effects: Effects): SiegeView | undefined {
+  const siege = standingSiegeOf(state)
+  const hex = siege && state.hexes.find((h) => h.id === siege.hexId)
+  if (!siege || !hex || !siegeIsLive(state, hex.id)) return undefined
+  const pressed = estimate.assaults.find((a) => a.hexId === hex.id)
+  const est = pressed ?? ordersEstimate(state, siegeOrders(state, date, hex.id, effects), date, valor, effects).assaults[0]
+  const garrison = assaultGarrison(state, hex, date)
+  const value = est?.value ?? 0
+  return {
+    hexId: hex.id,
+    label: hexName(hex),
+    since: siege.since,
+    garrison,
+    progress: wornShare(state, hex, date),
+    flank: flankingMult(hexIndex(state.hexes), hex.id),
+    pressedToday: pressed !== undefined,
+    days: value > 0 ? assaultDays(value, est?.garrison ?? garrison) : Number.POSITIVE_INFINITY
+  }
 }
 
 /** The orders panel for `date`, with today's Valor so far (`valor`, 0 to 1). */
 export function ordersView(state: CampaignState, valor: number, date: ISODate = openDayOf(state), effects: Effects = realmEffects(state)): OrdersView {
-  const orders = state.orders.find((o) => o.date === date) ?? null
+  const own = state.orders.find((o) => o.date === date)
+  const orders = ordersFor(state, date, effects) ?? null
   const validity = ordersValidity(state, orders ?? undefined, effects)
   const allowed = effects.dailyAssaults.value
   const named = slotsOf(orders)
@@ -127,6 +185,8 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
       goesOut: target !== undefined && validity.assaults.some((x) => x.target === target)
     }
   })
+  const estimate = ordersEstimate(state, orders ?? undefined, date, valor, effects)
+  const siege = siegeView(state, date, valor, estimate, effects)
   return {
     date,
     banners: { defense: defenseBanners(effects), assault: assaultBanners(effects) },
@@ -146,15 +206,17 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
       }
     }),
     assaults,
-    targets: assaultTargets(state),
+    targets: assaultTargets(state, date),
     orders,
+    fromSiege: orders !== null && own === undefined,
+    ...(siege ? { siege } : {}),
     problems: validity.problems,
     allDefend: validity.assaults.length === 0,
     override: override ? [...override] : null,
     canRepeat: state.orders.some((o) => o.date === addDays(date, -1)),
     hired: { available: effects.hiredBlades.on, count: orders?.hired ?? 0, costEach: RULES.buildings.merchantHall.hiredBlades.costPerBattle },
     envoys: RIVAL_IDS.map((r) => ({ rival: r, available: envoyAvailable(state, r), chosen: orders?.envoys?.includes(r) ?? false, costEach: RULES.respect.envoyCostPerBattle })),
-    estimate: { ...ordersEstimate(state, orders ?? undefined, date, valor, effects), valor }
+    estimate: { ...estimate, valor }
   }
 }
 

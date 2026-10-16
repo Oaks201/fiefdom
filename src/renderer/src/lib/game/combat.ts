@@ -34,15 +34,16 @@
  */
 import { grantTrophy, heldItems, nextTrophy } from './armory'
 import { CODEX, type Matchup, type MatchupId } from './codex'
-import { addDays, campaignWeek, diffDays, weekdayOf, weekOf } from './clock'
+import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
 import { blocksConquest, blocksRaids, fortificationValue, raidRateMult } from './land'
-import { borderHexesOf, claimableBy, hexDistance, hexIndex, nearestTo, touches } from './map'
+import { bandOf, borderHexesOf, claimableBy, depthOf, hexDistance, hexIndex, isClaimableKind, isStronghold, nearestTo, neighbors, strongholdBarring, touches, wildBase, wildGarrison } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
-import { adjustRespect, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival } from './state'
+import { decayedWear, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
+import { adjustRespect, awayOn, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds } from './state'
 import {
   RIVAL_IDS,
   type CampaignState,
@@ -50,20 +51,25 @@ import {
   type Company,
   type ConquestAttempt,
   type ContestedHex,
+  type Counterattack,
   type DailyOrders,
   type DailyThreatKind,
   type Effect,
   type Effects,
   type Emit,
+  type Fallback,
   type Foe,
   type GameEventMap,
   type HexKind,
   type HexState,
   type ISODate,
   type Land,
+  type MarchId,
   type Owner,
   type RivalId,
   type ScheduledThreat,
+  type Skirmish,
+  type SkirmishDay,
   type Tag,
   type ThreatKind,
   type Tiding,
@@ -94,6 +100,8 @@ export interface ThreatStrengthInput {
   week: number
   /** The day's daily threat (the siege day applies), not a conquest attempt. */
   daily: boolean
+  /** D-15, D-17: the target hex's strength (`wildBase`): every threat strikes at it; base(ring) only stands in without one. */
+  wild?: number
 }
 
 /**
@@ -167,7 +175,7 @@ export function canConquer(state: CampaignState, rival: RivalId, date: ISODate):
   return r.status === 'active' && r.disposition.player === 'war' && !blocksConquest(state, rival, date)
 }
 
-function lairSide(hex: HexState): Land | undefined {
+export function lairSide(hex: HexState): Land | undefined {
   return hex.land && LAIR_LANDS.has(hex.land) ? hex.land : undefined
 }
 
@@ -257,10 +265,11 @@ function raidMult(state: CampaignState, effects: Effects, rival: RivalId, date: 
  * A threat's strength (Ch 10 "Threat strength"): beasts 0.9 × base; mythics 1.15 × base ×
  * the mythic multiplier for their side; a raid max(0.8 × base, 0.25 × AV × temper) with its
  * multipliers; a conquest attempt max(1.0 × base, 0.5 × AV). Then the roll, the early grace and,
- * for a Saturday's daily threat, the siege day.
+ * for a Saturday's daily threat, the siege day. Every threat takes its target's strength for base
+ * (D-15, D-17), so a hex is as hard to hold on a good day as it was to take.
  */
 export function threatStrength(state: CampaignState, effects: Effects, t: ThreatStrengthInput): number {
-  const b = base(t.ring)
+  const b = t.wild ?? base(t.ring)
   const s = RULES.combat.strength
   let value: number
   switch (t.kind) {
@@ -278,6 +287,8 @@ export function threatStrength(state: CampaignState, effects: Effects, t: Threat
     case 'conquest':
       value = Math.max(s.conquestBase * b, s.conquestArmy * armyValue(state, needRival(t), t.date))
       break
+    case 'counterattack':
+      throw new RangeError('A counterattack strikes at the strength of its fallen force (D-24), fixed at dawn')
   }
   value *= (1 + t.roll) * earlyGraceMult(t.week)
   if (t.daily && isSiegeDay(t.date)) value *= 1 + RULES.combat.siegeDay.bonus
@@ -291,12 +302,12 @@ function needRival(t: { kind: ThreatKind; rival?: RivalId }): RivalId {
 
 // ── Dawn: targets and rolls (A-27, A-28) ─────────────────────────────────────
 
-function ringWeight(ring: number): number {
-  return ring ** RULES.combat.targetRingExponent
+function bandWeight(band: number): number {
+  return band ** RULES.combat.targetRingExponent
 }
 
 /**
- * The day's target among the player's border hexes, weighted by ring^1.5 (Ch 10, A-27). Raids
+ * The day's target among the player's border hexes, weighted by band^1.5 (Ch 10, A-27, D-17). Raids
  * come along the raider's border, or else at the border hex nearest its land (ties drawn);
  * mythics prefer the lair sides. The castle (ring 0) is never a target.
  */
@@ -322,7 +333,7 @@ function pickTarget(state: CampaignState, date: ISODate, kind: DailyThreatKind, 
     date,
     'threat:target',
     pool.map((h) => h.id),
-    pool.map((h) => ringWeight(h.ring))
+    pool.map((h) => bandWeight(bandOf(h)))
   )
   return byId.get(id) ?? null
 }
@@ -353,7 +364,8 @@ export function dawnTiding(state: CampaignState, date: ISODate, effects: Effects
     ...(side ? { side } : {}),
     roll: roll(state.campaign.seed, date, 'threat:roll', -spread, spread),
     week: weekNumber(state, date),
-    daily: true
+    daily: true,
+    wild: wildBase(hex)
   })
   return { date, kind, hexId: hex.id, ...(rival ? { rival } : {}), strength, siegeDay: isSiegeDay(date) }
 }
@@ -380,8 +392,8 @@ function maxForetold(effects: Effects): number {
  */
 export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn = state.campaign.weekStartsOn): CampaignState {
   if (!isPlayable(state) || day < state.campaign.startDate) return state
-  const lastOfWeek = addDays(weekOf(day, weekStartsOn), RULES.clock.daysPerWeek - 1)
-  const next = scheduleThreats(state, day, lastOfWeek)
+  const lastOfWeek = weekCloseDay(day, weekStartsOn)
+  const next = fallbacksAtDawn(scheduleThreats(state, day, lastOfWeek), day)
   const combat = combatOf(next)
   const effects = realmEffects(next)
   const have = new Set(combat.tidings.map((t) => t.date))
@@ -395,6 +407,78 @@ export function dawn(state: CampaignState, day: ISODate, weekStartsOn: WeekStart
   }
   if (fresh.length === 0) return next
   return withCombat(next, { ...combat, tidings: [...combat.tidings, ...fresh].sort(byDate) })
+}
+
+/**
+ * The fallen forces at the dawn of `day` (D-24, C-24). A force past its window, that struck back
+ * before today, or whose refuge has changed hands is gone. Each other force in its window draws once
+ * (`counter:<id>`) whether it strikes back today: from campaign week 3, while the hex it lost is the
+ * player's, the player is not away (R-24, C-25) and, for a rival's, he may raid. A strike is a
+ * counterattack at the force's strength today × `strengthMult` (T-03), × the ±15% roll and the early
+ * grace, fought at the close.
+ */
+function fallbacksAtDawn(state: CampaignState, day: ISODate): CampaignState {
+  const list = state.fallbacks
+  if (!list || list.length === 0) return state
+  const F = RULES.sieges.fallback
+  const C = RULES.sieges.counterattack
+  const { seed } = state.campaign
+  const byId = hexIndex(state.hexes)
+  const week = weekNumber(state, day)
+  const away = awayOn(state, day)
+  const spread = RULES.combat.strength.roll
+  const kept: Fallback[] = []
+  const strikes: Counterattack[] = []
+  let changed = false
+  for (const f of list) {
+    const k = diffDays(f.day, day)
+    if (k > F.days || (f.struck !== undefined && f.struck < day) || byId.get(f.to)?.owner !== f.holder) {
+      changed = true
+      continue
+    }
+    if (k < 1 || f.struck !== undefined || (f.drawnThrough !== undefined && f.drawnThrough >= day)) {
+      kept.push(f)
+      continue
+    }
+    changed = true
+    const rival = f.holder === 'neutral' || f.holder === 'player' ? undefined : f.holder
+    const may = week >= C.fromWeek && byId.get(f.from)?.owner === 'player' && !away && (!rival || canRaid(state, rival, day))
+    if (may && chance(seed, day, `counter:${f.id}`, C.chancePerDay)) {
+      const strength = fallbackStrengthOn(f, day) * C.strengthMult * (1 + roll(seed, day, `counter:roll:${f.id}`, -spread, spread)) * earlyGraceMult(week)
+      strikes.push({ date: day, hexId: f.from, ...(rival ? { rival } : {}), strength, fallbackId: f.id })
+      kept.push({ ...f, drawnThrough: day, struck: day })
+    } else kept.push({ ...f, drawnThrough: day })
+  }
+  if (!changed) return state
+  const combat = combatOf(state)
+  return { ...state, fallbacks: kept, ...(strikes.length > 0 ? { combat: { ...combat, counterattacks: [...(combat.counterattacks ?? []), ...strikes] } } : {}) }
+}
+
+/**
+ * Where the garrison beaten at `hex` falls back (D-24, C-23, T-02), or undefined when it scatters:
+ * an adjacent hex no shallower in a march they share (a seam lies in both of its marches), of the
+ * same holder, the one an assault would find cheapest today (ties by hex id), so it stands where the
+ * player is likeliest to go next. Beasts go only to a neutral hex that is neither a village nor
+ * mythic; a rival's garrison to one of his hexes that is not a Gate. Militia and mythics never fall
+ * back. It adds `share` of the garrison the assault beat.
+ */
+function fallbackFrom(state: CampaignState, byId: ReadonlyMap<string, HexState>, hex: HexState, beaten: number, day: ISODate): Fallback | undefined {
+  if (hex.village || hex.mythic || hex.owner === 'player') return undefined
+  const marches = [hex.march, hex.seam].filter((m): m is MarchId => m !== undefined)
+  if (marches.length === 0) return undefined
+  const depth = depthOf(hex)
+  const refuges = neighbors(hex.id)
+    .map((id) => byId.get(id))
+    .filter((c): c is HexState => {
+      if (!c || c.owner !== hex.owner || depthOf(c) < depth || !isClaimableKind(c) || c.kind === 'gate' || c.kind === 'lairMouth') return false
+      if (![c.march, c.seam].some((m) => m !== undefined && marches.includes(m))) return false
+      return c.owner !== 'neutral' || (!c.village && !c.mythic)
+    })
+    .map((c) => ({ id: c.id, garrison: assaultGarrison(state, c, day) }))
+    .sort((a, b) => a.garrison - b.garrison || a.id.localeCompare(b.id))
+  const to = refuges[0]?.id
+  if (to === undefined) return undefined
+  return { id: `fb:${day}:${hex.id}`, from: hex.id, to, holder: hex.owner, strength: RULES.sieges.fallback.share * beaten, day }
 }
 
 // ── Conquest attempts (T10 announces them) ───────────────────────────────────
@@ -443,7 +527,8 @@ export function planConquest(state: CampaignState, a: { rival: RivalId; hexId: s
     rival: a.rival,
     roll: roll(state.campaign.seed, date, `conquest:${a.rival}:roll`, -spread, spread),
     week,
-    daily: false
+    daily: false,
+    wild: wildBase(hex)
   })
   const attempt: ConquestAttempt = { rival: a.rival, hexId: hex.id, announcedOn: a.announcedOn, date, strength }
   return { ok: true, attempt, state: withCombat(state, { ...combat, conquests: [...combat.conquests, attempt] }) }
@@ -517,7 +602,7 @@ export interface DefenseInput {
   armsBonus: number
   /** W, already doubled where Shieldwall or Runed Walls apply. */
   walls: number
-  /** F = fortification level × 0.25 × base(ring). */
+  /** F = fortification level × 0.25 × the hex's strength (D-17). */
   fortification: number
   /** The rally floor `r`. */
   rallyFloor: number
@@ -541,10 +626,19 @@ export function assaultValue(d: Omit<DefenseInput, 'walls' | 'fortification'>): 
   return (1 + d.armsBonus) * d.strikes.reduce((s, x) => s + x, 0) * rally(d.rallyFloor, d.valor)
 }
 
-/** What an assault must beat (Ch 6): the garrison, + fortification unless ignored, − this week's wear. */
-export function effectiveGarrison(hex: HexState, ignoreFortification = false): number {
+/**
+ * What an assault must beat (Ch 6): the garrison, + fortification unless ignored, × its march's
+ * preparation and a stronghold's multiple (`prep`, D-19, D-23), + fallen forces there (`fallen`,
+ * D-24), − its siege wear (D-22).
+ */
+export function effectiveGarrison(hex: HexState, ignoreFortification = false, prep = 1, fallen = 0): number {
   const fort = ignoreFortification ? 0 : fortificationValue(hex)
-  return Math.max(0, hex.garrison + fort - hex.garrisonDamage)
+  return Math.max(0, (hex.garrison + fort) * prep + fallen - hex.garrisonDamage)
+}
+
+/** What an assault on `hex` must beat on `day`, with its march's preparation that day (D-19). */
+export function assaultGarrison(state: CampaignState, hex: HexState, day: ISODate, ignoreFortification = false): number {
+  return effectiveGarrison(hex, ignoreFortification, garrisonMult(state, hex, day), fallbackOn(state, hex, day))
 }
 
 /**
@@ -556,18 +650,20 @@ export function assaultOutcome(garrison: number, value: number): { outcome: 'rou
   return { outcome: value >= RULES.combat.spoils.routAt * garrison ? 'rout' : 'taken', wear: 0 }
 }
 
-function foeOfThreat(kind: ThreatKind): Foe {
-  if (kind === 'beasts') return 'beast'
+/** The foe a threat brings; a counterattack (D-24) is its holder's: beasts, or the rival named. */
+export function foeOfThreat(kind: ThreatKind, rival?: RivalId): Foe {
+  if (kind === 'beasts' || (kind === 'counterattack' && !rival)) return 'beast'
   return kind === 'mythic' ? 'mythic' : 'rival'
 }
 
-function matchupOfThreat(kind: ThreatKind, rival?: RivalId): MatchupId {
+export function matchupOfThreat(kind: ThreatKind, rival?: RivalId): MatchupId {
   if (kind === 'beasts' || kind === 'mythic') return kind
+  if (kind === 'counterattack' && !rival) return 'beasts'
   return needRival({ kind, rival })
 }
 
 /** The garrison's type for matching: mythic beasts, a village's militia, a beast den, or its rival. */
-function garrisonType(hex: HexState): { matchup: MatchupId; foe: Foe } {
+export function garrisonType(hex: HexState): { matchup: MatchupId; foe: Foe } {
   if (hex.mythic) return { matchup: 'mythic', foe: 'mythic' }
   if (hex.owner === 'neutral') return hex.village ? { matchup: 'militia', foe: 'militia' } : { matchup: 'beasts', foe: 'beast' }
   return { matchup: hex.owner as RivalId, foe: 'rival' }
@@ -589,13 +685,13 @@ export interface DefenseQuery {
 export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effects = realmEffects(state)): { army: number; defense: number } {
   const hex = state.hexes.find((h) => h.id === q.hexId)
   if (!hex) throw new RangeError(`No hex "${q.hexId}" on the map`)
-  const foe = foeOfThreat(q.kind)
+  const foe = foeOfThreat(q.kind, q.rival)
   const pool = roster(state, q.day ? { day: q.day } : {}, effects)
   const fielded = fieldBest(pool, matchupOfThreat(q.kind, q.rival), foe, defenseBanners(effects))
   return defenseValue({
     strikes: fielded.map((f) => f.strike),
     armsBonus: effects.armsBonus.value,
-    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    walls: wallsFor(effects, { ring: bandOf(hex), foe }),
     fortification: fortificationValue(hex),
     rallyFloor: effects.rallyFloor.value,
     valor: q.valor
@@ -634,6 +730,12 @@ export type OrderProblem =
   | { code: 'hiredUnavailable' }
   | { code: 'envoyUnavailable'; rival: RivalId }
   | { code: 'cannotAfford'; needed: number; have: number }
+  /** D-12: the day's led fights have begun, so its orders hold until the close. */
+  | { code: 'ordersLocked' }
+  /** D-23 (P3-01): a stronghold of the hex's march, shallower than it, still stands. */
+  | { code: 'barredByStronghold'; hexId: string; stronghold: string }
+  /** D-23 (C-28): a Grand Battle has been announced here; the daily assault waits for it. */
+  | { code: 'grandBattlePending'; hexId: string }
 
 export interface OrdersValidity {
   ok: boolean
@@ -673,11 +775,15 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   asked.slice(0, allowed).forEach((a) => {
     const hex = byId.get(a.target)
     if (!hex) return void problems.push({ code: 'unknownHex', hexId: a.target })
+    // A stronghold still standing bars its march's deeper hexes, a Gate's Grand Battle included (D-23).
+    const bar = strongholdBarring(state.hexes, hex.id)
+    if (bar && hex.owner !== 'player') return void problems.push({ code: 'barredByStronghold', hexId: hex.id, stronghold: bar })
     if (GRAND_BATTLE_KINDS.has(hex.kind) && hex.owner !== 'player') {
       problems.push({ code: 'grandBattleRequired', hexId: hex.id })
       if (touches(byId, hex.id, 'player') && !grandBattles.includes(hex.id)) grandBattles.push(hex.id)
       return
     }
+    if (state.grandBattles.some((b) => b.hexId === hex.id && b.result === undefined)) return void problems.push({ code: 'grandBattlePending', hexId: hex.id })
     if (!claimableBy(state.hexes, hex.id, 'player', 'assault')) return void problems.push({ code: 'notClaimable', hexId: hex.id })
     if (assaults.some((x) => x.target === hex.id)) return void problems.push({ code: 'duplicateTarget', hexId: hex.id })
     const companies: string[] = []
@@ -728,10 +834,91 @@ export function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
   return r.status === 'active' && r.respect >= RULES.respect.thresholds.envoy
 }
 
-/** Stores the orders for their day (replacing any) and reports their validity. Orders lock at day close. */
+/**
+ * Stores the orders for their day (replacing any) and reports their validity. Orders lock at day
+ * close. Patch 3 (D-22, R-16): a first assault on a hex a daily assault may take becomes the
+ * standing siege, pressed on every later day without orders of the player's own until it falls.
+ */
 export function setOrders(state: CampaignState, orders: DailyOrders): { state: CampaignState; validity: OrdersValidity } {
-  const next = { ...state, orders: [...state.orders.filter((o) => o.date !== orders.date), orders].sort(byDate) }
+  // Once the player starts the day's fights (D-12), its orders hold: the state is unchanged.
+  if (skirmishDayOf(state, orders.date)) {
+    const held = ordersValidity(state, state.orders.find((o) => o.date === orders.date))
+    return { state, validity: { ...held, problems: [{ code: 'ordersLocked' }, ...held.problems] } }
+  }
+  let next: CampaignState = { ...state, orders: [...state.orders.filter((o) => o.date !== orders.date), orders].sort(byDate) }
+  const target = orders.assaultTarget
+  if (target && claimableBy(state.hexes, target, 'player', 'assault')) next = withStandingSiege(next, target, orders.date)
   return { state: next, validity: ordersValidity(next, orders) }
+}
+
+/**
+ * Clears `date`'s orders (A-181's "Use the Marshal's choice"): the Marshal presses the standing
+ * siege, if one stands, and every other company defends (A-36). Refused once the day's fights have
+ * begun (D-12): the state comes back unchanged.
+ */
+export function clearOrders(state: CampaignState, date: ISODate): CampaignState {
+  if (skirmishDayOf(state, date) || !state.orders.some((o) => o.date === date)) return state
+  return { ...state, orders: state.orders.filter((o) => o.date !== date) }
+}
+
+/**
+ * Lifts the standing siege (D-22, C-22). If today's own orders send the first assault at it, that
+ * assault is dropped too and its companies defend, unless the day's fights have begun (its orders
+ * hold until the close). The siege's wear stays on the hex and decays.
+ */
+export function liftSiege(state: CampaignState, today: ISODate): CampaignState {
+  const siege = standingSiegeOf(state)
+  if (!siege) return state
+  let next = withStandingSiege(state, undefined, today)
+  const own = next.orders.find((o) => o.date === today)
+  if (own?.assaultTarget === siege.hexId && !skirmishDayOf(next, today)) {
+    const { assaultTarget: _gone, ...rest } = own
+    next = { ...next, orders: next.orders.map((o) => (o === own ? { ...rest, assault: [] } : o)) }
+  }
+  return next
+}
+
+/**
+ * The day's orders for a siege of `hexId` as the Marshal would send them (D-22, C-22): the
+ * companies best matched to its garrison, up to the assault's banners, Weary ones counted at their
+ * Weary power; every other company defends.
+ */
+export function siegeOrders(state: CampaignState, day: ISODate, hexId: string, effects: Effects = realmEffects(state)): DailyOrders {
+  const hex = hexIndex(state.hexes).get(hexId) as HexState
+  const { matchup, foe } = garrisonType(hex)
+  const fielded = fieldBest(roster(state, { day }, effects), matchup, foe, assaultBanners(effects))
+  return { date: day, assaultTarget: hexId, assault: fielded.map((f) => f.company.id), defense: [] }
+}
+
+/**
+ * Lays a siege on `hexId` from the hex panel (D-22): today's orders send their first assault at it
+ * with the Marshal's companies for it (any the player pinned to defend stay home), keeping the rest
+ * of today's orders, and it becomes the standing siege. Refused, unchanged, once the day's fights
+ * have begun (D-12).
+ */
+export function laySiege(state: CampaignState, hexId: string, today: ISODate, effects: Effects = realmEffects(state)): { state: CampaignState; validity: OrdersValidity } {
+  const own = state.orders.find((o) => o.date === today)
+  const base: DailyOrders = own ? { ...own, defense: [...own.defense] } : { date: today, assault: [], defense: [] }
+  const pinned = new Set(base.defenseOverride ?? [])
+  const otherAssaults = new Set((base.extraAssaults ?? []).flatMap((a) => a.companies))
+  const pick = siegeOrders(state, today, hexId, effects).assault.filter((id) => !pinned.has(id) && !otherAssaults.has(id))
+  return setOrders(state, { ...base, assaultTarget: hexId, assault: pick, defense: base.defense.filter((id) => !pick.includes(id)) })
+}
+
+/**
+ * The orders `day` settles with (D-22): the player's own for the day if set; otherwise the
+ * standing siege pressed by the Marshal, if one stands; otherwise none, and every company defends (A-36).
+ */
+export function ordersFor(state: CampaignState, day: ISODate, effects: Effects = realmEffects(state)): DailyOrders | undefined {
+  const own = state.orders.find((o) => o.date === day)
+  if (own) return own
+  const siege = standingSiegeOf(state)
+  return siege && siegeIsLive(state, siege.hexId) ? siegeOrders(state, day, siege.hexId, effects) : undefined
+}
+
+/** A standing siege on `hexId` still stands: its hex can be assaulted and no Grand Battle waits on it. */
+export function siegeIsLive(state: CampaignState, hexId: string): boolean {
+  return siegeStands(state) && !state.grandBattles.some((b) => b.hexId === hexId && b.result === undefined)
 }
 
 // ── What the Herald shows (no hidden numbers) ────────────────────────────────
@@ -767,6 +954,8 @@ export interface ThreatNotice {
   siegeDay: boolean
   /** A conquest attempt striking a hex it already contests. */
   restrike: boolean
+  /** D-15: losing this defense returns the hex to the wilds. */
+  atStake: boolean
 }
 
 export interface TidingsView {
@@ -774,6 +963,15 @@ export interface TidingsView {
   /** Veil of Fog: the Herald has nothing to report. */
   hidden: boolean
   threats: ThreatNotice[]
+}
+
+/**
+ * Whether losing a defense against `kind` on `hex` returns it to the wilds (D-15): beasts or a
+ * mythic, on a hex the player holds in a march (ring 3 or beyond) that is not a village. Rings 0 to 2 are home.
+ */
+export function returnsToWilds(hex: HexState, kind: ThreatKind): boolean {
+  const rule = RULES.combat.wildsReclaim
+  return hex.owner === 'player' && rule.threats.includes(kind) && hex.ring >= rule.minRing && hex.village === undefined && isClaimableKind(hex)
 }
 
 /**
@@ -792,6 +990,7 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
   const ahead = Math.max(0, diffDays(today, date))
   const notice = (t: { kind: ThreatKind; hexId: string; rival?: RivalId; strength: number }, siegeDay: boolean, restrike: boolean): ThreatNotice => {
     const { army } = defenseFor(state, { hexId: t.hexId, kind: t.kind, rival: t.rival, valor: 1, day: date }, effects)
+    const hex = state.hexes.find((h) => h.id === t.hexId)
     return {
       kind: t.kind,
       date,
@@ -800,7 +999,8 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
       ...(veiled ? {} : { band: strengthBand(t.strength, army) }),
       ...(exact ? { strength: t.strength } : {}),
       siegeDay,
-      restrike
+      restrike,
+      atStake: hex !== undefined && returnsToWilds(hex, t.kind)
     }
   }
   const threats: ThreatNotice[] = []
@@ -809,6 +1009,9 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
   }
   for (const c of combat.conquests) {
     if (c.date === date && c.announcedOn <= today) threats.push(notice({ kind: 'conquest', hexId: c.hexId, rival: c.rival, strength: c.strength }, false, false))
+  }
+  for (const c of combat.counterattacks ?? []) {
+    if (c.date === date) threats.push(notice({ kind: 'counterattack', hexId: c.hexId, ...(c.rival ? { rival: c.rival } : {}), strength: c.strength }, false, false))
   }
   if (date >= today) {
     const stored = combat.tidings.find((t) => t.date === date)
@@ -835,15 +1038,15 @@ export interface GrandBattleRequest {
   kind: HexKind
   owner: Owner
   day: ISODate
-  /** A rare creature turned at bay on a beast den (Ch 11: 8% of ring 4 to 5 West and East den assaults). */
+  /** A rare creature turned at bay on a beast den (Ch 11, D-17: 8% of band 4 to 5 den assaults in a lair's wedge). */
   reveal?: boolean
 }
 
-/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, ring 4 or 5, on a lair side (Ch 11). */
+/** A beast den where an assault may reveal a rare creature: a neutral road or between-land hex, no village, band 4 or 5, in a lair's wedge or on its flank (Ch 11, D-17). */
 export function isRevealDen(hex: HexState): boolean {
   const reveal = RULES.grandBattles.mythicReveal
   const den = (hex.kind === 'road' || hex.kind === 'between') && hex.owner === 'neutral' && !hex.village && !hex.mythic
-  return den && hex.ring >= reveal.minRing && hex.ring <= RULES.land.claimableRings.max && lairSide(hex) !== undefined
+  return den && bandOf(hex) >= reveal.minRing && lairSide(hex) !== undefined
 }
 
 export interface CombatOutcome {
@@ -851,13 +1054,71 @@ export interface CombatOutcome {
   grandBattles: GrandBattleRequest[]
 }
 
-interface Battle {
+/** One of the day's defense battles: a strike on a contested hex, a conquest attempt, or the day's threat. */
+export interface DayBattle {
   kind: ThreatKind
   hexId: string
   rival?: RivalId
   strength: number
   restrike?: ContestedHex
   daily: boolean
+  /** D-24: the fallen force a counterattack comes from. */
+  fallbackId?: string
+}
+
+/**
+ * The day's defense battles in Ch 10's order: strikes on contested hexes (oldest first), the
+ * conquest attempts announced for the day, then the day's threat (dealt again at dawn if its hex is
+ * no longer the player's). The close fights each; a day the player leads lists them (D-12).
+ */
+export function dayBattles(state: CampaignState, day: ISODate, effects: Effects = realmEffects(state)): DayBattle[] {
+  const combat = combatOf(state)
+  const battles: DayBattle[] = []
+  for (const c of [...combat.contested].sort((a, b) => a.since.localeCompare(b.since) || a.hexId.localeCompare(b.hexId))) {
+    if (c.since < day) battles.push({ kind: 'conquest', hexId: c.hexId, rival: c.rival, strength: c.strength, restrike: c, daily: false })
+  }
+  for (const c of combat.conquests.filter((x) => x.date === day).sort((a, b) => a.announcedOn.localeCompare(b.announcedOn))) {
+    battles.push({ kind: 'conquest', hexId: c.hexId, rival: c.rival, strength: c.strength, daily: false })
+  }
+  for (const c of (combat.counterattacks ?? []).filter((x) => x.date === day)) {
+    battles.push({ kind: 'counterattack', hexId: c.hexId, ...(c.rival ? { rival: c.rival } : {}), strength: c.strength, daily: false, fallbackId: c.fallbackId })
+  }
+  let daily = combat.tidings.find((t) => t.date === day) ?? null
+  if (daily && state.hexes.find((h) => h.id === daily?.hexId)?.owner !== 'player') daily = dawnTiding(state, day, effects)
+  if (daily) battles.push({ kind: daily.kind, hexId: daily.hexId, ...(daily.rival ? { rival: daily.rival } : {}), strength: daily.strength, daily: true })
+  return battles
+}
+
+/** A battle that can no longer strike: its hex is not the player's, or its rival may not attack today (a Truce, a pact). */
+export function calledOff(state: CampaignState, b: DayBattle, hex: HexState | undefined, day: ISODate): boolean {
+  const raids = b.kind === 'raid' || (b.kind === 'counterattack' && b.rival !== undefined)
+  const blocked = b.kind === 'conquest' ? !canConquer(state, needRival(b), day) : raids && !canRaid(state, needRival(b), day)
+  return !hex || hex.owner !== 'player' || blocked
+}
+
+// ── Fights the player led (D-12) ─────────────────────────────────────────────
+
+/** The day's fights the player led on the battle map, if they started any. */
+export function skirmishDayOf(state: CampaignState, day: ISODate): SkirmishDay | undefined {
+  return state.skirmishes?.find((d) => d.day === day)
+}
+
+/** The fight the player led and finished for a defense battle, matched on its threat, rival, hex and restrike. */
+export function ledDefense(state: CampaignState, day: ISODate, b: DayBattle): Skirmish | undefined {
+  return skirmishDayOf(state, day)?.fights.find(
+    (f) => f.side === 'defense' && f.result !== undefined && f.hexId === b.hexId && f.threat === b.kind && f.rival === b.rival && (f.restrike === true) === (b.restrike !== undefined)
+  )
+}
+
+/** The fight the player led and finished for the assault on `hexId`. */
+export function ledAssault(state: CampaignState, day: ISODate, hexId: string): Skirmish | undefined {
+  return skirmishDayOf(state, day)?.fights.find((f) => f.side === 'assault' && f.result !== undefined && f.hexId === hexId)
+}
+
+/** A led assault's outcome: a rout or a win takes the hex; a defeat is repulsed, wearing the garrison as the formula's would. */
+function ledAssaultOutcome(led: Skirmish, value: number): { outcome: 'rout' | 'taken' | 'repulsed'; wear: number } {
+  if (led.result === 'defeat') return { outcome: 'repulsed', wear: RULES.land.repulseWear * value }
+  return { outcome: led.result === 'rout' ? 'rout' : 'taken', wear: 0 }
 }
 
 /** Uses of a weekly allowance already spent this calendar week, read from the log. */
@@ -882,14 +1143,23 @@ function ownSpoilsMult(fielded: readonly Fielded[], foe: Foe): number {
 export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcome {
   const { day, emit } = ctx
   let state = dawn(input, day, ctx.weekStartsOn)
+  // A standing siege whose hex can no longer be assaulted ends now (D-22): quietly if the hex is the
+  // player's or a Grand Battle the player called waits on it (D-23), else it lapses with a Herald line.
+  const siege = standingSiegeOf(state)
+  if (siege && !siegeIsLive(state, siege.hexId)) {
+    const theirs = state.hexes.find((h) => h.id === siege.hexId)?.owner === 'player'
+    const battle = state.grandBattles.some((b) => b.hexId === siege.hexId && b.result === undefined)
+    if (!theirs && !battle) emit('standingSiege', { hexId: siege.hexId, change: 'lapsed' })
+    state = withStandingSiege(state, undefined, day)
+  }
   const effects = realmEffects(state)
   const byId = new Map(hexIndex(state.hexes))
   const setHex = (hex: HexState): void => void byId.set(hex.id, hex)
   const combat = combatOf(state)
   const bonus = effects.reputationBonus.value
 
-  // Orders: companies sent on a valid assault leave the defense pool; the rest defend (A-36).
-  const orders = state.orders.find((o) => o.date === day)
+  // Orders: the player's own, else the standing siege's (D-22); companies sent on a valid assault leave the defense pool; the rest defend (A-36).
+  const orders = ordersFor(state, day, effects)
   const validity = ordersValidity(state, orders, effects)
   const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
   const hiredBlades = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
@@ -902,6 +1172,11 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   const respect: { rival: RivalId; change: number; reason: string }[] = []
   const contested = new Map(combat.contested.map((c) => [c.hexId, c]))
   const falls: ContestedHex[] = []
+  const overrun: string[] = []
+  // D-24: hexes a rival's counterattack takes back, the fallen forces spent today, and those new today.
+  const retaken: { hexId: string; rival: RivalId }[] = []
+  const spentForces = new Set<string>()
+  const fallen: Fallback[] = []
   let illusions = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.grandIllusion === true)
   let hunts = usedThisWeek(state, day, ctx.weekStartsOn, (e) => e.hunt !== undefined)
   // Trophies granted today (A-156): each unique, so later victories see the earlier ones.
@@ -919,21 +1194,11 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   }
 
   // 1. Conquest attempts (contested hexes first, then the ones announced for today) and the daily threat.
-  const battles: Battle[] = []
-  for (const c of [...contested.values()].sort((a, b) => a.since.localeCompare(b.since) || a.hexId.localeCompare(b.hexId))) {
-    if (c.since < day) battles.push({ kind: 'conquest', hexId: c.hexId, rival: c.rival, strength: c.strength, restrike: c, daily: false })
-  }
-  for (const c of combat.conquests.filter((x) => x.date === day).sort((a, b) => a.announcedOn.localeCompare(b.announcedOn))) {
-    battles.push({ kind: 'conquest', hexId: c.hexId, rival: c.rival, strength: c.strength, daily: false })
-  }
-  let daily = combat.tidings.find((t) => t.date === day) ?? null
-  if (daily && byId.get(daily.hexId)?.owner !== 'player') daily = dawnTiding(state, day, effects)
-  if (daily) battles.push({ kind: daily.kind, hexId: daily.hexId, ...(daily.rival ? { rival: daily.rival } : {}), strength: daily.strength, daily: true })
+  const battles = dayBattles(state, day, effects)
 
   for (const b of battles) {
     const hex = byId.get(b.hexId) as HexState
-    const blocked = b.kind === 'conquest' ? !canConquer(state, needRival(b), day) : b.kind === 'raid' && !canRaid(state, needRival(b), day)
-    if (!hex || hex.owner !== 'player' || blocked) {
+    if (calledOff(state, b, hex, day)) {
       if (b.restrike) {
         contested.delete(b.hexId)
         if (hex?.status === 'contested') setHex(heldHex(hex))
@@ -942,14 +1207,20 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       continue
     }
 
-    const foe = foeOfThreat(b.kind)
+    const foe = foeOfThreat(b.kind, b.rival)
+    // A fight the player led on the battle map (D-12) gives the outcome; its companies pay their fees if the purse still can.
+    const led = ledDefense(state, day, b)
     const affordable = defensePool.filter((c) => fee(c) === 0 || fee(c) <= balance(purse))
-    const { fielded, defense } = defenseOf(effects, affordable, hex, b.kind, b.rival, ctx.valor, orders?.defenseOverride)
-    for (const f of fielded) if (fee(f.company) > 0) purse = spend(purse, day, fee(f.company), `${f.company.source}:${f.company.id}:${hex.id}`)
+    const { fielded, defense } = led ? ledFielded(defensePool, led, matchupOfThreat(b.kind, b.rival), foe) : defenseOf(effects, affordable, hex, b.kind, b.rival, ctx.valor, orders?.defenseOverride)
+    for (const f of fielded) if (fee(f.company) > 0 && (!led || fee(f.company) <= balance(purse))) purse = spend(purse, day, fee(f.company), `${f.company.source}:${f.company.id}:${hex.id}`)
+    if (led?.hired) purse = spend(purse, day, Math.min(led.hired * RULES.buildings.merchantHall.hiredBlades.costPerBattle, balance(purse)), `hired:${led.id}`)
     const spoilsRules = RULES.combat.spoils
-    const outcome = defense >= spoilsRules.routAt * b.strength ? 'rout' : defense >= b.strength ? 'victory' : 'defeat'
+    const outcome = led?.result ?? (defense >= spoilsRules.routAt * b.strength ? 'rout' : defense >= b.strength ? 'victory' : 'defeat')
     const report: GameEventMap['defense'] = { threat: b.kind, hexId: hex.id, ...(b.rival ? { rival: b.rival } : {}), outcome }
     if (b.restrike) report.restrike = true
+    if (led) report.led = true
+    // A counterattack fights once: held, its force scatters; lost, it takes the hex back (D-24).
+    if (b.fallbackId) spentForces.add(b.fallbackId)
 
     if (outcome !== 'defeat') {
       if (b.kind === 'beasts' && effects.royalHunt.on && hunts < effects.royalHunt.perWeek) {
@@ -960,7 +1231,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt', ...trophy(undefined, true) })
       } else {
         const perRing = outcome === 'rout' ? spoilsRules.routPerRing : spoilsRules.winPerRing
-        const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+        const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
         gains.push({ kind: 'spoils', amount, source: `defense:${b.kind}:${hex.id}` })
         report.spoils = roundPosting(amount)
       }
@@ -975,20 +1246,52 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         setHex(heldHex(hex))
         report.broken = true
       }
+    } else if (b.kind === 'counterattack') {
+      // A counterattack lost (D-24, C-24): the hex goes back at once, with tribute and no scorch:
+      // to the wilds for beasts (as D-15), to the rival for his garrison. Grand Illusion spares it.
+      if (illusions < effects.grandIllusion.value) {
+        illusions++
+        report.grandIllusion = true
+      } else {
+        const amount = RULES.combat.tribute.perRing * bandOf(hex) * effects.tribute.value
+        gains.push({ kind: 'tribute', amount, source: `tribute:${b.kind}:${hex.id}` })
+        report.tribute = roundPosting(amount)
+        contested.delete(hex.id)
+        if (b.rival) retaken.push({ hexId: hex.id, rival: b.rival })
+        else overrun.push(hex.id)
+        report.retaken = true
+      }
     } else if (b.kind !== 'conquest') {
-      // The daily threat: tribute and a scorched hex. Land is never lost to it.
+      // The daily threat: tribute and a scorched hex, or beyond the home rings a wild hex back to the wilds (D-15).
       const illusion = illusions < effects.grandIllusion.value
       if (illusion) {
         illusions++
         report.grandIllusion = true
       } else {
-        const amount = RULES.combat.tribute.perRing * hex.ring * effects.tribute.value
+        const amount = RULES.combat.tribute.perRing * bandOf(hex) * effects.tribute.value
         gains.push({ kind: 'tribute', amount, source: `tribute:${b.kind}:${hex.id}` })
         report.tribute = roundPosting(amount)
       }
-      const scorched = scorch(hex, day)
-      setHex(scorched)
-      if (scorched.status === 'scorched') report.scorchedUntil = scorched.statusUntil
+      // A rout returns the hex to the wilds (D-15). A led fight's margin is the formula's, at the Valor locked when it began.
+      const judged = led
+        ? defenseValue({
+            strikes: fielded.map((f) => f.strike),
+            armsBonus: effects.armsBonus.value,
+            walls: wallsFor(effects, { ring: bandOf(hex), foe }),
+            fortification: fortificationValue(hex),
+            rallyFloor: effects.rallyFloor.value,
+            valor: skirmishDayOf(state, day)?.valor ?? ctx.valor
+          }).defense
+        : defense
+      if (!illusion && returnsToWilds(hex, b.kind) && b.strength >= RULES.combat.wildsReclaim.routedAt * judged) {
+        contested.delete(hex.id)
+        overrun.push(hex.id)
+        report.overrun = true
+      } else {
+        const scorched = scorch(hex, day)
+        setHex(scorched)
+        if (scorched.status === 'scorched') report.scorchedUntil = scorched.statusUntil
+      }
       if (b.kind === 'raid') respect.push({ rival: needRival(b), change: RULES.respect.change.raidLost, reason: 'raidLost' })
     } else if (hex.ring <= RULES.land.protectedThroughRing) {
       // Rings 0 to 2 never pass: a lost conquest battle only scorches (Ch 3 rule 2).
@@ -1020,6 +1323,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   })
   const taken: { hex: HexState; from: Owner }[] = []
   const wearied = new Set<string>()
+  const assaulted = new Set<string>()
   for (const a of validity.assaults) {
     const hex = byId.get(a.target) as HexState
     if (isRevealDen(hex) && chance(state.campaign.seed, day, `reveal:${hex.id}`, RULES.grandBattles.mythicReveal.chance)) {
@@ -1028,36 +1332,71 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       emit('assault', { hexId: hex.id, owner: hex.owner, outcome: 'revealed' })
       continue
     }
+    assaulted.add(hex.id)
     const { foe } = garrisonType(hex)
-    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, ctx.valor)
-    const result = assaultOutcome(garrison, value)
+    // A led assault (D-12) gives the outcome; its Assault value (for the wear on a repulse) uses the Valor locked when it began.
+    const led = ledAssault(state, day, hex.id)
+    const prep = garrisonMult(state, hex, day)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, led ? (skirmishDayOf(state, day)?.valor ?? ctx.valor) : ctx.valor, prep, flankingMult(byId, hex.id), fallbackOn(state, hex, day))
+    const result = led ? ledAssaultOutcome(led, value) : assaultOutcome(garrison, value)
+    if (led?.hired) purse = spend(purse, day, Math.min(led.hired * RULES.buildings.merchantHall.hiredBlades.costPerBattle, balance(purse)), `hired:${led.id}`)
     const owner = hex.owner
+    const ledFlag = led ? { led: true } : {}
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
       const perRing = rout ? RULES.combat.spoils.routPerRing : RULES.combat.spoils.winPerRing
-      const amount = withBonus(perRing * hex.ring * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+      const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
       gains.push({ kind: 'spoils', amount, source: `assault:${hex.id}` })
       if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: RULES.respect.change.hexConquered, reason: 'hexConquered' })
       taken.push({ hex, from: owner })
-      emit('assault', { hexId: hex.id, owner, outcome: result.outcome, spoils: roundPosting(amount) })
+      emit('assault', { hexId: hex.id, owner, outcome: result.outcome, spoils: roundPosting(amount), value: roundPosting(value), ...ledFlag })
+      // Beaten without a rout, the garrison falls back deeper (D-24); a rout scatters it.
+      const force = result.outcome === 'taken' ? fallbackFrom(state, byId, hex, garrison, day) : undefined
+      if (force) {
+        fallen.push(force)
+        emit('fallback', { hexId: force.from, to: force.to, holder: force.holder, strength: roundPosting(force.strength) })
+      }
     } else {
-      setHex({ ...hex, garrisonDamage: hex.garrisonDamage + result.wear })
+      // The wear stays until the hex falls (D-22), never more than the garrison it wears.
+      const worn = { ...hex, garrisonDamage: Math.min(wearCap(hex, fortificationValue(hex), prep), hex.garrisonDamage + result.wear) }
+      setHex(worn)
       for (const f of fielded) wearied.add(f.company.id)
-      emit('assault', { hexId: hex.id, owner, outcome: 'repulsed', wear: roundPosting(result.wear) })
+      // A breach: worn within the Assault that wore it, so the same assault would now take it.
+      const breach = effectiveGarrison(worn, effects.assaultIgnoresFortification.on, prep, fallbackOn(state, hex, day)) <= value ? { breach: true } : {}
+      emit('assault', { hexId: hex.id, owner, outcome: 'repulsed', wear: roundPosting(result.wear), value: roundPosting(value), ...breach, ...ledFlag })
     }
   }
 
-  // 3. Hex transfers: contested hexes that fell, then captured hexes.
+  // 3. Hex transfers: hexes the wilds took back, contested hexes that fell, then captured hexes.
+  for (const id of overrun) {
+    const hex = byId.get(id) as HexState
+    setHex(toWilds(hex, wildGarrison(hex, false)))
+    emit('hexTransfer', { hexId: id, from: 'player', to: 'neutral', how: 'wilds' })
+  }
   for (const c of falls) {
     contested.delete(c.hexId)
     const hex = byId.get(c.hexId) as HexState
     setHex(toRival(hex, c.rival))
     emit('hexTransfer', { hexId: hex.id, from: 'player', to: c.rival, how: 'conquest' })
   }
+  for (const r of retaken) {
+    setHex(toRival(byId.get(r.hexId) as HexState, r.rival))
+    emit('hexTransfer', { hexId: r.hexId, from: 'player', to: r.rival, how: 'conquest' })
+  }
   for (const t of taken) {
     setHex(toPlayer(byId.get(t.hex.id) as HexState, day, true))
-    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest' })
+    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest', fortification: t.hex.fortification })
   }
+  // A siege left alone fades (D-22, C-20): every worn hex not assaulted today loses part of its wear, a
+  // stronghold more slowly, and none while a Grand Battle waits on it (C-28).
+  const awaited = new Set(state.grandBattles.filter((b) => b.result === undefined).map((b) => b.hexId))
+  for (const [id, h] of byId) {
+    if (h.garrisonDamage <= 0 || h.owner === 'player' || assaulted.has(id) || awaited.has(id)) continue
+    setHex({ ...h, garrisonDamage: decayedWear(h.garrisonDamage, isStronghold(state.hexes, id)) })
+  }
+  // The standing siege ends when its hex falls.
+  const besieged = standingSiegeOf(state)
+  if (besieged && taken.some((t) => t.hex.id === besieged.hexId)) state = withStandingSiege(state, undefined, day)
 
   // 4. Spoils, tribute and Respect.
   for (const g of gains) purse = g.kind === 'spoils' ? post(purse, { date: day, ...g }) : payTribute(purse, day, g.amount, g.source)
@@ -1073,23 +1412,45 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       schedule: combat.schedule.filter((s) => s.date > day),
       tidings: combat.tidings.filter((t) => t.date > day),
       conquests: combat.conquests.filter((c) => c.date > day),
-      contested: [...contested.values()].sort((a, b) => a.since.localeCompare(b.since) || a.hexId.localeCompare(b.hexId))
-    }
+      contested: [...contested.values()].sort((a, b) => a.since.localeCompare(b.since) || a.hexId.localeCompare(b.hexId)),
+      ...((combat.counterattacks ?? []).some((c) => c.date > day) ? { counterattacks: (combat.counterattacks ?? []).filter((c) => c.date > day) } : {})
+    },
+    // The fallen forces (D-24): those spent today and those on a hex taken today are gone; today's join them.
+    ...fallbacksAfter(state.fallbacks, spentForces, new Set(taken.map((t) => t.hex.id)), fallen)
   }
   if (wearied.size > 0) state = weary(state, wearied, day, effects)
+  // Led fights are kept a week for their replays (D-12).
+  if (state.skirmishes) state = { ...state, skirmishes: state.skirmishes.filter((d) => d.day > addDays(day, -RULES.skirmish.keepDays)) }
   return { state, grandBattles }
+}
+
+/** The fallen forces after a close (D-24): without the spent and those whose refuge fell, with today's. */
+function fallbacksAfter(before: readonly Fallback[] | undefined, spent: ReadonlySet<string>, fell: ReadonlySet<string>, fresh: readonly Fallback[]): { fallbacks?: Fallback[] } {
+  const kept = (before ?? []).filter((f) => !spent.has(f.id) && !fell.has(f.to))
+  const all = [...kept, ...fresh]
+  return all.length > 0 || before !== undefined ? { fallbacks: all } : {}
+}
+
+/** The companies a led fight fielded (D-12), found in the pool, as the close counts them for fees and spoils. */
+function ledFielded(pool: readonly Company[], led: Skirmish, matchup: MatchupId, foe: Foe): { fielded: Fielded[]; defense: number } {
+  const fielded = led.companies.flatMap((id) => pool.filter((c) => c.id === id)).map((company) => {
+    const match = companyMatch(company, matchup, foe)
+    return { company, match, strike: company.power * match }
+  })
+  // The outcome is the fight's own; no Defense value is compared.
+  return { fielded, defense: 0 }
 }
 
 // ── Fielding a battle (shared by settlement and the orders estimate) ────────
 
 /** The Defense `pool` puts up on `hex` against a threat of `kind` (Ch 10): the companies the player always fields, then the Marshal's best by p × m (D-10). */
-function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, kind: ThreatKind, rival: RivalId | undefined, valor: number, override?: readonly string[]): { fielded: Fielded[]; defense: number } {
-  const foe = foeOfThreat(kind)
+export function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, kind: ThreatKind, rival: RivalId | undefined, valor: number, override?: readonly string[]): { fielded: Fielded[]; defense: number } {
+  const foe = foeOfThreat(kind, rival)
   const fielded = fieldBest(pool, matchupOfThreat(kind, rival), foe, defenseBanners(effects), override)
   const { defense } = defenseValue({
     strikes: fielded.map((f) => f.strike),
     armsBonus: effects.armsBonus.value,
-    walls: wallsFor(effects, { ring: hex.ring, foe }),
+    walls: wallsFor(effects, { ring: bandOf(hex), foe }),
     fortification: fortificationValue(hex),
     rallyFloor: effects.rallyFloor.value,
     valor
@@ -1097,20 +1458,24 @@ function defenseOf(effects: Effects, pool: readonly Company[], hex: HexState, ki
   return { fielded, defense }
 }
 
-/** The Assault `pool` brings against `hex` (Ch 6), and the garrison it must beat (fortification ignored by Siegebreakers and like effects). */
-function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number): { fielded: Fielded[]; value: number; garrison: number } {
+/**
+ * The Assault `pool` brings against `hex` (Ch 6), × its flanking multiple (`flank`, D-22), and the
+ * garrison it must beat (fortification ignored by Siegebreakers and like effects; × its march's
+ * preparation `prep`, D-19).
+ */
+export function assaultOf(effects: Effects, pool: readonly Company[], hex: HexState, valor: number, prep = 1, flank = 1, fallen = 0): { fielded: Fielded[]; value: number; garrison: number } {
   const { matchup, foe } = garrisonType(hex)
   const fielded = fieldBest(pool, matchup, foe, assaultBanners(effects))
-  const value = assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor })
+  const value = flank * assaultValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, rallyFloor: effects.rallyFloor.value, valor })
   const ignoreFort = effects.assaultIgnoresFortification.on || fielded.some((f) => ownEffects(f.company).some((x) => x.kind === 'ignoreFortification'))
-  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort) }
+  return { fielded, value, garrison: effectiveGarrison(hex, ignoreFort, prep, fallen) }
 }
 
 export interface OrdersEstimate {
   /** Each battle foretold for `day` on the player's land, and the Defense the defense pool would put up at `valor`. */
   defenses: { hexId: string; kind: ThreatKind; rival?: RivalId; defense: number; fielded: string[] }[]
-  /** Each assault the orders send, its Assault at `valor`, the garrison it must beat, and the outcome that would give. */
-  assaults: { hexId: string; value: number; garrison: number; outcome: 'rout' | 'taken' | 'repulsed'; fielded: string[] }[]
+  /** Each assault the orders send, its Assault at `valor` (flanking counted, `flank` its multiple, D-22), the garrison it must beat, and the outcome that would give. */
+  assaults: { hexId: string; value: number; flank: number; garrison: number; outcome: 'rout' | 'taken' | 'repulsed'; fielded: string[] }[]
 }
 
 /**
@@ -1132,8 +1497,9 @@ export function ordersEstimate(state: CampaignState, orders: DailyOrders | undef
   }
   const assaults = validity.assaults.map((a) => {
     const hex = byId.get(a.target) as HexState
-    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor)
-    return { hexId: hex.id, value, garrison, outcome: assaultOutcome(garrison, value).outcome, fielded: fielded.map((f) => f.company.id) }
+    const flank = flankingMult(byId, hex.id)
+    const { fielded, value, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, valor, garrisonMult(state, hex, day), flank, fallbackOn(state, hex, day))
+    return { hexId: hex.id, value, flank, garrison, outcome: assaultOutcome(garrison, value).outcome, fielded: fielded.map((f) => f.company.id) }
   })
   return { defenses, assaults }
 }

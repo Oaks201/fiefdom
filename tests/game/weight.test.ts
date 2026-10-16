@@ -277,8 +277,8 @@ test('Lock 1 (D-11): a single weekly weigh-in at or below the mark reaches it', 
   assert.equal(markReachedOn([{ date: weekEnd(1), weight: 212 }], 212, day(30)), weekEnd(1))
 })
 
-test('D-11: the game reads one weigh-in a week, the last of each calendar week', () => {
-  // START is a Monday: with Monday weeks, weekEnd(k) is week k's Sunday.
+test('D-11, D-13: the game reads one weigh-in a week: its Monday’s, else the first after its Monday, else the last before it', () => {
+  // START is a Monday: with Monday weeks, day(7k) is week k+1's Monday and weekEnd(k) week k's Sunday.
   const logged = [
     { date: day(1), weight: 215 },
     { date: weekEnd(1), weight: 214 },
@@ -287,12 +287,15 @@ test('D-11: the game reads one weigh-in a week, the last of each calendar week',
     { date: day(15), weight: 213 }
   ]
   assert.deepEqual(weeklyWeighIns(logged, 1), [
-    { date: weekEnd(1), weight: 214 },
+    { date: day(1), weight: 215 },
     { date: day(9), weight: 211 },
-    { date: weekEnd(3), weight: 212 }
+    { date: day(15), weight: 213 }
   ])
-  // With Sunday weeks, each Sunday starts a new week instead of ending one.
+  assert.deepEqual(weeklyWeighIns([{ date: day(9), weight: 211 }, { date: day(7), weight: 212 }], 1), [{ date: day(7), weight: 212 }], 'the Monday reading wins')
+  // With Sunday weeks, Monday is each week's second day: a Sunday reading alone counts (weekEnd(3)),
+  // but a Monday reading beats it.
   assert.deepEqual(weeklyWeighIns(logged, 0).map((w) => w.date), [day(1), day(9), day(15), weekEnd(3)])
+  assert.deepEqual(weeklyWeighIns([{ date: weekEnd(1), weight: 214 }, { date: day(7), weight: 213 }], 0), [{ date: day(7), weight: 213 }])
   assert.deepEqual(weeklyWeighIns([], 1), [])
 })
 

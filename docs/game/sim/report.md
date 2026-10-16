@@ -5,7 +5,7 @@
 ## The run
 
 - **Campaigns:** 6260 in all. Base rules: 3900 (300 per profile for the greedy and smarter policies, 50 per profile for the push policy, 70 weeks). Income check: 200 (50 per profile, 48 weeks). Sweeps: 2160 (30 per profile per step).
-- **Time:** 48 min 17 s on 4 worker threads (4 × Intel(R) Xeon(R) Processor @ 2.10GHz, Node v22.22.0, linux x64).
+- **Time:** 21 min 16 s on 12 worker threads (12 × AMD Ryzen 5 5600X 6-Core Processor             , Node v24.21.0, win32 x64).
 - **Seeds:** 1 to N for every group, so a sweep step and the base run play the same ledgers and draws (paired comparisons).
 - **Campaigns stop at their end**: the Fall or the victory. The Reign after a victory decides no target, so it is not simulated; hexes after the end count as held at the end.
 - **Reading the intervals:** for a median week, the 80% interval is the 10th to 90th percentile of the campaigns themselves; for a share, it is the 80% Wilson interval. Hit or miss is judged on the greedy policy.
@@ -15,10 +15,10 @@
 | Profile | Duties kept | Week vs step pool | Food logged | Rough weeks | Weight trend | Measured mean RC (greedy) |
 | --- | --- | --- | --- | --- | --- | --- |
 | Perfect | 100% | 120% | 100% | none | 0.8 lb/wk | 100.0% |
-| Steadfast | 93% | 104% | 96% | 1 in 12 | 0.8 lb/wk | 89.0% |
-| Steadfast, long plateau | 93% | 104% | 96% | 1 in 12 | 0.8 lb/wk, 0 from week 9 | 89.0% |
-| Committed | 85% | 97% | 90% | 1 in 9 | 0.6 lb/wk | 80.4% |
-| Wavering | 72% | 87% | 80% | 1 in 7 | 0.4 lb/wk | 65.8% |
+| Steadfast | 93% | 104% | 96% | 1 in 12 | 0.8 lb/wk | 88.9% |
+| Steadfast, long plateau | 93% | 104% | 96% | 1 in 12 | 0.8 lb/wk, 0 from week 9 | 88.9% |
+| Committed | 85% | 97% | 90% | 1 in 9 | 0.6 lb/wk | 80.3% |
+| Wavering | 72% | 87% | 80% | 1 in 7 | 0.4 lb/wk | 66.2% |
 | Casual | 55% | 72% | 65% | 1 in 6 | 0.2 lb/wk | 49.7% |
 
 - **Greedy** (Ch 15 step 2): each week it buys the cheapest tier, castle tier or Crossing stage it can, again and again; courts every village whose Offer meets its resistance at today’s Trust; seals the longest contract unlocked; uses the Armory (Wings from a fixed list, Elites, the Sworn, the dearest item each company can carry). Each day it assaults the adjacent hex with the best Dominion per garrison point that its best-matched companies can beat at yesterday’s Valor; with none, it challenges a Gate or capital whose rival’s army band is short of Overwhelming; it fights Grand Battles with the Marshal’s choices but without his −0.1 Readiness, and spends Respite on rough days.
@@ -35,30 +35,30 @@ Checked in all 6260 campaigns: no loss before week 36 (44 at Grace III); rings 0
 
 | Profile | Measure | Target | Greedy [80%] | Verdict | Smarter [80%] | Push [80%] |
 | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | Win, median week | 36 to 40 | 48 [46–50] | miss | 44 [44–46] | 46 [40–47] |
-| Perfect | Win within 70 weeks | 100% | 100% [99%–100%] | hit | 100% [99%–100%] | 98% [94%–99%] |
+| Perfect | Win, median week | 36 to 40 | 38 [38–47] | hit | 36 [36–41] | 43 [39–47] |
+| Perfect | Win within 70 weeks | 100% | 100% [99%–100%] | miss | 100% [99%–100%] | 98% [94%–99%] |
 | Perfect | Loss to Ascendancy | 0% | 0% [0%–1%] | hit | 0% [0%–1%] | 0% [0%–3%] |
-| Steadfast | Win, median week | 44 to 48 | 51 [46–64] | miss | 48 [46–59] | 46 [40–50] |
-| Steadfast | Win within 70 weeks | 95% or more | 98% [97%–99%] | hit | 100% [99%–100%] | 100% [97%–100%] |
+| Steadfast | Win, median week | 44 to 48 | 42 [38–50] | miss | 39 [36–46] | 47 [41–56] |
+| Steadfast | Win within 70 weeks | 95% or more | 100% [99%–100%] | hit | 100% [99%–100%] | 98% [94%–99%] |
 | Steadfast | Loss to Ascendancy | under 5% | 0% [0%–1%] | hit | 0% [0%–1%] | 0% [0%–3%] |
-| Committed | Win, median week | 52 to 62 | 63 [56–68] | miss | 63 [57–70] | 46 [40–48] |
-| Committed | Win within 70 weeks | 60 to 75% | 41% [38%–45%] | miss | 42% [38%–45%] | 96% [91%–98%] |
-| Committed | Loss to Ascendancy | 20 to 35% | 0% [0%–1%] | miss | 1% [0%–2%] | 0% [0%–3%] |
-| Wavering | Win, median week | rarely | none | hit | none | 50 [47–55] |
-| Wavering | Win within 70 weeks | under 15% | 0% [0%–1%] | hit | 0% [0%–1%] | 88% [81%–93%] |
-| Wavering | Loss to Ascendancy | 60 to 80% | 69% [66%–73%] | hit | 96% [94%–97%] | 0% [0%–3%] |
-| Casual | Win, median week | never | none | hit | none | 59 [52–67] |
-| Casual | Win within 70 weeks | 0% | 0% [0%–1%] | hit | 0% [0%–1%] | 94% [88%–97%] |
-| Casual | Loss to Ascendancy | 85% or more | 100% [99%–100%] | hit | 100% [99%–100%] | 0% [0%–3%] |
-| All | Earliest loss, any profile (week) | never before 36 | 42 | hit | 42 | none |
-| Steadfast | Grand Battles a month | 1 to 3 | 1.88 [1.67–2.09] | hit | 1.51 [1.30–1.74] | 2.06 [1.70–2.35] |
+| Committed | Win, median week | 52 to 62 | 48 [39–59] | miss | 46 [38–54] | 50 [44–62] |
+| Committed | Win within 70 weeks | 60 to 75% | 98% [96%–99%] | miss | 100% [99%–100%] | 98% [94%–99%] |
+| Committed | Loss to Ascendancy | 20 to 35% | 0% [0%–1%] | miss | 0% [0%–1%] | 0% [0%–3%] |
+| Wavering | Win, median week | rarely | 63 [46–69] | see win share | 60 [49–68] | 58 [50–67] |
+| Wavering | Win within 70 weeks | under 15% | 72% [68%–75%] | miss | 83% [80%–86%] | 88% [81%–93%] |
+| Wavering | Loss to Ascendancy | 60 to 80% | 0% [0%–1%] | miss | 0% [0%–1%] | 0% [0%–3%] |
+| Casual | Win, median week | never | 67 [63–70] | miss | 67 [63–70] | 64 [62–69] |
+| Casual | Win within 70 weeks | 0% | 6% [4%–8%] | miss | 2% [1%–4%] | 20% [14%–28%] |
+| Casual | Loss to Ascendancy | 85% or more | 7% [6%–10%] | miss | 29% [25%–32%] | 12% [7%–19%] |
+| All | Earliest loss, any profile (week) | never before 36 | 42 | hit | 42 | 42 |
+| Steadfast | Grand Battles a month | 1 to 3 | 2.03 [1.74–2.32] | hit | 1.66 [1.27–2.10] | 2.45 [2.20–2.82] |
 | Steadfast | Campaigns with a coalition | 80% or more | 100% [99%–100%] | hit | 100% [99%–100%] | 100% [97%–100%] |
-| Steadfast | Skill value: smarter vs greedy finishing time | 10 to 20% | 4% [-2%–13%] | miss | 4% [-2%–13%] | 16% [1%–31%] |
-| Committed | Skill value: smarter vs greedy finishing time | 10 to 20% | -2% [-9%–8%] | miss | -2% [-9%–8%] | 30% [21%–38%] |
+| Steadfast | Skill value: smarter vs greedy finishing time | 10 to 20% | 5% [-3%–18%] | miss | 5% [-3%–18%] | -9% [-23%–6%] |
+| Committed | Skill value: smarter vs greedy finishing time | 10 to 20% | 4% [-8%–19%] | miss | 4% [-8%–19%] | -4% [-22%–10%] |
 
 *The skill-value rows compare each policy with greedy on the same seeds (both won), as the share of greedy’s finishing week saved; the greedy column shows smarter’s saving.*
 
-The book sets no target for the long plateau; greedy measured a median win in week 50, 76% won within 70 weeks and 0% fell.
+The book sets no target for the long plateau; greedy measured a median win in week 43, 94% won within 70 weeks and 0% fell.
 
 ## The income check (Ch 15 table)
 
@@ -66,15 +66,15 @@ Behavior income only over the first 48 weeks, under the book's conditions: the `
 
 | Profile | Player, 48 weeks | vs book | Rival (benchmark) | vs book | Ratio | Campaigns lasting 48 weeks | Check |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Steadfast | 15744 (book 19,091) | -17.5% | 16741 (book 16,754) | -0.1% | 0.94 (book 1.14) | 50 of 50 | outside ±3% |
-| Steadfast, long plateau | 15021 (book 17,939) | -16.3% | 16741 (book 16,754) | -0.1% | 0.90 (book 1.07) | 50 of 50 | outside ±3% |
-| Committed | 13527 (book 15,467) | -12.5% | 16741 (book 16,754) | -0.1% | 0.81 (book 0.92) | 48 of 50 | outside ±3% |
-| Wavering | 10426 (book 11,488) | -9.2% | 16741 (book 16,754) | -0.1% | 0.62 (book 0.69) | 10 of 50 | outside ±3% |
+| Steadfast | 16241 (book 19,091) | -14.9% | 17785 (book 16,754) | 6.2% | 0.91 (book 1.14) | 44 of 50 | outside ±3% |
+| Steadfast, long plateau | 15840 (book 17,939) | -11.7% | 17785 (book 16,754) | 6.2% | 0.89 (book 1.07) | 48 of 50 | outside ±3% |
+| Committed | 13905 (book 15,467) | -10.1% | 17785 (book 16,754) | 6.2% | 0.78 (book 0.92) | 49 of 50 | outside ±3% |
+| Wavering | 11058 (book 11,488) | -3.7% | 17785 (book 16,754) | 6.2% | 0.62 (book 0.69) | 10 of 50 | outside ±3% |
 
 | Steadfast week | Player (median) | Book | Benchmark | Book |
 | --- | --- | --- | --- | --- |
-| 4 | 325 | 374 | 292 | 292 |
-| 40 | 311 | 409 | 386 | 386 |
+| 4 | 381 | 374 | 306 | 292 |
+| 40 | 310 | 409 | 415 | 386 |
 
 ### Where the gap comes from
 
@@ -82,42 +82,42 @@ The book's player figures are the benchmark formula itself (Ch 12's BI) with `b`
 
 | Profile | Term | Book (48 weeks) | Measured (mean) | Difference |
 | --- | --- | --- | --- | --- |
-| Steadfast | Duties, perfect days, streak | 5268 | 5296 | 27 |
-| Steadfast | Steps and calories | 5981 | 5966 | -15 |
-| Steadfast | Flawless weeks | 0 | 32 | 32 |
-| Steadfast | Momentum | 2897 | 2205 | -692 |
-| Steadfast | Contracts | 4945 | 3811 | -1134 |
-| Steadfast, long plateau | Duties, perfect days, streak | 5268 | 5296 | 27 |
-| Steadfast, long plateau | Steps and calories | 5981 | 5966 | -15 |
-| Steadfast, long plateau | Flawless weeks | 0 | 32 | 32 |
-| Steadfast, long plateau | Momentum | 1745 | 1867 | 123 |
-| Steadfast, long plateau | Contracts | 4945 | 3763 | -1182 |
-| Committed | Duties, perfect days, streak | 4049 | 4173 | 124 |
-| Committed | Steps and calories | 5309 | 5421 | 112 |
+| Steadfast | Duties, perfect days, streak | 5268 | 5286 | 18 |
+| Steadfast | Steps and calories | 5981 | 5953 | -28 |
+| Steadfast | Flawless weeks | 0 | 26 | 26 |
+| Steadfast | Momentum | 2897 | 2230 | -667 |
+| Steadfast | Contracts | 4945 | 4481 | -464 |
+| Steadfast, long plateau | Duties, perfect days, streak | 5268 | 5287 | 19 |
+| Steadfast, long plateau | Steps and calories | 5981 | 5955 | -26 |
+| Steadfast, long plateau | Flawless weeks | 0 | 31 | 31 |
+| Steadfast, long plateau | Momentum | 1745 | 1890 | 145 |
+| Steadfast, long plateau | Contracts | 4945 | 4530 | -415 |
+| Committed | Duties, perfect days, streak | 4049 | 4171 | 122 |
+| Committed | Steps and calories | 5309 | 5414 | 105 |
 | Committed | Flawless weeks | 0 | 0 | 0 |
-| Committed | Momentum | 2173 | 1938 | -235 |
-| Committed | Contracts | 3936 | 2099 | -1837 |
-| Wavering | Duties, perfect days, streak | 3149 | 3246 | 97 |
-| Wavering | Steps and calories | 4368 | 4593 | 225 |
+| Committed | Momentum | 2173 | 1972 | -201 |
+| Committed | Contracts | 3936 | 3719 | -217 |
+| Wavering | Duties, perfect days, streak | 3149 | 3236 | 87 |
+| Wavering | Steps and calories | 4368 | 4566 | 198 |
 | Wavering | Flawless weeks | 0 | 0 | 0 |
-| Wavering | Momentum | 1448 | 1365 | -83 |
-| Wavering | Contracts | 2523 | 1188 | -1335 |
+| Wavering | Momentum | 1448 | 1397 | -52 |
+| Wavering | Contracts | 2523 | 2486 | -36 |
 
 The largest difference, profile by profile. None of these is changed here (D-02):
 
-- **Steadfast:** contracts (-1134 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
-- **Steadfast, long plateau:** contracts (-1182 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
-- **Committed:** contracts (-1837 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
-- **Wavering:** contracts (-1335 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
+- **Steadfast:** momentum (-667 over 48 weeks), so the formula responsible is Momentum `M = max(Mw, Mf)` (Ch 5): the book’s estimate takes full Momentum every week, while the profile’s weight carries ±1.5 lb of noise and a 3-week plateau every 12 weeks.
+- **Steadfast, long plateau:** contracts (-415 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
+- **Committed:** contracts (-217 over 48 weeks), so the formula responsible is the contract payout `10 × days × L × f(Q)` (Ch 4): the player’s `L` comes from the longest contract its castle and tiers unlock, which the book’s estimate takes from the benchmark’s schedule.
+- **Wavering:** steps and calories (198 over 48 weeks), so the formula responsible is the weekly steps and calories terms (Ch 5).
 
 *The book's Momentum is what is left of its total once the other terms are taken out (full Momentum is 60 a week, so 2,880 over 48 weeks).*
 
 | Profile (income variant) | First contract of 7 days or more (book: week 3) | 14 days or more (book: week 10) | 30 days (book: week 21) |
 | --- | --- | --- | --- |
-| Steadfast | 8 (100% ever) | 9 (100% ever) | 38 (100% ever) |
-| Steadfast, long plateau | 8 (100% ever) | 9 (100% ever) | 34 (96% ever) |
-| Committed | 33 (100% ever) | 33 (100% ever) | 44 (60% ever) |
-| Wavering | 34 (28% ever) | 35 (28% ever) | – (0% ever) |
+| Steadfast | 2 (100% ever) | 8 (100% ever) | 33 (100% ever) |
+| Steadfast, long plateau | 2 (100% ever) | 8 (100% ever) | 29 (100% ever) |
+| Committed | 2 (100% ever) | 9 (100% ever) | 32 (100% ever) |
+| Wavering | 2 (100% ever) | 13 (100% ever) | 42 (32% ever) |
 
 `data/income_by_week.csv` has every week for every profile, with and without the bonuses, beside the benchmark.
 
@@ -127,26 +127,26 @@ The largest difference, profile by profile. None of these is changed here (D-02)
 
 | Profile | Rival | Conquered | Abdicated | Allied | Unresolved | Median week |
 | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | orc | 100% | 0% | 0% | 0% | 40 |
-| Perfect | goblin | 100% | 0% | 0% | 0% | 32 |
-| Perfect | dwarf | 100% | 0% | 0% | 0% | 48 |
-| Perfect | archmage | 100% | 0% | 0% | 0% | 23 |
-| Steadfast | orc | 99% | 0% | 0% | 1% | 41 |
-| Steadfast | goblin | 99% | 0% | 0% | 1% | 39 |
-| Steadfast | dwarf | 98% | 0% | 0% | 2% | 51 |
-| Steadfast | archmage | 100% | 0% | 0% | 0% | 31 |
-| Committed | orc | 54% | 0% | 0% | 46% | 55 |
-| Committed | goblin | 59% | 0% | 0% | 41% | 44 |
-| Committed | dwarf | 41% | 0% | 0% | 59% | 62 |
-| Committed | archmage | 61% | 0% | 0% | 39% | 47 |
-| Wavering | orc | 0% | 0% | 0% | 100% | 64 |
-| Wavering | goblin | 1% | 0% | 0% | 99% | 44 |
-| Wavering | dwarf | 0% | 0% | 0% | 100% | – |
-| Wavering | archmage | 1% | 0% | 0% | 99% | 49 |
-| Casual | orc | 0% | 0% | 0% | 100% | – |
-| Casual | goblin | 0% | 0% | 0% | 100% | – |
-| Casual | dwarf | 0% | 0% | 0% | 100% | – |
-| Casual | archmage | 0% | 0% | 0% | 100% | – |
+| Perfect | orc | 100% | 0% | 0% | 0% | 31 |
+| Perfect | goblin | 100% | 0% | 0% | 0% | 21 |
+| Perfect | dwarf | 100% | 0% | 0% | 0% | 38 |
+| Perfect | archmage | 100% | 0% | 0% | 0% | 21 |
+| Steadfast | orc | 100% | 0% | 0% | 0% | 38 |
+| Steadfast | goblin | 100% | 0% | 0% | 0% | 23 |
+| Steadfast | dwarf | 100% | 0% | 0% | 0% | 32 |
+| Steadfast | archmage | 100% | 0% | 0% | 0% | 30 |
+| Committed | orc | 100% | 0% | 0% | 0% | 40 |
+| Committed | goblin | 100% | 0% | 0% | 0% | 30 |
+| Committed | dwarf | 98% | 0% | 0% | 2% | 40 |
+| Committed | archmage | 100% | 0% | 0% | 0% | 32 |
+| Wavering | orc | 91% | 0% | 0% | 9% | 52 |
+| Wavering | goblin | 93% | 0% | 0% | 7% | 34 |
+| Wavering | dwarf | 73% | 0% | 0% | 27% | 62 |
+| Wavering | archmage | 91% | 0% | 0% | 9% | 47 |
+| Casual | orc | 27% | 0% | 0% | 73% | 60 |
+| Casual | goblin | 45% | 0% | 0% | 55% | 43 |
+| Casual | dwarf | 10% | 0% | 0% | 90% | 15 |
+| Casual | archmage | 32% | 0% | 0% | 68% | 62 |
 
 Smarter and push are in `data/resolutions.csv`.
 
@@ -154,21 +154,21 @@ Smarter and push are in `data/resolutions.csv`.
 
 | Profile | Holder | M1 | M2 | M3 | M4 | M6 | M8 | M10 | M12 | M14 | M16 | M18 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Steadfast | player | 11 | 18 | 41 | 45 | 65 | 87 | 89 | 89 | 89 | 89 | 89 |
-| Steadfast | orc | 6 | 6 | 6 | 6 | 6 | 3 | 3 | 0 | 0 | 0 | 0 |
-| Steadfast | goblin | 6 | 6 | 6 | 6 | 5 | 3 | 0 | 0 | 0 | 0 | 0 |
-| Steadfast | dwarf | 6 | 6 | 6 | 6 | 6 | 4 | 3 | 3 | 0 | 0 | 0 |
+| Steadfast | player | 26 | 42 | 46 | 54 | 64 | 78 | 89 | 89 | 89 | 89 | 89 |
+| Steadfast | orc | 6 | 6 | 7 | 7 | 7 | 5 | 0 | 0 | 0 | 0 | 0 |
+| Steadfast | goblin | 6 | 6 | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Steadfast | dwarf | 6 | 6 | 6 | 6 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Steadfast | archmage | 6 | 6 | 6 | 6 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
-| Committed | player | 11 | 11 | 11 | 11 | 11 | 18 | 38 | 47 | 72 | 89 | 89 |
-| Committed | orc | 6 | 6 | 6 | 6 | 11 | 16 | 15 | 14 | 6 | 3 | 0 |
-| Committed | goblin | 6 | 6 | 6 | 6 | 6 | 8 | 7 | 4 | 3 | 0 | 0 |
-| Committed | dwarf | 6 | 6 | 6 | 6 | 8 | 14 | 15 | 12 | 11 | 3 | 3 |
-| Committed | archmage | 6 | 6 | 6 | 6 | 6 | 7 | 7 | 6 | 6 | 0 | 0 |
-| Casual | player | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 | 11 |
-| Casual | orc | 6 | 6 | 6 | 6 | 11 | 17 | 21 | 22 | 22 | 22 | 22 |
-| Casual | goblin | 6 | 6 | 6 | 6 | 6 | 10 | 12 | 12 | 12 | 12 | 12 |
-| Casual | dwarf | 6 | 6 | 6 | 6 | 8 | 14 | 18 | 18 | 18 | 18 | 18 |
-| Casual | archmage | 6 | 6 | 6 | 6 | 6 | 6 | 8 | 8 | 8 | 8 | 8 |
+| Committed | player | 25 | 38 | 41 | 46 | 59 | 67 | 83 | 87 | 89 | 89 | 89 |
+| Committed | orc | 6 | 6 | 8 | 9 | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
+| Committed | goblin | 6 | 6 | 6 | 6 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Committed | dwarf | 6 | 6 | 6 | 6 | 6 | 5 | 5 | 0 | 0 | 0 | 0 |
+| Committed | archmage | 6 | 6 | 6 | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Casual | player | 21 | 27 | 31 | 36 | 36 | 43 | 46 | 47 | 47 | 46 | 45 |
+| Casual | orc | 6 | 6 | 9 | 11 | 13 | 11 | 11 | 11 | 10 | 8 | 8 |
+| Casual | goblin | 6 | 6 | 6 | 6 | 6 | 7 | 8 | 7 | 7 | 6 | 4 |
+| Casual | dwarf | 6 | 6 | 6 | 6 | 7 | 9 | 10 | 11 | 12 | 12 | 13 |
+| Casual | archmage | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 | 8 | 7 | 7 |
 
 Every profile and policy, month by month, is in `data/hexes_by_month.csv`.
 
@@ -176,47 +176,47 @@ Every profile and policy, month by month, is in `data/hexes_by_month.csv`.
 
 | Profile | greedy | smarter | push |
 | --- | --- | --- | --- |
-| Perfect | 2 (100%) | 2 (100%) | 1 (100%) |
-| Steadfast | 3 (100%) | 3 (100%) | 1 (100%) |
-| Steadfast, long plateau | 3 (100%) | 3 (100%) | 1 (100%) |
-| Committed | 9 (100%) | 9 (100%) | 2 (100%) |
-| Wavering | 12 (45%) | 9 (17%) | 2 (100%) |
-| Casual | – (0%) | – (0%) | 2 (100%) |
+| Perfect | 1 (100%) | 1 (100%) | 1 (100%) |
+| Steadfast | 1 (100%) | 1 (100%) | 1 (100%) |
+| Steadfast, long plateau | 1 (100%) | 1 (100%) | 1 (100%) |
+| Committed | 1 (100%) | 1 (100%) | 1 (100%) |
+| Wavering | 1 (100%) | 1 (100%) | 1 (100%) |
+| Casual | 1 (100%) | 1 (100%) | 1 (100%) |
 
-*Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. Until a player takes land, its purse can buy nothing but courtships of the villages in reach and, once Milestone 1 breaks, Armory items: no tier, castle tier or Crossing.*
+*Near the founding land, Tier II needs 1 Dominion in its own direction (the Hearth's two wild hexes give each building 1), the founding grant is 250, and a ring-2 den's garrison is 16.2 (D-14).*
 
 ### Border Campaigns, the first month, Grand Battles and Ascendancy (greedy)
 
 | Profile | Border Campaign hexes a campaign (book 2 to 6) | First-month assaults repulsed (target under 15%) of a campaign’s | Grand Battles a campaign | Herald warned (1.3×) | Ascendancy streak began | Ultimatum | Sieges |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | 0 [0–0] | 0% of 2.0 | 24.8 (5% lost) | 0% | 0% | 0% | 0 won, 0 lost |
-| Steadfast | 0 [0–0] | 9% of 2.2 | 25.3 (9% lost) | 4% | 0% | 0% | 0 won, 0 lost |
-| Steadfast, long plateau | 0 [0–0] | 9% of 2.2 | 24.5 (13% lost) | 4% | 1% | 0% | 0 won, 0 lost |
-| Committed | 0 [0–2] | 18% of 2.5 | 28.8 (32% lost) | 81% | 38% | 5% | 7 won, 0 lost |
-| Wavering | 1 [0–3] | 36% of 3.1 | 8.9 (94% lost) | 100% | 96% | 91% | 69 won, 208 lost |
-| Casual | 0 [0–2] | 56% of 4.3 | 7.0 (100% lost) | 100% | 100% | 100% | 0 won, 300 lost |
+| Perfect | 0 [0–0] | 0% of 19.4 | 20.2 (8% lost) | 0% | 0% | 0% | 0 won, 0 lost |
+| Steadfast | 0 [0–0] | 5% of 19.3 | 21.8 (12% lost) | 1% | 0% | 0% | 0 won, 0 lost |
+| Steadfast, long plateau | 0 [0–0] | 5% of 19.3 | 21.4 (12% lost) | 0% | 0% | 0% | 0 won, 0 lost |
+| Committed | 0 [0–0] | 9% of 19.3 | 23.5 (14% lost) | 8% | 1% | 0% | 0 won, 0 lost |
+| Wavering | 0 [0–0] | 15% of 18.5 | 26.0 (19% lost) | 74% | 35% | 8% | 21 won, 0 lost |
+| Casual | 0 [0–1] | 21% of 16.7 | 22.4 (31% lost) | 100% | 100% | 93% | 466 won, 22 lost |
 
 ### Grand Battles by trigger (greedy, per campaign)
 
 | Profile | capital | coalitionOffensive | event | gate | incursion | mythicHunt | siege | warhost |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | 4.00 | 3.41 | 2.02 | 4.00 | 7.10 | 1.54 | 0.00 | 2.77 |
-| Steadfast | 3.96 | 2.61 | 2.44 | 3.96 | 7.55 | 1.57 | 0.00 | 3.23 |
-| Steadfast, long plateau | 3.52 | 2.81 | 2.38 | 3.68 | 7.03 | 1.55 | 0.00 | 3.51 |
-| Committed | 2.15 | 4.04 | 2.83 | 2.48 | 10.69 | 0.76 | 0.02 | 5.84 |
-| Wavering | 0.03 | 0.41 | 2.01 | 0.03 | 0.14 | 0.01 | 0.92 | 5.34 |
-| Casual | 0.00 | 0.00 | 2.00 | 0.00 | 0.00 | 0.00 | 1.00 | 4.00 |
+| Perfect | 3.99 | 1.48 | 2.08 | 4.07 | 4.96 | 1.50 | 0.00 | 2.09 |
+| Steadfast | 4.01 | 1.72 | 2.20 | 4.14 | 5.24 | 1.86 | 0.00 | 2.65 |
+| Steadfast, long plateau | 3.95 | 1.68 | 2.16 | 4.14 | 5.02 | 1.76 | 0.00 | 2.66 |
+| Committed | 4.00 | 1.58 | 2.31 | 4.09 | 6.11 | 2.11 | 0.00 | 3.29 |
+| Wavering | 3.55 | 1.77 | 2.54 | 3.74 | 7.54 | 1.99 | 0.07 | 4.78 |
+| Casual | 1.14 | 1.70 | 2.56 | 1.59 | 6.34 | 1.00 | 1.63 | 6.39 |
 
 ### The income ratio by week (greedy, base rules, bonuses divided out)
 
 | Profile | W1 | W4 | W8 | W12 | W16 | W20 | W24 | W28 | W32 | W36 | W40 | W44 | W48 | W56 | W64 | W70 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | 0.86 | 1.54 | 1.42 | 1.93 | 2.00 | 3.08 | 2.70 | 2.74 | 1.11 | 1.07 | 1.08 | 1.08 | 0.31 | – | – | – |
-| Steadfast | 0.68 | 1.12 | 1.09 | 1.06 | 1.00 | 0.95 | 0.82 | 0.86 | 0.84 | 0.80 | 0.79 | 0.79 | 0.76 | 0.81 | 0.76 | 0.77 |
-| Steadfast, long plateau | 0.68 | 1.12 | 1.09 | 1.06 | 0.97 | 0.92 | 0.82 | 0.83 | 0.81 | 0.80 | 0.76 | 0.76 | 0.76 | 0.77 | 0.77 | 0.78 |
-| Committed | 0.60 | 0.97 | 0.98 | 0.85 | 0.88 | 0.87 | 0.76 | 0.79 | 0.77 | 0.72 | 0.71 | 0.70 | 0.69 | 0.72 | 0.70 | 0.72 |
-| Wavering | 0.43 | 0.76 | 0.74 | 0.63 | 0.68 | 0.67 | 0.55 | 0.59 | 0.60 | 0.55 | 0.57 | 0.58 | 0.51 | 0.61 | 0.57 | 0.64 |
-| Casual | 0.30 | 0.51 | 0.49 | 0.44 | 0.46 | 0.45 | 0.39 | 0.39 | 0.40 | 0.39 | 0.39 | – | – | – | – | – |
+| Perfect | 0.82 | 1.69 | 1.37 | 1.12 | 1.19 | 1.19 | 1.02 | 1.07 | 1.07 | 1.02 | 0.95 | 1.01 | 0.95 | 0.98 | 2.45 | 0.95 |
+| Steadfast | 0.65 | 1.25 | 1.60 | 1.34 | 0.94 | 0.89 | 0.77 | 0.79 | 0.78 | 0.76 | 0.75 | 0.75 | 0.71 | 0.78 | 0.29 | – |
+| Steadfast, long plateau | 0.65 | 1.25 | 1.60 | 1.34 | 0.91 | 0.85 | 0.77 | 0.76 | 0.75 | 0.76 | 0.71 | 0.71 | 0.69 | 0.70 | 0.71 | 0.71 |
+| Committed | 0.58 | 1.09 | 1.02 | 1.07 | 0.92 | 0.74 | 0.67 | 0.70 | 0.70 | 0.68 | 0.64 | 0.64 | 0.62 | 0.67 | 0.63 | 0.63 |
+| Wavering | 0.39 | 0.82 | 0.76 | 0.67 | 0.67 | 0.67 | 0.52 | 0.54 | 0.56 | 0.52 | 0.51 | 0.51 | 0.49 | 0.52 | 0.52 | 0.52 |
+| Casual | 0.26 | 0.53 | 0.53 | 0.43 | 0.47 | 0.47 | 0.40 | 0.39 | 0.40 | 0.37 | 0.36 | 0.36 | 0.34 | 0.35 | 0.37 | 0.37 |
 
 *Campaigns that already ended drop out of later weeks.*
 
@@ -224,24 +224,24 @@ Every profile and policy, month by month, is in `data/hexes_by_month.csv`.
 
 | Profile | bendTheKnee | castle | courtship | crossing | deal | elite | fortify | grandBattle | item | tier |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Perfect | 0 | 2500 | 3682 | 11086 | 0 | 1672 | 0 | 7 | 2993 | 10675 |
-| Steadfast | 0 | 2500 | 4280 | 11068 | 0 | 2320 | 0 | 6 | 3161 | 10184 |
-| Steadfast, long plateau | 0 | 2344 | 4369 | 10441 | 0 | 1124 | 0 | 6 | 2148 | 6462 |
-| Committed | 0 | 1728 | 5446 | 8214 | 0 | 1416 | 0 | 17 | 2557 | 6326 |
-| Wavering | 0 | 138 | 1403 | 751 | 0 | 468 | 0 | 0 | 789 | 473 |
-| Casual | 0 | 0 | 198 | 0 | 0 | 0 | 0 | 0 | 163 | 0 |
+| Perfect | 0 | 4355 | 4883 | 21000 | 0 | 1328 | 0 | 8 | 2686 | 14069 |
+| Steadfast | 0 | 2385 | 5468 | 18672 | 0 | 1372 | 0 | 13 | 2752 | 13779 |
+| Steadfast, long plateau | 0 | 2905 | 5600 | 19300 | 0 | 917 | 0 | 13 | 1701 | 12322 |
+| Committed | 0 | 2905 | 6264 | 19087 | 0 | 1216 | 0 | 14 | 2284 | 12618 |
+| Wavering | 0 | 3525 | 7756 | 19186 | 0 | 1102 | 0 | 16 | 1841 | 11750 |
+| Casual | 0 | 1644 | 7433 | 12361 | 0 | 0 | 0 | 24 | 588 | 7775 |
 
 ### How often each lever binds (greedy)
 
 | Profile | b: weeks behind the benchmark (first 48) | Payout start: contracts paying nothing | Host share: Grand Battles lost | Tier IV Dominion: campaigns held back by it | Ascendancy ratio: campaigns at or above it after week 36 | Garrisons (A-17): assaults repulsed |
 | --- | --- | --- | --- | --- | --- | --- |
-| Steadfast | 62% | 2% | 9% | 100% (4.5 weeks) | 0% | 5% |
-| Committed | 81% | 3% | 32% | 100% (20.7 weeks) | 38% | 7% |
-| Wavering | 100% | 7% | 94% | 16% (2.0 weeks) | 96% | 19% |
+| Steadfast | 64% | 0% | 12% | 6% (0.1 weeks) | 0% | 10% |
+| Committed | 69% | 1% | 14% | 19% (0.4 weeks) | 1% | 17% |
+| Wavering | 87% | 2% | 19% | 67% (4.8 weeks) | 35% | 23% |
 
 *The army cost and the rivals’ starting state (A-18) have no direct witness in a campaign; the sweeps below show what they do.*
 
-**Trophies (A-156):** a Steadfast greedy player's first trophy item arrives in week 2 (median; 80% interval 1–4).
+**Trophies (A-156):** a Steadfast greedy player's first trophy item arrives in week 2 (median; 80% interval 1–3).
 
 ## Sensitivity sweeps (greedy)
 
@@ -251,85 +251,85 @@ Each lever alone at −20%, −10%, +10% and +20% of its value, 30 campaigns per
 
 ### Benchmark consistency b by phase (72 / 78 / 82 / 86%) (Ch 15)
 
-| Profile | -20% (0.576/0.624/0.656/0.688) | -10% (0.648/0.702/0.738/0.774) | 0 | +10% (0.792/0.858/0.902/0.946) | +20% (0.864/0.936/0.984/1) |
+| Profile | -20% (0.6048/0.6552/0.6888/0.7224) | -10% (0.6804/0.7371/0.7749/0.8127) | 0 | +10% (0.8316/0.9009/0.9471/0.9933) | +20% (0.9072/0.9828/1/1) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 50 · 97% · 0% | 50 · 93% · 0% | 52 · 97% · 0% | 50 · 97% · 0% | 50 · 90% · 0% |
-| Committed | 67 · 60% · 0% | 66 · 53% · 0% | 63 · 43% · 0% | 64 · 30% · 0% | 61 · 30% · 3% |
+| Steadfast | 43 · 100% · 0% | 42 · 100% · 0% | 44 · 100% · 0% | 44 · 97% · 0% | 46 · 100% · 0% |
+| Committed | 47 · 97% · 0% | 46 · 100% · 0% | 49 · 100% · 0% | 49 · 97% · 0% | 52 · 87% · 0% |
 
 ### Army cost per power (the 10 in 10 × (1 + AV/150)) (Ch 15)
 
 | Profile | -20% (8) | -10% (9) | 0 | +10% (11) | +20% (12) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 49 · 90% · 0% | 55 · 100% · 0% | 52 · 97% · 0% | 49 · 100% · 0% | 52 · 100% · 0% |
-| Committed | 65 · 23% · 0% | 66 · 37% · 0% | 63 · 43% · 0% | 61 · 50% · 0% | 65 · 63% · 0% |
+| Steadfast | 43 · 90% · 0% | 45 · 97% · 0% | 44 · 100% · 0% | 43 · 100% · 0% | 42 · 100% · 0% |
+| Committed | 55 · 90% · 0% | 49 · 93% · 0% | 49 · 100% · 0% | 47 · 100% · 0% | 46 · 100% · 0% |
 
 ### Army cost scale (the 150 in 10 × (1 + AV/150)) (Ch 15)
 
 | Profile | -20% (120) | -10% (135) | 0 | +10% (165) | +20% (180) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 51 · 100% · 0% | 49 · 100% · 0% | 52 · 97% · 0% | 51 · 100% · 0% | 51 · 97% · 0% |
-| Committed | 64 · 60% · 0% | 63 · 50% · 0% | 63 · 43% · 0% | 62 · 43% · 0% | 63 · 43% · 0% |
+| Steadfast | 43 · 100% · 0% | 42 · 100% · 0% | 44 · 100% · 0% | 44 · 97% · 0% | 44 · 100% · 0% |
+| Committed | 47 · 97% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 90% · 0% | 49 · 97% · 0% |
 
 ### Ascendancy ratio (1.5×, 1.6× at Grace I+) (Ch 15)
 
 | Profile | -20% (1.2/1.28) | -10% (1.35/1.44) | 0 | +10% (1.65/1.76) | +20% (1.8/1.92) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 52 · 97% · 0% | 52 · 97% · 0% | 52 · 97% · 0% | 52 · 97% · 0% | 52 · 97% · 0% |
-| Committed | 63 · 43% · 7% | 63 · 43% · 0% | 63 · 43% · 0% | 63 · 43% · 0% | 63 · 43% · 0% |
+| Steadfast | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% |
+| Committed | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% |
 
 ### Host share of AV (60%; coalitions 50%, the Siege 70%) (Ch 15)
 
 | Profile | -20% (0.48/0.4/0.56) | -10% (0.54/0.45/0.63) | 0 | +10% (0.66/0.55/0.77) | +20% (0.72/0.6/0.84) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 52 · 100% · 0% | 51 · 100% · 0% | 52 · 97% · 0% | 54 · 97% · 0% | 51 · 97% · 0% |
-| Committed | 63 · 40% · 0% | 63 · 43% · 0% | 63 · 43% · 0% | 63 · 43% · 0% | 63 · 43% · 0% |
+| Steadfast | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 45 · 100% · 0% |
+| Committed | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 50 · 100% · 0% |
 
 ### Payout curve start (40%; the span is 1 − start, so f(100%) stays 1) (Ch 15)
 
 | Profile | -20% (0.32/0.68) | -10% (0.36/0.64) | 0 | +10% (0.44/0.56) | +20% (0.48/0.52) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 51 · 100% · 0% | 51 · 100% · 0% | 52 · 97% · 0% | 51 · 97% · 0% | 51 · 100% · 0% |
-| Committed | 63 · 43% · 0% | 62 · 37% · 0% | 63 · 43% · 0% | 62 · 37% · 0% | 62 · 27% · 0% |
+| Steadfast | 43 · 100% · 0% | 43 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 43 · 100% · 0% |
+| Committed | 49 · 97% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 50 · 100% · 0% | 49 · 93% · 0% |
 
 ### Tier IV Dominion (68; Tier V moves with it, since it needs at least IV’s) (Ch 15)
 
 | Profile | -20% (54/54) | -10% (61/61) | 0 | +10% (75/75) | +20% (82/82) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 52 · 97% · 0% | 52 · 97% · 0% | 52 · 97% · 0% | 51 · 97% · 0% | 50 · 97% · 0% |
-| Committed | 64 · 50% · 0% | 63 · 47% · 0% | 63 · 43% · 0% | 60 · 43% · 0% | 61 · 37% · 0% |
+| Steadfast | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% |
+| Committed | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 97% · 0% | 48 · 90% · 0% |
 
 ### Rival garrison multipliers (Orc 1.0, Goblin 0.9, Dwarf 1.3, Archmage 1.1) (A-17)
 
 | Profile | -20% (0.8/0.72/1.04/0.88) | -10% (0.9/0.81/1.17/0.99) | 0 | +10% (1.1/0.99/1.43/1.21) | +20% (1.2/1.08/1.56/1.32) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 54 · 100% · 0% | 54 · 100% · 0% | 52 · 97% · 0% | 49 · 97% · 0% | 49 · 100% · 0% |
-| Committed | 66 · 70% · 0% | 66 · 53% · 0% | 63 · 43% · 0% | 61 · 40% · 0% | 60 · 30% · 0% |
+| Steadfast | 43 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 43 · 100% · 0% | 43 · 97% · 0% |
+| Committed | 47 · 97% · 0% | 49 · 97% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 48 · 90% · 0% |
 
 ### Rival starting treasury and army (150 and about 40 power) (A-18)
 
 | Profile | -20% (120/32) | -10% (135/36) | 0 | +10% (165/44) | +20% (180/48) |
 | --- | --- | --- | --- | --- | --- |
-| Steadfast | 52 · 100% · 0% | 51 · 97% · 0% | 52 · 97% · 0% | 51 · 100% · 0% | 51 · 100% · 0% |
-| Committed | 62 · 30% · 0% | 62 · 33% · 0% | 63 · 43% · 0% | 63 · 47% · 0% | 62 · 47% · 0% |
+| Steadfast | 43 · 100% · 0% | 43 · 100% · 0% | 44 · 100% · 0% | 44 · 100% · 0% | 46 · 100% · 0% |
+| Committed | 49 · 87% · 0% | 49 · 93% · 0% | 49 · 100% · 0% | 49 · 100% · 0% | 49 · 93% · 0% |
 
 ## Proposed changes, ranked
 
-Each step of the sweeps is scored by how far Steadfast's and Committed's results sit outside their Ch 15 ranges (win week in units of 4 weeks, shares in units of 10 points), and ranked by how much closer it brings them than the base rules (base distance 4.92). They are one-lever-at-a-time suggestions for the owner (D-02), not a combined plan; the levers interact.
+Each step of the sweeps is scored by how far Steadfast's and Committed's results sit outside their Ch 15 ranges (win week in units of 4 weeks, shares in units of 10 points), and ranked by how much closer it brings them than the base rules (base distance 5.25). They are one-lever-at-a-time suggestions for the owner (D-02), not a combined plan; the levers interact.
 
-1. **Army cost scale (the 150 in 10 × (1 + AV/150)): lower it 20%** (to 120). Steadfast win week 52 → 51, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 64, win 43% → 60%, loss 0% → 0%. Distance 4.92 → 3.13.
-2. **Army cost per power (the 10 in 10 × (1 + AV/150)): raise it 10%** (to 11). Steadfast win week 52 → 49, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 61, win 43% → 50%, loss 0% → 0%. Distance 4.92 → 3.25.
-3. **Army cost scale (the 150 in 10 × (1 + AV/150)): lower it 10%** (to 135). Steadfast win week 52 → 49, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 63, win 43% → 50%, loss 0% → 0%. Distance 4.92 → 3.50.
-4. **Army cost per power (the 10 in 10 × (1 + AV/150)): raise it 20%** (to 12). Steadfast win week 52 → 52, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 65, win 43% → 63%, loss 0% → 0%. Distance 4.92 → 3.63.
-5. **Benchmark consistency b by phase (72 / 78 / 82 / 86%): lower it 20%** (to 0.576 / 0.624 / 0.656 / 0.688). Steadfast win week 52 → 50, win 97% → 97%, loss 0% → 0%; Committed win week 63 → 67, win 43% → 60%, loss 0% → 0%. Distance 4.92 → 3.63.
-6. **Rival starting treasury and army (150 and about 40 power): raise it 20%** (to 180 / 48). Steadfast win week 52 → 51, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 62, win 43% → 47%, loss 0% → 0%. Distance 4.92 → 4.08.
-7. **Benchmark consistency b by phase (72 / 78 / 82 / 86%): lower it 10%** (to 0.648 / 0.702 / 0.738 / 0.774). Steadfast win week 52 → 50, win 97% → 93%, loss 0% → 0%; Committed win week 63 → 66, win 43% → 53%, loss 0% → 0%. Distance 4.92 → 4.21.
-8. **Ascendancy ratio (1.5×, 1.6× at Grace I+): lower it 20%** (to 1.2 / 1.28). Steadfast win week 52 → 52, win 97% → 97%, loss 0% → 0%; Committed win week 63 → 63, win 43% → 43%, loss 0% → 7%. Distance 4.92 → 4.25.
-9. **Rival garrison multipliers (Orc 1.0, Goblin 0.9, Dwarf 1.3, Archmage 1.1): raise it 10%** (to 1.1 / 0.99 / 1.43 / 1.21). Steadfast win week 52 → 49, win 97% → 97%, loss 0% → 0%; Committed win week 63 → 61, win 43% → 40%, loss 0% → 0%. Distance 4.92 → 4.25.
-10. **Rival starting treasury and army (150 and about 40 power): raise it 10%** (to 165 / 44). Steadfast win week 52 → 51, win 97% → 100%, loss 0% → 0%; Committed win week 63 → 63, win 43% → 47%, loss 0% → 0%. Distance 4.92 → 4.33.
+1. **Benchmark consistency b by phase (72 / 78 / 82 / 86%): raise it 20%** (to 0.9072 / 0.9828 / 1 / 1). Steadfast win week 44 → 46, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 52, win 100% → 87%, loss 0% → 0%. Distance 5.25 → 3.17.
+2. **Rival starting treasury and army (150 and about 40 power): lower it 20%** (to 120 / 32). Steadfast win week 44 → 43, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 87%, loss 0% → 0%. Distance 5.25 → 4.17.
+3. **Army cost per power (the 10 in 10 × (1 + AV/150)): lower it 20%** (to 8). Steadfast win week 44 → 43, win 100% → 90%, loss 0% → 0%; Committed win week 49 → 55, win 100% → 90%, loss 0% → 0%. Distance 5.25 → 4.25.
+4. **Army cost scale (the 150 in 10 × (1 + AV/150)): raise it 10%** (to 165). Steadfast win week 44 → 44, win 100% → 97%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 90%, loss 0% → 0%. Distance 5.25 → 4.25.
+5. **Army cost per power (the 10 in 10 × (1 + AV/150)): lower it 10%** (to 9). Steadfast win week 44 → 45, win 100% → 97%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 93%, loss 0% → 0%. Distance 5.25 → 4.58.
+6. **Rival starting treasury and army (150 and about 40 power): raise it 20%** (to 180 / 48). Steadfast win week 44 → 46, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 93%, loss 0% → 0%. Distance 5.25 → 4.58.
+7. **Tier IV Dominion (68; Tier V moves with it, since it needs at least IV’s): raise it 20%** (to 82 / 82). Steadfast win week 44 → 44, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 48, win 100% → 90%, loss 0% → 0%. Distance 5.25 → 4.63.
+8. **Rival garrison multipliers (Orc 1.0, Goblin 0.9, Dwarf 1.3, Archmage 1.1): raise it 20%** (to 1.2 / 1.08 / 1.56 / 1.32). Steadfast win week 44 → 43, win 100% → 97%, loss 0% → 0%; Committed win week 49 → 48, win 100% → 90%, loss 0% → 0%. Distance 5.25 → 4.75.
+9. **Payout curve start (40%; the span is 1 − start, so f(100%) stays 1): raise it 20%** (to 0.48 / 0.52). Steadfast win week 44 → 43, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 93%, loss 0% → 0%. Distance 5.25 → 4.83.
+10. **Rival starting treasury and army (150 and about 40 power): lower it 10%** (to 135 / 36). Steadfast win week 44 → 43, win 100% → 100%, loss 0% → 0%; Committed win week 49 → 49, win 100% → 93%, loss 0% → 0%. Distance 5.25 → 4.83.
 
 ## The owner's decision list
 
-1. **The targets.** 7 of 20 target rows miss on the greedy policy: Perfect win, median week; Steadfast win, median week; Committed win, median week; Committed win within 70 weeks; Committed loss to ascendancy; Steadfast skill value: smarter vs greedy finishing time; Committed skill value: smarter vs greedy finishing time. Decide which to accept and which to tune toward.
+1. **The targets.** 12 of 20 target rows miss on the greedy policy: Perfect win within 70 weeks; Steadfast win, median week; Committed win, median week; Committed win within 70 weeks; Committed loss to ascendancy; Wavering win within 70 weeks; Wavering loss to ascendancy; Casual win, median week; Casual win within 70 weeks; Casual loss to ascendancy; Steadfast skill value: smarter vs greedy finishing time; Committed skill value: smarter vs greedy finishing time. Decide which to accept and which to tune toward.
 2. **The ranked proposals above:** approve, change or reject each (D-02: no value changes until you do).
 3. **The repeated push.** Compare the push column with greedy: it is the biggest single choice a player makes. Decide whether repulse wear (25% of the Assault until the week closes, `RULES.land.repulseWear`) should stay as strong, and whether Weary (−20% the next day) should also stop a company pushing on consecutive days.
 4. **The income check.** Where a row is outside ±3%, decide whether the book’s estimate or the engine’s formula is right; the term behind each gap is named under the income check.

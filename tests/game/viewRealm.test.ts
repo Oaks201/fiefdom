@@ -12,7 +12,8 @@ import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { ordersEstimate, ordersValidity, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { challenge } from '../../src/renderer/src/lib/game/grand'
 import { bidCheck, fortifyOffer, offerDeal, reclaimOffer } from '../../src/renderer/src/lib/game/land'
-import { buildMap, dominion, dominionSources } from '../../src/renderer/src/lib/game/map'
+import { holdingSources, holdings, pathTotals } from '../../src/renderer/src/lib/game/dominion'
+import { bandOf, buildMap, capitals, regionsOf } from '../../src/renderer/src/lib/game/map'
 import { shuffle } from '../../src/renderer/src/lib/game/rng'
 import { rosterDetail } from '../../src/renderer/src/lib/game/roster'
 import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
@@ -29,6 +30,7 @@ import {
   effectLines,
   hexLayout,
   hexPanel,
+  mapDecor,
   mapView,
   mapViewBox,
   panMap,
@@ -51,9 +53,9 @@ function midGame(seed: number): CampaignState {
   return driveCampaign({ seed, weeks: 16, habits: 'steady', policy: 'greedy' }).state
 }
 
-test('T15: no two of the 127 hex centers are closer than the hex width × 0.9; neighbors are one width apart', () => {
+test('T15, D-16: no two of the 321 hex centers are closer than the hex width × 0.9; neighbors are one width apart', () => {
   const { points } = hexLayout(realm().hexes)
-  assert.equal(points.length, 127)
+  assert.equal(points.length, 321)
   let least = Infinity
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) least = Math.min(least, Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y))
@@ -71,21 +73,25 @@ test('Ch 8: every Crossing perk says what it gives, a perk a later one replaces 
   assert.equal(perks.find((p) => p.id === 'guildCharters')?.replacedBy, undefined)
 })
 
-test('D-09: each hex asks for its region’s terrain, near or far, and the heartland and ruins keep the shared tiles', () => {
+test('D-09, D-16: each hex asks for its march’s terrain, near or far by band, a seam’s village the blend; the heartland and ruins keep the shared tiles', () => {
   const hexes = buildMap(7)
   const at = (id: string): HexState => hexes.find((h) => h.id === id)!
-  assert.equal(regionTerrainSlot(at('0,6')), 'hex.capital.dwarf') // Kaldor Deep
-  assert.equal(regionTerrainSlot(at('-5,5')), 'hex.gate.archmage') // Veilgate
-  assert.equal(regionTerrainSlot(at('1,-3')), 'hex.wilds.orc.near') // Ashfall, ring 3
-  assert.equal(regionTerrainSlot(at('2,-5')), 'hex.wilds.orc.far') // Scorchmoor, ring 5
-  assert.equal(regionTerrainSlot(at('5,0')), 'hex.lairMouth.thornwild') // Thornmaw
-  assert.equal(regionTerrainSlot(at('2,-4')), 'hex.village.orc-goblin') // Raiders’ Toll
-  assert.equal(regionTerrainSlot(at('-3,-3')), 'hex.battlefield.wyrmfells-orc') // Bonefield
+  const find = (pred: (h: HexState) => boolean): HexState => hexes.find(pred)!
+  const dwarfCapital = capitals(hexes).dwarf
+  assert.equal(regionTerrainSlot(at(dwarfCapital)), 'hex.capital.dwarf') // Kaldor Deep
+  assert.equal(regionTerrainSlot(find((h) => h.kind === 'gate' && h.march === 'archmage')), 'hex.gate.archmage') // Veilgate
+  assert.equal(regionTerrainSlot(find((h) => h.march === 'orc' && !h.seam && h.kind === 'between' && !h.village && bandOf(h) === 3)), 'hex.wilds.orc.near')
+  assert.equal(regionTerrainSlot(find((h) => h.march === 'orc' && h.kind === 'between' && !h.village && bandOf(h) === 5)), 'hex.wilds.orc.far')
+  assert.equal(regionTerrainSlot(find((h) => h.kind === 'lairMouth' && h.march === 'thornwild')), 'hex.lairMouth.thornwild')
+  assert.equal(regionTerrainSlot(find((h) => h.march === 'orc' && h.kind === 'road' && !h.village)), 'hex.road.orc')
+  const seamVillage = find((h) => h.seam !== undefined && h.village !== undefined)
+  assert.equal(regionTerrainSlot(seamVillage), `hex.village.${regionsOf(seamVillage).join('-')}`)
+  assert.equal(regionTerrainSlot(find((h) => h.seam !== undefined && !h.village)), undefined, 'a seam’s wilds keep the shared den')
   assert.equal(regionTerrainSlot(at('2,0')), undefined) // Elderbrook, in the heartland
-  assert.equal(regionTerrainSlot({ ...at('1,-3'), ruins: true }), undefined)
+  assert.equal(regionTerrainSlot({ ...at('0,-6'), ruins: true }), undefined)
   const view = mapView(realm())
-  assert.equal(view.find((h) => h.id === '0,6')?.regionSlot, 'hex.capital.dwarf')
-  assert.equal(view.find((h) => h.id === '0,6')?.slot, 'hex.capital')
+  assert.equal(view.find((h) => h.id === dwarfCapital)?.regionSlot, 'hex.capital.dwarf')
+  assert.equal(view.find((h) => h.id === dwarfCapital)?.slot, 'hex.capital')
   assert.equal(view.find((h) => h.id === '0,0')?.regionSlot, undefined)
 })
 
@@ -102,6 +108,8 @@ test('D-09: the art checklist lists every regional terrain the map can ask for, 
       if (slot) asked.add(slot)
     }
   }
+  // C-05: the battlefields are the empty board around the marches, drawn on screen only.
+  for (const d of mapDecor(realm())) if (d.regionSlot) asked.add(d.regionSlot)
   assert.equal(listed.length, 56)
   assert.deepEqual([...asked].sort(), [...listed].sort())
 })
@@ -237,15 +245,20 @@ test('T15: every action the hex panel offers matches the engine, for 200 seeded 
   assert.ok(checked >= 200, `${checked} actions checked`)
 })
 
-test('T15 gap 2: each building’s Dominion is the sum of its sources, hex by hex', () => {
+test('T15 gap 2, D-18: each building shows its path: Holdings the sum of its sources, hex by hex, and Dominion Renown + Holdings', () => {
   const state = midGame(5)
-  const totals = dominion(state.hexes, 'player')
-  for (const b of BUILDING_IDS) {
-    const sources = dominionSources(state.hexes, 'player', b)
-    assert.equal(sources.reduce((s, x) => s + x.value, 0), totals[b])
-  }
+  const held = holdings(state.hexes)
+  const totals = pathTotals(state)
   const view = buildingsView(state)
-  for (const b of view) assert.equal(b.dominion, totals[b.id])
+  for (const b of view) {
+    const rival = CODEX.rivals.find((r) => r.road === b.id)?.id as RivalId
+    const sources = holdingSources(state, rival)
+    assert.ok(Math.abs(sources.reduce((s, x) => s + x.value, 0) - held[rival]) < 1e-9, b.id)
+    assert.ok(Math.abs(b.path.holdings - held[rival]) < 1e-9, b.id)
+    assert.equal(b.dominion, totals[rival])
+    assert.equal(b.path.rival, rival)
+  }
+  assert.equal(BUILDING_IDS.length, view.length)
 })
 
 test('Ch 7: the buildings panel shows each next tier as the engine offers it, and what it gives', () => {
@@ -265,7 +278,7 @@ test('Ch 7: the buildings panel shows each next tier as the engine offers it, an
   assert.ok(rosterView(realm()).every((c) => c.power > 0 && c.source === 'building'))
 })
 
-test('Ch 7 / A-42: the next tier lists every requirement, met or not: Dominion, reputation, and at Tier V the rival and Milestone 6', () => {
+test('Ch 7 / A-42, R-27: the next tier lists every requirement, met or not: Dominion, reputation, and at Tier V Milestone 6', () => {
   const ready = withPurse(withDominion(realm(), 'barracks', 8), 160)
   const barracks = buildingsView(ready).find((b) => b.id === 'barracks')!
   assert.equal(barracks.next?.ok, true)
@@ -273,9 +286,9 @@ test('Ch 7 / A-42: the next tier lists every requirement, met or not: Dominion, 
   assert.equal(barracks.next?.company.name, 'Men-at-Arms')
   assert.equal(barracks.next?.company.power, 9)
   const top = buildingsView(withPurse(withBuildings(realm(), { foundry: 4 }), 5_000)).find((b) => b.id === 'foundry')!
-  assert.deepEqual(top.next?.requirements.map((r) => [r.code, r.met]), [['dominion', false], ['rivalUnresolved', false], ['milestone', false], ['reputation', true]])
+  assert.deepEqual(top.next?.requirements.map((r) => [r.code, r.met]), [['dominion', false], ['milestone', false], ['reputation', true]])
   assert.equal(top.next?.refusal?.code, 'dominion')
-  assert.match(top.next?.refusal?.label ?? '', /Dominion 68/)
+  assert.match(top.next?.refusal?.label ?? '', /Dominion 270/)
 })
 
 test('Ch 8: a Crossing’s perks say what they give, the walls-count-double perks included', () => {
@@ -299,11 +312,11 @@ test('T15: the map marks today’s threat, the assault target, and contested and
     hexes: state.hexes.map((h) => (h.id === mine[0].id ? { ...h, status: 'contested', statusUntil: addDays(today, 1) } : h.id === mine[1].id ? { ...h, status: 'scorched', statusUntil: addDays(today, 2) } : h))
   }
   const map = mapView(marked, today)
-  assert.equal(map.length, 127)
+  assert.equal(map.length, 321)
   assert.deepEqual([map.find((h) => h.id === mine[0].id)?.status, map.find((h) => h.id === mine[0].id)?.daysLeft], ['contested', 2])
   assert.deepEqual([map.find((h) => h.id === mine[1].id)?.status, map.find((h) => h.id === mine[1].id)?.daysLeft], ['scorched', 3])
   assert.ok(map.some((h) => h.threats?.length), 'today’s threat')
-  assert.ok(map.filter((h) => h.front).length === 18, 'the 18 battlefields carry their front')
+  assert.equal(mapDecor(marked).filter((h) => h.front).length, 4, 'each of the four fronts has its badge on the empty board (C-05)')
 })
 
 test('Ch 2 rule 2 / A-36: no more companies than the banners allow; read-only after the 04:00 lock; with no orders every company defends', () => {

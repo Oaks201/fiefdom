@@ -14,10 +14,10 @@ import { balance, post } from '../economy'
 import { realmEffects } from '../effects'
 import { milestoneUnlocks } from '../armory'
 import { CODEX } from '../codex'
-import { announceGrandBattle, type GrandRequest } from '../grand'
-import { dominionOf, hexIndex, touches } from '../map'
+import { announceGrandBattle, nextBattleId, type GrandRequest } from '../grand'
+import { hexIndex, hexWorth, pathShares, rivalOfRoad, touches } from '../map'
 import { refreshRoster } from '../roster'
-import { RULES, base } from '../rules'
+import { RULES } from '../rules'
 import { EventBuffer, hexOf, patchRival, replaceHex, toPlayer } from '../state'
 import { BUILDING_IDS, RIVAL_IDS, type BuildingId, type BuildingTier, type CampaignState, type Company, type FieldUnit, type GrandBattle, type HexState, type ISODate } from '../types'
 
@@ -33,10 +33,11 @@ const BARRACKS_DOMINION = 8 // rules-ok: dev scenario, the Barracks Tier II thre
 const BARRACKS_PURSE = 160 // rules-ok: dev scenario, enough for Tier II (150)
 const ARMY_PURSE = 300 // rules-ok: dev scenario
 const TRADE_RESPECT = 25 // rules-ok: dev scenario, the Goblin trades from 25
-const TRADE_PURSE = 600 // rules-ok: dev scenario, a ring-5 village from the Goblin costs 450
+const TRADE_PURSE = 600 // rules-ok: dev scenario, a band-5 village from the Goblin costs 450
 const COURT_PURSE = 300 // rules-ok: dev scenario
 const RICH_PURSE = 1_000 // rules-ok: dev scenario
-const MARCHES = 4 // rules-ok: dev scenario, ring 4 touches the rivals' Marches
+/** The ring just short of the rivals' land (D-16: they hold their march from depth 9). */
+const MARCHES = RULES.map.heartlandRings + RULES.map.rivalHeldFromDepth - 1
 const WILDWOOD = 3 // rules-ok: dev scenario, conquest attempts strike ring 3 and beyond
 const SCORCH_DAYS = 3 // rules-ok: dev scenario, a lost defense scorches for 3 days (Ch 10)
 // The Ch 11 worked exchange (E-03): Knights (21) and Crossbowmen (9) against a charging Brute (20).
@@ -66,16 +67,21 @@ function claimRoad(state: CampaignState, building: BuildingId, ring: number, tod
   return road(state, building, ring).reduce((s, h) => grant(s, h.id, today), state)
 }
 
-/** Neutral hexes touching the player's land, smallest Dominion for `building` first, until it reaches `target`. */
+/** What a hex gives the path of `building`'s rival in Holdings (D-18). */
+function gives(h: HexState, building: BuildingId): number {
+  return hexWorth(h) * (pathShares(h)[rivalOfRoad(building)] ?? 0)
+}
+
+/** Neutral hexes touching the player's land, the most Holdings on `building`'s path first, until it reaches `target`. */
 function growDominion(input: CampaignState, building: BuildingId, target: number, today: ISODate): CampaignState {
   let state = input
-  const have = (): number => state.hexes.filter((h) => h.owner === 'player').reduce((s, h) => s + (dominionOf(h)[building] ?? 0), 0)
+  const have = (): number => state.hexes.filter((h) => h.owner === 'player').reduce((s, h) => s + gives(h, building), 0)
   for (let guard = 0; guard < state.hexes.length && have() < target; guard++) {
     const byId = hexIndex(state.hexes)
     const need = target - have()
     const options = state.hexes
-      .filter((h) => h.owner === 'neutral' && !h.village && (dominionOf(h)[building] ?? 0) > 0 && touches(byId, h.id, 'player'))
-      .map((h) => ({ h, gives: dominionOf(h)[building] ?? 0 }))
+      .filter((h) => h.owner === 'neutral' && !h.village && gives(h, building) > 0 && touches(byId, h.id, 'player'))
+      .map((h) => ({ h, gives: gives(h, building) }))
       .sort((a, b) => Number(b.gives <= need) - Number(a.gives <= need) || b.gives - a.gives)
     if (options.length === 0) break
     state = grant(state, options[0].h.id, today)
@@ -153,7 +159,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
       state = replaceHex(state, { ...scorched, status: 'scorched', statusUntil: addDays(today, SCORCH_DAYS - 1) })
       state = replaceHex(state, { ...contested, status: 'contested', statusUntil: addDays(today, 1) })
       const combat = combatOf(state)
-      const entry = { hexId: contested.id, rival: 'orc' as const, strength: base(contested.ring), since: addDays(today, -1), until: addDays(today, 1) }
+      const entry = { hexId: contested.id, rival: 'orc' as const, strength: contested.strength, since: addDays(today, -1), until: addDays(today, 1) }
       return { ...state, combat: { ...combat, contested: [...combat.contested.filter((c) => c.hexId !== contested.id), entry] } }
     }
   },
@@ -234,7 +240,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
       ]
       const rest = realmEffects(state).orders.map((o) => o.id).filter((id) => id !== 'shieldwall')
       const battle: GrandBattle = {
-        id: `gb-${state.grandBattles.length + 1}`,
+        id: nextBattleId(state),
         trigger: 'warhost',
         hexId: borderHex(state).id,
         announcedOn: addDays(today, -2), // rules-ok: dev scenario, announced two days ago

@@ -6,8 +6,8 @@
 //   node scripts/check-assets.cjs --starter --strict   require one valid sample per art class
 //   node scripts/check-assets.cjs --write    also (re)write the manifest with every slot, keeping each `file`
 //
-// The slot inventory comes from the codex (companies, hybrids, hosts, elites, quarries, items,
-// events) plus Ch 17's fixed lists (hex terrains and overlays, 20 building tiers, 5 castle tiers,
+// The slot inventory comes from the codex (companies, hybrids, hosts, elites, quarries, the
+// skirmish foes, items, events) plus Ch 17's fixed lists (hex terrains and overlays, 20 building tiers, 5 castle tiers,
 // 12 rival portraits, 6 banners, 10 Milestone scenes, the big moments and the interface kit).
 // Every run rewrites docs/game/assets.md, the owner's checklist of every slot (task A2).
 //
@@ -116,6 +116,8 @@ function inventory() {
     add(`company.${id}.portrait`, 'portrait', `${name}: portrait`)
   }
   for (const e of elites.elites) add(`portrait.${e.id}`, 'portrait', `${e.name}: portrait`)
+  // D-12: the daily skirmishes' beasts and village militia, met on the battle field as tokens.
+  for (const f of read('skirmish.json').foes) for (const u of f.units) add(`company.${u.id}.token`, 'token', `${u.name}: token`)
   const seen = new Set()
   for (const q of read('mythics.json').quarries) {
     for (const u of q.roster) {

@@ -1,7 +1,7 @@
 import '../game/support/tokyo-tz'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { foundCampaign, borderCampaignWeeks, type FoundingInput } from '../../src/renderer/src/lib/game/campaign'
+import { foundCampaign, type FoundingInput } from '../../src/renderer/src/lib/game/campaign'
 import { addDays, campaignWeek, dayCloseInstant, daysInWeek1, isWeekCloseDay } from '../../src/renderer/src/lib/game/clock'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { CampaignError } from '../../src/renderer/src/lib/game/errors'
@@ -37,29 +37,22 @@ test('Founding at 2026-10-07 15:00 Chicago: first day Oct 8, week 1 is Oct 8 to 
   assert.deepEqual(at.state.settledThrough, { day: '2026-10-11', week: 1 })
 })
 
-test('Founding: the purse holds the founding grant of 100 and ruleVersion is 2.0.0', () => {
+test('Founding: the purse holds the founding grant of 250 (D-14) and ruleVersion is 3.1.0', () => {
   const state = foundCampaign(input(), FOUNDED_AT)
-  assert.equal(balance(state.purse), 100)
+  assert.equal(balance(state.purse), 250)
   assert.equal(state.purse.events.length, 1)
   assert.equal(state.purse.events[0].kind, 'earn')
   assert.equal(state.purse.events[0].source, 'founding')
-  assert.equal(state.campaign.ruleVersion, '2.0.0')
+  assert.equal(state.campaign.ruleVersion, '3.1.0')
   assert.equal(state.campaign.ruleVersion, RULES.ruleVersion)
 })
 
-test('Founding: the hidden Border Campaign weeks fall within ±1 of 10, 18, 26, 34 and so on (Ch 12)', () => {
-  for (let seed = 0; seed < 50; seed++) {
-    const weeks = foundCampaign(input({ seed }), FOUNDED_AT).settlement.borderCampaignWeeks
-    assert.ok(weeks.length >= 12, `seed ${seed}: ${weeks.length} weeks scheduled`)
-    weeks.forEach((week, k) => assert.ok(Math.abs(week - (10 + 8 * k)) <= 1, `seed ${seed}: entry ${k} is week ${week}`))
-  }
-  // Over many seeds every shift (−1, 0, +1) occurs, so the draw is real.
-  const shifts = new Set<number>()
-  for (let seed = 0; seed < 50; seed++) shifts.add(foundCampaign(input({ seed }), FOUNDED_AT).settlement.borderCampaignWeeks[0] - 10)
-  assert.deepEqual([...shifts].sort(), [-1, 0, 1])
-  // Extending the schedule later gives the same weeks as fixing them all at once.
-  const short = borderCampaignWeeks(7, START, 40)
-  assert.deepEqual(borderCampaignWeeks(7, START, 200).slice(0, short.length), short)
+test('Founding (R-26, D-16, D-18, D-19): no Border Campaign weeks; every path at no Renown or rank; every march unprepared', () => {
+  const state = foundCampaign(input(), FOUNDED_AT)
+  assert.deepEqual(state.settlement.borderCampaignWeeks, [])
+  assert.deepEqual(state.paths?.byRival, { orc: { renown: 0, rank: 0 }, goblin: { renown: 0, rank: 0 }, dwarf: { renown: 0, rank: 0 }, archmage: { renown: 0, rank: 0 } })
+  assert.equal(state.paths?.logRead, 0)
+  assert.deepEqual(state.marches?.preparation, { orc: 0, goblin: 0, dwarf: 0, archmage: 0 })
 })
 
 test('A-07: founding is refused while a legacy contract is open, upcoming or awaiting its weigh-in', () => {
@@ -101,7 +94,7 @@ test('Founding refuses an unsafe goal, a bad Charter and an unknown time zone', 
 
 test('Founding builds the map, Tier I buildings, Castle I, four Tier I companies, Milestones and Grace 0', () => {
   const state = foundCampaign(input(), FOUNDED_AT)
-  assert.equal(state.hexes.length, 127)
+  assert.equal(state.hexes.length, 321)
   assert.deepEqual(state.buildings, { barracks: 1, merchantHall: 1, mageTower: 1, foundry: 1 })
   assert.equal(state.castleTier, 1)
   assert.deepEqual(state.crossings, {})

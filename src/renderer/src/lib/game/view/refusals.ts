@@ -12,6 +12,7 @@ import { numeral } from '../effects'
 import type { GrandRefusal } from '../grand'
 import type { LandRefusal } from '../land'
 import { hexName } from '../map'
+import type { SkirmishRefusal } from '../skirmish'
 import type { RivalId } from '../types'
 
 const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
@@ -96,8 +97,6 @@ export function requirementLabel(r: Refusal): string {
       return `Dominion ${amount(r.needed)} (${amount(r.have)} now)`
     case 'reputation':
       return `${amount(r.needed)} reputation`
-    case 'rivalUnresolved':
-      return `${rival(r.rival)} resolved`
     case 'milestone':
       return `Milestone ${r.index} broken`
     case 'tierSum':
@@ -133,6 +132,10 @@ export function orderProblemLabel(p: OrderProblem): string {
       return `${hexName(p.hexId)} is taken only in a Grand Battle.`
     case 'notClaimable':
       return `${hexName(p.hexId)} cannot be assaulted: it must touch your land, and rings 0 to 2 never fall to anyone else.`
+    case 'barredByStronghold':
+      return `${hexName(p.stronghold)} still stands: no assault reaches deeper into its march until it falls.`
+    case 'grandBattlePending':
+      return `A Grand Battle is announced at ${hexName(p.hexId)}; no assault goes there until it is fought.`
     case 'duplicateTarget':
       return `${hexName(p.hexId)} is already a target.`
     case 'noCompanies':
@@ -147,6 +150,8 @@ export function orderProblemLabel(p: OrderProblem): string {
       return `${rival(p.rival)} sends an envoy only at Respect 50.`
     case 'cannotAfford':
       return `Hired help costs ${amount(p.needed)} a battle; the purse holds ${purse(p.have)}.`
+    case 'ordersLocked':
+      return 'Today’s battles have begun, so the orders hold until the day’s close.'
   }
 }
 
@@ -160,7 +165,9 @@ export function grandRefusalLabel(code: GrandRefusal): string {
     case 'notTouching':
       return 'It must touch your land.'
     case 'notGrandBattleHex':
-      return 'Only a Gate, a capital or a Lair Mouth is taken in a Grand Battle.'
+      return 'Only a Gate, a capital, a Lair Mouth or a stronghold is fought for in a Grand Battle.'
+    case 'barred':
+      return 'A stronghold nearer the heartland still stands in this march; it must fall first.'
     case 'alreadyAnnounced':
       return 'A battle there is already announced.'
     case 'retryTooSoon':
@@ -175,6 +182,28 @@ export function grandRefusalLabel(code: GrandRefusal): string {
       return 'That rival is already resolved.'
     case 'noHost':
       return 'No host stands there to fight.'
+    default:
+      return 'It cannot be done now.'
+  }
+}
+
+/** Why a daily skirmish action is refused (D-12). */
+export function skirmishRefusalLabel(code: SkirmishRefusal | undefined): string {
+  switch (code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'notToday':
+      return 'Only today’s battles can be fought; this day is closed.'
+    case 'started':
+      return 'Today’s battles have already begun.'
+    case 'noFights':
+      return 'No battle can be led today.'
+    case 'unknownFight':
+      return 'That battle is not on today’s roll.'
+    case 'fought':
+      return 'That battle is already fought.'
+    case 'reputation':
+      return 'The purse cannot pay for another hired company.'
     default:
       return 'It cannot be done now.'
   }

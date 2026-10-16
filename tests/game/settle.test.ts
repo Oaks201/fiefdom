@@ -20,6 +20,7 @@ import {
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
 import type { Ledger } from '../../src/renderer/src/lib/types'
 import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, steadyLedger, withDay } from './fixtures/ledgers'
+import { near } from './support/assert'
 
 function found(ledger: Ledger = emptyLedger(), over: Partial<FoundingInput> = {}): CampaignState {
   return foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger, ...over }, FOUNDED_AT)
@@ -42,14 +43,14 @@ const LEDGER = steadyLedger('2026-09-10', 70)
 const COMBAT_EVENTS: string[] = ['defense', 'assault', 'calledOff', 'trophy', 'respect', 'hexTransfer']
 const COMBAT_PURSE: string[] = ['spoils', 'tribute']
 
-test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order', () => {
+test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with Patch 2’s appended (D-18, D-19)', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
-    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd']
+    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle']
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],
-    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule']
+    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule', 'marches', 'chronicle']
   )
   assert.deepEqual(Object.keys(DAY_PHASES).sort(), [...DAY_PHASE_NAMES].sort())
   assert.deepEqual(Object.keys(WEEK_PHASES).sort(), [...WEEK_PHASE_NAMES].sort())
@@ -210,7 +211,7 @@ test('A ledger with no data settles without throwing and pays no behavior income
   // Daily battles (T08) still pay spoils and take tribute; nothing else moves the purse.
   const behavior = state.purse.events.filter((e) => !COMBAT_PURSE.includes(e.kind))
   assert.deepEqual(behavior.map((e) => e.source), ['founding'])
-  assert.equal(balance({ events: behavior }), 100)
+  assert.equal(balance({ events: behavior }), 250)
   assert.deepEqual(state.weight.weeks.map((w) => [w.week, w.momentum]), [[1, 0], [2, 0], [3, 0], [4, 0]])
   assert.deepEqual(events.filter((e) => e.kind === 'weekClosed').map((e) => e.kind === 'weekClosed' && [e.week, e.income]), [
     [1, 0],
@@ -255,7 +256,7 @@ test('Contracts: the running contract is scored each day, paid on its last day, 
   assert.deepEqual(pays, ['pledge', 'earn', 'return'])
 })
 
-test('Timers expire at the close of their last day; garrison damage resets at the week close', () => {
+test('Timers expire at the close of their last day; siege wear stays past the week close, losing 10% each day the hex is left alone (D-22, X-07)', () => {
   let state = found(LEDGER)
   const hex = state.hexes.find((h) => h.ring === 3) as CampaignState['hexes'][number]
   state = {
@@ -272,10 +273,12 @@ test('Timers expire at the close of their last day; garrison damage resets at th
   const after = day2.hexes.find((h) => h.id === hex.id)
   assert.equal(after?.status, 'held')
   assert.equal(after?.statusUntil, undefined)
-  assert.equal(after?.garrisonDamage, 7)
+  // Two closes with no assault on it (10-08 and 10-09): 7 × 0.9².
+  near(after?.garrisonDamage ?? 0, 7 * 0.9 ** 2)
   assert.equal(day2.deals.length, 0)
+  // Through the week close of 10-11 (two more closes): still there, 7 × 0.9⁴.
   const week = settle(day2, LEDGER, chicago('2026-10-12')).state
-  assert.equal(week.hexes.find((h) => h.id === hex.id)?.garrisonDamage, 0)
+  near(week.hexes.find((h) => h.id === hex.id)?.garrisonDamage ?? 0, 7 * 0.9 ** 4)
 })
 
 test('Week close: weight records the week, Momentum pays, and steady weigh-ins earn their Momentum', () => {

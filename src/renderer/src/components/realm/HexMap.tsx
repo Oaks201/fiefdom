@@ -9,7 +9,10 @@ import {
   GiFlame,
   GiHornInternal,
   GiQuill,
+  GiReturnArrow,
   GiShield,
+  GiSiegeTower,
+  GiStoneTower,
   GiTorch,
   GiVillage
 } from 'react-icons/gi'
@@ -19,8 +22,10 @@ import {
   HEX_WIDTH,
   clampMapZoom,
   hexLayout,
+  mapDecor,
   mapView,
   mapViewBox,
+  marchName,
   ownerName,
   panMap,
   tiltedBoard,
@@ -88,7 +93,23 @@ function Mark({ icon: Icon, x, y, size = 0.56, color }: { icon: IconType; x: num
   )
 }
 
-const THREAT_WORDS: Record<string, string> = { beasts: 'beasts', mythic: 'a mythic', raid: 'raid', conquest: 'conquest attempt' }
+const THREAT_WORDS: Record<string, string> = { beasts: 'beasts', mythic: 'a mythic', raid: 'raid', conquest: 'conquest attempt', counterattack: 'counterattack' }
+
+/** The siege bar's place and size on a hex (hex sides): between the lower marks and the lower point, clear of the selection outline. */
+const SIEGE_BAR = { x: -0.24, y: 0.61, width: 0.48, height: 0.15 }
+const SIEGE_COLOR = '#b8322a'
+const SIEGE_FILL = '#ee4a35'
+
+/** A siege's progress above the hex's lower point (D-22): how much of the garrison it wears is worn away. */
+function SiegeBar({ progress }: { progress: number }): React.JSX.Element {
+  const b = SIEGE_BAR
+  return (
+    <g className="hex__siege">
+      <rect x={b.x} y={b.y} width={b.width} height={b.height} rx={b.height / 2} fill="rgba(40, 28, 18, 0.8)" stroke="#fbf2dc" strokeWidth={0.035} />
+      <rect x={b.x} y={b.y} width={Math.max(b.height, b.width * progress)} height={b.height} rx={b.height / 2} fill={SIEGE_FILL} />
+    </g>
+  )
+}
 
 /**
  * One hex: terrain, its owner's border, status overlays and the day's marks, set on the tilted
@@ -100,7 +121,7 @@ const HexCell = memo(
     const unowned = hex.kind === 'battlefield' || hex.kind === 'lair'
     const threat = hex.threats?.[0]
     return (
-      <g className={`hex hex--${hex.kind} hex--${hex.owner}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.id}>
+      <g className={`hex hex--${hex.kind} hex--${hex.owner}${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
         <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
         {hex.status === 'contested' && <GameArt slot="hex.overlay.contested" place={TERRAIN} />}
         {hex.status === 'scorched' && <GameArt slot="hex.overlay.scorched" place={TERRAIN} />}
@@ -115,7 +136,7 @@ const HexCell = memo(
           />
         )}
         <polygon className="hex__edge" points={OUTLINE} fill="none" />
-        <polygon className="hex__hit" points={OUTLINE} />
+        {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
         {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={-0.1} size={0.7} color={color.edge} />}
         {hex.mythic && <Mark icon={GiDragonHead} x={0} y={-0.1} size={0.62} color="#4b3e54" />}
         {hex.village && hex.kind !== 'capital' && <Mark icon={GiVillage} x={-0.42} y={-0.4} size={0.44} color="#6b4e0c" />}
@@ -135,8 +156,10 @@ const HexCell = memo(
           </text>
         )}
         {threat && <Mark icon={GiCrossedSwords} x={-0.42} y={0.38} size={0.46} color={threat.band ? BAND_COLORS[threat.band] : '#8b1e1a'} />}
-        {hex.target && <Mark icon={GiArcheryTarget} x={0.42} y={0.38} size={0.46} color="#b8322a" />}
+        {hex.target && <Mark icon={hex.siege?.standing ? GiSiegeTower : GiArcheryTarget} x={0.42} y={0.38} size={0.46} color={SIEGE_COLOR} />}
         {hex.courting && <Mark icon={GiQuill} x={0} y={-0.62} size={0.4} color="#2d57a6" />}
+        {hex.fallback && <Mark icon={GiReturnArrow} x={0} y={0.3} size={0.4} color="#7a2e14" />}
+        {hex.stronghold && <Mark icon={GiStoneTower} x={0} y={-0.6} size={0.46} color={hex.owner === 'player' ? OWNER_COLORS.player.edge : '#4d4234'} />}
         {hex.battle && <Mark icon={GiHornInternal} x={0} y={0.05} size={0.56} color="#d98424" />}
         {hex.front && (
           <g className={`hex__front hex__front--${hex.front.state}`}>
@@ -147,6 +170,7 @@ const HexCell = memo(
             {hex.front.state === 'war' && <GiCrossedSwords x={-0.2} y={-0.75} size={0.4} color="#8b1e1a" aria-hidden="true" />}
           </g>
         )}
+        {hex.siege && hex.siege.progress > 0 && <SiegeBar progress={hex.siege.progress} />}
       </g>
     )
   },
@@ -165,7 +189,14 @@ function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Elemen
   const { id, x, y } = useMapHover()
   const hex = id ? hexes.get(id) : undefined
   if (!hex) return null
-  const parts = [hex.label, hex.kind === 'battlefield' ? `${hex.front?.front ?? ''} front`.trim() : ownerName(hex.owner)]
+  const parts = [hex.label, ownerName(hex.owner)]
+  if (hex.march) parts.push(`${marchName(hex.march)}, depth ${hex.depth}`)
+  if (hex.ruling) parts.push(`seam: ${marchName(hex.ruling)} today`)
+  if (hex.preparation) parts.push(`preparation ${hex.preparation}`)
+  if (hex.stronghold) parts.push('stronghold')
+  if (hex.fallback) parts.push(`fallen back here: +${Math.round(hex.fallback.strength)}, ${hex.fallback.daysLeft}d`)
+  if (hex.barredBy) parts.push(`barred by ${hex.barredBy}`)
+  if (hex.siege) parts.push(`${hex.siege.standing ? 'under siege, ' : ''}${Math.round(hex.siege.progress * 100)}% worn`)
   if (hex.village) parts.push('village')
   if (hex.status !== 'held') parts.push(`${hex.status}${hex.daysLeft !== undefined ? `, ${hex.daysLeft}d` : ''}`)
   if (hex.threats?.length) parts.push(hex.threats.map((t) => `${t.rival ? `${rivalName(t.rival)} ` : ''}${THREAT_WORDS[t.kind]}${t.band ? ` (${t.band})` : ''}`).join(', '))
@@ -185,7 +216,8 @@ export interface HexMapProps {
 }
 
 /**
- * The realm map (Ch 3, Ch 17): 127 pointy-top hexes on a tilted, painted board. Each hex draws its
+ * The realm map (Ch 3, Ch 17, D-16): the heartland, the four rival marches and the two lair wedges on
+ * a tilted, painted board, with the empty board around them drawn as battlefields. Each hex draws its
  * terrain through `<GameArt>`, a thick border in its owner's banner color, villages, fortification,
  * contested torches and scorched ground with days left, today's threats, the assault target, open
  * courtships, Grand Battles and the Rim fronts' war tracks. One set of pointer handlers serves the
@@ -202,13 +234,14 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
   const press = useRef<{ pointer: number; x: number; y: number; from: FramePoint; start: MapZoom; dragging: boolean } | null>(null)
   /** The last press was a drag, so the click that ends it chooses nothing. */
   const dragged = useRef(false)
-  const layout = useMemo(() => hexLayout(campaign.hexes), [campaign.hexes])
+  const decor = useMemo(() => mapDecor(campaign), [campaign])
+  const layout = useMemo(() => hexLayout([...decor, ...campaign.hexes]), [decor, campaign.hexes])
   /** Each hex's place on the tilted board, and the board's extent: what the zoom frames. */
   const { places, box } = useMemo(() => {
     const tilted = tiltedBoard(layout.points, layout, TILT, DISTANCE, MARGIN)
     return { places: new Map(layout.points.map((p) => [p.id, `matrix(${tilted.place(p.x, p.y).join(' ')})`])), box: tilted.box }
   }, [layout])
-  const cells = useMemo(() => mapView(campaign, today).map((hex) => ({ hex, sig: JSON.stringify(hex) })), [campaign, today])
+  const cells = useMemo(() => [...decor, ...mapView(campaign, today)].map((hex) => ({ hex, sig: JSON.stringify(hex) })), [decor, campaign, today])
   const byId = useMemo(() => new Map(cells.map((c) => [c.hex.id, c.hex])), [cells])
   const stored = useMapZoom((s) => s.view)
   const view = stored ? clampMapZoom(stored, box, MAX_ZOOM) : wholeMap(box)
@@ -341,6 +374,9 @@ export function MapLegend(): React.JSX.Element {
     { icon: GiShield, label: 'Fortified' },
     { icon: GiCrossedSwords, label: 'Threat today' },
     { icon: GiArcheryTarget, label: 'Assault target' },
+    { icon: GiSiegeTower, label: 'Under siege (the bar: how worn)' },
+    { icon: GiStoneTower, label: 'Stronghold (bars its march beyond)' },
+    { icon: GiReturnArrow, label: 'A beaten garrison fell back here' },
     { icon: GiTorch, label: 'Contested' },
     { icon: GiFlame, label: 'Scorched' },
     { icon: GiQuill, label: 'Courting' },

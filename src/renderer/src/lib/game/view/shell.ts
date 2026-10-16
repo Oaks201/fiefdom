@@ -1,13 +1,14 @@
 /**
- * View models for the campaign shell (T14): which pages show, the top bar, the Herald's dawn
- * tidings and the Homecoming after an absence. Pure; components only render what these return.
+ * View models for the campaign shell (T14): which pages show, the top bar, when the week closes,
+ * the Herald's dawn tidings and the Homecoming after an absence. Pure; components only render what these return.
  *
  * Hidden stays hidden (Convention 6): nothing here carries the benchmark, a rival's income,
  * Steadiness, or (unrevealed) a rival's treasury, army or a threat's exact strength. Every line of
  * narrative is a catalog slot with plain facts (`t(id, facts)`).
  */
 import { CODEX } from '../codex'
-import { addDays } from '../clock'
+import { numeral } from '../effects'
+import { addDays, diffDays, weekCloseDay } from '../clock'
 import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
@@ -19,15 +20,19 @@ import { realmConsistencyOn, type SettleSummary } from '../settle'
 import { isPlayable, openDayOf, weekOn } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId } from '../types'
+import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type WeekStartsOn } from '../types'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
 export type PageId = 'chronicle' | 'contract' | 'archive' | 'realm' | 'diplomacy' | 'armory'
 
-/** The pages in tab order (Ctrl+1 to 6). Without a campaign the app is the ledger alone. */
-export function pagesFor(campaign: CampaignState | null): PageId[] {
-  return campaign ? ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory'] : ['chronicle', 'contract', 'archive']
+/**
+ * The pages in tab order (Ctrl+1 to 6). Without a campaign the app is the ledger alone; with one
+ * founded under older rules, the Realm page stays to offer the re-founding (D-21, section 7.1).
+ */
+export function pagesFor(campaign: CampaignState | null, outdated = false): PageId[] {
+  if (campaign) return ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory']
+  return outdated ? ['chronicle', 'contract', 'archive', 'realm'] : ['chronicle', 'contract', 'archive']
 }
 
 // ── Names ────────────────────────────────────────────────────────────────────
@@ -81,6 +86,25 @@ export function topBarView(state: CampaignState, today: ISODate = openDayOf(stat
   }
 }
 
+// ── The week close ───────────────────────────────────────────────────────────
+
+export interface WeekCloseView {
+  /** The week's last day; its close is the week close (A-04). */
+  lastDay: ISODate
+  /** The date on whose morning, at `time`, the week closes. */
+  closesOn: ISODate
+  /** The close's wall-clock time, "04:00". */
+  time: string
+  /** Days left in the week, today included: 1 when the week closes tonight. */
+  daysLeft: number
+}
+
+/** When the week holding `today` closes: at 04:00 on the morning after its last day (A-04). */
+export function weekCloseView(weekStartsOn: WeekStartsOn, today: ISODate): WeekCloseView {
+  const lastDay = weekCloseDay(today, weekStartsOn)
+  return { lastDay, closesOn: addDays(lastDay, 1), time: `${String(RULES.clock.dayCloseHour).padStart(2, '0')}:00`, daysLeft: diffDays(today, lastDay) + 1 }
+}
+
 // ── The Herald ───────────────────────────────────────────────────────────────
 
 export type HeraldSection = 'threat' | 'warning' | 'rumor' | 'result' | 'world'
@@ -93,6 +117,8 @@ export interface HeraldLine {
   /** A hex the line points at, for the map. */
   hexId?: string
   rival?: RivalId
+  /** A battle the player led on the battle map (D-12). */
+  led?: boolean
 }
 
 export interface HeraldView {
@@ -102,14 +128,17 @@ export interface HeraldView {
   lines: HeraldLine[]
 }
 
-function line(section: HeraldSection, textId: string, facts: TextFacts, extra: { hexId?: string; rival?: RivalId } = {}): HeraldLine {
+function line(section: HeraldSection, textId: string, facts: TextFacts, extra: { hexId?: string; rival?: RivalId; led?: boolean } = {}): HeraldLine {
   return { section, textId, facts, text: t(textId, facts), ...extra }
 }
+
+/** Renown in a Herald line, to a tenth. */
+const TENTHS = 10 // rules-ok: display rounding
 
 const BAND_WORDS: Record<NonNullable<ThreatNotice['band']>, string> = { weaker: 'weaker', matched: 'matched', stronger: 'stronger', overwhelming: 'overwhelming' }
 
 /** A threat's strength as the player may know it: the exact number when revealed, else its band, else unknown (the Veil). */
-function strengthWord(n: ThreatNotice): string {
+export function strengthWord(n: ThreatNotice): string {
   if (n.strength !== undefined) return String(Math.round(n.strength))
   return n.band ? BAND_WORDS[n.band] : 'unknown'
 }
@@ -122,6 +151,7 @@ function threatLines(state: CampaignState, today: ISODate): { hidden: boolean; l
     const id = n.kind === 'conquest' ? 'herald.threat.conquest' : `herald.threat.${n.kind}`
     lines.push(line('threat', id, facts, { hexId: n.hexId, ...(n.rival ? { rival: n.rival } : {}) }))
     if (n.siegeDay) lines.push(line('threat', 'herald.threat.siegeDay', {}, { hexId: n.hexId }))
+    if (n.atStake) lines.push(line('threat', 'herald.threat.atStake', { hex: facts.hex }, { hexId: n.hexId }))
   }
   return { hidden: view.hidden, lines }
 }
@@ -143,24 +173,31 @@ function rumorLines(state: CampaignState): HeraldLine[] {
 }
 
 /** A result from the log as a Herald line, or null for events the Herald doesn't report. */
-function resultLine(e: GameEvent): HeraldLine | null {
+export function resultLine(e: GameEvent): HeraldLine | null {
   switch (e.kind) {
     case 'defense': {
       const until = e.scorchedUntil ?? e.contestedUntil
       const facts: TextFacts = { hex: hexName(e.hexId), spoils: e.spoils ?? 0, tribute: e.tribute ?? 0 }
       if (e.rival) facts.rival = rivalName(e.rival)
       if (until) facts.until = until
-      if (e.grandIllusion) return line('result', 'battle.grandIllusion', facts, { hexId: e.hexId })
+      const led = e.led ? { led: true } : {}
+      if (e.grandIllusion) return line('result', 'battle.grandIllusion', facts, { hexId: e.hexId, ...led })
       if (e.threat === 'conquest') {
         const won = e.outcome !== 'defeat'
         const id = won ? (e.broken ? 'battle.conquest.broken' : 'battle.conquest.repelled') : e.contested ? 'battle.conquest.contested' : e.scorchedUntil ? 'battle.conquest.coreHeld' : 'battle.conquest.lost'
-        return line('result', id, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}) })
+        return line('result', id, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
       }
-      return line('result', `battle.${e.threat}.${e.outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}) })
+      const outcome = e.overrun ? 'overrun' : e.outcome
+      return line('result', `battle.${e.threat}.${outcome}`, facts, { hexId: e.hexId, ...(e.rival ? { rival: e.rival } : {}), ...led })
     }
     case 'assault':
       if (e.outcome === 'revealed') return null
-      return line('result', `battle.assault.${e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId })
+      // A repulse that wore the garrison within reach reads as a breach (D-22).
+      return line('result', `battle.assault.${e.breach ? 'breach' : e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
+    case 'standingSiege':
+      return line('result', `herald.siege.${e.change}`, { hex: hexName(e.hexId) }, { hexId: e.hexId })
+    case 'fallback':
+      return line('result', 'herald.fallback', { hex: hexName(e.hexId), to: hexName(e.to), strength: Math.round(e.strength), days: RULES.sieges.fallback.days }, { hexId: e.to })
     case 'borderCampaign':
       return line('world', e.taken ? 'herald.borderCampaign.taken' : 'herald.borderCampaign.held', { rival: rivalName(e.attacker), other: rivalName(e.defender), hex: hexName(e.hexId) }, { hexId: e.hexId })
     case 'coalition':
@@ -172,6 +209,10 @@ function resultLine(e: GameEvent): HeraldLine | null {
       return line('world', 'herald.worldEvent', { event: t(`events.${e.eventId}.title`) })
     case 'milestone':
       return line('result', 'herald.milestone', { index: e.index })
+    case 'pathRank':
+      return line('result', 'herald.pathRank', { rival: rivalName(e.path), rank: numeral(e.rank) }, { rival: e.path })
+    case 'deed':
+      return line('result', `herald.deed.${e.deed}`, { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}) }, { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) })
     case 'ascendancy':
       if (e.stage === 'warning' || e.stage === 'lifted') return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if ((e.stage === 'delayed' || e.stage === 'humbled') && e.until) return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival), date: e.until }, { rival: e.rival })
@@ -222,7 +263,7 @@ export function homecomingView(summary: SettleSummary, suggestedTermDays: number
   // A hex lost in battle is told by its battle report; one lost another way gets its own plain line.
   const lost = summary.lost.flatMap((e) => {
     if (e.kind !== 'hexTransfer') return resultLine(e) ?? []
-    if (e.how === 'conquest') return []
+    if (e.how === 'conquest' || e.how === 'wilds') return []
     return [line('result', 'healer.shame', { what: `${hexName(e.hexId)}`, date: e.day }, { hexId: e.hexId })]
   })
   const away = summary.awayDays

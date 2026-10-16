@@ -27,7 +27,7 @@ import {
   resolveCourtships,
   trust
 } from '../../src/renderer/src/lib/game/land'
-import { isClaimableKind, neighbors, touchesOwner } from '../../src/renderer/src/lib/game/map'
+import { bandOf, isClaimableKind, neighbors, touchesOwner } from '../../src/renderer/src/lib/game/map'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, GameEvent, GameEventKind, GameEventMap, HexState, RivalId } from '../../src/renderer/src/lib/game/types'
 import { chicago, steadyLedger } from './fixtures/ledgers'
@@ -44,21 +44,24 @@ function withRespect(state: CampaignState, rival: RivalId, respect: number): Cam
 function reach(state: CampaignState, id: string): CampaignState {
   if (touchesOwner(state.hexes, id, 'player')) return state
   const h = hex(state, id)
-  const inner = neighbors(id).find((n) => hex(state, n).ring === h.ring - 1 && isClaimableKind(hex(state, n)) && hex(state, n).owner === 'neutral')
+  const inward = neighbors(id).filter((n) => hex(state, n).ring === h.ring - 1 && isClaimableKind(hex(state, n)))
+  // A neutral one if there is one; deep in a rival's land, one of its own hexes (D-16).
+  const inner = inward.find((n) => hex(state, n).owner === 'neutral') ?? inward.find((n) => hex(state, n).owner !== 'player')
   if (!inner) throw new Error(`No inner neighbor for ${id}`)
   return withOwner(state, [inner], 'player')
 }
 
-function village(state: CampaignState, ring: number, skip: string[] = []): HexState {
-  const found = state.hexes.find((h) => h.ring === ring && h.village && h.owner === 'neutral' && !skip.includes(h.id))
-  if (!found) throw new Error(`No neutral village in ring ${ring}`)
+/** A neutral village in band `band` (D-17: what once scaled with the ring scales with the band), the first in map order. */
+function village(state: CampaignState, band: number, skip: string[] = []): HexState {
+  const found = state.hexes.find((h) => bandOf(h) === band && h.village && h.owner === 'neutral' && !skip.includes(h.id))
+  if (!found) throw new Error(`No neutral village in band ${band}`)
   return found
 }
 
-/** A ring-`ring` village the rival holds (at 30 × ring loyalty), touching the player's land. */
-function rivalVillage(state: CampaignState, rival: RivalId, ring: number): { state: CampaignState; id: string } {
-  const v = village(state, ring)
-  return { state: reach(withHex(state, v.id, { owner: rival, village: { loyalty: 30 * ring } }), v.id), id: v.id }
+/** A band-`band` village the rival holds (at 30 × band loyalty), touching the player's land. */
+function rivalVillage(state: CampaignState, rival: RivalId, band: number): { state: CampaignState; id: string } {
+  const v = village(state, band)
+  return { state: reach(withHex(state, v.id, { owner: rival, village: { loyalty: 30 * band } }), v.id), id: v.id }
 }
 
 /** Resolves the courtships at `day`'s close and posts the events to the log, as settlement would. */
@@ -101,7 +104,7 @@ test('Ch 6: a neutral ring-3 village (resistance 45): bid 50 at RC 0.8 offers 54
   assert.deepEqual(hex(state, v.id).village, { loyalty: 45 }) // A-22: 15 × ring after a defection, not Settling
   assert.equal(balance(state.purse), 450)
   assert.deepEqual(out.of('courtship'), [{ hexId: v.id, outcome: 'defected', bid: 50, winner: 'player' }])
-  assert.deepEqual(out.of('hexTransfer'), [{ hexId: v.id, from: 'neutral', to: 'player', how: 'influence' }])
+  assert.deepEqual(out.of('hexTransfer'), [{ hexId: v.id, from: 'neutral', to: 'player', how: 'influence', fortification: 0 }])
   assert.deepEqual(state.courtships, [])
 })
 
@@ -146,7 +149,7 @@ test('Ch 6: the owner’s counter-bid (T10 through placeRivalBid) can hold a vil
   assert.equal(hex(won.state, id).garrison, 0)
   assert.equal(won.state.rivals.dwarf.respect, 17)
   assert.deepEqual(won.of('respect'), [{ rival: 'dwarf', change: -3, reason: 'villageCourted' }])
-  assert.deepEqual(won.of('hexTransfer'), [{ hexId: id, from: 'dwarf', to: 'player', how: 'influence' }])
+  assert.deepEqual(won.of('hexTransfer'), [{ hexId: id, from: 'dwarf', to: 'player', how: 'influence', fortification: 0 }])
 })
 
 test('Ch 6 two suitors: when the Goblin’s offer beats the player’s, the player gets half the bid back and the village goes to the Goblin', () => {
@@ -291,11 +294,13 @@ test('Ch 6 / Exchange Wing: hexes cost 20% less to buy', () => {
   assert.equal(offerDeal(withArmory(state, { wings: ['exchange'] }), 'dwarf', { kind: 'buyHex', hexId: id }, TODAY).price, 480)
 })
 
-test('Ch 6 sell a hex: a ring-2 hex is refused; a non-village ring-4 hex sold to the Orc pays 0.7 × 50 × 4 × 1.5 = 210 and +5 Respect', () => {
+test('Ch 6, D-17: selling a band-2 hex is refused; a non-village band-4 hex sold to the Orc pays 0.7 × 50 × 4 × 1.5 = 210 and +5 Respect', () => {
   const inner2 = front(withRespect(realm(), 'orc', 25), 'orc', 2)
   assert.equal(offerDeal(inner2.state, 'orc', { kind: 'sellHex', hexId: inner2.inner }, TODAY).reason?.code, 'innerRing')
 
-  const f = front(withRespect(withPurse(realm(), 100), 'orc', 25), 'orc', 4)
+  // Ring 7 is depth 5 of a rival march: band 4.
+  const f = front(withRespect(withPurse(realm(), 100), 'orc', 25), 'orc', 7)
+  assert.equal(bandOf(hex(f.state, f.inner)), 4)
   const offer = offerDeal(f.state, 'orc', { kind: 'sellHex', hexId: f.inner }, TODAY)
   assert.equal(offer.allowed, true)
   near(offer.price, 210)
@@ -303,14 +308,14 @@ test('Ch 6 sell a hex: a ring-2 hex is refused; a non-village ring-4 hex sold to
   assert.ok(sold.ok)
   assert.equal(balance(sold.state.purse), 310)
   assert.equal(hex(sold.state, f.inner).owner, 'orc')
-  assert.equal(hex(sold.state, f.inner).garrison, 115)
+  assert.equal(hex(sold.state, f.inner).garrison, hex(f.state, f.inner).strength * 1.0, 'its strength × the Orc’s 1.0 (A-17, D-17)')
   assert.equal(sold.state.rivals.orc.respect, 30)
   assert.equal(offerDeal(withRespect(f.state, 'orc', 24), 'orc', { kind: 'sellHex', hexId: f.inner }, TODAY).reason?.code, 'respect')
 })
 
-test('Ch 6 Truce: bordering ring 5 it costs 150; for 7 days blocksRaids and blocksConquest hold; refused during a Grand Battle warning', () => {
+test('Ch 6, D-17: a Truce bordering band 5 costs 150; for 7 days blocksRaids and blocksConquest hold; refused during a Grand Battle warning', () => {
   let state = withPurse(realm(), 1_000)
-  const dwarfHex = state.hexes.find((h) => h.owner === 'dwarf' && h.ring === 5 && h.kind !== 'gate') as HexState
+  const dwarfHex = state.hexes.find((h) => h.owner === 'dwarf' && bandOf(h) === 5 && h.kind !== 'gate' && isClaimableKind(h)) as HexState
   state = reach(state, dwarfHex.id)
   const offer = offerDeal(state, 'dwarf', { kind: 'truce' }, TODAY)
   assert.equal(offer.price, 150)
@@ -449,10 +454,10 @@ test('Ch 9 Grace I: a hex lost 10 days ago is reclaimed for half its garrison, n
 
 test('Ch 14 defection tally: per rival, its original villages the player won by influence, trade or conquest, and whether it still holds any', () => {
   const original = originalVillages(7).dwarf
-  assert.equal(original.length, 3)
+  assert.equal(original.length, 5, 'D-16: its Gate and four more in its outer third')
   let state = withRespect(withPurse(realm(), 2_000), 'dwarf', 60)
   const [march1, march2] = original.filter((id) => hex(state, id).kind !== 'gate')
-  assert.deepEqual(defectionTally(state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 0, trade: 0, conquest: 0 }, holds: 3 })
+  assert.deepEqual(defectionTally(state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 0, trade: 0, conquest: 0 }, holds: 5 })
 
   state = reach(state, march1)
   state = resolve(placeBid(state, march1, 400, TODAY).state, 1).state // Offer 480 against 150
@@ -460,5 +465,5 @@ test('Ch 14 defection tally: per rival, its original villages the player won by 
   state = reach(withRespect(state, 'dwarf', 60), march2)
   const bought = makeDeal(state, 'dwarf', { kind: 'buyHex', hexId: march2 }, TODAY)
   assert.ok(bought.ok, JSON.stringify(bought.refusal))
-  assert.deepEqual(defectionTally(bought.state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 1, trade: 1, conquest: 0 }, holds: 1 })
+  assert.deepEqual(defectionTally(bought.state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 1, trade: 1, conquest: 0 }, holds: 3 })
 })

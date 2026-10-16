@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { COMBAT_HOOKS, armyValue, combatOf, dawn, tidings } from '../../src/renderer/src/lib/game/combat'
 import { resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
-import { isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
+import { bandOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import {
   armyBand,
   armyPointCost,
@@ -33,7 +33,7 @@ import type { CampaignState, DayRecord, GameEvent, GraceLevel, RivalId } from '.
 import { chicago, steadyLedger } from './fixtures/ledgers'
 import { realm, withArmory, withCrossings, withBuildings, withPurse } from './support/realm'
 import { eventsOf, simulateRivals } from './support/rival-sim'
-import { hex, withOwner } from './support/war'
+import { hex, withHex, withOwner } from './support/war'
 import { near } from './support/assert'
 
 
@@ -101,18 +101,18 @@ test('Test 5: BI(0.80, 1.7) = 344.53', () => {
   near(benchmarkIncome(0.8, 1.7), 344.53, 0.01)
 })
 
-test('Ch 12: b and L by week — 1 → 0.72 / 1.0; 3 → 0.72 / 1.4; 9 → 0.78 / 1.4; 10 → 0.78 / 1.7; 21 → 0.82 / 2.0; 37 → 0.86 / 2.0', () => {
+test('Ch 12, D-14: b and L by week — 1 → 0.756 / 1.0; 3 → 0.756 / 1.4; 9 → 0.819 / 1.4; 10 → 0.819 / 1.7; 21 → 0.861 / 2.0; 37 → 0.903 / 2.0', () => {
   const cases: [number, number, number][] = [
-    [1, 0.72, 1.0],
-    [2, 0.72, 1.0],
-    [3, 0.72, 1.4],
-    [8, 0.72, 1.4],
-    [9, 0.78, 1.4],
-    [10, 0.78, 1.7],
-    [20, 0.78, 1.7],
-    [21, 0.82, 2.0],
-    [36, 0.82, 2.0],
-    [37, 0.86, 2.0]
+    [1, 0.756, 1.0],
+    [2, 0.756, 1.0],
+    [3, 0.756, 1.4],
+    [8, 0.756, 1.4],
+    [9, 0.819, 1.4],
+    [10, 0.819, 1.7],
+    [20, 0.819, 1.7],
+    [21, 0.861, 2.0],
+    [36, 0.861, 2.0],
+    [37, 0.903, 2.0]
   ]
   for (const [w, b, L] of cases) {
     near(benchmarkConsistency(w), b)
@@ -120,22 +120,22 @@ test('Ch 12: b and L by week — 1 → 0.72 / 1.0; 3 → 0.72 / 1.4; 9 → 0.78 
   }
 })
 
-test('Ch 12: Grace II lowers b 3 points and Grace III 6 (week 40 at Grace III → 0.80); a forced Grace III in week 1 stops at the 0.70 floor', () => {
-  near(benchmarkConsistency(40, 3), 0.8)
-  near(benchmarkConsistency(40, 2), 0.83)
-  near(benchmarkConsistency(40, 1), 0.86)
+test('Ch 12, D-14: Grace II lowers b 3 points and Grace III 6 (week 40 at Grace III → 0.843); a forced Grace III in week 1 stops at the 0.70 floor', () => {
+  near(benchmarkConsistency(40, 3), 0.843)
+  near(benchmarkConsistency(40, 2), 0.873)
+  near(benchmarkConsistency(40, 1), 0.903)
   near(benchmarkConsistency(1, 3), 0.7)
-  near(benchmarkConsistency(1, 2), 0.7)
+  near(benchmarkConsistency(1, 2), 0.726)
 })
 
-test('Ch 12: rival income is BI × its multiplier + 4 × ring per village it holds, prorated in a partial week 1 (A-04)', () => {
+test('Ch 12, D-17: rival income is BI × its multiplier + 2.5 × band per village it holds, prorated in a partial week 1 (A-04)', () => {
   const state = realm()
-  const bi = benchmarkIncome(0.72, 1.0)
-  // Every rival starts with its Gate and two March villages, all in ring 5: 3 × 4 × 5 = 60.
-  near(rivalIncome(state, 'goblin', 1), bi * 1.1 + 60)
-  near(rivalIncome(state, 'orc', 1), bi * 0.95 + 60)
-  near(rivalIncome(state, 'orc', 1, 4), ((bi * 0.95 + 60) * 4) / 7)
-  near(rivalIncome(withGrace(state, 3), 'dwarf', 40), benchmarkIncome(0.8, 2.0) + 60)
+  const bi = benchmarkIncome(0.756, 1.0)
+  // Every rival starts with five villages in the outer third of its march, all band 5: 5 × 2.5 × 5 = 62.5.
+  near(rivalIncome(state, 'goblin', 1), bi * 1.1 + 62.5)
+  near(rivalIncome(state, 'orc', 1), bi * 0.95 + 62.5)
+  near(rivalIncome(state, 'orc', 1, 4), ((bi * 0.95 + 62.5) * 4) / 7)
+  near(rivalIncome(withGrace(state, 3), 'dwarf', 40), benchmarkIncome(0.843, 2.0) + 62.5)
 })
 
 test('Ch 12: each point of army power costs 10 at AV 0 and 20 at AV 150', () => {
@@ -296,13 +296,15 @@ test('Ch 12 turn: each rival earns, keeps a 100 reserve, buys whole companies, a
   assert.equal(next.rivals.dwarf.specialFund, 0, 'the Dwarf spends its special share on the Deep Halls')
 })
 
-test('A-25: a rival courts the best affordable village with 1.1 × loyalty (the Goblin 1.3 ×); the bid resolves at the next close', () => {
-  // Give the Orc a ring-4 village to reach: hand it a ring-5 hex beside one.
+test('A-25, D-17: a rival courts the best affordable village by Dominion per bid, with 1.1 × loyalty (the Goblin 1.3 ×); the bid resolves at the next close', () => {
+  // Give the Orc a band-4 village to reach: hand it the hex one ring out beside one.
   let state = realm()
-  const village = state.hexes.find((h) => h.ring === 4 && h.village && h.owner === 'neutral') as CampaignState['hexes'][number]
-  const step = neighbors(village.id).find((n) => hex(state, n).ring === 5 && hex(state, n).owner === 'neutral' && !hex(state, n).village && isClaimableKind(hex(state, n))) as string
+  const village = state.hexes.find((h) => bandOf(h) === 4 && h.march === 'orc' && h.village && h.owner === 'neutral') as CampaignState['hexes'][number]
+  const step = neighbors(village.id).find((n) => hex(state, n).ring === village.ring + 1 && hex(state, n).owner === 'neutral' && !hex(state, n).village && isClaimableKind(hex(state, n))) as string
   state = withOwner(state, [step], 'orc')
   state = withRival(state, 'orc', { treasury: 1000 })
+  // Its only village within reach, so it is the best.
+  for (const h of state.hexes) if (h.id !== village.id && h.village && h.owner === 'neutral' && neighbors(h.id).some((n) => hex(state, n).owner === 'orc')) state = withHex(state, h.id, { village: undefined })
   const day = '2026-10-18'
   const next = rivalTurn(state, week(day, 2)).state
   const bid = (next.rivals.orc.ai?.courting ?? []).find((c) => c.hexId === village.id)
@@ -317,8 +319,11 @@ test('A-25: a rival courts the best affordable village with 1.1 × loyalty (the 
   assert.equal(hex(resolved, village.id).owner, 'orc')
   assert.equal(hex(resolved, village.id).village?.loyalty, 30 * 4)
   assert.deepEqual(resolved.rivals.orc.ai?.courting, [])
+  // The other rivals court villages near their own land too (D-16); this is the Orc's.
   assert.deepEqual(
-    eventsOf(events, 'hexTransfer').map((e) => [e.hexId, e.from, e.to, e.how]),
+    eventsOf(events, 'hexTransfer')
+      .filter((e) => e.to === 'orc')
+      .map((e) => [e.hexId, e.from, e.to, e.how]),
     [[village.id, 'neutral', 'orc', 'influence']]
   )
 })
@@ -368,8 +373,8 @@ test('Ch 12 step 8: a rival counter-bids 60% of its reserve (the Goblin 100%) on
 
 test('Ch 12 step 7: at War from week 6 a rival announces a conquest attempt for next week when 0.5 × AV ≥ 0.8 × the expected defense', () => {
   let state = realm()
-  const target = state.hexes.find((h) => h.ring === 4 && !h.village && h.kind === 'between' && neighbors(h.id).some((n) => hex(state, n).owner === 'orc'))
-  assert.ok(target, 'a ring-4 hex beside the Orc')
+  const target = state.hexes.find((h) => h.owner === 'neutral' && !h.village && h.kind === 'between' && neighbors(h.id).some((n) => hex(state, n).owner === 'orc'))
+  assert.ok(target, 'a hex beside the Orc’s land (D-16: its front row at depth 8)')
   state = withOwner(state, [target.id], 'player')
   const strong = { ...state.rivals.orc.companies[0], power: 400 }
   state = withRival(state, 'orc', { companies: [strong] })

@@ -7,11 +7,14 @@
  *   app does at its next launch). The target is under 2 s.
  * - Size: campaign.json (the app saves `JSON.stringify(state)`) after 70 weeks of play, kept going
  *   past a victory into the Reign. The target is under 5 MB.
+ * - Re-founding (D-21): a campaign founded as of a legacy contract 365 days back and played to today
+ *   by the catch-up player, in one call. The target is under 2 s.
  *
- * Both are timed three times and the best is reported, so a busy machine doesn't decide the number.
+ * Each is timed three times and the best is reported, so a busy machine doesn't decide the number.
  */
 import { foundCampaign } from '../src/renderer/src/lib/game/campaign'
 import { addDays, dayCloseInstant } from '../src/renderer/src/lib/game/clock'
+import { refound } from '../src/renderer/src/lib/game/refound'
 import { settle } from '../src/renderer/src/lib/game/settle'
 import type { CampaignState, ISODate } from '../src/renderer/src/lib/game/types'
 import type { Ledger } from '../src/renderer/src/lib/types'
@@ -68,4 +71,50 @@ const long = play(ledger, SIZE_WEEKS)
 const bytes = Buffer.byteLength(JSON.stringify(long))
 console.log(
   `Size: after ${SIZE_WEEKS} weeks of play (status ${long.campaign.status}, ${long.log.length} log events, ${long.purse.events.length} purse events, ${long.settlement.snapshots.length} day snapshots), campaign.json is ${(bytes / MB).toFixed(2)} MB (target under 5 MB)`
+)
+
+// The re-founding (D-21, G-15): founded as of a legacy contract a year back and played by the
+// catch-up player to today, in one call.
+const legacyStart = START
+const legacyLedger: Ledger = {
+  ...ledger,
+  contracts: [
+    {
+      id: 'perf-legacy',
+      kind: 'common',
+      startDate: legacyStart,
+      endDate: addDays(legacyStart, 6),
+      stepsGoal: Math.round(JOURNEY.stepPool / 7),
+      calorieRule: 'limit',
+      caloriesGoal: JOURNEY.calorieLimit,
+      startWeight: JOURNEY.startLb,
+      unit: 'lb',
+      sealedAt: `${legacyStart}T12:00:00.000Z`,
+      finalWeight: JOURNEY.startLb,
+      closedOn: addDays(legacyStart, 7),
+      closedAt: `${addDays(legacyStart, 7)}T12:00:00.000Z`
+    }
+  ]
+}
+const refoundAt = after(addDays(legacyStart, AWAY_DAYS - 1))
+let refoundBest = Number.POSITIVE_INFINITY
+let refounded: ReturnType<typeof refound> | null = null
+for (let t = 0; t < TRIES; t++) {
+  const started = performance.now()
+  refounded = refound(
+    {
+      startWeight: JOURNEY.startLb,
+      goalWeight: JOURNEY.goalLb,
+      charter: { stepPool: JOURNEY.stepPool, calorieLimit: JOURNEY.calorieLimit, duties: [...JOURNEY.duties] },
+      timeZone: TZ,
+      seed,
+      ledger: legacyLedger,
+      answers: { paths: ['orc', 'goblin', 'dwarf', 'archmage'], spend: 'build', land: 'both', offers: 'accept' }
+    },
+    refoundAt
+  )
+  refoundBest = Math.min(refoundBest, performance.now() - started)
+}
+console.log(
+  `Re-founding: ${profile.name} (seed ${seed}) as of ${legacyStart}: ${refounded?.summary.days} days played and settled in ${Math.round(refoundBest)} ms (best of ${TRIES}; target under 2,000 ms); ${refounded?.summary.held.total} hexes held`
 )

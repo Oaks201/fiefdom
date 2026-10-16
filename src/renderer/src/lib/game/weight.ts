@@ -7,7 +7,7 @@
  * Every weight here is in lb with loss positive (A-05): turn ledger weigh-ins into lb with
  * `weighInsInLb` first. What each Milestone unlocks is T14's; when the week close runs is T06's.
  */
-import { addDays, diffDays, weekOf } from './clock'
+import { addDays, diffDays, weekOf, weighInDay } from './clock'
 import { CampaignError } from './errors'
 import { RULES } from './rules'
 import { HEALER_CHECK_INS, t, type HealerCheckIn, type TextFacts } from './text'
@@ -56,14 +56,21 @@ export function weighInsInLb(weighIns: readonly WeighIn[], unit: Unit): WeighIn[
 }
 
 /**
- * The one weigh-in a week the game reads (D-11): the last of each calendar week, oldest first.
- * The Chronicle takes a weigh-in only on the week's last day, so that is the weigh-in day's; a
- * week logged before D-11 counts its last reading. Every other reading stays in the ledger.
+ * The one weigh-in a week the game reads (D-11, D-13), oldest first: each calendar week's reading
+ * on its weigh-in day, Monday. The Chronicle takes a weigh-in only on that day; a week logged
+ * otherwise counts its first reading after its Monday, else its last before it. Every other
+ * reading stays in the ledger.
  */
 export function weeklyWeighIns(weighIns: readonly WeighIn[], weekStartsOn: WeekStartsOn): WeighIn[] {
-  const byWeek = new Map<ISODate, WeighIn>()
-  for (const w of [...weighIns].sort((a, b) => a.date.localeCompare(b.date))) byWeek.set(weekOf(w.date, weekStartsOn), w)
-  return [...byWeek.values()]
+  const byWeek = new Map<ISODate, WeighIn[]>()
+  for (const w of [...weighIns].sort((a, b) => a.date.localeCompare(b.date))) {
+    const week = weekOf(w.date, weekStartsOn)
+    byWeek.set(week, [...(byWeek.get(week) ?? []), w])
+  }
+  return [...byWeek].map(([week, readings]) => {
+    const day = weighInDay(week, weekStartsOn)
+    return readings.find((w) => w.date >= day) ?? readings[readings.length - 1]
+  })
 }
 
 // ── The trend and the target pace (Ch 5 rules 1 and 2) ───────────────────────

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { GiArcheryTarget, GiHourglass, GiRallyTheTroops, GiScrollUnfurled, GiShield } from 'react-icons/gi'
+import { GiArcheryTarget, GiHourglass, GiRallyTheTroops, GiScrollUnfurled, GiShield, GiSiegeTower } from 'react-icons/gi'
 import { sfx } from '../../audio'
-import { setOrders } from '../../lib/game/combat'
+import { clearOrders, liftSiege, setOrders } from '../../lib/game/combat'
 import { hexName } from '../../lib/game/map'
 import type { CampaignState, DailyOrders, ISODate, RivalId } from '../../lib/game/types'
 import { liveValor } from '../../lib/game/view/chronicle'
@@ -12,8 +12,9 @@ import { useCampaign } from '../../state/campaign'
 import { campaignNow } from '../../state/campaignClock'
 import { useLedger } from '../../state/store'
 import { toast } from '../../state/toasts'
+import { StartBattles } from '../battle/StartBattles'
 
-const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt' }
+const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack' }
 const OUTCOMES: Record<string, string> = { taken: 'taken', rout: 'taken in a rout', repulsed: 'repulsed' }
 
 function countdown(seconds: number): string {
@@ -58,7 +59,7 @@ function OrdersClock({ campaign, today }: { campaign: CampaignState; today: ISOD
   const lock = ordersLock(campaign, today, useNow())
   return (
     <span className={`orders__clock ${lock.locked ? 'is-locked' : ''}`} title={`They lock at the day’s close, ${new Date(lock.locksAt).toLocaleString()}`}>
-      <GiHourglass aria-hidden="true" /> {lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
+      <GiHourglass aria-hidden="true" /> {lock.held && lock.secondsLeft > 0 ? 'Held: the battles have begun' : lock.locked ? 'Locked' : `Locks at 04:00 · ${countdown(lock.secondsLeft)}`}
     </span>
   )
 }
@@ -67,12 +68,13 @@ function OrdersClock({ campaign, today }: { campaign: CampaignState; today: ISOD
  * The day's orders (Ch 2 rule 2, Ch 6, Ch 10, A-36): the assault targets and who goes, who
  * defends, hired blades and envoys, the Marshal's default and yesterday's orders, the countdown to
  * the 04:00 lock (read-only after it), and an estimate of the day's battles from today's Valor so
- * far.
+ * far. "Start today's battles" (D-12) opens the day's skirmishes; once they begin, the orders hold.
  */
 export function OrdersPanel({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
   const apply = useCampaign((s) => s.apply)
   const ledger = useLedger((s) => s.ledger)
   const locked = useLocked(campaign, today)
+  const held = ordersLock(campaign, today, campaignNow()).held
   const valor = useMemo(() => liveValor(campaign, ledger, today), [campaign, ledger, today])
   const view = useMemo(() => ordersView(campaign, valor, today), [campaign, valor, today])
   const names = new Map(view.companies.map((c) => [c.id, c.name]))
@@ -95,7 +97,9 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         <OrdersClock campaign={campaign} today={today} />
       </header>
 
-      {locked && <p className="banner">These orders are locked; they settle with the day.</p>}
+      {locked && <p className="banner">{held ? 'Today’s battles have begun, so these orders hold until the day’s close.' : 'These orders are locked; they settle with the day.'}</p>}
+
+      <StartBattles campaign={campaign} today={today} valor={valor} />
 
       <p className="orders__state">
         {view.allDefend ? (
@@ -109,8 +113,16 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         )}
       </p>
 
+      {view.siege && <SiegeLine view={view} locked={locked} onLift={() => apply((s) => liftSiege(s, today))} />}
+
       <div className="orders__quick">
-        <button type="button" className="btn btn--small btn--ghost" disabled={locked} onClick={() => store(marshalOrders(today))} title="Every company defends; the Marshal fields the best for each battle">
+        <button
+          type="button"
+          className="btn btn--small btn--ghost"
+          disabled={locked || view.orders === null || view.fromSiege}
+          onClick={() => apply((s) => clearOrders(s, today))}
+          title="Clears today’s orders: the Marshal presses the standing siege, if there is one, and fields the best defenders for each battle"
+        >
           Use the Marshal’s choice
         </button>
         <button
@@ -215,7 +227,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
         </div>
       )}
 
-      <Estimate view={view} name={name} />
+      <Estimate view={view} name={name} held={held} />
 
       {view.problems.length > 0 && (
         <ul className="orders__problems">
@@ -238,6 +250,37 @@ function withOverride(orders: DailyOrders | null, today: ISODate): DailyOrders {
   return next
 }
 
+/** "+10%" for a flanking multiple of 1.1. */
+function flankWord(flank: number): string {
+  return `+${Math.round((flank - 1) * 100)}%`
+}
+
+/** The standing siege (D-22, R-16): what it presses, how worn, how long at today's Valor, and the way to lift it. */
+function SiegeLine({ view, locked, onLift }: { view: OrdersView; locked: boolean; onLift(): void }): React.JSX.Element | null {
+  const s = view.siege
+  if (!s) return null
+  const days = !Number.isFinite(s.days) ? '' : s.days <= 1 ? ' · falls today at today’s Valor' : ` · about ${s.days} assault days at today’s Valor`
+  return (
+    <div className="orders__siege">
+      <p>
+        <GiSiegeTower aria-hidden="true" /> <strong>Standing siege: {s.label}</strong> · {Math.round(s.progress * 100)}% worn · garrison {amount(s.garrison)}
+        {s.flank > 1 ? ` · flanked ${flankWord(s.flank)}` : ''}
+        {s.pressedToday ? days : ''}
+      </p>
+      <p className="muted">
+        {view.fromSiege
+          ? 'No orders of your own today: the Marshal presses it with the companies best matched to it, and every other company defends. It stands until it falls or you lift it.'
+          : s.pressedToday
+            ? 'Today’s orders press it. On any day without orders of your own, the Marshal presses it.'
+            : 'Today’s orders don’t press it; the Marshal presses it again on the next day without orders of your own.'}
+      </p>
+      <button type="button" className="btn btn--small btn--ghost" disabled={locked} onClick={onLift} title="Ends the standing siege; its wear stays on the hex and eases a little each day">
+        Lift the siege
+      </button>
+    </div>
+  )
+}
+
 function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot: OrdersView['assaults'][number]; locked: boolean; onTarget(hexId: string): void }): React.JSX.Element {
   const earlier = view.assaults[slot.index - 1]
   const blocked = slot.index > 0 && !earlier?.target
@@ -253,6 +296,8 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
             {view.targets.map((t) => (
               <option key={t.hexId} value={t.hexId}>
                 {t.label} · {t.owner === 'neutral' ? 'unaligned' : rivalName(t.owner as RivalId)} · garrison {amount(t.garrison)}
+                {t.worn > 0 ? ` · ${Math.round(t.worn * 100)}% worn` : ''}
+                {t.flank > 1 ? ` · flanked ${flankWord(t.flank)}` : ''}
               </option>
             ))}
           </select>
@@ -264,14 +309,14 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
   )
 }
 
-function Estimate({ view, name }: { view: OrdersView; name(id: string): string }): React.JSX.Element {
+function Estimate({ view, name, held }: { view: OrdersView; name(id: string): string; held: boolean }): React.JSX.Element {
   const e = view.estimate
   return (
     <div className="orders__estimate">
       <h4>
         Estimate at today’s Valor so far ({percent(e.valor)}%)
       </h4>
-      <p className="muted">An estimate: the close uses the day’s final Valor.</p>
+      <p className="muted">An estimate: the close uses the day’s final Valor{held ? ', and a battle you finish on the field stands in for its line here' : ''}.</p>
       {e.defenses.length === 0 && e.assaults.length === 0 && <p>No battle is foretold for today.</p>}
       <ul>
         {e.defenses.map((d, i) => (
@@ -282,7 +327,8 @@ function Estimate({ view, name }: { view: OrdersView; name(id: string): string }
         ))}
         {e.assaults.map((a, i) => (
           <li key={`a${i}`}>
-            Assault on {hexName(a.hexId)}: <strong>{amount(a.value)}</strong> against garrison {amount(a.garrison)}, {OUTCOMES[a.outcome]}
+            Assault on {hexName(a.hexId)}: <strong>{amount(a.value)}</strong>
+            {a.flank > 1 ? ` (flanked ${flankWord(a.flank)})` : ''} against garrison {amount(a.garrison)}, {OUTCOMES[a.outcome]}
           </li>
         ))}
       </ul>

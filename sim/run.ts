@@ -5,6 +5,8 @@
  *   npm run sim                      the full run: base, income check and sweeps, then the report
  *   npm run sim -- --quick           a few campaigns of each kind, for a fast look (writes to the scratch folder)
  *   npm run sim -- --report-only     rebuild the report and CSVs from the last run's saved results
+ *   npm run sim -- --targets         the blueprint's targets (Patch 2): docs/game/sim/targets-<ruleVersion>.md
+ *                                    (--runs sets the seeds per greedy profile, default 40)
  *
  * Options: --runs 300 (per profile, for greedy and smarter), --push-runs 50, --income-runs 50, --sweep-runs 30,
  * --weeks 70, --workers <n> (default: every core), --out docs/game/sim, --results sim/.results.
@@ -21,6 +23,7 @@ import { BASE, DELTAS, INCOME, LEVERS, variantOf } from './overrides'
 import type { PolicyId } from './policy'
 import { PROFILES, type ProfileId } from './profiles'
 import { writeReport, type RunMeta, type VariantInfo } from './report'
+import { targetPlan, writeTargets } from './targets'
 import type { WorkerJob, WorkerMessage } from './worker'
 
 interface Options {
@@ -33,6 +36,8 @@ interface Options {
   out: string
   results: string
   reportOnly: boolean
+  targets: boolean
+  runsSet: boolean
 }
 
 const ROOT = path.resolve(__dirname, '..')
@@ -43,6 +48,8 @@ const SWEEP_PROFILES: ProfileId[] = ['steadfast', 'committed']
 /** Campaigns per worker thread; each thread loads the game once. */
 const CHUNK = 20
 const QUICK = { runs: 6, pushRuns: 3, incomeRuns: 3, sweepRuns: 3 }
+/** Seeds per greedy profile in the targets run (blueprint section 3.2 used 40). */
+const TARGET_SEEDS = 40
 
 function parseArgs(argv: string[]): Options {
   const o: Options = {
@@ -54,7 +61,9 @@ function parseArgs(argv: string[]): Options {
     workers: os.availableParallelism(),
     out: path.join(ROOT, 'docs', 'game', 'sim'),
     results: path.join(ROOT, 'sim', '.results'),
-    reportOnly: false
+    reportOnly: false,
+    targets: false,
+    runsSet: false
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -64,7 +73,11 @@ function parseArgs(argv: string[]): Options {
       o.out = path.join(os.tmpdir(), 'fiefdom-sim-quick')
       o.results = path.join(o.out, '.results')
     } else if (a === '--report-only') o.reportOnly = true
-    else if (a === '--runs') o.runs = Number(next())
+    else if (a === '--targets') o.targets = true
+    else if (a === '--runs') {
+      o.runs = Number(next())
+      o.runsSet = true
+    }
     else if (a === '--push-runs') o.pushRuns = Number(next())
     else if (a === '--income-runs') o.incomeRuns = Number(next())
     else if (a === '--sweep-runs') o.sweepRuns = Number(next())
@@ -136,6 +149,7 @@ function variantInfo(levers: Record<string, number[]>): VariantInfo[] {
 
 async function main(): Promise<void> {
   const o = parseArgs(process.argv.slice(2))
+  if (o.targets) return runTargets(o)
   fs.mkdirSync(o.results, { recursive: true })
   const resultsFile = path.join(o.results, 'results.json')
   const metaFile = path.join(o.results, 'meta.json')
@@ -163,6 +177,17 @@ async function main(): Promise<void> {
   }
   const written = writeReport(results, meta, o.out)
   process.stderr.write(`Wrote ${written.map((f) => path.relative(ROOT, f)).join(', ')}\n`)
+}
+
+/** The blueprint's targets (Patch 2): greedy profiles and the path-mix players, then the targets report. */
+async function runTargets(o: Options): Promise<void> {
+  const seeds = o.runsSet ? o.runs : TARGET_SEEDS
+  const runs = targetPlan(seeds, o.weeks)
+  process.stderr.write(`Fiefdom simulator, targets: ${runs.length} campaigns on ${o.workers} workers\n`)
+  const started = Date.now()
+  const { results } = await runAll(new Map([[BASE, runs]]), o.workers)
+  const file = writeTargets(results, { seeds, weeks: o.weeks, seconds: Math.round((Date.now() - started) / 1000) }, o.out)
+  process.stderr.write(`Wrote ${path.relative(ROOT, file)}\n`)
 }
 
 if (require.main === module) {

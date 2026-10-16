@@ -8,17 +8,18 @@ import { t } from '../../src/renderer/src/lib/game/text'
 import assert from 'node:assert/strict'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
-import { baseArmyValue } from '../../src/renderer/src/lib/game/combat'
+import { baseArmyValue, dawn } from '../../src/renderer/src/lib/game/combat'
 import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome, holdings, rivalIncome } from '../../src/renderer/src/lib/game/rivals'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { RIVAL_IDS, type CampaignState } from '../../src/renderer/src/lib/game/types'
-import { calorieWeek, healerCards, milestonePanel, stepPace } from '../../src/renderer/src/lib/game/view/chronicle'
+import { calorieWeek, healerCards, milestonePanel, stepPace, weighInLog } from '../../src/renderer/src/lib/game/view/chronicle'
 import { contractPageView, lengthOptions, payoutPreview } from '../../src/renderer/src/lib/game/view/contract'
-import { heraldView, homecomingView, pagesFor, topBarView } from '../../src/renderer/src/lib/game/view/shell'
+import { heraldView, homecomingView, pagesFor, resultLine, topBarView, weekCloseView } from '../../src/renderer/src/lib/game/view/shell'
 import { steadiness } from '../../src/renderer/src/lib/game/weight'
 import { accordView, coalitionView, ultimatumView } from '../../src/renderer/src/lib/game/world'
 import { FOUNDED_AT, START, TZ, charter, chicago, ledgerWith } from './fixtures/ledgers'
 import { realm, withCrossings } from './support/realm'
+import { START as WAR_START, plainHex, withHex, withTiding } from './support/war'
 
 const LEDGER = ledgerWith('2026-09-10', 200)
 
@@ -29,12 +30,13 @@ function founded(): CampaignState {
 test('T14: the new pages appear only once a campaign exists', () => {
   assert.deepEqual(pagesFor(null), ['chronicle', 'contract', 'archive'])
   assert.deepEqual(pagesFor(realm()), ['chronicle', 'contract', 'archive', 'realm', 'diplomacy', 'armory'])
+  assert.deepEqual(pagesFor(null, true), ['chronicle', 'contract', 'archive', 'realm'], 'an outdated campaign keeps the Realm page to offer the re-founding (D-21)')
 })
 
 test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consistency and the Grace in plain words', () => {
   const state = founded()
   const bar = topBarView(state)
-  assert.equal(bar.purse, 100)
+  assert.equal(bar.purse, 250)
   assert.equal(bar.realmConsistency, 0)
   assert.deepEqual(bar.grace, { level: 0, textId: 'herald.grace.0', text: t('herald.grace.0') })
   const later = settle(state, LEDGER, chicago(addDays(START, 14))).state
@@ -43,6 +45,19 @@ test('A-11 / Ch 9: the top bar shows the purse as a whole number, Realm Consiste
   assert.equal(view.realmConsistencyPercent, Math.round(view.realmConsistency * 100))
   assert.equal(view.week, 3)
   assert.equal(Number.isInteger(view.purse), true)
+})
+
+test('D-15: the Herald warns when a threat puts a hex at stake, and reports a hex lost to the wilds', () => {
+  const base = dawn(realm(), WAR_START)
+  const den = plainHex(base, 3, (h) => h.owner === 'neutral').id
+  const state = withTiding(withHex(base, den, { owner: 'player', garrison: 0 }), { date: WAR_START, kind: 'beasts', hexId: den, strength: 10 })
+  const warning = heraldView(state, WAR_START).lines.find((l) => l.textId === 'herald.threat.atStake')
+  assert.ok(warning, 'the at-stake line')
+  assert.equal(warning.hexId, den)
+  assert.equal(warning.text.includes('{'), false)
+  const lost = resultLine({ id: 'ev-1', day: WAR_START, kind: 'defense', threat: 'beasts', hexId: den, outcome: 'defeat', tribute: 9, overrun: true })
+  assert.equal(lost?.textId, 'battle.beasts.overrun')
+  assert.equal(lost?.text.includes('{'), false)
 })
 
 test('Ch 2 / Ch 10: the Herald gives today’s threat with its band, the exact strength only when revealed, and yesterday’s results', () => {
@@ -72,6 +87,13 @@ test('A-45: after a 5-day jump the Homecoming lists all 5 days, plainly', () => 
   const away = homecomingView({ ...r.summary, awayDays: 20 }, 3)
   assert.equal(away.healer?.textId, 'healer.comingBack')
   assert.equal(away.suggestedTermDays, 3)
+})
+
+test('A-04: the week close is named as a date, 04:00 on the morning after the week’s last day', () => {
+  // 2026-10-11 is a Sunday.
+  assert.deepEqual(weekCloseView(1, '2026-10-11'), { lastDay: '2026-10-11', closesOn: '2026-10-12', time: '04:00', daysLeft: 1 })
+  assert.deepEqual(weekCloseView(1, '2026-10-05'), { lastDay: '2026-10-11', closesOn: '2026-10-12', time: '04:00', daysLeft: 7 })
+  assert.deepEqual(weekCloseView(0, '2026-10-08'), { lastDay: '2026-10-10', closesOn: '2026-10-11', time: '04:00', daysLeft: 3 }, 'weeks from Sunday close on Sunday morning')
 })
 
 /** Every key and number in a view, recursively. */
@@ -104,6 +126,8 @@ test('Convention 6: no view model carries the benchmark, a rival’s income, Ste
     lengthOptions(state),
     payoutPreview(state, 3, 20),
     milestonePanel(state, [], today),
+    weighInLog(state, [{ date: START, weight: 217 }]),
+    weekCloseView(state.campaign.weekStartsOn, today),
     healerCards(state, today),
     stepPace([], 50_000, today, 1),
     calorieWeek([], 2_000, 1_500, today, 1),

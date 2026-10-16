@@ -112,7 +112,7 @@ interface TargetRow {
   target: string
   range: Range | null
   /** greedy, smarter, push */
-  values: Record<PolicyId, { value: number; lo: number; hi: number; n: number }>
+  values: Record<ReportPolicy, { value: number; lo: number; hi: number; n: number }>
   kind: 'week' | 'share' | 'rate' | 'count'
 }
 
@@ -124,7 +124,9 @@ const BOOK_TARGETS: { profile: ProfileId; winWeek: [string, Range | null]; win70
   { profile: 'casual', winWeek: ['never', null], win70: ['0%', { hi: 0 }], loss: ['85% or more', { lo: 0.85 }] }
 ]
 
-const POLICIES: PolicyId[] = ['greedy', 'smarter', 'push']
+/** The policies the report compares; `skirmish` (D-12) has its own run, sim/skirmish-calibrate.ts. */
+type ReportPolicy = 'greedy' | 'smarter' | 'push'
+const POLICIES: ReportPolicy[] = ['greedy', 'smarter', 'push']
 
 function inRange(v: number, r: Range | null): boolean | null {
   if (!r || !Number.isFinite(v)) return null
@@ -207,7 +209,7 @@ function targetRows(results: readonly RunResult[]): TargetRow[] {
   return rows
 }
 
-function cell(row: TargetRow, p: PolicyId): string {
+function cell(row: TargetRow, p: ReportPolicy): string {
   const v = row.values[p]
   if (row.kind === 'week') return v.n === 0 ? 'none' : `${fmt(v.value)}${Number.isFinite(v.lo) ? ` [${fmt(v.lo)}–${fmt(v.hi)}]` : ''}`
   if (row.kind === 'rate') return `${fmt(v.value, 2)} [${fmt(v.lo, 2)}–${fmt(v.hi, 2)}]`
@@ -646,7 +648,9 @@ export function writeReport(all: readonly RunResult[], meta: RunMeta, outDir: st
       ])
     )
   )
-  say('*Every Tier II needs 8 Dominion in its own direction, and the ring-2 dens around the founding land need an Assault the starting companies rarely reach. Until a player takes land, its purse can buy nothing but courtships of the villages in reach and, once Milestone 1 breaks, Armory items: no tier, castle tier or Crossing.*')
+  say(
+    `*Near the founding land, Tier II needs ${RULES.buildings.tierDominion[1]} Dominion in its own direction (the Hearth's two wild hexes give each building 1), the founding grant is ${RULES.clock.foundingGrant}, and a ring-2 den's garrison is ${fmt(RULES.land.garrison.beasts * RULES.land.baseGarrison[1], 1)} (D-14).*`
+  )
 
   say('### Border Campaigns, the first month, Grand Battles and Ascendancy (greedy)')
   const measureRows: string[][] = []

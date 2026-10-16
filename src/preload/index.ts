@@ -8,6 +8,7 @@ const bridge: FiefdomBridge = {
   loadCampaign: () => ipcRenderer.invoke('campaign:load') as Promise<string | null>,
   saveCampaign: (json) => ipcRenderer.invoke('campaign:save', json) as Promise<void>,
   saveCampaignSync: (json) => ipcRenderer.sendSync('campaign:save-sync', json) === true,
+  archiveCampaign: (tag) => ipcRenderer.invoke('campaign:archive', tag) as Promise<string | null>,
   revealLedger: () => ipcRenderer.invoke('ledger:reveal') as Promise<void>,
   appInfo: () => ipcRenderer.invoke('app:info') as Promise<AppInfo>,
   health: {

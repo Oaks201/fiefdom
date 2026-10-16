@@ -130,3 +130,28 @@ test('the ledger still lives in ledger.json and the campaign in campaign.json, s
   assert.equal(campaign.load(), '{"campaign":true}')
   await assert.rejects(ledger.save('{bad'), /Refusing to write an invalid ledger/)
 })
+
+test('D-21 / C-15: the re-founding archives campaign.json for good: never overwritten, never pruned, never loaded as a backup', async () => {
+  const dir = tmpDir()
+  const store = new CampaignFile(dir, 2)
+  assert.equal(await store.archive('2.2.0-final'), null, 'nothing to archive yet')
+  await store.save('{"rules":"2.2.0"}')
+  const kept = path.join(dir, 'backups', 'campaign-2.2.0-final.json')
+  assert.equal(await store.archive('2.2.0-final'), kept)
+  assert.equal(fs.readFileSync(kept, 'utf8'), '{"rules":"2.2.0"}')
+  // A second archive keeps the first copy.
+  await store.save('{"rules":"3.0.0"}')
+  await store.archive('2.2.0-final')
+  assert.equal(fs.readFileSync(kept, 'utf8'), '{"rules":"2.2.0"}')
+  // The daily pruning keeps 2 dated backups and never the archive.
+  for (const name of oldBackups('campaign', 4)) fs.writeFileSync(path.join(dir, 'backups', name), '{}')
+  fs.rmSync(path.join(dir, 'backups', `campaign-${localDateStamp()}.json`), { force: true })
+  await store.save('{"rules":"3.0.1"}')
+  assert.ok(fs.existsSync(kept))
+  // A corrupt campaign.json falls back to dated backups only.
+  fs.writeFileSync(path.join(dir, 'campaign.json'), '{broken')
+  assert.notEqual(store.load(), '{"rules":"2.2.0"}')
+  // Tags that would escape the folder or pass for a dated backup are refused.
+  assert.throws(() => store.archive('../x'), /archive/)
+  assert.throws(() => store.archive('2026-01-01'), /archive/)
+})

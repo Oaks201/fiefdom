@@ -8,6 +8,7 @@ import { SvgDefs } from './components/SvgDefs'
 import { TopBar } from './components/TopBar'
 import { BigMomentCard } from './components/game/BigMomentCard'
 import { FoundingWizard } from './components/game/FoundingWizard'
+import { RefoundOffer } from './components/game/RefoundOffer'
 import { GameArt } from './components/game/GameArt'
 import { HowToPlay } from './components/HowToPlay'
 import { Homecoming } from './components/game/Homecoming'
@@ -17,6 +18,7 @@ import { ArmoryPage } from './pages/ArmoryPage'
 import { BattlePage } from './pages/BattlePage'
 import { DiplomacyPage } from './pages/DiplomacyPage'
 import { RealmPage } from './pages/RealmPage'
+import { SkirmishPage } from './pages/SkirmishPage'
 import { ChroniclePage } from './pages/ChroniclePage'
 import { ContractPage } from './pages/ContractPage'
 import { startClock } from './state/clock'
@@ -30,6 +32,7 @@ import { isDialogOpen, isTyping, useUI, type Page } from './state/ui'
 // Development builds only (A-09): the time-travel panel. Production builds drop this import entirely.
 const DevTimeTravel = import.meta.env.DEV ? lazy(() => import('./components/game/DevTimeTravel')) : null
 const DevArtSamples = import.meta.env.DEV ? lazy(() => import('./components/game/DevArtSamples')) : null
+const DevPortraitPaths = import.meta.env.DEV ? lazy(() => import('./components/game/DevPortraitPaths')) : null // TEMPORARY: the player-portrait debug panel
 
 export default function App(): React.JSX.Element {
   const status = useLedger((s) => s.status)
@@ -37,8 +40,10 @@ export default function App(): React.JSX.Element {
   const load = useLedger((s) => s.load)
   const page = useUI((s) => s.page)
   const battle = useUI((s) => s.battle)
+  const skirmish = useUI((s) => s.skirmish)
   const campaignStatus = useCampaign((s) => s.status)
   const hasCampaign = useCampaign((s) => s.campaign !== null)
+  const outdated = useCampaign((s) => s.outdated !== null)
 
   useEffect(() => {
     void load()
@@ -59,12 +64,12 @@ export default function App(): React.JSX.Element {
   // A new page starts at its top, whatever the last one was scrolled to.
   useEffect(() => {
     document.querySelector('.desk__main')?.scrollTo({ top: 0 })
-  }, [page, battle?.id, battle?.replay])
+  }, [page, battle?.id, battle?.replay, skirmish?.fight, skirmish?.replay])
 
   // A page that no longer exists (no campaign) falls back to the Chronicle.
   useEffect(() => {
-    if (!hasCampaign && (page === 'realm' || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
-  }, [hasCampaign, page])
+    if (!hasCampaign && ((page === 'realm' && !outdated) || page === 'diplomacy' || page === 'armory')) useUI.getState().go('chronicle')
+  }, [hasCampaign, outdated, page])
 
   // Ctrl+1 to 6 switch pages from anywhere (the campaign's pages once one is founded); M pauses or resumes the music;
   // Esc opens Settings and F1 or ? opens How to play when no dialog is open (an open dialog takes Esc to close).
@@ -87,7 +92,8 @@ export default function App(): React.JSX.Element {
         return
       }
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return
-      const order: Page[] = pagesFor(useCampaign.getState().campaign)
+      const { campaign, outdated } = useCampaign.getState()
+      const order: Page[] = pagesFor(campaign, outdated !== null)
       const i = ['1', '2', '3', '4', '5', '6'].indexOf(e.key)
       if (i >= 0 && i < order.length && !isDialogOpen()) {
         e.preventDefault()
@@ -123,6 +129,9 @@ export default function App(): React.JSX.Element {
     }
   }, [status])
 
+  // A Grand Battle or the day's skirmishes (D-12) take the sheet over the pages.
+  const onField = (battle !== null || skirmish !== null) && hasCampaign
+
   return (
     <div className="desk">
       <SvgDefs />
@@ -131,18 +140,20 @@ export default function App(): React.JSX.Element {
         <>
           <TopBar />
           <main className="desk__main">
-            <div className={`sheet page page--${battle && hasCampaign ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : page}>
+            <div className={`sheet page page--${onField ? 'battle' : page}`} key={battle && hasCampaign ? `battle-${battle.id}` : skirmish && hasCampaign ? `skirmish-${skirmish.day}` : page}>
               <div className="sheet__paper" aria-hidden="true">
                 <GameArt slot="ui.parchment" width={1024} className="sheet__art" fallback={<></>} />
               </div>
               <div className="page__content">
                 {battle && hasCampaign && <BattlePage />}
-                {!(battle && hasCampaign) && page === 'chronicle' && <ChroniclePage />}
-                {!(battle && hasCampaign) && page === 'contract' && <ContractPage />}
-                {!(battle && hasCampaign) && page === 'archive' && <ArchivePage />}
-                {!(battle && hasCampaign) && page === 'realm' && hasCampaign && <RealmPage />}
-                {!(battle && hasCampaign) && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
-                {!(battle && hasCampaign) && page === 'armory' && hasCampaign && <ArmoryPage />}
+                {!battle && skirmish && hasCampaign && <SkirmishPage />}
+                {!onField && page === 'chronicle' && <ChroniclePage />}
+                {!onField && page === 'contract' && <ContractPage />}
+                {!onField && page === 'archive' && <ArchivePage />}
+                {!onField && page === 'realm' && hasCampaign && <RealmPage />}
+                {!onField && page === 'realm' && !hasCampaign && outdated && <RefoundOffer />}
+                {!onField && page === 'diplomacy' && hasCampaign && <DiplomacyPage />}
+                {!onField && page === 'armory' && hasCampaign && <ArmoryPage />}
               </div>
             </div>
           </main>
@@ -174,6 +185,12 @@ export default function App(): React.JSX.Element {
       {DevArtSamples && (
         <Suspense fallback={null}>
           <DevArtSamples />
+        </Suspense>
+      )}
+      {DevPortraitPaths && (
+        // TEMPORARY: the player-portrait debug panel
+        <Suspense fallback={null}>
+          <DevPortraitPaths />
         </Suspense>
       )}
       <FloatLayer />

@@ -1,0 +1,11 @@
+{
+  "folder": "game-assets/portraits",
+  "tiers": [0, 300, 1100, 2350, 3850],
+  "closeMargin": 0.15,
+  "paths": { "orc": "orc", "goblin": "goblin", "dwarf": "dwarf", "archmage": "mage" },
+  "files": {
+    "base": "player_t1.png",
+    "pure": "player_t{tier}_{path}.png",
+    "hybrid": "player_t{tier}_{a}-{b}.png"
+  }
+}

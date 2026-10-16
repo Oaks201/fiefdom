@@ -4,11 +4,22 @@
  * posting events to the log. They hold no rule of their own beyond what their comments cite; they
  * exist so that combat, land, the rivals and settlement don't each keep a copy.
  */
-import { addDays, campaignWeek } from './clock'
-import { RULES, base } from './rules'
+import { addDays, campaignWeek, diffDays } from './clock'
+import { bandOf } from './map'
+import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
+
+/**
+ * Whether the player has been away on `day` (A-10): no launch for 14 or more days before it,
+ * counted from the last launch as each day settles. Absence never costs anything (X-17): no march
+ * prepares (D-19) and no counterattack comes (R-24, D-24) while it lasts.
+ */
+export function awayOn(state: CampaignState, day: ISODate): boolean {
+  const last = state.settlement.lastLaunch
+  return last !== undefined && diffDays(last, day) >= RULES.clock.absenceDays
+}
 
 /**
  * Whether the campaign still plays: it settles, buys and fights while active and in the Reign
@@ -119,7 +130,7 @@ export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexSta
   delete out.mythic
   delete out.rebels
   if (hex.village) {
-    const full = RULES.influence.loyalty.neutralPerRing * hex.ring
+    const full = RULES.influence.loyalty.neutralPerRing * bandOf(hex)
     out.village = settling
       ? { loyalty: RULES.land.villageLoyalty.afterConquestShare * full, settlingUntil: addDays(day, RULES.land.settling.weeks * RULES.clock.daysPerWeek) }
       : { loyalty: full }
@@ -127,11 +138,18 @@ export function toPlayer(hex: HexState, day: ISODate, settling: boolean): HexSta
   return out
 }
 
-/** A hex that passes to a rival: its garrison (A-17), a village's loyalty 30 × ring, no fortification (A-136). */
-export function toRival(hex: HexState, rival: RivalId): HexState {
-  const out: HexState = { ...heldHex(hex), owner: rival, garrison: base(hex.ring) * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
+/** A hex the wilds take back (D-15): neutral again, held by beasts at `garrison` (its place on the wilds' ramp), unfortified. */
+export function toWilds(hex: HexState, garrison: number): HexState {
+  const out: HexState = { ...heldHex(hex), owner: 'neutral', garrison, garrisonDamage: 0, fortification: 0 }
   delete out.rebels
-  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * hex.ring }
+  return out
+}
+
+/** A hex that passes to a rival: its garrison (its strength × A-17), a village's loyalty 30 × band, no fortification (A-136, D-17). */
+export function toRival(hex: HexState, rival: RivalId): HexState {
+  const out: HexState = { ...heldHex(hex), owner: rival, garrison: hex.strength * RULES.land.rivalGarrisonMult[rival], garrisonDamage: 0, fortification: 0 }
+  delete out.rebels
+  if (hex.village) out.village = { loyalty: RULES.influence.loyalty.rivalPerRing * bandOf(hex) }
   return out
 }
 

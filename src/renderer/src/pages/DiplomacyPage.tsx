@@ -3,6 +3,7 @@ import { Audience } from '../components/diplomacy/Audience'
 import { Courtships } from '../components/diplomacy/Courtships'
 import { AccordPanel, CoalitionBanners, EndgameRecord, UltimatumBanners } from '../components/endgame/Endgame'
 import { DealsList } from '../components/diplomacy/DealsList'
+import { WeekCloseNote } from '../components/game/WeekClose'
 import { RivalCourt } from '../components/diplomacy/RivalCourt'
 import type { RivalId } from '../lib/game/types'
 import { rivalPanels } from '../lib/game/view/diplomacy'
@@ -35,6 +36,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
       <header className="page-head">
         <h1 className="page-title">Diplomacy</h1>
         <p className="page-sub">The four rival courts: who they are, how they regard you, what they will deal on, and the villages you court.</p>
+        <WeekCloseNote weekStartsOn={campaign.campaign.weekStartsOn} today={today} className="page-week" />
       </header>
       <EndgameRecord campaign={campaign} />
       <UltimatumBanners campaign={campaign} today={today} />

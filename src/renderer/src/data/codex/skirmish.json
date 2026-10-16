@@ -1,0 +1,20 @@
+{
+  "foes": [
+    {
+      "id": "beasts",
+      "units": [
+        { "id": "bears", "name": "Bears", "weight": 1.3, "reach": "melee" },
+        { "id": "wolves", "name": "Wolves", "weight": 1, "reach": "melee" },
+        { "id": "giantSpiders", "name": "Giant spiders", "weight": 0.9, "reach": "melee" }
+      ],
+      "intentPattern": ["charge", "strike"],
+      "specials": []
+    },
+    {
+      "id": "militia",
+      "units": [{ "id": "villageMilitia", "name": "Village militia", "weight": 1, "reach": "melee" }],
+      "intentPattern": ["brace", "strike"],
+      "specials": []
+    }
+  ]
+}

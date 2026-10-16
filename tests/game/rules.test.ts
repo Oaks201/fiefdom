@@ -20,7 +20,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Clock',
     parameter: 'Day close; correction grace; founding grant',
-    keys: { 'clock.dayCloseHour': 4, 'clock.correctionGraceDays': 1, 'clock.foundingGrant': 100 }
+    keys: { 'clock.dayCloseHour': 4, 'clock.correctionGraceDays': 1, 'clock.foundingGrant': 250 } // D-14: the book's 100
   },
   {
     area: 'Contracts',
@@ -90,7 +90,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
       'reputation.weekly.calories': 70,
       'reputation.weekly.flawless': 50,
       'reputation.weekly.momentum': 60,
-      'reputation.weekly.tithePerRing': 4
+      'reputation.weekly.tithePerRing': 2.5 // D-17: × band at 2.5
     }
   },
   {
@@ -154,12 +154,12 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Buildings',
     parameter: 'Tier II / III / IV / V Dominion',
-    keys: { 'buildings.tierDominion': [0, 8, 24, 68, 68] }
+    keys: { 'buildings.tierDominion': [0, 1, 90, 270, 270] } // D-14: Tier II 1; D-18: total Dominion, the book's 24 and 68 summed
   },
   {
     area: 'Buildings',
     parameter: 'Tier II / III / IV / V cost',
-    keys: { 'buildings.tierCost': [0, 150, 450, 1100, 1800] }
+    keys: { 'buildings.tierCost': [0, 150, 900, 2200, 3600] } // D-15: twice the book's III to V
   },
   {
     area: 'Buildings',
@@ -169,7 +169,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Castle',
     parameter: 'Tiers II / III / IV: tier sum; cost',
-    keys: { 'castle.tierSum': [0, 8, 12, 16], 'castle.tierCost': [0, 250, 750, 1500] }
+    keys: { 'castle.tierSum': [0, 8, 12, 16], 'castle.tierCost': [0, 250, 1125, 3000] } // D-15: the book's 750 × 1.5 and 1,500 × 2
   },
   {
     area: 'Castle',
@@ -179,7 +179,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Crossings',
     parameter: 'Stage cost; hybrid power',
-    keys: { 'crossings.stageCost': [200, 600, 1200], 'crossings.hybridPower': [12, 18, 27] }
+    keys: { 'crossings.stageCost': [200, 1200, 2400], 'crossings.hybridPower': [12, 18, 27] } // D-15: stages II and III × 2
   },
   {
     area: 'Crownguard',
@@ -189,7 +189,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Land',
     parameter: 'Base garrison, rings 1–5',
-    keys: { 'land.baseGarrison': [15, 22, 55, 115, 200] }
+    keys: { 'land.baseGarrison': [15, 18] } // D-14: the book's ring 2 is 22; D-17: the heartland only, beyond it each hex's own strength
   },
   {
     area: 'Land',
@@ -323,11 +323,12 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
     area: 'Rivals',
     parameter: 'Benchmark b by weeks 1–8 / 9–20 / 21–36 / 37+',
     keys: {
+      // D-14: the book's 72 / 78 / 82 / 86% × 1.05
       'rivals.benchmark.phases': [
-        { fromWeek: 1, b: 0.72 },
-        { fromWeek: 9, b: 0.78 },
-        { fromWeek: 21, b: 0.82 },
-        { fromWeek: 37, b: 0.86 }
+        { fromWeek: 1, b: 0.756 },
+        { fromWeek: 9, b: 0.819 },
+        { fromWeek: 21, b: 0.861 },
+        { fromWeek: 37, b: 0.903 }
       ],
       'rivals.benchmark.graceEase': [0, 0, 0.03, 0.06],
       'rivals.benchmark.floor': 0.7
@@ -411,7 +412,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Defeat',
     parameter: 'Power',
-    keys: { 'defeat.power': { treasury: 0.5, army: 3, perRing: 10 } }
+    keys: { 'defeat.power': { treasury: 0.5, army: 3, perRing: 3 } } // D-17: × band at 3
   },
   {
     area: 'Healer',
@@ -428,17 +429,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'World',
     parameter: 'Border Campaigns',
-    keys: {
-      'world.borderCampaigns': {
-        firstWeek: 10,
-        everyWeeks: 8,
-        jitterWeeks: 1,
-        attackerTrack: 2,
-        armyShare: 0.5,
-        roll: 0.15,
-        armyLoss: 0.05
-      }
-    }
+    keys: {} // R-26 (D-16): Border Campaigns are dropped
   }
 ]
 
@@ -492,8 +483,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 2.0.0', () => {
-  assert.equal(RULES.ruleVersion, '2.0.0')
+test('RULES is versioned 3.1.0 (Patch 3: D-22 on), a 3.x campaign carried forward in place (C-33)', () => {
+  assert.equal(RULES.ruleVersion, '3.1.0')
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {
@@ -520,10 +511,10 @@ test('RULES is deep-frozen: mutating it throws in strict mode', () => {
   assert.ok(Object.isFrozen(RULES.rivals.budget.orc))
 })
 
-test('base(ring) is 15 / 22 / 55 / 115 / 200 for rings 1 to 5', () => {
-  assert.deepEqual([1, 2, 3, 4, 5].map(base), [15, 22, 55, 115, 200])
+test('base(ring) is 15 / 18 for the heartland’s rings 1 and 2 (ring 2 by D-14); beyond, hexes have their own strength (D-17)', () => {
+  assert.deepEqual([1, 2].map(base), [15, 18])
   assert.throws(() => base(0), RangeError)
-  assert.throws(() => base(6), RangeError)
+  assert.throws(() => base(3), RangeError)
 })
 
 test('lengthMultiplier gives L for 1 / 3 / 7 / 14 / 30 days', () => {

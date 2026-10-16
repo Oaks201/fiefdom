@@ -320,7 +320,7 @@
     ]
   },
   "rival.orc.calm": {
-    "file": "rival.orc.calm-dominion-v5.png",
+    "file": "rival.orc.calm-bone-circlet-v10.png",
     "kind": "rival",
     "size": [
       512,
@@ -328,7 +328,7 @@
     ]
   },
   "rival.orc.angry": {
-    "file": "rival.orc.angry-dominion-v5.png",
+    "file": "rival.orc.angry-bone-circlet-v10.png",
     "kind": "rival",
     "size": [
       512,
@@ -336,7 +336,7 @@
     ]
   },
   "rival.orc.humbled": {
-    "file": "rival.orc.humbled-dominion-v5.png",
+    "file": "rival.orc.humbled-bone-circlet-v10.png",
     "kind": "rival",
     "size": [
       512,
@@ -1040,7 +1040,7 @@
     ]
   },
   "company.ugraksWarboss.token": {
-    "file": null,
+    "file": "company.ugraksWarboss.token-orc-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1048,7 +1048,7 @@
     ]
   },
   "company.ugraksWarboss.portrait": {
-    "file": null,
+    "file": "company.ugraksWarboss.portrait-orc-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1056,7 +1056,7 @@
     ]
   },
   "company.grunts.token": {
-    "file": null,
+    "file": "company.grunts.token-orc-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1064,7 +1064,7 @@
     ]
   },
   "company.grunts.portrait": {
-    "file": null,
+    "file": "company.grunts.portrait-orc-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1072,7 +1072,7 @@
     ]
   },
   "company.wolfRiders.token": {
-    "file": null,
+    "file": "company.wolfRiders.token-orc-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1080,7 +1080,7 @@
     ]
   },
   "company.wolfRiders.portrait": {
-    "file": null,
+    "file": "company.wolfRiders.portrait-orc-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1088,7 +1088,7 @@
     ]
   },
   "company.shamans.token": {
-    "file": null,
+    "file": "company.shamans.token-orc-command-v10.png",
     "kind": "token",
     "size": [
       128,
@@ -1096,7 +1096,7 @@
     ]
   },
   "company.shamans.portrait": {
-    "file": null,
+    "file": "company.shamans.portrait-orc-command-v10.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1104,7 +1104,7 @@
     ]
   },
   "company.brutes.token": {
-    "file": null,
+    "file": "company.brutes.token-orc-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1112,7 +1112,7 @@
     ]
   },
   "company.brutes.portrait": {
-    "file": null,
+    "file": "company.brutes.portrait-orc-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -2289,6 +2289,198 @@
   },
   "hex.capital.dwarf": {
     "file": "hex.capital.dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.thornwild.near": {
+    "file": "hex.wilds.thornwild.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.thornwild.far": {
+    "file": "hex.wilds.thornwild.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.thornwild": {
+    "file": "hex.village.thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lairMouth.thornwild": {
+    "file": "hex.lairMouth.thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lair.thornwild": {
+    "file": "hex.lair.thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.thornwild": {
+    "file": "hex.battlefield.thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.wyrmfells.near": {
+    "file": "hex.wilds.wyrmfells.near.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.wilds.wyrmfells.far": {
+    "file": "hex.wilds.wyrmfells.far.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.wyrmfells": {
+    "file": "hex.village.wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lairMouth.wyrmfells": {
+    "file": "hex.lairMouth.wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.lair.wyrmfells": {
+    "file": "hex.lair.wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.wyrmfells": {
+    "file": "hex.battlefield.wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.orc-goblin": {
+    "file": "hex.village.orc-goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.orc-goblin": {
+    "file": "hex.battlefield.orc-goblin.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.goblin-thornwild": {
+    "file": "hex.village.goblin-thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.goblin-thornwild": {
+    "file": "hex.battlefield.goblin-thornwild.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.thornwild-dwarf": {
+    "file": "hex.village.thornwild-dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.thornwild-dwarf": {
+    "file": "hex.battlefield.thornwild-dwarf.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.dwarf-archmage": {
+    "file": "hex.village.dwarf-archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.dwarf-archmage": {
+    "file": "hex.battlefield.dwarf-archmage.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.archmage-wyrmfells": {
+    "file": "hex.village.archmage-wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.archmage-wyrmfells": {
+    "file": "hex.battlefield.archmage-wyrmfells.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.village.wyrmfells-orc": {
+    "file": "hex.village.wyrmfells-orc.png",
+    "kind": "hex",
+    "size": [
+      222,
+      256
+    ]
+  },
+  "hex.battlefield.wyrmfells-orc": {
+    "file": "hex.battlefield.wyrmfells-orc.png",
     "kind": "hex",
     "size": [
       222,
