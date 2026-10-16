@@ -1,7 +1,8 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { IconType } from 'react-icons'
 import {
   GiArcheryTarget,
+  GiCastle,
   GiCrossedSwords,
   GiCrown,
   GiDragonHead,
@@ -17,7 +18,7 @@ import {
   GiVillage
 } from 'react-icons/gi'
 import { create } from 'zustand'
-import type { CampaignState, ISODate, Owner } from '../../lib/game/types'
+import { MARCH_IDS, type CampaignState, type ISODate, type MarchId, type Owner } from '../../lib/game/types'
 import {
   HEX_WIDTH,
   clampMapZoom,
@@ -39,8 +40,8 @@ import {
 import { rivalName } from '../../lib/game/view/shell'
 import { GameArt, OWNER_COLORS } from '../game/GameArt'
 
-/** The hex under the pointer, apart from the map so that hovering never re-renders the hexes. */
-const useMapHover = create<{ id: string | null; x: number; y: number }>(() => ({ id: null, x: 0, y: 0 }))
+/** The hex under the pointer, apart from the map so that hovering never re-renders the hexes: its middle and its top and bottom edges, within the map's box. */
+const useMapHover = create<{ id: string | null; x: number; top: number; bottom: number }>(() => ({ id: null, x: 0, top: 0, bottom: 0 }))
 
 /** The map's zoom, kept for the session so the Realm reopens where the player left it (null: the whole realm). */
 const useMapZoom = create<{ view: MapZoom | null }>(() => ({ view: null }))
@@ -48,12 +49,19 @@ const useMapZoom = create<{ view: MapZoom | null }>(() => ({ view: null }))
 const MAX_ZOOM = 4
 /** One press of + or −. */
 const ZOOM_STEP = 1.4
+/**
+ * Below this zoom the map is the realm view: each hex a flat color by who holds it, unclaimed land
+ * tinted by its march, the marches named, and no art or marks. One press of + (or two or three wheel
+ * notches) shows the full map again.
+ */
+const REALM_VIEW_BELOW = 1.35
 /** Wheel zoom per pixel scrolled: one notch of a mouse wheel (100 px) zooms about 14%. */
 const WHEEL_RATE = 0.0015
 /** How far (px) a press moves before it is a drag rather than a click. */
 const DRAG_SLOP = 4
-/** The hover label's height (px): it sits at least this far below the frame's top, so it stays on the board. */
-const TIP_ROOM = 34
+/** The hover label's gap from its hex, and the least room it keeps from the map's edges (px). */
+const TIP_GAP = 6
+const TIP_EDGE = 4
 /** The tabletop tilt (T15): the map leans back 18° about its top edge, seen from twice its height away. */
 const TILT = (18 * Math.PI) / 180
 const DISTANCE = 2
@@ -83,6 +91,38 @@ const BORDER = hexPoints(0.86)
 const TERRAIN = { x: -HALF_W, y: -1, width: HEX_WIDTH, height: 2 }
 
 const BAND_COLORS: Record<string, string> = { weaker: '#2f7440', matched: '#c9962e', stronger: '#d06a1e', overwhelming: '#8b1e1a' }
+
+/** The realm view's ground: unclaimed heartland, and the empty board around the realm. */
+const PARCHMENT = '#e8dcbc'
+const BOARD = '#7a5a36'
+/** The lair wedges' own tints in the realm view (their land is never anyone's). */
+const LAIR_TINTS: Record<string, string> = { thornwild: '#7d8f5a', wyrmfells: '#6c8095' }
+
+/** `a` blended toward `b` by `t` (0 to 1), as #rrggbb. */
+function mix(a: string, b: string, t: number): string {
+  const ch = (hex: string, i: number): number => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16)
+  return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
+}
+
+/** A hex's flat color in the realm view: its holder's banner, or for unclaimed land a pale tint of its march. */
+function realmColor(hex: MapHex): string {
+  if (hex.decor) return BOARD
+  if (hex.owner !== 'neutral') return OWNER_COLORS[hex.owner].fill
+  if (!hex.march) return PARCHMENT
+  const base = LAIR_TINTS[hex.march] ?? OWNER_COLORS[hex.march as Owner]?.fill ?? OWNER_COLORS.neutral.fill
+  return mix(base, PARCHMENT, LAIR_TINTS[hex.march] ? 0.35 : 0.62)
+}
+
+/** One hex in the realm view: a flat color, a faint edge, and only the castle and capitals marked. */
+function RealmCell({ hex }: { hex: MapHex }): React.JSX.Element {
+  return (
+    <>
+      <polygon points={OUTLINE} fill={realmColor(hex)} fillOpacity={hex.decor ? 0.35 : 1} stroke="rgba(40, 28, 18, 0.28)" strokeWidth={0.04} />
+      {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={0} size={0.8} color={OWNER_COLORS[hex.owner].edge} />}
+      {hex.kind === 'castle' && <Mark icon={GiCastle} x={0} y={0} size={0.8} color={OWNER_COLORS.player.fill} />}
+    </>
+  )
+}
 
 function Mark({ icon: Icon, x, y, size = 0.56, color }: { icon: IconType; x: number; y: number; size?: number; color: string }): React.JSX.Element {
   return (
@@ -116,10 +156,18 @@ function SiegeBar({ progress }: { progress: number }): React.JSX.Element {
  * board by `place`. Re-renders only when its own facts change.
  */
 const HexCell = memo(
-  function HexCell({ hex, place, selected }: { hex: MapHex; sig: string; place: string; selected: boolean }): React.JSX.Element {
+  function HexCell({ hex, place, selected, realm }: { hex: MapHex; sig: string; place: string; selected: boolean; realm: boolean }): React.JSX.Element {
     const color = OWNER_COLORS[hex.owner]
     const unowned = hex.kind === 'battlefield' || hex.kind === 'lair'
     const threat = hex.threats?.[0]
+    if (realm) {
+      return (
+        <g className={`hex hex--realm${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
+          <RealmCell hex={hex} />
+          {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
+        </g>
+      )
+    }
     return (
       <g className={`hex hex--${hex.kind} hex--${hex.owner}${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
         <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
@@ -174,8 +222,21 @@ const HexCell = memo(
       </g>
     )
   },
-  (a, b) => a.sig === b.sig && a.place === b.place && a.selected === b.selected
+  (a, b) => a.sig === b.sig && a.place === b.place && a.selected === b.selected && a.realm === b.realm
 )
+
+/** The marches' names across their land, drawn over the realm view. */
+function MarchLabels({ labels }: { labels: { march: string; x: number; y: number; scale: number }[] }): React.JSX.Element {
+  return (
+    <g className="hexmap__labels" aria-hidden="true">
+      {labels.map((l) => (
+        <text key={l.march} x={l.x} y={l.y} textAnchor="middle" dominantBaseline="middle" fontSize={0.95 * l.scale} className="hexmap__label">
+          {marchName(l.march as MarchId)}
+        </text>
+      ))}
+    </g>
+  )
+}
 
 /** The hovered hex's outline, drawn over every hex (its own component, so the map itself never re-renders on hover). */
 function HoverOutline({ places }: { places: Map<string, string> }): React.JSX.Element | null {
@@ -184,14 +245,32 @@ function HoverOutline({ places }: { places: Map<string, string> }): React.JSX.El
   return place ? <polygon className="hexmap__hover" points={OUTLINE} transform={place} /> : null
 }
 
-/** The label shown while hovering a hex (its own component, so the map itself never re-renders on hover). */
+/**
+ * The label shown while hovering a hex (its own component, so the map itself never re-renders on
+ * hover): the hex's name, who holds it and where, then its conditions, wrapped to the box. It is
+ * measured before it paints and kept inside the map: above the hex if there is room, else below,
+ * and shifted in from the sides.
+ */
 function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Element | null {
-  const { id, x, y } = useMapHover()
+  const { id, x, top, bottom } = useMapHover()
+  const tip = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = tip.current
+    const box = el?.offsetParent as HTMLElement | null
+    if (!el || !box) return
+    const w = el.offsetWidth
+    const h = el.offsetHeight
+    const above = top - h - TIP_GAP
+    const below = bottom + TIP_GAP
+    el.style.left = `${Math.max(TIP_EDGE, Math.min(x - w / 2, box.clientWidth - w - TIP_EDGE))}px`
+    el.style.top = `${above >= TIP_EDGE ? above : below + h <= box.clientHeight - TIP_EDGE ? below : TIP_EDGE}px`
+  })
   const hex = id ? hexes.get(id) : undefined
   if (!hex) return null
-  const parts = [hex.label, ownerName(hex.owner)]
-  if (hex.march) parts.push(`${marchName(hex.march)}, depth ${hex.depth}`)
-  if (hex.ruling) parts.push(`seam: ${marchName(hex.ruling)} today`)
+  const where = [ownerName(hex.owner)]
+  if (hex.march) where.push(`${marchName(hex.march)}, depth ${hex.depth}`)
+  if (hex.ruling) where.push(`seam: ${marchName(hex.ruling)} today`)
+  const parts: string[] = []
   if (hex.preparation) parts.push(`preparation ${hex.preparation}`)
   if (hex.stronghold) parts.push('stronghold')
   if (hex.fallback) parts.push(`fallen back here: +${Math.round(hex.fallback.strength)}, ${hex.fallback.daysLeft}d`)
@@ -202,8 +281,10 @@ function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Elemen
   if (hex.threats?.length) parts.push(hex.threats.map((t) => `${t.rival ? `${rivalName(t.rival)} ` : ''}${THREAT_WORDS[t.kind]}${t.band ? ` (${t.band})` : ''}`).join(', '))
   if (hex.front) parts.push(`${hex.front.state}, track ${hex.front.track}`)
   return (
-    <div className="hexmap__tip" style={{ left: x, top: y }} role="tooltip">
-      {parts.join(' · ')}
+    <div className="hexmap__tip" ref={tip} role="tooltip">
+      <strong className="hexmap__tip-name">{hex.label}</strong>
+      <span className="hexmap__tip-line">{where.join(' · ')}</span>
+      {parts.length > 0 && <span className="hexmap__tip-line">{parts.join(' · ')}</span>}
     </div>
   )
 }
@@ -236,23 +317,33 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
   const dragged = useRef(false)
   const decor = useMemo(() => mapDecor(campaign), [campaign])
   const layout = useMemo(() => hexLayout([...decor, ...campaign.hexes]), [decor, campaign.hexes])
-  /** Each hex's place on the tilted board, and the board's extent: what the zoom frames. */
-  const { places, box } = useMemo(() => {
+  /** Each hex's place on the tilted board, the board's extent (what the zoom frames), and where each march is named in the realm view. */
+  const { places, box, labels } = useMemo(() => {
     const tilted = tiltedBoard(layout.points, layout, TILT, DISTANCE, MARGIN)
-    return { places: new Map(layout.points.map((p) => [p.id, `matrix(${tilted.place(p.x, p.y).join(' ')})`])), box: tilted.box }
-  }, [layout])
+    const at = new Map(layout.points.map((p) => [p.id, p]))
+    const labels = MARCH_IDS.flatMap((march) => {
+      const pts = campaign.hexes.filter((h) => h.march === march && !h.seam).flatMap((h) => at.get(h.id) ?? [])
+      if (pts.length === 0) return []
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
+      const [x, y] = tilted.project(cx, cy)
+      return [{ march, x, y, scale: tilted.place(cx, cy)[0] }]
+    })
+    return { places: new Map(layout.points.map((p) => [p.id, `matrix(${tilted.place(p.x, p.y).join(' ')})`])), box: tilted.box, labels }
+  }, [layout, campaign.hexes])
   const cells = useMemo(() => [...decor, ...mapView(campaign, today)].map((hex) => ({ hex, sig: JSON.stringify(hex) })), [decor, campaign, today])
   const byId = useMemo(() => new Map(cells.map((c) => [c.hex.id, c.hex])), [cells])
   const stored = useMapZoom((s) => s.view)
   const view = stored ? clampMapZoom(stored, box, MAX_ZOOM) : wholeMap(box)
   const shown = mapViewBox(view, box)
+  const realm = view.zoom < REALM_VIEW_BELOW
 
   const hexAt = (target: EventTarget | null): string | null => (target instanceof Element ? (target.closest('[data-hex]')?.getAttribute('data-hex') ?? null) : null)
 
   /** The frame point under a viewport point (the middle until the map has mounted). */
   const at = (clientX: number, clientY: number): FramePoint => (svg.current ? framePoint(svg.current, clientX, clientY) : { fx: 0.5, fy: 0.5 })
 
-  /** Hovers the hex `target` belongs to, or none, with its label above it and inside the frame. */
+  /** Hovers the hex `target` belongs to, or none: where it sits in the map's box, for its label. */
   const hover = (target: Element | null): void => {
     const cell = target && board.current?.contains(target) ? target.closest('[data-hex]') : null
     const id = cell?.getAttribute('data-hex') ?? null
@@ -264,7 +355,8 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
     const rect = cell.getBoundingClientRect()
     const frame = board.current.getBoundingClientRect()
     const outer = wrap.current.getBoundingClientRect()
-    useMapHover.setState({ id, x: Math.min(frame.right, Math.max(frame.left, rect.left + rect.width / 2)) - outer.left, y: Math.max(frame.top + TIP_ROOM, rect.top) - outer.top })
+    const x = Math.min(frame.right, Math.max(frame.left, rect.left + rect.width / 2)) - outer.left
+    useMapHover.setState({ id, x, top: Math.max(frame.top, rect.top) - outer.top, bottom: Math.min(frame.bottom, rect.bottom) - outer.top })
   }
 
   // The wheel zooms toward the pointer. At the limit it leaves the event alone, so the page scrolls.
@@ -344,12 +436,14 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
           aria-label="The realm map"
         >
           {cells.map(({ hex, sig }) => (
-            <HexCell key={hex.id} hex={hex} sig={sig} place={places.get(hex.id) ?? ''} selected={hex.id === selected} />
+            <HexCell key={hex.id} hex={hex} sig={sig} place={places.get(hex.id) ?? ''} selected={hex.id === selected} realm={realm} />
           ))}
+          {realm && <MarchLabels labels={labels} />}
           <HoverOutline places={places} />
           {selected && places.has(selected) && <polygon className="hexmap__selected" points={OUTLINE} transform={places.get(selected)} />}
         </svg>
       </div>
+      {realm && <div className="hexmap__mode">Realm view · zoom in for the details</div>}
       <div className="hexmap__zoom" role="group" aria-label="Zoom the map">
         <button type="button" className="btn btn--icon" onClick={() => zoomBy(ZOOM_STEP)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in" title="Zoom in (or scroll up over the map)">
           +

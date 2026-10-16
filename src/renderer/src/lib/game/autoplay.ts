@@ -30,7 +30,7 @@ import { armoryOf, buyItem, chooseWing, equipItem, itemOffer, promoteElite, recr
 import { buyCastleTier, buyCrossing, buyTier, castleOffer, crossingOffer, tierOffer } from './buildings'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, weekOf } from './clock'
 import { CODEX } from './codex'
-import { effectiveGarrison, ordersEstimate, setOrders } from './combat'
+import { effectiveGarrison, liftSiege, ordersEstimate, setOrders } from './combat'
 import { sealContract, takeRespite } from './contractActions'
 import { availableLengths } from './contracts'
 import { hexWorth, pathShares, pathTotals } from './dominion'
@@ -44,7 +44,7 @@ import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
 import { readinessValors, valorOn } from './settle'
-import { assaultDays, fallbackOn, fallsWithin, flankingMult, garrisonMult } from './sieges'
+import { assaultDays, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
 import { inCoalition } from './state'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId } from './types'
@@ -331,10 +331,14 @@ function nearestToFalling(list: readonly AssaultOption[]): AssaultOption | undef
   return out
 }
 
-/** The hexes the plan may assault today: a deals player courts villages it can afford rather than storming them. */
-function planOptions(state: CampaignState, today: ISODate, plan: AutoplayPlan, effects: Effects): AssaultOption[] {
-  const options = assaultOptions(state, today, effects)
-  return plan.land === 'deals' ? options.filter((o) => !(o.hex.village && state.courtships.some((c) => c.hexId === o.hex.id))) : options
+/**
+ * The hexes the plan may assault today: never a village it is courting. Every plan that courts
+ * courts first and assaults the rest, so a bid is never voided by its own siege (a deals player
+ * courts every village it can afford; `both`, those the purse allows on its paths).
+ */
+function planOptions(state: CampaignState, today: ISODate, _plan: AutoplayPlan, effects: Effects): AssaultOption[] {
+  const courted = new Set(state.courtships.map((c) => c.hexId))
+  return assaultOptions(state, today, effects).filter((o) => !courted.has(o.hex.id))
 }
 
 function onPath<T extends InReach>(list: readonly T[], p: RivalId): T[] {
@@ -385,7 +389,9 @@ function canChallenge(state: CampaignState, o: AssaultOption, effects: Effects):
  * (D-22); a stronghold that won't fall within the horizon is challenged to its Grand Battle when
  * the army can face it, else besieged. With nothing within the horizon: a stronghold, then a Gate
  * or capital, the army can face, on the plan's paths first; failing that, the siege nearest to
- * falling (the plan's paths first), so the army never idles while a hex can be worn down.
+ * falling (the plan's paths first), so the army never idles while a hex can be worn down. On a day
+ * it names no target, a standing siege on a hex it would no longer assault (a village it now courts)
+ * is lifted, so the Marshal doesn't press it.
  */
 function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): CampaignState {
   const state = input
@@ -398,16 +404,22 @@ function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): Campa
     return done.ok ? done.state : undefined
   }
   const options = planOptions(state, today, plan, effects)
+  const wanted = new Set(options.map((o) => o.hex.id))
+  const unsent = (next: CampaignState): CampaignState => {
+    const siege = standingSiegeOf(next)
+    return siege && !wanted.has(siege.hexId) ? liftSiege(next, today) : next
+  }
   const pick = pickOption(options, state, plan)
   if (pick) {
     const long = isStronghold(state.hexes, pick.hex.id) && !fallsWithin(pick.value, pick.garrison, A.siegeHorizon)
-    return (long ? tryChallenge(pick) : undefined) ?? send(pick)
+    const challenged = long ? tryChallenge(pick) : undefined
+    return challenged ? unsent(challenged) : send(pick)
   }
   const own = plan.paths ? options.filter((o) => onPlan(plan, o.hex)) : options
   const forts = [...own, ...options.filter((o) => !own.includes(o))].filter((o) => isStronghold(state.hexes, o.hex.id))
   for (const o of forts) {
     const challenged = tryChallenge(o)
-    if (challenged) return challenged
+    if (challenged) return unsent(challenged)
   }
   if (free) {
     const byId = hexIndex(state.hexes)
@@ -419,11 +431,11 @@ function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): Campa
       .sort((a, b) => offPlan(a) - offPlan(b) || bandRank(a) - bandRank(b) || a.id.localeCompare(b.id))
     for (const h of grand) {
       const done = challenge(state, h.id, today)
-      if (done.ok) return done.state
+      if (done.ok) return unsent(done.state)
     }
   }
   const far = nearestToFalling(own) ?? nearestToFalling(options)
-  return far ? send(far) : state
+  return far ? send(far) : unsent(state)
 }
 
 /** Fights each Grand Battle due today with the Marshal's choices, without his −0.1 (the player is present). */

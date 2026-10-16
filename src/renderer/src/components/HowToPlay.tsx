@@ -258,7 +258,8 @@ export function HowToPlay(): React.JSX.Element | null {
           </p>
           <p>
             To see the hexes larger, scroll over the map or use its <b>+</b> and <b>−</b> buttons; drag to move around while zoomed in, and the third button shows the whole
-            realm again.
+            realm again. Zoomed all the way out, the map is the <b>realm view</b>: each hex in its holder’s color, unclaimed land in a pale tint of its march, and each
+            march named. Zoom in a step to see the terrain, the marks and the day’s markers.
           </p>
           <ul>
             <li>
