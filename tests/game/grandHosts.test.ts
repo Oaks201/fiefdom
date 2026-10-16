@@ -23,7 +23,7 @@ import type { CampaignState } from '../../src/renderer/src/lib/game/types'
 import { near } from './support/assert'
 import { announced, collector, withArmy } from './support/grand'
 import { allBuildings, realm, withArmory, withBuildings, withCastle } from './support/realm'
-import { START, fight, hex } from './support/war'
+import { START, fight, hex, holdStrongholds } from './support/war'
 import { FOUNDED_AT, TZ, charter, chicago, steadyLedger } from './fixtures/ledgers'
 
 // ── Hosts (A-35, A-47) ───────────────────────────────────────────────────────
@@ -122,6 +122,9 @@ test('Ch 11: a challenge on a Gate the player borders is announced today', () =>
   // D-16: the Gate's neighbors are the Goblin's own land, the outer third of its march.
   const beside = neighbors(gate.id).find((id) => isClaimableKind(hex(state, id)) && hex(state, id).ring < gate.ring)!
   state = { ...state, hexes: state.hexes.map((h) => (h.id === beside ? { ...h, owner: 'player' as const } : h)) }
+  // D-23: while the Goblin's strongholds stand, the way to his Gate is barred.
+  assert.equal(challenge(state, gate.id, START).reason, 'barred')
+  state = holdStrongholds(state, 'goblin')
   const done = challenge(state, gate.id, START)
   assert.ok(done.ok)
   assert.equal(done.battle?.announcedOn, START)

@@ -7,10 +7,11 @@
  *
  * A plan steers it (the re-founding's four questions, P2-08):
  * - **paths**: the rivals whose paths it follows. Each day it presses the chosen path with the least
- *   Dominion so far, so the days are shared evenly: the best hex there it can take today, or else one
- *   the week's repulses can wear down (Ch 6's repeated push); a path with neither gives way to the
- *   next, and only when no chosen path has a target does it take the best hex anywhere.
- *   `null` is the unsteered greedy player: the best Dominion per garrison point anywhere.
+ *   Dominion so far, so the days are shared evenly: the best hex there it can take today, or else the
+ *   best siege there within `RULES.autoplay.siegeHorizon` assault days (Patch 3, C-31); a path with
+ *   neither gives way to the next, and only when no chosen path has a target does it take the best
+ *   hex anywhere. `null` is the unsteered greedy player: the best Dominion per garrison point
+ *   anywhere. Every player presses sieges, and the day's target becomes the standing siege (D-22).
  * - **spend**: tiers, castle tiers and Crossings first (`build`), the Armory first (`arm`), or each
  *   first in alternate weeks (`balanced`).
  * - **land**: assaults only (`force`); courting every village in reach, buying rival hexes when
@@ -38,12 +39,12 @@ import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
 import { isOver, marshalPlay } from './grand/field'
 import { bidCheck, fortify, makeDeal, offerDeal, placeBid, resistance } from './land'
-import { claimableBy, hexIndex, touches } from './map'
-import { preparationMult } from './marches'
+import { claimableBy, hexIndex, isStronghold, touches } from './map'
 import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
 import { readinessValors, valorOn } from './settle'
+import { assaultDays, fallbackOn, fallsWithin, flankingMult, garrisonMult } from './sieges'
 import { marshalAllFights } from './skirmish'
 import { inCoalition } from './state'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId } from './types'
@@ -60,7 +61,11 @@ export interface AutoplayPlan {
   contracts: 'longest' | 'none'
   /** The simulator's smarter player (T13): Truces, bending the knee, Accords, buy-outs, defections. */
   smarter?: boolean
-  /** The simulator's push player (T13): with nothing in reach, wear down a hex the week's repulses can break. */
+  /**
+   * The simulator's push player (T13): with nothing in reach, wear down a hex the week's repulses can
+   * break. Patch 3 (C-31): every player now presses sieges, so it changes nothing; kept so the T13
+   * policies and saved plans still read.
+   */
   push?: boolean
   /** D-12: also press "Start battle" each day and fight every fight with the Marshal's play. */
   skirmish?: boolean
@@ -237,37 +242,66 @@ export interface InReach {
   /** The Dominion the hex adds per garrison point. */
   score: number
   fielded: string[]
-  /** It falls today (the Assault beats the garrison); otherwise only the week's repulses could break it. */
+  /** It falls today (the Assault beats the garrison); otherwise only repulses could wear it down. */
   today: boolean
+}
+
+/** A hex the assault could be sent against today: the whole army's Assault on it (flanking counted), the garrison it must beat, and the assault days that would bring it down. */
+interface AssaultOption extends InReach {
+  value: number
+  garrison: number
+  days: number
+}
+
+/**
+ * Every hex the whole army's Assault could be sent against today at the expected Valor, with that
+ * Assault (× the hex's own flanking, D-22) and the garrison it must beat. Offered the whole army,
+ * the estimate fields the best-matched companies the assault banners allow; the Assault is
+ * estimated once per kind of garrison.
+ */
+function assaultOptions(state: CampaignState, today: ISODate, effects: Effects): AssaultOption[] {
+  const everyone = roster(state, { day: today }, effects).map((c) => c.id)
+  const valor = expectedValor(state)
+  const byId = hexIndex(state.hexes)
+  const candidates = frontier(state).filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
+  const pool = new Map<string, { base: number; fielded: string[] }>()
+  const out: AssaultOption[] = []
+  for (const h of candidates) {
+    const kind = garrisonKind(h)
+    if (!pool.has(kind)) {
+      const est = ordersEstimate(state, { date: today, assaultTarget: h.id, assault: everyone, defense: [] }, today, valor, effects).assaults[0]
+      pool.set(kind, { base: est ? est.value / est.flank : 0, fielded: est?.fielded ?? [] })
+    }
+    const { base, fielded } = pool.get(kind) as { base: number; fielded: string[] }
+    if (fielded.length === 0 || base <= 0) continue
+    const value = base * flankingMult(byId, h.id)
+    const garrison = effectiveGarrison(h, effects.assaultIgnoresFortification.on, garrisonMult(state, h, today), fallbackOn(state, h, today))
+    out.push({ hex: h, score: hexWorth(h) / Math.max(1, garrison), fielded, today: value >= garrison, value, garrison, days: assaultDays(value, garrison) })
+  }
+  return out
 }
 
 /**
  * Every hex the whole army's Assault could take today at the expected Valor, and (with `pushes`)
  * those the week's repulses could wear down by the week's last day (Ch 6: "a second or third push
- * can break it"). Offered the whole army, the estimate fields the best-matched companies the
- * assault banners allow.
+ * can break it").
  */
 export function hexesInReach(state: CampaignState, today: ISODate, pushes: boolean, effects: Effects = realmEffects(state)): InReach[] {
-  const everyone = roster(state, { day: today }, effects).map((c) => c.id)
-  const valor = expectedValor(state)
-  const candidates = frontier(state).filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
-  const pool = new Map<string, { value: number; fielded: string[] }>()
   const daysLeft = diffDays(today, addDays(weekOf(today, state.campaign.weekStartsOn), WEEK - 1)) + 1
-  const out: InReach[] = []
-  for (const h of candidates) {
-    const kind = garrisonKind(h)
-    if (!pool.has(kind)) {
-      const est = ordersEstimate(state, { date: today, assaultTarget: h.id, assault: everyone, defense: [] }, today, valor, effects).assaults[0]
-      pool.set(kind, { value: est?.value ?? 0, fielded: est?.fielded ?? [] })
-    }
-    const { value, fielded } = pool.get(kind) as { value: number; fielded: string[] }
-    if (fielded.length === 0) continue
-    const garrison = effectiveGarrison(h, effects.assaultIgnoresFortification.on, preparationMult(state, h, today))
-    const score = hexWorth(h) / Math.max(1, garrison)
-    if (value >= garrison) out.push({ hex: h, score, fielded, today: true })
-    else if (pushes && value * (1 + RULES.land.repulseWear * (daysLeft - 1)) >= garrison) out.push({ hex: h, score, fielded, today: false })
-  }
-  return out
+  return assaultOptions(state, today, effects)
+    .filter((o) => o.today || (pushes && fallsWithin(o.value, o.garrison, daysLeft)))
+    .map(({ hex, score, fielded, today: now }) => ({ hex, score, fielded, today: now }))
+}
+
+/**
+ * Patch 3 (C-27): the siege targets: every hex the whole army's Assault at the expected Valor would
+ * bring down within `days` assault days (`RULES.autoplay.siegeHorizon` by default), today included,
+ * wear already on it counted. Those that fall today are marked `today`.
+ */
+export function siegeReach(state: CampaignState, today: ISODate, days: number = A.siegeHorizon, effects: Effects = realmEffects(state)): InReach[] {
+  return assaultOptions(state, today, effects)
+    .filter((o) => fallsWithin(o.value, o.garrison, days))
+    .map(({ hex, score, fielded, today: now }) => ({ hex, score, fielded, today: now }))
 }
 
 /** The plan's paths in the order to press them today: least Dominion first, ties in rival order. */
@@ -277,49 +311,119 @@ function pathOrder(state: CampaignState, paths: readonly RivalId[]): RivalId[] {
 }
 
 /** The best of `reach` by score, the first in map order on a tie, or undefined. */
-function best(reach: readonly InReach[]): InReach | undefined {
-  let out: InReach | undefined
+function best<T extends InReach>(reach: readonly T[]): T | undefined {
+  let out: T | undefined
   for (const r of reach) if (!out || r.score > out.score) out = r
   return out
 }
 
+/** The best siege of `list` by Dominion per expected assault day, the first in map order on a tie, or undefined. */
+function bestSiege(list: readonly AssaultOption[]): AssaultOption | undefined {
+  let out: AssaultOption | undefined
+  for (const o of list) if (!out || hexWorth(o.hex) / o.days > hexWorth(out.hex) / out.days) out = o
+  return out
+}
+
+/** The option nearest to falling (fewest assault days, then the most Dominion per garrison point, then map order), or undefined. */
+function nearestToFalling(list: readonly AssaultOption[]): AssaultOption | undefined {
+  let out: AssaultOption | undefined
+  for (const o of list) if (!out || o.days < out.days || (o.days === out.days && o.score > out.score)) out = o
+  return out
+}
+
+/** The hexes the plan may assault today: a deals player courts villages it can afford rather than storming them. */
+function planOptions(state: CampaignState, today: ISODate, plan: AutoplayPlan, effects: Effects): AssaultOption[] {
+  const options = assaultOptions(state, today, effects)
+  return plan.land === 'deals' ? options.filter((o) => !(o.hex.village && state.courtships.some((c) => c.hexId === o.hex.id))) : options
+}
+
+function onPath<T extends InReach>(list: readonly T[], p: RivalId): T[] {
+  return list.filter((r) => (pathShares(r.hex)[p] ?? 0) > 0)
+}
+
 /**
- * The day's orders: the hex to assault (section above); with nothing in reach, a Gate or capital the
- * rival's army band says it can face, on the plan's paths.
+ * The day's assault target (Patch 3, C-31): the best hex that falls today, by Dominion per garrison
+ * point; otherwise the best siege that falls within `RULES.autoplay.siegeHorizon` assault days, by
+ * Dominion per expected assault day (a standing siege's wear makes its own target cheaper, so it is
+ * kept unless something better, or a fallback, changes the sum). A steered player looks along its
+ * paths first, least Dominion first, and presses a siege there out to `pathSiegeHorizon` days before
+ * it takes land off them (B-07). Undefined when nothing falls within the horizon. Exported for G-09,
+ * which asks it what the player would have done without a fallback.
  */
-function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): CampaignState {
-  let state = input
-  const effects = realmEffects(state)
-  // A steered player presses its own paths: it pushes there before it takes land anywhere else.
-  let reach = hexesInReach(state, today, plan.push === true || plan.paths !== null, effects)
-  // A deals player courts villages it can afford rather than storming them.
-  if (plan.land === 'deals') reach = reach.filter((r) => !(r.hex.village && state.courtships.some((c) => c.hexId === r.hex.id)))
-  const now = reach.filter((r) => r.today)
-  const later = reach.filter((r) => !r.today)
-  const onPath = (list: InReach[], p: RivalId): InReach[] => list.filter((r) => (pathShares(r.hex)[p] ?? 0) > 0)
-  let pick: InReach | undefined
+export function pickAssault(state: CampaignState, today: ISODate, plan: AutoplayPlan, effects: Effects = realmEffects(state)): InReach | undefined {
+  return pickOption(planOptions(state, today, plan, effects), state, plan)
+}
+
+function pickOption(options: readonly AssaultOption[], state: CampaignState, plan: AutoplayPlan): AssaultOption | undefined {
+  const now = options.filter((o) => o.today)
+  const within = (days: number): AssaultOption[] => options.filter((o) => !o.today && fallsWithin(o.value, o.garrison, days))
   if (plan.paths) {
+    const ownSieges = within(A.pathSiegeHorizon)
+    const forts = options.filter((o) => isStronghold(state.hexes, o.hex.id))
     for (const p of pathOrder(state, plan.paths)) {
-      pick = best(onPath(now, p)) ?? best(onPath(later, p))
-      if (pick) break
+      // A stronghold barring its own path is where a steered player commits (D-23), before land off it, once it is a week's siege.
+      const pick = best(onPath(now, p)) ?? bestSiege(onPath(ownSieges, p)) ?? nearestToFalling(onPath(forts.filter((o) => fallsWithin(o.value, o.garrison, A.strongholdCommitHorizon)), p))
+      if (pick) return pick
     }
   }
-  pick ??= best(now)
-  if (!pick && plan.push) pick = best(later)
-  if (pick) return setOrders(state, { date: today, assaultTarget: pick.hex.id, assault: pick.fielded, defense: [] }).state
-  if (pendingBattles(state).length > 0) return state
-  const byId = hexIndex(state.hexes)
-  const bandRank = (h: HexState): number => A.grandBands.indexOf(rivalView(state, h.owner as RivalId, effects).armyBand)
-  // The plan's own Gates and capitals first; the others only when none of its own can be faced.
-  const offPlan = (h: HexState): number => (onPlan(plan, h) ? 0 : 1)
-  const grand = state.hexes
-    .filter((h) => (h.kind === 'gate' || h.kind === 'capital') && isActiveRival(state, h.owner) && touches(byId, h.id, 'player') && bandRank(h) >= 0)
-    .sort((a, b) => offPlan(a) - offPlan(b) || bandRank(a) - bandRank(b) || a.id.localeCompare(b.id))
-  for (const h of grand) {
-    const done = challenge(state, h.id, today)
-    if (done.ok) return done.state
+  return best(now) ?? bestSiege(within(A.siegeHorizon))
+}
+
+/**
+ * Whether the army can face a stronghold's Grand Battle (C-31): a rival's when his army band is
+ * one the player challenges a Gate at; beasts' when their host (a share of the garrison) is no
+ * stronger than the Assault on it.
+ */
+function canChallenge(state: CampaignState, o: AssaultOption, effects: Effects): boolean {
+  const owner = o.hex.owner
+  if (isActiveRival(state, owner)) return A.grandBands.indexOf(rivalView(state, owner as RivalId, effects).armyBand) >= 0
+  return RULES.sieges.stronghold.beastHostShare * o.garrison <= o.value
+}
+
+/**
+ * The day's orders (C-31): the hex to assault (`pickAssault`), which becomes the standing siege
+ * (D-22); a stronghold that won't fall within the horizon is challenged to its Grand Battle when
+ * the army can face it, else besieged. With nothing within the horizon: a stronghold, then a Gate
+ * or capital, the army can face, on the plan's paths first; failing that, the siege nearest to
+ * falling (the plan's paths first), so the army never idles while a hex can be worn down.
+ */
+function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): CampaignState {
+  const state = input
+  const effects = realmEffects(state)
+  const send = (o: InReach): CampaignState => setOrders(state, { date: today, assaultTarget: o.hex.id, assault: o.fielded, defense: [] }).state
+  const free = pendingBattles(state).length === 0
+  const tryChallenge = (o: AssaultOption): CampaignState | undefined => {
+    if (!free || !canChallenge(state, o, effects)) return undefined
+    const done = challenge(state, o.hex.id, today)
+    return done.ok ? done.state : undefined
   }
-  return state
+  const options = planOptions(state, today, plan, effects)
+  const pick = pickOption(options, state, plan)
+  if (pick) {
+    const long = isStronghold(state.hexes, pick.hex.id) && !fallsWithin(pick.value, pick.garrison, A.siegeHorizon)
+    return (long ? tryChallenge(pick) : undefined) ?? send(pick)
+  }
+  const own = plan.paths ? options.filter((o) => onPlan(plan, o.hex)) : options
+  const forts = [...own, ...options.filter((o) => !own.includes(o))].filter((o) => isStronghold(state.hexes, o.hex.id))
+  for (const o of forts) {
+    const challenged = tryChallenge(o)
+    if (challenged) return challenged
+  }
+  if (free) {
+    const byId = hexIndex(state.hexes)
+    const bandRank = (h: HexState): number => A.grandBands.indexOf(rivalView(state, h.owner as RivalId, effects).armyBand)
+    // The plan's own Gates and capitals first; the others only when none of its own can be faced.
+    const offPlan = (h: HexState): number => (onPlan(plan, h) ? 0 : 1)
+    const grand = state.hexes
+      .filter((h) => (h.kind === 'gate' || h.kind === 'capital') && isActiveRival(state, h.owner) && touches(byId, h.id, 'player') && bandRank(h) >= 0)
+      .sort((a, b) => offPlan(a) - offPlan(b) || bandRank(a) - bandRank(b) || a.id.localeCompare(b.id))
+    for (const h of grand) {
+      const done = challenge(state, h.id, today)
+      if (done.ok) return done.state
+    }
+  }
+  const far = nearestToFalling(own) ?? nearestToFalling(options)
+  return far ? send(far) : state
 }
 
 /** Fights each Grand Battle due today with the Marshal's choices, without his −0.1 (the player is present). */

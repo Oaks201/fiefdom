@@ -192,7 +192,12 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     }
     case 'assault':
       if (e.outcome === 'revealed') return null
-      return line('result', `battle.assault.${e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
+      // A repulse that wore the garrison within reach reads as a breach (D-22).
+      return line('result', `battle.assault.${e.breach ? 'breach' : e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
+    case 'standingSiege':
+      return line('result', `herald.siege.${e.change}`, { hex: hexName(e.hexId) }, { hexId: e.hexId })
+    case 'fallback':
+      return line('result', 'herald.fallback', { hex: hexName(e.hexId), to: hexName(e.to), strength: Math.round(e.strength), days: RULES.sieges.fallback.days }, { hexId: e.to })
     case 'borderCampaign':
       return line('world', e.taken ? 'herald.borderCampaign.taken' : 'herald.borderCampaign.held', { rival: rivalName(e.attacker), other: rivalName(e.defender), hex: hexName(e.hexId) }, { hexId: e.hexId })
     case 'coalition':

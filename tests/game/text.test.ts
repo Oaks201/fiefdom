@@ -66,8 +66,8 @@ test('Ch 17: one description per Appendix C unit and item', () => {
   for (const i of CODEX.items) assert.ok(hasText(`items.${i.id}`), i.id)
 })
 
-test('Ch 17: about 20 daily battle report templates (22 with D-15’s two lines for a hex lost to the wilds)', () => {
-  assert.equal(textIds('battle').length, 22)
+test('Ch 17: about 20 daily battle report templates (22 with D-15’s two lines for a hex lost to the wilds, 23 with D-22’s breach, 26 with D-24’s counterattacks)', () => {
+  assert.equal(textIds('battle').length, 26)
 })
 
 test('every slot the codex needs exists', () => {

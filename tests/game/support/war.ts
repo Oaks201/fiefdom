@@ -4,8 +4,9 @@
  */
 import { campaignWeek } from '../../../src/renderer/src/lib/game/clock'
 import { settleCombat, type CombatOutcome } from '../../../src/renderer/src/lib/game/combat'
-import { neighbors } from '../../../src/renderer/src/lib/game/map'
+import { neighbors, strongholds } from '../../../src/renderer/src/lib/game/map'
 import type { CampaignState, GameEventKind, GameEventMap, HexState, Owner, RivalId, Tiding } from '../../../src/renderer/src/lib/game/types'
+import { realm } from './realm'
 
 /** The first campaign day of `realm()` (founded 2026-10-07 in Chicago; weeks start on Monday). */
 export const START = '2026-10-08'
@@ -85,4 +86,28 @@ export function withTiding(state: CampaignState, tiding: Omit<Tiding, 'siegeDay'
   const combat = state.combat ?? { schedule: [], tidings: [], conquests: [], contested: [] }
   const t: Tiding = { siegeDay: false, ...tiding }
   return { ...state, combat: { ...combat, tidings: [...combat.tidings.filter((x) => x.date !== t.date), t] } }
+}
+
+/** A neutral ring-`ring` hex the player can reach: one of its inner neighbors is handed to the player. */
+export function reachable(state: CampaignState, ring: number, also: (h: HexState) => boolean): { state: CampaignState; target: string } {
+  const target = state.hexes.find((h) => h.ring === ring && h.owner === 'neutral' && (h.kind === 'road' || h.kind === 'between') && also(h)) as HexState
+  const inner = neighbors(target.id).find((n) => hex(state, n).ring === ring - 1 && hex(state, n).kind !== 'building') as string
+  return { state: withOwner(state, [inner], 'player'), target: target.id }
+}
+
+/** A ring-3 beast den the player can reach (D-15's worked den: garrison 0.9 × 55 = 49.5). */
+export function den(state: CampaignState = realm()): { state: CampaignState; target: string } {
+  return reachable(state, 3, (h) => !h.village)
+}
+
+/** Parks `day`'s daily threat on a building, where it is always beaten. */
+export function quiet(state: CampaignState, day: string = START): CampaignState {
+  const building = state.hexes.find((h) => h.kind === 'building') as HexState
+  return withTiding(state, { date: day, kind: 'beasts', hexId: building.id, strength: 1 })
+}
+
+/** The player holds every stronghold of `march` (D-23), so nothing in it is barred. */
+export function holdStrongholds(state: CampaignState, march: RivalId): CampaignState {
+  const ids = [...strongholds(state.hexes)].filter(([, s]) => s.march === march).map(([id]) => id)
+  return withOwner(state, ids, 'player')
 }

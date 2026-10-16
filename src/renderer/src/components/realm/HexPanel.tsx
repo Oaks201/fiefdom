@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { GiArcheryTarget, GiCastle, GiHornInternal, GiQuill, GiShakingHands, GiShield, GiTreasureMap } from 'react-icons/gi'
+import { GiCastle, GiHornInternal, GiQuill, GiShakingHands, GiShield, GiSiegeTower, GiTreasureMap } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { formatShort } from '../../lib/dates'
 import { formatNumber } from '../../lib/format'
-import { setOrders } from '../../lib/game/combat'
+import { laySiege } from '../../lib/game/combat'
 import { challenge } from '../../lib/game/grand'
 import { fortify, reclaim } from '../../lib/game/land'
+import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
-import { withTarget } from '../../lib/game/view/orders'
 import { hexPanel, marchName, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
 import { amount } from '../../lib/game/view/refusals'
 import { rivalName } from '../../lib/game/view/shell'
@@ -29,10 +29,10 @@ const KIND_NAMES: Record<string, string> = {
   battlefield: 'Battlefield'
 }
 
-const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt' }
+const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack' }
 
 const ACTION_TITLES: Record<HexAction['kind'], string> = {
-  assault: 'Assault',
+  assault: 'Lay siege',
   challenge: 'Grand Battle',
   court: 'Court the village',
   buy: 'Buy the hex',
@@ -95,7 +95,44 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         {view.garrison !== undefined && view.owner !== 'player' && (
           <div>
             <dt>Garrison</dt>
-            <dd title="What an assault must beat today, fortification, preparation and this week’s wear counted">{amount(view.garrison)}</dd>
+            <dd title="What an assault must beat today, fortification, preparation and siege wear counted">{amount(view.garrison)}</dd>
+          </div>
+        )}
+        {view.stronghold && (
+          <div>
+            <dt>Stronghold</dt>
+            <dd title={`Its garrison counts ${RULES.sieges.stronghold.garrisonMult}× while it stands; take it by siege or in a Grand Battle`}>
+              {view.owner === 'player' ? 'Yours: the march beyond is open' : 'While it stands, no assault reaches deeper into its march'}
+            </dd>
+          </div>
+        )}
+        {view.fallback && (
+          <div>
+            <dt>Fallen back</dt>
+            <dd title="A garrison beaten without a rout falls back beside the hex it lost, no shallower, and may strike back at it">
+              +{amount(view.fallback.strength)} from {view.fallback.from.map((f) => f.label).join(', ')}; {view.fallback.daysLeft === 1 ? 'today only' : `${view.fallback.daysLeft} days left`}
+            </dd>
+          </div>
+        )}
+        {view.barredBy && (
+          <div>
+            <dt>Barred</dt>
+            <dd>By {view.barredBy.label}, still standing</dd>
+          </div>
+        )}
+        {view.siege && (
+          <div>
+            <dt>Siege</dt>
+            <dd title="Each repulse wears a quarter of the Assault off the garrison; the wear stays until the hex falls, easing a little each day it is left alone">
+              {view.siege.standing ? 'Under siege: ' : ''}
+              {Math.round(view.siege.progress * 100)}% worn
+            </dd>
+          </div>
+        )}
+        {view.flank !== undefined && view.flank > 1 && (
+          <div>
+            <dt>Flanked</dt>
+            <dd title="Each hex of yours beside it beyond the first adds to today’s Assault on it">+{Math.round((view.flank - 1) * 100)}% Assault</dd>
           </div>
         )}
         {view.village && (
@@ -139,7 +176,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         <ul className="hex-actions">
           {view.actions.map((a) => (
             <li key={a.kind} className={`hex-action ${a.available ? 'is-open' : 'is-shut'}`}>
-              <ActionButton action={a} view={view} campaign={campaign} today={today} onCourt={() => setBidding(!bidding)} />
+              <ActionButton action={a} view={view} today={today} onCourt={() => setBidding(!bidding)} />
               {!a.available && a.reason && <p className="hex-action__why">{a.reason.label}</p>}
               {a.kind === 'court' && bidding && a.available && (
                 <BidForm
@@ -161,26 +198,27 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
   )
 }
 
-function ActionButton({ action: a, view, campaign, today, onCourt }: { action: HexAction; view: HexPanelView; campaign: CampaignState; today: ISODate; onCourt(): void }): React.JSX.Element {
+function ActionButton({ action: a, view, today, onCourt }: { action: HexAction; view: HexPanelView; today: ISODate; onCourt(): void }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const apply = useCampaign((s) => s.apply)
   const cost = a.cost !== undefined ? ` · ${amount(a.cost)}` : ''
   const label = `${ACTION_TITLES[a.kind]}${cost}`
   switch (a.kind) {
     case 'assault': {
-      const orders = campaign.orders.find((o) => o.date === today) ?? null
+      const standing = view.siege?.standing === true
       return (
         <button
           type="button"
           className="btn btn--small"
-          disabled={!a.available || view.target}
+          disabled={!a.available || standing}
+          title="The Marshal sends the companies best matched to it, today and every day without orders of your own, until it falls"
           onClick={() => {
-            apply((s) => setOrders(s, withTarget(orders, today, view.id)).state)
+            apply((s) => laySiege(s, view.id, today).state)
             sfx('stamp')
-            toast(`${view.label} is today’s assault target. Send companies in the orders.`, 'success')
+            toast(`${view.label} is under siege: the Marshal presses it each day until it falls.`, 'success')
           }}
         >
-          <GiArcheryTarget aria-hidden="true" /> {view.target ? 'Today’s target' : 'Set as assault target'}
+          <GiSiegeTower aria-hidden="true" /> {standing ? 'Under siege' : label}
         </button>
       )
     }

@@ -9,7 +9,10 @@ import {
   GiFlame,
   GiHornInternal,
   GiQuill,
+  GiReturnArrow,
   GiShield,
+  GiSiegeTower,
+  GiStoneTower,
   GiTorch,
   GiVillage
 } from 'react-icons/gi'
@@ -90,7 +93,23 @@ function Mark({ icon: Icon, x, y, size = 0.56, color }: { icon: IconType; x: num
   )
 }
 
-const THREAT_WORDS: Record<string, string> = { beasts: 'beasts', mythic: 'a mythic', raid: 'raid', conquest: 'conquest attempt' }
+const THREAT_WORDS: Record<string, string> = { beasts: 'beasts', mythic: 'a mythic', raid: 'raid', conquest: 'conquest attempt', counterattack: 'counterattack' }
+
+/** The siege bar's place and size on a hex (hex sides): between the lower marks and the lower point, clear of the selection outline. */
+const SIEGE_BAR = { x: -0.24, y: 0.61, width: 0.48, height: 0.15 }
+const SIEGE_COLOR = '#b8322a'
+const SIEGE_FILL = '#ee4a35'
+
+/** A siege's progress above the hex's lower point (D-22): how much of the garrison it wears is worn away. */
+function SiegeBar({ progress }: { progress: number }): React.JSX.Element {
+  const b = SIEGE_BAR
+  return (
+    <g className="hex__siege">
+      <rect x={b.x} y={b.y} width={b.width} height={b.height} rx={b.height / 2} fill="rgba(40, 28, 18, 0.8)" stroke="#fbf2dc" strokeWidth={0.035} />
+      <rect x={b.x} y={b.y} width={Math.max(b.height, b.width * progress)} height={b.height} rx={b.height / 2} fill={SIEGE_FILL} />
+    </g>
+  )
+}
 
 /**
  * One hex: terrain, its owner's border, status overlays and the day's marks, set on the tilted
@@ -137,8 +156,10 @@ const HexCell = memo(
           </text>
         )}
         {threat && <Mark icon={GiCrossedSwords} x={-0.42} y={0.38} size={0.46} color={threat.band ? BAND_COLORS[threat.band] : '#8b1e1a'} />}
-        {hex.target && <Mark icon={GiArcheryTarget} x={0.42} y={0.38} size={0.46} color="#b8322a" />}
+        {hex.target && <Mark icon={hex.siege?.standing ? GiSiegeTower : GiArcheryTarget} x={0.42} y={0.38} size={0.46} color={SIEGE_COLOR} />}
         {hex.courting && <Mark icon={GiQuill} x={0} y={-0.62} size={0.4} color="#2d57a6" />}
+        {hex.fallback && <Mark icon={GiReturnArrow} x={0} y={0.3} size={0.4} color="#7a2e14" />}
+        {hex.stronghold && <Mark icon={GiStoneTower} x={0} y={-0.6} size={0.46} color={hex.owner === 'player' ? OWNER_COLORS.player.edge : '#4d4234'} />}
         {hex.battle && <Mark icon={GiHornInternal} x={0} y={0.05} size={0.56} color="#d98424" />}
         {hex.front && (
           <g className={`hex__front hex__front--${hex.front.state}`}>
@@ -149,6 +170,7 @@ const HexCell = memo(
             {hex.front.state === 'war' && <GiCrossedSwords x={-0.2} y={-0.75} size={0.4} color="#8b1e1a" aria-hidden="true" />}
           </g>
         )}
+        {hex.siege && hex.siege.progress > 0 && <SiegeBar progress={hex.siege.progress} />}
       </g>
     )
   },
@@ -171,6 +193,10 @@ function HexTooltip({ hexes }: { hexes: Map<string, MapHex> }): React.JSX.Elemen
   if (hex.march) parts.push(`${marchName(hex.march)}, depth ${hex.depth}`)
   if (hex.ruling) parts.push(`seam: ${marchName(hex.ruling)} today`)
   if (hex.preparation) parts.push(`preparation ${hex.preparation}`)
+  if (hex.stronghold) parts.push('stronghold')
+  if (hex.fallback) parts.push(`fallen back here: +${Math.round(hex.fallback.strength)}, ${hex.fallback.daysLeft}d`)
+  if (hex.barredBy) parts.push(`barred by ${hex.barredBy}`)
+  if (hex.siege) parts.push(`${hex.siege.standing ? 'under siege, ' : ''}${Math.round(hex.siege.progress * 100)}% worn`)
   if (hex.village) parts.push('village')
   if (hex.status !== 'held') parts.push(`${hex.status}${hex.daysLeft !== undefined ? `, ${hex.daysLeft}d` : ''}`)
   if (hex.threats?.length) parts.push(hex.threats.map((t) => `${t.rival ? `${rivalName(t.rival)} ` : ''}${THREAT_WORDS[t.kind]}${t.band ? ` (${t.band})` : ''}`).join(', '))
@@ -348,6 +374,9 @@ export function MapLegend(): React.JSX.Element {
     { icon: GiShield, label: 'Fortified' },
     { icon: GiCrossedSwords, label: 'Threat today' },
     { icon: GiArcheryTarget, label: 'Assault target' },
+    { icon: GiSiegeTower, label: 'Under siege (the bar: how worn)' },
+    { icon: GiStoneTower, label: 'Stronghold (bars its march beyond)' },
+    { icon: GiReturnArrow, label: 'A beaten garrison fell back here' },
     { icon: GiTorch, label: 'Contested' },
     { icon: GiFlame, label: 'Scorched' },
     { icon: GiQuill, label: 'Courting' },

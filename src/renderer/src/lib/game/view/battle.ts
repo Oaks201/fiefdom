@@ -63,7 +63,8 @@ const TRIGGER_NAMES: Record<GrandTrigger, string> = {
   warhost: 'The Warhost',
   coalitionOffensive: 'Coalition Offensive',
   siege: 'Siege of the Crown',
-  event: 'Event battle'
+  event: 'Event battle',
+  stronghold: 'Stronghold'
 }
 
 /** What raised a battle, in plain words (an event battle by its event's name). */

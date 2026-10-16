@@ -24,7 +24,7 @@ import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type GraceLevel, type ISOD
 import { liveValor } from '../src/renderer/src/lib/game/view/chronicle'
 import { FOUNDED_AT, START, TZ, isRoughDay, ledgerFor } from './ledgerGen'
 import { Recorder, type Measures } from './measure'
-import { act, type PolicyId } from './policy'
+import { act, planOf, type PolicyId } from './policy'
 import { JOURNEY, profileOf, type ProfileId } from './profiles'
 
 export interface RunOptions {
@@ -149,7 +149,7 @@ export function runCampaign(o: RunOptions): RunResult {
   let tierIVDominionWeeks = 0
   let maxAscendancyStreak = 0
   let contractNo = 0
-  const recorder = new Recorder()
+  const recorder = new Recorder(planOf(o.policy))
   const nextId = (): string => `sim-${(contractNo += 1)}`
   const countHexes = (): void => {
     hexes.player.push(state.hexes.filter((h) => h.owner === 'player').length)

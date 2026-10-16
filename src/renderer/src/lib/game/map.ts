@@ -672,7 +672,7 @@ export type ClaimMethod = 'assault' | 'court' | 'buy' | 'rivalExpand'
  *   someone else holds it, and it touches land the claimant holds (rule 1).
  * - Never: a capital, realm or lair hex (rules 4 and 6), a Lair Mouth (rule 5: Grand Battle only),
  *   or, for a rival, any hex in rings 0 to 2 (rule 2, A-15).
- * - `assault`: not a Gate (A-16).
+ * - `assault`: not a Gate (A-16); for the player, not a hex a standing stronghold bars (P3-01, D-23).
  * - `court`: villages only; rivals never court the player's villages (A-23).
  * - `buy`: the player buys an adjacent rival hex that is not a Gate (Ch 6 trade table).
  * - `rivalExpand`: a rival's weekly expansion into a neutral den or village (A-25).
@@ -687,7 +687,7 @@ export function claimableBy(hexes: readonly HexState[], id: string, claimant: Ow
 
   switch (method) {
     case 'assault':
-      return hex.kind !== 'gate'
+      return hex.kind !== 'gate' && (claimant !== 'player' || strongholdBarring(hexes, id) === undefined)
     case 'court':
       if (!hex.village) return false
       return claimant === 'player' || hex.owner !== 'player'
@@ -696,6 +696,69 @@ export function claimableBy(hexes: readonly HexState[], id: string, claimant: Ow
     case 'rivalExpand':
       return claimant !== 'player' && hex.owner === 'neutral'
   }
+}
+
+// ── Strongholds (Patch 3, D-23; P3-01) ───────────────────────────────────────
+
+/** Each ring's hexes by id, with their clockwise position on the ring (from its NW corner). */
+const POSITION_OF: ReadonlyMap<string, number> = (() => {
+  const out = new Map<string, number>()
+  for (let k = HEARTLAND + 1; k <= MAP_RADIUS; k++) ringHexes(k).forEach((at, p) => out.set(hexId(at.q, at.r), p))
+  return out
+})()
+
+const strongholdCache = new WeakMap<readonly HexState[], ReadonlyMap<string, { march: RivalId; depth: number }>>()
+
+/**
+ * The strongholds (P3-01): in each rival march, at each depth of `RULES.sieges.stronghold.depths`,
+ * the road hex of that row, or when it is a village the non-village hex nearest the road in the row
+ * (ties clockwise). Never a seam; none in a lair's wedge. Derived from the map (road tags and
+ * village flags, which never change), so a campaign founded before Patch 3 has them at once. By id,
+ * with the march and depth of each.
+ */
+export function strongholds(hexes: readonly HexState[]): ReadonlyMap<string, { march: RivalId; depth: number }> {
+  const known = strongholdCache.get(hexes)
+  if (known) return known
+  const out = new Map<string, { march: RivalId; depth: number }>()
+  for (const rival of RIVAL_IDS) {
+    const corner = CORNER_OF.get(rival) as number
+    for (const depth of RULES.sieges.stronghold.depths) {
+      const k = depth + HEARTLAND
+      const size = k * CLOCKWISE_CORNERS.length
+      const row = hexes.filter((h) => h.ring === k && h.march === rival && !h.seam && !h.village && (h.kind === 'road' || h.kind === 'between'))
+      const place = (h: HexState): { off: number; clockwise: number } => {
+        const p = POSITION_OF.get(h.id) as number
+        return { off: offsetFrom(k, p, corner), clockwise: (p - corner * k + size) % size }
+      }
+      const pick = row.sort((a, b) => place(a).off - place(b).off || place(a).clockwise - place(b).clockwise)[0]
+      if (pick) out.set(pick.id, { march: rival, depth })
+    }
+  }
+  strongholdCache.set(hexes, out)
+  return out
+}
+
+/** Whether hex `id` is a stronghold. */
+export function isStronghold(hexes: readonly HexState[], id: string): boolean {
+  return strongholds(hexes).has(id)
+}
+
+/**
+ * The stronghold that bars the player's assault on hex `id` (P3-01), or undefined: a stronghold of
+ * the march `id` lies in, shallower than it, that the player does not hold. Seams (they lie in two
+ * marches) and lair wedges are never barred.
+ */
+export function strongholdBarring(hexes: readonly HexState[], id: string): string | undefined {
+  const hex = hexIndex(hexes).get(id)
+  if (!hex?.march || hex.seam || isLairMarch(hex.march)) return undefined
+  const depth = depthOf(hex)
+  const byId = hexIndex(hexes)
+  let barring: { id: string; depth: number } | undefined
+  for (const [sid, s] of strongholds(hexes)) {
+    if (s.march !== hex.march || s.depth >= depth || byId.get(sid)?.owner === 'player') continue
+    if (!barring || s.depth < barring.depth) barring = { id: sid, depth: s.depth }
+  }
+  return barring?.id
 }
 
 // ── Seams (P2-04 to P2-06) ───────────────────────────────────────────────────

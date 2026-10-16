@@ -13,9 +13,10 @@
  * not punished for stalling. Nor does a week close that falls while the player has been away 14 or
  * more days (A-10, X-17: absence never costs anything).
  */
-import { diffDays, weekOf } from './clock'
+import { weekOf } from './clock'
 import { hexIndex, isLairMarch, rulingMarch } from './map'
 import { RULES } from './rules'
+import { awayOn } from './state'
 import { RIVAL_IDS, type CampaignState, type Emit, type HexState, type ISODate, type MarchesState, type RivalId } from './types'
 
 const P = RULES.marches.preparation
@@ -75,9 +76,7 @@ export function pushedMarches(state: CampaignState, from: ISODate, to: ISODate):
 export function prepareMarches(state: CampaignState, day: ISODate, emit: Emit): CampaignState {
   const before = marchesOf(state)
   const pushed = pushedMarches(state, weekOf(day, state.campaign.weekStartsOn), day)
-  const last = state.settlement.lastLaunch
-  const away = last !== undefined && diffDays(last, day) >= RULES.clock.absenceDays
-  const rise = !away && pushed.size > 0
+  const rise = !awayOn(state, day) && pushed.size > 0
   const preparation = { ...before.preparation }
   const quietWeeks = { ...before.quietWeeks }
   for (const r of RIVAL_IDS) {

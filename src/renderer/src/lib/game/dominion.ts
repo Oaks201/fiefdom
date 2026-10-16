@@ -14,7 +14,7 @@
  * never falls (P2-15). Total Dominion (all four paths) gates the building tiers.
  */
 import { CODEX } from './codex'
-import { depthOf, hexIndex, hexWorth, isClaimableKind, marchShares, pathShares, type Shares } from './map'
+import { depthOf, hexIndex, hexWorth, isClaimableKind, isStronghold, marchShares, pathShares, type Shares } from './map'
 import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type GameEvent, type HexState, type LairId, type Owner, type PathsState, type RivalId } from './types'
 
@@ -122,10 +122,19 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
       const hex = byId.get(e.hexId)
       if (e.to !== 'player' || e.how === 'abdication' || !hex || hex.ring <= HEARTLAND || !isClaimableKind(hex)) return []
       const value = d.hexTakenPerDepth * depthOf(hex) + d.perFortification * (e.fortification ?? 0)
-      return spread(pathShares(hex), 'hexTaken', value, hex.id, e.id)
+      const taken = spread(pathShares(hex), 'hexTaken', value, hex.id, e.id)
+      // A stronghold (D-25) adds its own deed on top; one won in battle has the Grand Battle's too.
+      if (!isStronghold(state.hexes, hex.id)) return taken
+      return [...taken, ...spread(pathShares(hex), 'strongholdTaken', d.strongholdPerDepth * depthOf(hex), hex.id, e.id)]
     }
     case 'defense': {
       if (e.outcome === 'defeat') return []
+      if (e.threat === 'counterattack') {
+        // D-25: a counterattack held is its own deed, in place of the battle's ordinary one.
+        if (e.rival) return [{ path: e.rival, deed: 'counterattackHeld', value: d.counterattackHeld, hexId: e.hexId, source: e.id }]
+        const hex = byId.get(e.hexId)
+        return hex && hex.ring > HEARTLAND ? spread(pathShares(hex), 'counterattackHeld', d.counterattackHeldBeasts, hex.id, e.id) : []
+      }
       if (e.rival) return [{ path: e.rival, deed: 'battleWon', value: d.battleWon, hexId: e.hexId, source: e.id }]
       const hex = byId.get(e.hexId)
       if (!hex || hex.ring <= HEARTLAND) return []

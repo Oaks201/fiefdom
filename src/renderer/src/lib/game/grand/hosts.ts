@@ -12,6 +12,34 @@ import type { CampaignState, Company, Effects, FieldUnit, GrandBattle, ISODate, 
 import { FILL_ORDER, slotOf } from './field'
 
 const G = RULES.grandBattles
+const TENTH = 10 // rules-ok: enemy power to a tenth
+
+/** A kind of enemy company: its id prefix (the side), codex unit, name, share of the power and reach. */
+export interface HostKind {
+  side: string
+  unit: string
+  name: string
+  weight: number
+  reach: Reach
+}
+
+/** `count` companies of `kinds` (cycling), sharing `budget` power by their weights: a led fight's host (D-12) and a beast-held stronghold's (D-23). */
+export function hostFromKinds(kinds: readonly HostKind[], count: number, budget: number): Company[] {
+  if (kinds.length === 0) return []
+  const picks = Array.from({ length: count }, (_, i) => kinds[i % kinds.length])
+  const total = picks.reduce((s, k) => s + k.weight, 0)
+  return picks.map((k, i) => ({ id: `${k.side}:${k.unit}:${i + 1}`, name: k.name, source: 'host', power: Math.round(((budget * k.weight) / total) * TENTH) / TENTH, tags: [], reach: k.reach, items: [] }))
+}
+
+/**
+ * A beast-held stronghold's host (D-23, C-28): `skirmish.json`'s beasts sharing `power` by their
+ * weights over a full host of `maxCompanies` companies.
+ */
+export function beastHost(power: number): Company[] {
+  const beasts = CODEX.skirmishFoes.find((f) => f.id === 'beasts')
+  const kinds = (beasts?.units ?? []).map((u) => ({ side: 'beasts', unit: u.id, name: u.name, weight: u.weight, reach: u.reach }))
+  return power > 0 ? hostFromKinds(kinds, G.maxCompanies, power) : []
+}
 
 /**
  * A rival's host (A-35): `share` of its Army value on `date` as a power budget. Its commander

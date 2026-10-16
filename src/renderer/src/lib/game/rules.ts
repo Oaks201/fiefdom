@@ -36,7 +36,7 @@ export type LengthUnlock =
 type PerRival<T> = Record<RivalId, T>
 
 const RULES_TABLE = {
-  ruleVersion: '3.0.0',
+  ruleVersion: '3.1.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -268,7 +268,7 @@ const RULES_TABLE = {
     fortificationMax: 3,
     /** The Dwarf can reach level 4 on its own hexes. */
     dwarfFortificationMax: 4,
-    /** A repulsed assault takes 25% of the Assault value off the garrison until week close. */
+    /** A repulsed assault takes 25% of the Assault value off the garrison; Patch 3 (D-22): the wear stays until the hex falls, decaying by `sieges.wearDecay`. */
     repulseWear: 0.25,
     weary: { powerPenalty: 0.2, days: 1 },
     assaultsPerDay: 1,
@@ -380,9 +380,9 @@ const RULES_TABLE = {
     /** A win at twice the enemy's remaining health share is a Rout. */
     routShareRatio: 2,
     wearyDaysAfterRout: 3,
-    retryDays: { mythicHunt: 7, gate: 14, capital: 14 },
+    retryDays: { mythicHunt: 7, gate: 14, capital: 14, stronghold: 14 },
     /** The Orc's Warhost is Incursion-style (T10, A-151), so it warns like one. */
-    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14, warhost: 2 },
+    warningDays: { incursion: 2, gate: 2, capital: 3, mythicHunt: 2, coalitionOffensive: 3, siege: 14, warhost: 2, stronghold: 2 },
     /** 8% of assaults on band 4 to 5 beast hexes in a lair's wedge or on its flank reveal a rare creature (D-17). */
     mythicReveal: { chance: 0.08, minRing: 4 },
     /** Mythic Hunt rosters scale by 1 + week / 52. */
@@ -395,7 +395,9 @@ const RULES_TABLE = {
       capitalLoss: { armyGain: 0.1 },
       mythicHuntWin: { reputation: 150 },
       mythicHuntLoss: { tributePerRing: 5 },
-      coalitionWin: { spoilsPerRing: 40, endsEarlyWeeks: 2 }
+      coalitionWin: { spoilsPerRing: 40, endsEarlyWeeks: 2 },
+      /** Patch 3 (D-23): a stronghold battle lost costs tribute × band, as a Gate's does. TUNE. */
+      strongholdLoss: { tributePerRing: 5 }
     },
     /** "Once a month" (the Herald's Horn, the Scrying Pool, an ally's battle) is once per block of 4 campaign weeks. */
     monthWeeks: 4 // TUNE (A-157)
@@ -672,7 +674,12 @@ const RULES_TABLE = {
       heldAgainstBeasts: 0.5,
       heldAgainstMythic: 1,
       grandBattleWon: 15,
-      resolved: 100
+      resolved: 100,
+      /** D-25: a stronghold taken, this × its depth × its shares, on top of the hex deed. TUNE. */
+      strongholdPerDepth: 2,
+      /** D-25: a counterattack held, to the rival's path; against beasts, `counterattackHeldBeasts` × the hex's shares. It replaces that battle's ordinary deed. TUNE. */
+      counterattackHeld: 2,
+      counterattackHeldBeasts: 1
     },
     /** A fully walked path: its march held (Holdings about 440), its hexes taken, its battles fought and its rival resolved (Renown about 660). TUNE. */
     fullPath: 1_100,
@@ -745,7 +752,27 @@ const RULES_TABLE = {
     wingPreference: ['drillYard', 'countingHouse', 'herbGarden', 'kilns', 'musterField', 'spymaster', 'wardCircle', 'engineWorks', 'shieldForge', 'goldenRoad', 'leylineAnchor', 'siegePark'],
     swornTags: ['steel', 'arcane'] as Tag[],
     /** The army bands at which the player challenges a Gate or capital, weakest first (a host is 60% of the rival's AV). */
-    grandBands: ['weaker', 'matched', 'stronger']
+    grandBands: ['weaker', 'matched', 'stronger'],
+    /**
+     * Patch 3 (C-27, C-31): a hex is a siege target when the whole army's Assault would bring it down
+     * within this many assault days, today included, each repulse wearing `land.repulseWear` of the
+     * Assault (Weary aside). The simulator's "a target every day" (G-03) reads the same horizon. TUNE.
+     */
+    siegeHorizon: 3,
+    /**
+     * Patch 3 (B-07 kept): a steered player presses a siege on its own paths out to this many assault
+     * days before it takes land off them: about what the old push gave it (the days left in the week,
+     * 4 on average). A habit of play; G-06 is sensitive to it (3: 1.8×, 4: 3.2×, 5: 4.5×). TUNE.
+     */
+    pathSiegeHorizon: 4,
+    /**
+     * Patch 3 (D-23): a steered player commits to a stronghold barring its own path, before land off
+     * it, once the siege would bring it down within this many assault days. Sooner, it grinds weeks at
+     * its first stronghold and its land stalls (G-07); never, and it leaves its path (G-06). Measured on
+     * the 40 focused campaigns: always 3.25× and 75% rising; 7 days 2.27× and 95%; 10 days 2.72× and
+     * 90%. A habit of play. TUNE.
+     */
+    strongholdCommitHorizon: 7
   },
 
   /** T12: the living world's and the endgame's numbers the book leaves open. */
@@ -756,6 +783,41 @@ const RULES_TABLE = {
     offerDays: 7, // TUNE (A-171)
     /** The synodic month, and a known new moon (2000-01-06, 18:14 UTC, 0.76 into the day), for the Wild Hunt's full moon. */
     moon: { synodicDays: 29.530588853, knownNewMoon: '2000-01-06', knownNewMoonDayShare: 0.76 }
+  },
+
+  /** Patch 3 (D-22; R-04, R-16): sieges. Every value TUNE. */
+  sieges: {
+    /**
+     * C-20: each day a hex is not assaulted it loses `perDay` of its siege wear (a stronghold
+     * `stronghold`, P3-02); wear below `clearBelow` is cleared. A day it is assaulted, it loses none.
+     */
+    wearDecay: { perDay: 0.1, stronghold: 0.05, clearBelow: 0.05 },
+    /** C-21: the daily assault gains `perNeighbor` for each hex the player holds beside its target beyond the first, at most `maxNeighbors` of them (+20%). */
+    flanking: { perNeighbor: 0.05, maxNeighbors: 4 },
+    /**
+     * D-23 (P3-01, P3-02): a stronghold in each rival march at each of these depths, on its road (or
+     * the non-village hex nearest it); while one stands, the player's assault can't reach deeper in its
+     * march. Its garrison, as the player's assault weighs it, is × `garrisonMult` while not the player's
+     * (T-01: 1.75, approved 2026-10-15; 2 as first built). TUNE.
+     */
+    stronghold: {
+      depths: [4, 8],
+      garrisonMult: 1.75,
+      /** C-28: a beast-held stronghold's Grand Battle host is this share of its garrison as an assault must beat it. TUNE. */
+      beastHostShare: 0.5
+    },
+    /**
+     * D-24 (C-23, T-02): a garrison beaten without a rout falls back to a neighboring hex of the same
+     * holder no shallower than the one it lost, the cheapest to assault, adding `share` of the garrison
+     * the assault beat there, fading by a third a day over `days`; all fallbacks on one hex add at most
+     * `stackCap` × its own garrison. TUNE.
+     */
+    fallback: { share: 0.5, days: 3, stackCap: 1 },
+    /**
+     * D-24 (C-24): each dawn of its window, a fallen force strikes back at this chance, from this
+     * campaign week, at its strength that day × `strengthMult` (T-03, approved 2026-10-15). TUNE.
+     */
+    counterattack: { chancePerDay: 0.3, fromWeek: 3, strengthMult: 1.5 }
   }
 }
 

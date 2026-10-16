@@ -315,7 +315,8 @@ export interface BattleRoundLog {
 }
 
 /** What raised a Grand Battle (Ch 11 "What triggers one"; T12 adds the Coalition Offensive, the Siege and events). */
-export type GrandTrigger = 'incursion' | 'gate' | 'capital' | 'mythicHunt' | 'warhost' | 'coalitionOffensive' | 'siege' | 'event'
+/** `stronghold`: Patch 3 (D-23), the player's challenge of a stronghold (P3-02). */
+export type GrandTrigger = 'incursion' | 'gate' | 'capital' | 'mythicHunt' | 'warhost' | 'coalitionOffensive' | 'siege' | 'event' | 'stronghold'
 
 /** One company on the Grand Battle field as the battle began (T11). */
 export interface FieldUnit {
@@ -644,7 +645,8 @@ export type EffectKind = Effect['kind']
 // ── The game log: events for the Herald and the Chronicle ────────────────────
 
 export type BattleOutcome = 'rout' | 'victory' | 'defeat'
-export type ThreatKind = 'beasts' | 'mythic' | 'raid' | 'conquest'
+/** `counterattack`: Patch 3 (D-24), a fallen garrison striking back at the hex it lost. */
+export type ThreatKind = 'beasts' | 'mythic' | 'raid' | 'conquest' | 'counterattack'
 
 /**
  * Payloads by event kind. Open for later tasks: add a key here (one line each) and the
@@ -673,13 +675,19 @@ export interface GameEventMap {
     grandIllusion?: boolean
     /** D-15: the hex was lost to the wilds (a beast or mythic defense lost on a ring-3+ hex that is not a village). */
     overrun?: boolean
+    /** D-24: a counterattack lost: the hex went back to the holder it was taken from. */
+    retaken?: boolean
     /** T08: the Royal Hunt turned this beast attack into a hunt worth this much. */
     hunt?: number
     /** D-12: the player led this fight on the battle map. */
     led?: boolean
   }
   /** The player's daily assault (Ch 6); `led` when the player fought it on the battle map (D-12). */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; led?: boolean }
+  /**
+   * `value`: Patch 3, the Assault it was fought at (the formula's, at the Valor it used; a led fight's at the Valor locked when it began).
+   * `breach`: Patch 3 (D-22), a repulse that wore the garrison down within that Assault: the same assault would now take it.
+   */
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; value?: number; breach?: boolean; led?: boolean }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
@@ -699,6 +707,10 @@ export interface GameEventMap {
   pathRank: { path: RivalId; rank: number }
   /** Patch 2 (D-19): a rival march's preparation level moved at the week close. */
   preparation: { march: RivalId; from: number; to: number }
+  /** Patch 3 (D-22): a standing siege ended without falling: its hex could no longer be assaulted at the close. */
+  standingSiege: { hexId: string; change: 'lapsed' }
+  /** Patch 3 (D-24): the garrison beaten at `hexId` fell back to `to`, adding `strength` there. */
+  fallback: { hexId: string; to: string; holder: Owner; strength: number }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
@@ -861,6 +873,17 @@ export interface CampaignState {
    * campaign re-founded as of an earlier day: each span's Charter, for days no contract covers.
    */
   charterHistory?: CharterSpan[]
+  /** Patch 3 (D-22, R-16): the siege the Marshal presses on any day without the player's own orders. Absent means none. */
+  standingSiege?: StandingSiege
+  /** Patch 3 (D-24): fallen garrisons, while they last. Absent means none. */
+  fallbacks?: Fallback[]
+}
+
+/** Patch 3 (D-22, C-22): a standing siege names its target only; the Marshal picks the companies each day. */
+export interface StandingSiege {
+  hexId: string
+  /** The day it was laid (or last moved to this hex). */
+  since: ISODate
 }
 
 /** A Charter that governed the days from `from` through `until` (D-21). */
@@ -873,7 +896,7 @@ export interface CharterSpan {
 // ── Dominion as the chronicle and neglected marches (Patch 2) ────────────────
 
 /** The deeds that add Renown to a path (D-18). */
-export type DeedKind = 'hexTaken' | 'battleWon' | 'heldAgainstBeasts' | 'heldAgainstMythic' | 'grandBattleWon' | 'resolved'
+export type DeedKind = 'hexTaken' | 'battleWon' | 'heldAgainstBeasts' | 'heldAgainstMythic' | 'grandBattleWon' | 'resolved' | 'strongholdTaken' | 'counterattackHeld'
 
 export interface PathState {
   /** Permanent: the sum of the path's deeds. */
@@ -980,6 +1003,36 @@ export interface CombatState {
   /** Conquest attempts announced and not yet struck. */
   conquests: ConquestAttempt[]
   contested: ContestedHex[]
+  /** Patch 3 (D-24): counterattacks drawn at dawn, fought at the close. Absent means none. */
+  counterattacks?: Counterattack[]
+}
+
+/** Patch 3 (D-24): a fallen force striking back at the hex it lost, on `date`. */
+export interface Counterattack {
+  date: ISODate
+  hexId: string
+  /** The rival whose garrison it was; absent for beasts. */
+  rival?: RivalId
+  strength: number
+  fallbackId: string
+}
+
+/**
+ * Patch 3 (D-24, C-23): the garrison beaten at `from` without a rout, fallen back to `to` (a deeper
+ * hex of the same holder in the same march) on `day`. It adds `strength` to `to` the next day, 2/3 of
+ * it the day after, 1/3 the third, then is gone; each of those dawns it may strike back at `from`.
+ */
+export interface Fallback {
+  id: string
+  from: string
+  to: string
+  holder: Owner
+  strength: number
+  day: ISODate
+  /** The last dawn whose counterattack draw has been made (each dawn draws once). */
+  drawnThrough?: ISODate
+  /** The day it struck back; it left its fallback hex that day. */
+  struck?: ISODate
 }
 
 // ── Settlement (T06) ─────────────────────────────────────────────────────────

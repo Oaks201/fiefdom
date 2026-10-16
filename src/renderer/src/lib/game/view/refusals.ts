@@ -132,6 +132,10 @@ export function orderProblemLabel(p: OrderProblem): string {
       return `${hexName(p.hexId)} is taken only in a Grand Battle.`
     case 'notClaimable':
       return `${hexName(p.hexId)} cannot be assaulted: it must touch your land, and rings 0 to 2 never fall to anyone else.`
+    case 'barredByStronghold':
+      return `${hexName(p.stronghold)} still stands: no assault reaches deeper into its march until it falls.`
+    case 'grandBattlePending':
+      return `A Grand Battle is announced at ${hexName(p.hexId)}; no assault goes there until it is fought.`
     case 'duplicateTarget':
       return `${hexName(p.hexId)} is already a target.`
     case 'noCompanies':
@@ -161,7 +165,9 @@ export function grandRefusalLabel(code: GrandRefusal): string {
     case 'notTouching':
       return 'It must touch your land.'
     case 'notGrandBattleHex':
-      return 'Only a Gate, a capital or a Lair Mouth is taken in a Grand Battle.'
+      return 'Only a Gate, a capital, a Lair Mouth or a stronghold is fought for in a Grand Battle.'
+    case 'barred':
+      return 'A stronghold nearer the heartland still stands in this march; it must fall first.'
     case 'alreadyAnnounced':
       return 'A battle there is already announced.'
     case 'retryTooSoon':

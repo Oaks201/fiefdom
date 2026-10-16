@@ -6,38 +6,22 @@ import {
   assaultValue,
   effectiveGarrison,
   fieldBest,
+  liftSiege,
+  ordersFor,
   ordersValidity,
-  setOrders
+  setOrders,
+  siegeOrders
 } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { neighbors } from '../../src/renderer/src/lib/game/map'
 import { roster } from '../../src/renderer/src/lib/game/roster'
 import { RULES, base } from '../../src/renderer/src/lib/game/rules'
-import type { CampaignState, DailyOrders, HexState } from '../../src/renderer/src/lib/game/types'
+import type { CampaignState, DailyOrders, HexState, RivalId } from '../../src/renderer/src/lib/game/types'
 import { allBuildings, realm, withArmory, withBuildings, withCastle, withCrossings } from './support/realm'
-import { fight, hex, withHex, withOwner, withTiding } from './support/war'
+import { den, fight, hex, holdStrongholds, quiet, reachable, withHex, withOwner } from './support/war'
 import { near } from './support/assert'
 
 const DAY = '2026-10-08'
-
-
-/** A neutral ring-`ring` hex the player can reach: one of its inner neighbors is handed to the player. */
-function reachable(state: CampaignState, ring: number, also: (h: HexState) => boolean): { state: CampaignState; target: string } {
-  const target = state.hexes.find((h) => h.ring === ring && h.owner === 'neutral' && (h.kind === 'road' || h.kind === 'between') && also(h)) as HexState
-  const inner = neighbors(target.id).find((n) => hex(state, n).ring === ring - 1 && hex(state, n).kind !== 'building') as string
-  return { state: withOwner(state, [inner], 'player'), target: target.id }
-}
-
-/** A ring-3 beast den the player can reach (garrison 0.9 × 55 = 49.5). */
-function den(state: CampaignState = realm()): { state: CampaignState; target: string } {
-  return reachable(state, 3, (h) => !h.village)
-}
-
-/** Parks the day's daily threat on a building, where it is always beaten. */
-function quiet(state: CampaignState, day = DAY): CampaignState {
-  const building = state.hexes.find((h) => h.kind === 'building') as HexState
-  return withTiding(state, { date: day, kind: 'beasts', hexId: building.id, strength: 1 })
-}
 
 function orders(state: CampaignState, o: Partial<DailyOrders>): CampaignState {
   return setOrders(state, { date: DAY, assault: [], defense: [], ...o }).state
@@ -74,7 +58,7 @@ test('Ch 6 taken: Assault ≥ garrison takes the hex at dawn with 4 × ring spoi
   // Garrison exactly the Assault: taken, not a rout.
   const exact = quiet(orders(withHex(s0, target, { garrison: value }), { assaultTarget: target, assault: ['barracks'] }))
   const taken = fight(exact, DAY, 1)
-  assert.deepEqual(taken.of('assault'), [{ hexId: target, owner: 'neutral', outcome: 'taken', spoils: Math.round(4 * 3 * bonus * 10) / 10 }])
+  assert.deepEqual(taken.of('assault'), [{ hexId: target, owner: 'neutral', outcome: 'taken', spoils: Math.round(4 * 3 * bonus * 10) / 10, value: 54 }])
   assert.equal(hex(taken.state, target).owner, 'player')
   assert.deepEqual(taken.of('hexTransfer'), [{ hexId: target, from: 'neutral', to: 'player', how: 'conquest', fortification: 0 }])
 
@@ -89,6 +73,9 @@ test('Ch 6 repulsed: the garrison wears down by 25% of the Assault until week cl
   const above = quiet(orders(withHex(s0, target, { garrison: 54.01 }), { assaultTarget: target, assault: ['barracks'] }))
   const repulsed = fight(above, DAY, 1)
   assert.equal(repulsed.of('assault')[0].outcome, 'repulsed')
+  // Patch 3 (C-27): the event carries the Assault it was fought at; its wear is 25% of it.
+  assert.equal(repulsed.of('assault')[0].value, 54)
+  assert.equal(repulsed.of('assault')[0].wear, 13.5)
   const h = hex(repulsed.state, target)
   assert.equal(h.owner, 'neutral')
   near(h.garrisonDamage, 0.25 * 54)
@@ -101,7 +88,7 @@ test('Ch 6 repulsed: the garrison wears down by 25% of the Assault until week cl
   near(later?.power ?? 0, 30)
 })
 
-test('A-36: with no orders every company defends and no assault goes out', () => {
+test('A-36: with no orders and no standing siege every company defends and no assault goes out', () => {
   const { state, target } = den()
   const validity = ordersValidity(state, undefined)
   assert.deepEqual(validity.assaults, [])
@@ -109,10 +96,23 @@ test('A-36: with no orders every company defends and no assault goes out', () =>
   const day = fight(quiet(state), DAY, 1)
   assert.deepEqual(day.of('assault'), [])
   assert.equal(hex(day.state, target).owner, 'neutral')
-  // Yesterday's orders don't carry over.
-  const ordered = orders(state, { assaultTarget: target, assault: ['barracks'] })
-  const nextDay = fight(quiet(ordered, addDays(DAY, 1)), addDays(DAY, 1), 1)
-  assert.deepEqual(nextDay.of('assault'), [])
+})
+
+test('R-16 (D-22): an assault target carries over as a standing siege; the next day without orders the Marshal presses it and the rest defend', () => {
+  const { state, target } = den()
+  const ordered = orders(state, { assaultTarget: target, assault: ['barracks'], defense: [] })
+  assert.deepEqual(ordered.standingSiege, { hexId: target, since: DAY })
+  const next = addDays(DAY, 1)
+  // The day's own orders are gone; the Marshal sends the companies best matched to the den, not yesterday's pick.
+  const derived = ordersFor(ordered, next)
+  assert.deepEqual(derived, siegeOrders(ordered, next, target))
+  assert.equal(derived?.assaultTarget, target)
+  const nextDay = fight(quiet(ordered, next), next, 1)
+  assert.deepEqual(nextDay.of('assault').map((a) => a.hexId), [target])
+  // Lifted, nothing carries over and A-36 holds again.
+  const lifted = liftSiege(ordered, next)
+  assert.equal(lifted.standingSiege, undefined)
+  assert.deepEqual(fight(quiet(lifted, next), next, 1).of('assault'), [])
 })
 
 test('Ch 6: companies sent on an assault leave the defense pool for the day', () => {
@@ -156,6 +156,9 @@ test('A-16 / Ch 3: a Gate, capital or Lair Mouth is refused for the daily assaul
   const gate = state.hexes.find((h) => h.kind === 'gate') as HexState
   const beside = neighbors(gate.id).find((n) => hex(state, n).ring === gate.ring - 1) as string
   state = withOwner(state, [beside], 'player')
+  // D-23: its march's strongholds still standing bar the way; held, the Gate is a Grand Battle again.
+  assert.deepEqual(ordersValidity(state, { date: DAY, assaultTarget: gate.id, assault: ['barracks'], defense: [] }).problems.map((p) => p.code), ['barredByStronghold'])
+  state = holdStrongholds(state, gate.march as RivalId)
   const validity = ordersValidity(state, { date: DAY, assaultTarget: gate.id, assault: ['barracks'], defense: [] })
   assert.deepEqual(validity.problems, [{ code: 'grandBattleRequired', hexId: gate.id }])
   assert.deepEqual(validity.assaults, [])

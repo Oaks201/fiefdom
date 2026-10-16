@@ -37,13 +37,13 @@ test('Founding at 2026-10-07 15:00 Chicago: first day Oct 8, week 1 is Oct 8 to 
   assert.deepEqual(at.state.settledThrough, { day: '2026-10-11', week: 1 })
 })
 
-test('Founding: the purse holds the founding grant of 250 (D-14) and ruleVersion is 3.0.0', () => {
+test('Founding: the purse holds the founding grant of 250 (D-14) and ruleVersion is 3.1.0', () => {
   const state = foundCampaign(input(), FOUNDED_AT)
   assert.equal(balance(state.purse), 250)
   assert.equal(state.purse.events.length, 1)
   assert.equal(state.purse.events[0].kind, 'earn')
   assert.equal(state.purse.events[0].source, 'founding')
-  assert.equal(state.campaign.ruleVersion, '3.0.0')
+  assert.equal(state.campaign.ruleVersion, '3.1.0')
   assert.equal(state.campaign.ruleVersion, RULES.ruleVersion)
 })
 

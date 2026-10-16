@@ -102,6 +102,9 @@ export function HowToPlay(): React.JSX.Element | null {
   const graceII = numeral(RULES.effects.graceIILevel)
   const ex = courtshipExample()
   const slots = inf.courtshipSlots
+  const sg = RULES.sieges
+  const deeds = RULES.dominion.deeds
+  const strongholdRings = sg.stronghold.depths.map((d) => d + RULES.map.heartlandRings)
 
   const sections: Section[] = [
     {
@@ -158,7 +161,8 @@ export function HowToPlay(): React.JSX.Element | null {
           </p>
           <p>
             <b>The day’s orders</b> (on the Realm) name a hex to assault (a second from Castle Tier {numeral(RULES.castle.secondAssaultTier)}) and which companies go: each company
-            either defends or assaults that day. If you set nothing, every company defends and nothing is assaulted. Orders lock at {dawn}, or once you start the day’s battles.
+            either defends or assaults that day. If you set nothing, the Marshal presses your standing siege, if one stands (see Sieges and strongholds), and every other company
+            defends; with no siege, nothing is assaulted. Orders lock at {dawn}, or once you start the day’s battles.
           </p>
           <p>
             <b>Banners</b> cap how many companies fight in one battle; your castle sets them. For each defense the Marshal fields the defenders that hit hardest against that
@@ -258,8 +262,8 @@ export function HowToPlay(): React.JSX.Element | null {
           </p>
           <ul>
             <li>
-              <b>Assault</b> a neighboring hex with your day’s orders. You take it if your assault beats its garrison at the close. A failed assault still wears the garrison down until
-              the week closes.
+              <b>Assault</b> a neighboring hex with your day’s orders. You take it if your assault beats its garrison at the close. A failed assault wears the garrison down, and
+              the wear stays: pressing on is a siege (see Sieges and strongholds).
             </li>
             <li>
               <b>Court the village</b> on a village hex: a reputation bid, decided at the week’s close (see Villages and courtships).
@@ -305,6 +309,9 @@ export function HowToPlay(): React.JSX.Element | null {
               day or it passes to that rival.
             </li>
             <li>
+              <b>Counterattacks</b> are the one daily battle that can take land: a garrison you beat may strike back at the hex it lost (see Sieges and strongholds).
+            </li>
+            <li>
               Threats strike weaker in weeks 1 to {firstThreatWeek}, while the realm finds its feet.
             </li>
           </ul>
@@ -314,11 +321,60 @@ export function HowToPlay(): React.JSX.Element | null {
           </p>
           <p>
             <b>Start today’s battles</b> (on the Chronicle’s Valor panel and in the day’s orders) lets you fight the day’s battles yourself, as short {RULES.skirmish.rounds}-round
-            battles on the battle field: conquest attempts first, then the day’s threat, then your assaults. Pressing it locks your Valor so far for those fights, and the day’s orders
+            battles on the battle field: conquest attempts first, then counterattacks, then the day’s threat, then your assaults. Pressing it locks your Valor so far for those fights, and the day’s orders
             hold from then on. Each fight shows who comes and roughly how strong; fight it, or leave it to the close. A fight you finish replaces the close’s result for that
             battle; one you open and leave is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. Spoils, tribute and hexes still post at {dawn}.
             The next day the Herald marks the battles you led, with their results and replays (kept {RULES.skirmish.keepDays} days). If you never press it, the day closes exactly
             as before.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'sieges',
+      title: 'Sieges and strongholds',
+      body: (
+        <>
+          <p>
+            <b>A siege</b> is an assault pressed day after day. Each repulse wears {pct(land.repulseWear)} of your assault’s strength off the garrison, and the wear stays: it fades
+            by {pct(sg.wearDecay.perDay)} a day ({pct(sg.wearDecay.stronghold)} on a stronghold), not at all while a Grand Battle waits on the hex, and it is gone when the hex
+            changes hands. It never passes the whole garrison. The bar on the map shows how worn a garrison is. When a repulse leaves a garrison within the assault that wore it, the
+            Herald reports a <b>Breach</b>: the same assault would take it.
+          </p>
+          <ul>
+            <li>
+              <b>Standing orders.</b> Naming a hex to assault in the day’s orders, or <b>Lay siege</b> on its panel, makes it your standing siege. On a day you set no orders, the
+              Marshal presses it with the companies that suit it best, and the rest defend; <b>Use the Marshal’s choice</b> in the orders clears the day’s own orders for that. The
+              siege ends when the hex falls, when you <b>Lift the siege</b> or name another hex, or when a Grand Battle is called on the hex. If the hex can no longer be assaulted
+              at a close, the siege lapses and the Herald says so.
+            </li>
+            <li>
+              <b>Flanking.</b> Each hex you hold touching the target, beyond the first, adds {pct(sg.flanking.perNeighbor)} to your assault there, up to{' '}
+              {pct(sg.flanking.perNeighbor * sg.flanking.maxNeighbors)}. The hex panel and the orders show it.
+            </li>
+          </ul>
+          <p>
+            <b>Strongholds</b> (stone tower) guard each rival’s march: {sg.stronghold.depths.length} on its road, or beside it, at rings {listed(strongholdRings)}. A stronghold’s
+            garrison counts {sg.stronghold.garrisonMult} × against your assault until you hold it. While one stands, your assault reaches no deeper into its march: the hexes beyond
+            are marked Barred. The seams between two marches are not barred, and courtships and trades never are. Take a stronghold by siege, or challenge it to a{' '}
+            <b>Grand Battle</b> from its panel against its holder’s host (beasts field one from the garrison). While the battle waits, the hex can’t be assaulted. Lose and you pay
+            tribute and wait {RULES.grandBattles.retryDays.stronghold} days to challenge it again; its wear stays.
+          </p>
+          <p>
+            <b>A beaten garrison falls back.</b> When you take a hex without a rout, part of its garrison falls back to a neighboring hex of the same holder, no shallower,
+            the one cheapest to assault (return arrow):{' '}
+            {pct(sg.fallback.share)} of what you beat, fading to nothing over {sg.fallback.days} days, and never more than{' '}
+            {sg.fallback.stackCap === 1 ? '' : `${sg.fallback.stackCap} × `}that hex’s own garrison. A rout scatters it, and a village’s militia never falls back.
+          </p>
+          <p>
+            The fallen-back force <b>may strike back</b> at the hex it lost within {sg.fallback.days} days: from week {sg.counterattack.fromWeek}, never while you have
+            been away {RULES.clock.absenceDays} days or more, and never from a rival who may not raid you. The Herald posts it as one of the day’s battles. Hold it and the force
+            scatters, for spoils; lose it and the hex goes back at once to whoever held it, with tribute but no scorch.
+          </p>
+          <p>
+            <b>Renown.</b> Taking a stronghold adds {deeds.strongholdPerDepth} × its depth (its ring less {RULES.map.heartlandRings}) on its rival’s path, on top of the hex’s own.
+            Holding a counterattack adds {deeds.counterattackHeld} on that rival’s path ({deeds.counterattackHeldBeasts} against beasts), in place of the battle’s
+            usual Renown.
           </p>
         </>
       )
@@ -361,7 +417,11 @@ export function HowToPlay(): React.JSX.Element | null {
             </li>
             <li>
               <b>Garrison</b>: what an assault must beat, shown on every hex you don’t hold. It grows with the ring, and a village’s militia is lighter than a beast den’s garrison. A
-              repulsed assault wears {pct(land.repulseWear)} of its strength off the garrison until the week closes, so the next push on the same hex is easier.
+              repulsed assault wears {pct(land.repulseWear)} of its strength off the garrison, so the next push on the same hex is easier; the wear fades a little each day (see
+              Sieges and strongholds).
+            </li>
+            <li>
+              <b>Under siege</b> (siege tower, with a bar for how worn), <b>Stronghold</b> (stone tower) and <b>Fallen back</b> (return arrow): see Sieges and strongholds.
             </li>
             <li>
               <b>Threat today</b> (crossed swords): the day’s threat strikes this hex. Its band (weaker, matched, stronger or overwhelming) compares it with your defense.

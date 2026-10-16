@@ -21,25 +21,24 @@
  * mythic's quarry are the only draws.
  */
 import { CODEX, type MatchupId } from './codex'
-import { assaultOf, calledOff, dayBattles, defenseOf, isRevealDen, ordersValidity, rally, skirmishDayOf } from './combat'
+import { assaultOf, calledOff, dayBattles, defenseOf, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
 import { balance } from './economy'
 import { realmEffects, wallsFor } from './effects'
 import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor } from './grand'
 import { fieldResult, isOver, marshalPlay, offeredOn, orderMods, playProblem, playRoundOn, replayField, slotOf, type Field, type RoundPlay } from './grand/field'
-import { placeHost } from './grand/hosts'
+import { hostFromKinds, placeHost, type HostKind } from './grand/hosts'
 import { fortificationValue } from './land'
-import { bandOf } from './map'
-import { preparationMult } from './marches'
+import { bandOf, hexIndex } from './map'
+import { fallbackOn, flankingMult, garrisonMult } from './sieges'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { hostUnits } from './rivals'
 import { roster } from './roster'
 import { isPlayable, openDayOf } from './state'
-import type { BattleSetup, CampaignState, Company, Effects, HexState, ISODate, Reach, RivalId, SlotKey, Skirmish, SkirmishDay, ThreatKind } from './types'
+import type { BattleSetup, CampaignState, Company, Effects, HexState, ISODate, RivalId, SlotKey, Skirmish, SkirmishDay, ThreatKind } from './types'
 
 const SK = RULES.skirmish
 const HIRE_FEE = RULES.buildings.merchantHall.hiredBlades.costPerBattle
-const TENTH = 10 // rules-ok: enemy power to a tenth
 
 /** Who the enemy is: a rival's host, mythic beasts, a beast den's or the day's beasts, or a village's militia. */
 export type EnemyKind = { kind: 'rival'; rival: RivalId } | { kind: 'mythic' } | { kind: 'beasts' } | { kind: 'militia' }
@@ -84,7 +83,7 @@ function feeOf(c: Company): number {
 }
 
 function enemyOfThreat(kind: ThreatKind, rival?: RivalId): EnemyKind {
-  if (kind === 'beasts') return { kind: 'beasts' }
+  if (kind === 'beasts' || (kind === 'counterattack' && !rival)) return { kind: 'beasts' }
   if (kind === 'mythic') return { kind: 'mythic' }
   return { kind: 'rival', rival: rival as RivalId }
 }
@@ -101,7 +100,7 @@ function enemyOfGarrison(hex: HexState): EnemyKind {
  * company can be sent to is left to the close.
  */
 export function todaysFights(state: CampaignState, day: ISODate, effects: Effects = realmEffects(state)): FightPlan[] {
-  const orders = state.orders.find((o) => o.date === day)
+  const orders = ordersFor(state, day, effects)
   const validity = ordersValidity(state, orders, effects)
   const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
   const hired = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
@@ -131,13 +130,15 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
     })
   }
 
+  const byId = hexIndex(state.hexes)
   for (const a of validity.assaults) {
     const hex = state.hexes.find((h) => h.id === a.target)
     if (!hex) continue
     if (isRevealDen(hex) && chance(state.campaign.seed, day, `reveal:${hex.id}`, RULES.grandBattles.mythicReveal.chance)) continue
-    const { fielded, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, 1, preparationMult(state, hex, day))
+    const { fielded, garrison } = assaultOf(effects, army.filter((c) => a.companies.includes(c.id)), hex, 1, garrisonMult(state, hex, day), 1, fallbackOn(state, hex, day))
     if (fielded.length === 0) continue
-    plans.push({ id: fightId('assault', hex.id), side: 'assault', hexId: hex.id, strength: garrison, enemy: enemyOfGarrison(hex), companies: fielded.map((f) => f.company), walls: 0 })
+    // Flanking (D-22, P3-03) helps a led assault as much as the formula: the enemy fields the garrison ÷ the flanking multiple.
+    plans.push({ id: fightId('assault', hex.id), side: 'assault', hexId: hex.id, strength: garrison / flankingMult(byId, hex.id), enemy: enemyOfGarrison(hex), companies: fielded.map((f) => f.company), walls: 0 })
   }
   return plans
 }
@@ -154,7 +155,7 @@ export function enemyScale(plan: Pick<FightPlan, 'enemy'>, count: number): numbe
 }
 
 /** The kinds of company the enemy fields, strongest share first: each with its id prefix, unit, name, share of the power and reach. */
-function enemyKinds(state: CampaignState, plan: FightPlan, day: ISODate): { side: string; unit: string; name: string; weight: number; reach: Reach }[] {
+function enemyKinds(state: CampaignState, plan: FightPlan, day: ISODate): HostKind[] {
   const e = plan.enemy
   if (e.kind === 'rival') return hostUnits(e.rival).map((u) => ({ side: e.rival, unit: u.id, name: u.name, weight: u.power, reach: u.reach }))
   if (e.kind === 'mythic') {
@@ -171,12 +172,7 @@ function enemyKinds(state: CampaignState, plan: FightPlan, day: ISODate): { side
 
 /** The enemy for a fight: `count` companies of its kinds (cycling), sharing `strength × scale` power by their weights. */
 export function skirmishHost(state: CampaignState, plan: FightPlan, count: number, day: ISODate, scale: number = enemyScale(plan, count)): Company[] {
-  const kinds = enemyKinds(state, plan, day)
-  if (kinds.length === 0) return []
-  const picks = Array.from({ length: count }, (_, i) => kinds[i % kinds.length])
-  const total = picks.reduce((s, k) => s + k.weight, 0)
-  const budget = plan.strength * scale
-  return picks.map((k, i) => ({ id: `${k.side}:${k.unit}:${i + 1}`, name: k.name, source: 'host', power: Math.round(((budget * k.weight) / total) * TENTH) / TENTH, tags: [], reach: k.reach, items: [] }))
+  return hostFromKinds(enemyKinds(state, plan, day), count, plan.strength * scale)
 }
 
 /** A fight set on the field: the player's companies as the Marshal stands them, the enemy, the deck, Readiness from the locked Valor. */
@@ -242,7 +238,10 @@ export function startSkirmishes(state: CampaignState, day: ISODate, valor: numbe
   if (plans.length === 0) return refused(state, 'noFights')
   const locked = Math.min(1, Math.max(0, valor))
   const next: SkirmishDay = { day, valor: locked, fights: plans.map((p) => toSkirmish(state, p, locked, day, effects)) }
-  return { ok: true, state: withDay(state, next), day: next }
+  // A standing siege's orders (D-22) are written down, so the orders the fights began with hold until the close.
+  const orders = ordersFor(state, day, effects)
+  const held = orders && !state.orders.some((o) => o.date === day) ? setOrders(state, orders).state : state
+  return { ok: true, state: withDay(held, next), day: next }
 }
 
 /** A fight's field now: its setup with every round played so far. */

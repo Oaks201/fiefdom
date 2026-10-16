@@ -10,9 +10,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { RULES } from '../src/renderer/src/lib/game/rules'
-import { RIVAL_IDS } from '../src/renderer/src/lib/game/types'
+import { RIVAL_IDS, type DeedKind } from '../src/renderer/src/lib/game/types'
 import type { RunOptions, RunResult } from './campaign'
-import { LABEL, type Measures } from './measure'
+import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, type Measures } from './measure'
 import type { PolicyId } from './policy'
 import type { ProfileId } from './profiles'
 
@@ -34,7 +34,10 @@ export function targetPlan(seeds: number, weeks: number): RunOptions[] {
 
 const WEEK = RULES.clock.daysPerWeek
 const MONTH = RULES.grandBattles.monthWeeks
-const PLAYER_VIEW = LABEL.land | LABEL.grand | LABEL.build | LABEL.choice
+/** G-01's player-view days (Patch 3, C-27): the blueprint's Land, Grand, Build and Choice, and a siege's Breach. */
+const PLAYER_VIEW = LABEL.land | LABEL.grand | LABEL.build | LABEL.choice | LABEL.breach
+/** The strict reading, without Breach, reported beside the verdict. */
+const PLAYER_VIEW_STRICT = LABEL.land | LABEL.grand | LABEL.build | LABEL.choice
 const ANYTHING = LABEL.land | LABEL.grand | LABEL.build | LABEL.doubt
 const BAD_VALOR = 0.6
 const GOOD_VALOR = 0.85
@@ -94,12 +97,15 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   const steadfast = of('steadfast', 'greedy')
   const rows: Row[] = []
 
-  // G-01
-  const meaningful = steadfast.flatMap((r) => weeksOf(r.measures).map((w) => count(w, PLAYER_VIEW)))
-  const withAuto = steadfast.flatMap((r) => weeksOf(r.measures).map((w) => count(w, PLAYER_VIEW | LABEL.doubt)))
+  // G-01 (C-27: a Breach counts; the strict reading without it is reported beside the verdict)
+  const perWeek = (mask: number): number[] => steadfast.flatMap((r) => weeksOf(r.measures).map((w) => count(w, mask)))
+  const meaningful = perWeek(PLAYER_VIEW)
+  const strict = perWeek(PLAYER_VIEW_STRICT)
+  const withAuto = perWeek(PLAYER_VIEW | LABEL.doubt)
+  const share5 = (v: readonly number[]): number => v.filter((x) => x >= 5).length / v.length
   const g01Mean = mean(meaningful)
-  const g01Share = meaningful.filter((v) => v >= 5).length / meaningful.length
-  rows.push(row('G-01', 'Something meaningful on 5+ days a week', 'Player-view meaningful days a week (mean; weeks with 5+); incl. auto battles', `${f1(g01Mean)}; ${pct(g01Share)} (${f1(mean(withAuto))})`, g01Mean >= 5 && g01Share >= 0.7))
+  const g01Share = share5(meaningful)
+  rows.push(row('G-01', 'Something meaningful on 5+ days a week', 'Player-view meaningful days a week, a Breach counted (mean; weeks with 5+); strict, without Breach; incl. auto battles', `${f1(g01Mean)}; ${pct(g01Share)} (strict ${f1(mean(strict))}; ${pct(share5(strict))}; incl. auto battles ${f1(mean(withAuto))})`, g01Mean >= 5 && g01Share >= 0.7))
 
   // G-02
   const quiet = steadfast.map((r) => longestRun(r.measures.days, (d) => (d & ANYTHING) === 0))
@@ -111,9 +117,10 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   })
   rows.push(row('G-02', 'No dead stretches', 'Longest run of days with nothing (median; worst); longest run of weeks with no land before the last month (worst)', `${median(quiet)}; ${max(quiet)}; ${max(noLandWeeks)} weeks`, median(quiet) <= 4 && max(quiet) <= 7 && max(noLandWeeks) < 2))
 
-  // G-03
-  const noReach = steadfast.flatMap((r) => weeksOf(r.measures).map((w) => count(w, LABEL.noReach)))
-  rows.push(row('G-03', 'A target every day', 'Days a week with no hex in reach (mean)', f1(mean(noReach)), mean(noReach) <= 1))
+  // G-03 (C-27: a target is a hex that falls within the siege horizon; the strict "falls today" beside it)
+  const noTarget = perWeek(LABEL.noTarget)
+  const noReach = perWeek(LABEL.noReach)
+  rows.push(row('G-03', 'A target every day', `Days a week with no hex that falls within ${RULES.autoplay.siegeHorizon} assault days (mean); strict, with no hex that falls today`, `${f1(mean(noTarget))} (strict ${f1(mean(noReach))})`, mean(noTarget) <= 1))
 
   // G-04
   const net = steadfast.flatMap((r) => {
@@ -124,11 +131,14 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   rows.push(row('G-04', 'Land every week', 'Net hexes a week, weeks 5–52 (median); days a week land changes hands (mean)', `${f2(median(net))}; ${f1(mean(landDays))}`, median(net) >= 3 && median(net) <= 4 && mean(landDays) >= 3))
 
   // G-05
-  // The rival marches (a lair's wedge is all taken but for its Mouth, by design), at victory or else the horizon.
-  const minUnheld = steadfast.map((r) => Math.min(...Object.entries(r.measures.unheld).filter(([k]) => (RIVAL_IDS as readonly string[]).includes(k)).map(([, v]) => v)))
+  // The rival marches (a lair's wedge is all taken but for its Mouth, by design), at victory; with no
+  // victory, at week 60 until Patch 5 sets victory (T-04), the horizon's value beside it.
+  const leastHeld = (unheld: Record<string, number>): number => Math.min(...Object.entries(unheld).filter(([k]) => (RIVAL_IDS as readonly string[]).includes(k)).map(([, v]) => v))
+  const minUnheld = steadfast.map((r) => leastHeld(r.wonWeek === undefined && r.measures.week60Unheld ? r.measures.week60Unheld : r.measures.unheld))
+  const atHorizon = steadfast.map((r) => leastHeld(r.measures.unheld))
   const wins = steadfast.filter((r) => r.wonWeek !== undefined).length
   const perfectAll = of('perfect', 'greedy').map((r) => r.measures.weeks.find((w) => w.claimableHeld >= ALL_HELD * w.claimable)?.week ?? Number.POSITIVE_INFINITY)
-  rows.push(row('G-05', 'The map lasts', `At Steadfast's end (victory in ${wins} of ${steadfast.length}, else the horizon), the least-held rival march's unheld share (median); Perfect's first week holding (nearly) every claimable hex (earliest)`, `${pct(median(minUnheld))}; week ${Number.isFinite(Math.min(...perfectAll)) ? Math.min(...perfectAll) : 'never'}`, median(minUnheld) >= 0.1 && Math.min(...perfectAll) >= 52))
+  rows.push(row('G-05', 'The map lasts', `At Steadfast's victory (in ${wins} of ${steadfast.length}), else week ${G05_WEEK} (T-04, until Patch 5), the least-held rival march's unheld share (median; at the end beside it); Perfect's first week holding (nearly) every claimable hex (earliest)`, `${pct(median(minUnheld))} (at the end ${pct(median(atHorizon))}); week ${Number.isFinite(Math.min(...perfectAll)) ? Math.min(...perfectAll) : 'never'}`, median(minUnheld) >= 0.1 && Math.min(...perfectAll) >= 52))
 
   // G-06 and G-07 (the one-path players)
   const focused = RIVAL_IDS.flatMap((r) => of('steadfast', `paths:${r}`).map((run) => ({ run, rival: r })))
@@ -156,7 +166,13 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   const lostShare = sumOf(steadfast, (w) => w.lost) / Math.max(1, sumOf(steadfast, (w) => w.gained))
   rows.push(row('G-08', 'Defending matters', 'Mid-game defenses a week banded Matched or worse (mean); land lost a week in bad vs good weeks; land lost ÷ gained', `${f1(mean(mid))}; ${f2(bad)} vs ${f2(good)}; ${pct(lostShare)}`, mean(mid) >= 2 && bad >= 2 * good && lostShare <= 0.25))
 
-  rows.push(row('G-09', 'Routed enemies change choices', 'Fallbacks (Patch 3)', 'not yet built', null))
+  // G-09: fallbacks come in Patch 3's stage 4; until then, the wins they will be counted against.
+  // G-09: fallbacks after non-rout assault wins, and the next day's target changed by them.
+  const nonRoutWins = steadfast.reduce((s, r) => s + r.measures.assaultWins.nonRout, 0)
+  const fell = steadfast.reduce((s, r) => ({ posted: s.posted + r.measures.fallbacks.posted, dawns: s.dawns + r.measures.fallbacks.dawns, changed: s.changed + r.measures.fallbacks.changed }), { posted: 0, dawns: 0, changed: 0 })
+  const fellShare = fell.posted / Math.max(1, nonRoutWins)
+  const changedShare = fell.changed / Math.max(1, fell.dawns)
+  rows.push(row('G-09', 'Routed enemies change choices', "Non-rout assault wins followed by a fallback; dawns after a fallback whose target differs from the one chosen without it", `${pct(fellShare)}; ${pct(changedShare)}`, fellShare >= 0.6 && changedShare >= 0.2))
   rows.push(row('G-10', 'The rivals fight differently', 'March rules (Patch 4)', 'not yet built', null))
 
   // G-11
@@ -221,6 +237,61 @@ function sumOf(runs: readonly RunResult[], f: (w: Measures['weeks'][number]) => 
   return runs.reduce((s, r) => s + r.measures.weeks.reduce((t, w) => t + f(w), 0), 0)
 }
 
+/** Patch 3's siege measures for Steadfast (spec section 2 item 6): assault days spent on each hex taken by daily assault. */
+function siegeLines(steadfast: readonly RunResult[]): string[] {
+  const days = Array.from({ length: SIEGE_DAYS_CAP + 1 }, (_, d) => steadfast.reduce((s, r) => s + (r.measures.siegeDays[d] ?? 0), 0))
+  const taken = days.reduce((s, v) => s + v, 0)
+  const share = (from: number, to: number): string => pct(days.slice(from, to + 1).reduce((s, v) => s + v, 0) / Math.max(1, taken))
+  const meanDays = days.reduce((s, v, d) => s + v * d, 0) / Math.max(1, taken)
+  const wins = steadfast.reduce((s, r) => ({ rout: s.rout + r.measures.assaultWins.rout, nonRout: s.nonRout + r.measures.assaultWins.nonRout }), { rout: 0, nonRout: 0 })
+  const counter = steadfast.reduce((s, r) => ({ held: s.held + r.measures.counterattacks.held, lost: s.lost + r.measures.counterattacks.lost }), { held: 0, lost: 0 })
+  const fell = steadfast.reduce((s, r) => s + r.measures.fallbacks.posted, 0)
+  const weeksRun = steadfast.reduce((s, r) => s + Math.max(1, r.measures.days.length / WEEK), 0)
+  return [
+    '## Steadfast, sieges',
+    '',
+    '| Measure | Value |',
+    '| --- | --- |',
+    `| Hexes taken by daily assault | ${taken} (${pct(wins.rout / Math.max(1, wins.rout + wins.nonRout))} by a rout) |`,
+    `| Assault days spent on each: 1; 2 to 3; 4 to ${SIEGE_DAYS_CAP - 1}; ${SIEGE_DAYS_CAP} or more | ${share(1, 1)}; ${share(2, 3)}; ${share(4, SIEGE_DAYS_CAP - 1)}; ${share(SIEGE_DAYS_CAP, SIEGE_DAYS_CAP)} |`,
+    `| Assault days per hex taken (mean; ${SIEGE_DAYS_CAP} or more counted as ${SIEGE_DAYS_CAP}) | ${f2(meanDays)} |`,
+    `| Fallbacks a week (D-24) | ${f1(fell / weeksRun)} |`,
+    `| Counterattacks a week; held; lost | ${f2((counter.held + counter.lost) / weeksRun)}; ${pct(counter.held / Math.max(1, counter.held + counter.lost))}; ${pct(counter.lost / Math.max(1, counter.held + counter.lost))} |`
+  ]
+}
+
+const HEX_DEEDS: readonly DeedKind[] = ['hexTaken', 'strongholdTaken']
+const BATTLE_DEEDS: readonly DeedKind[] = ['battleWon', 'heldAgainstBeasts', 'heldAgainstMythic', 'counterattackHeld', 'grandBattleWon']
+
+/** The Renown mix (P2-13; Patch 3's deeds, D-25): each deed's share of the Renown posted, for Steadfast and the one-path players. */
+export function deedLines(results: readonly RunResult[]): string[] {
+  const onePath = new Set<string>(RIVAL_IDS.map((r) => `paths:${r}`))
+  const groups = [
+    results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy'),
+    results.filter((r) => r.profile === 'steadfast' && onePath.has(r.policy))
+  ].map((runs) => {
+    const mix: Record<string, number> = {}
+    for (const r of runs) for (const [k, v] of Object.entries(r.measures.deedMix ?? {})) mix[k] = (mix[k] ?? 0) + v
+    const total = Object.values(mix).reduce((s, v) => s + v, 0)
+    return { runs: runs.length, total, share: (kinds: readonly DeedKind[]): string => pct(kinds.reduce((s, k) => s + (mix[k] ?? 0), 0) / Math.max(1, total)) }
+  })
+  const line = (label: string, kinds: readonly DeedKind[]): string => `| ${label} | ${groups.map((g) => g.share(kinds)).join(' | ')} |`
+  return [
+    '## Renown by deed',
+    '',
+    'Each deed’s share of the Renown posted, every path summed (P2-13: hexes about 50%, battles about 30%, resolving 15 to 20%).',
+    '',
+    '| Deed | Steadfast | One path |',
+    '| --- | --- | --- |',
+    line('**Hexes**', HEX_DEEDS),
+    ...HEX_DEEDS.map((k) => line(k, [k])),
+    line('**Battles**', BATTLE_DEEDS),
+    ...BATTLE_DEEDS.map((k) => line(k, [k])),
+    line('**Resolving a rival**', ['resolved']),
+    `| Renown a campaign (mean) | ${groups.map((g) => f1(g.total / Math.max(1, g.runs))).join(' | ')} |`
+  ]
+}
+
 /** Writes the targets report; returns the file written. */
 export function writeTargets(results: readonly RunResult[], meta: { seeds: number; weeks: number; seconds: number }, outDir: string): string {
   const rows = targetRows(results)
@@ -228,7 +299,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
   const lines = [
     `# The blueprint's targets, rules ${RULES.ruleVersion}`,
     '',
-    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each), and Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four (${meta.weeks}-week horizon; ${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path.`,
+    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each), and Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four (${meta.weeks}-week horizon; ${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path. G-01 and G-03 are counted as \`docs/redesign/patch-3-spec.md\` C-27 rules: a Breach day (a repulse that left its target within the next day's reach) is player-view meaningful, and a target is a hex that falls within ${RULES.autoplay.siegeHorizon} assault days; the strict readings are given beside them.`,
     '',
     '| # | Target | Measure | Value | Verdict |',
     '| --- | --- | --- | --- | --- |',
@@ -236,8 +307,10 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     '',
     '## Steadfast, by month',
     '',
-    '| Month | Meaningful days a week | No hex in reach | Land days | Net hexes | Held (median) |',
-    '| --- | --- | --- | --- | --- | --- |'
+    `Days a week. Meaningful counts a Breach; strict doesn't. No target: no hex falls within ${RULES.autoplay.siegeHorizon} assault days; no reach: no hex falls today.`,
+    '',
+    '| Month | Meaningful | Strict | Breach | No target | No reach | Land days | Net hexes | Held (median) |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |'
   ]
   const steadfast = results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy')
   const months = Math.ceil(max(steadfast.map((r) => r.measures.days.length)) / (WEEK * MONTH))
@@ -248,9 +321,9 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     const perWeek = (mask: number): number => mean(alive.map((r) => (count(slice(r), mask) / MONTH)))
     const held = alive.map((r) => r.measures.weeks.find((w) => w.week === (m + 1) * MONTH)?.held ?? Number.NaN)
     const before = alive.map((r) => r.measures.weeks.find((w) => w.week === m * MONTH)?.held ?? r.measures.weeks[0]?.held ?? 0)
-    lines.push(`| ${m + 1} | ${f1(perWeek(PLAYER_VIEW))} | ${f1(perWeek(LABEL.noReach))} | ${f1(perWeek(LABEL.land))} | ${f1(mean(held.map((h, i) => (h - before[i]) / MONTH)))} | ${median(held)} |`)
+    lines.push(`| ${m + 1} | ${f1(perWeek(PLAYER_VIEW))} | ${f1(perWeek(PLAYER_VIEW_STRICT))} | ${f1(perWeek(LABEL.breach))} | ${f1(perWeek(LABEL.noTarget))} | ${f1(perWeek(LABEL.noReach))} | ${f1(perWeek(LABEL.land))} | ${f1(mean(held.map((h, i) => (h - before[i]) / MONTH)))} | ${median(held)} |`)
   }
-  lines.push('')
+  lines.push('', ...siegeLines(steadfast), '', ...deedLines(results), '')
   fs.mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `targets-${RULES.ruleVersion}.md`)
   fs.writeFileSync(file, lines.join('\n'))

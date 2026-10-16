@@ -8,15 +8,16 @@
 import { castleOffer, crossingOffer, tierOffer, type Offer } from '../buildings'
 import { CODEX } from '../codex'
 import { diffDays } from '../clock'
-import { assaultGarrison, combatOf, ordersValidity, tidings, type Band } from '../combat'
+import { assaultGarrison, combatOf, ordersFor, ordersValidity, siegeIsLive, tidings, type Band } from '../combat'
 import { holdingSources, hexWorth, pathRank, pathShares, pathTotals, rankThresholds, renown } from '../dominion'
 import { numeral, realmEffects, sourceLabel } from '../effects'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
-import { bandOf, clockwisePair, depthOf, fronts, hexDistance, hexId, hexName, isClaimableKind, marchesBorder, onMap, parseHexId, regionsOf, rulingMarch } from '../map'
+import { bandOf, clockwisePair, claimableBy, depthOf, fronts, hexDistance, hexId, hexIndex, hexName, isClaimableKind, isStronghold, marchesBorder, onMap, parseHexId, regionsOf, rulingMarch, strongholdBarring } from '../map'
 import { preparationOf } from '../marches'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
+import { fallbackOn, flankingMult, standingSiegeOf } from '../sieges'
 import { openDayOf } from '../state'
 import { t } from '../text'
 import {
@@ -35,6 +36,7 @@ import {
   type RivalId,
   type ThreatKind
 } from '../types'
+import { wornShare } from './orders'
 import { amount, buyRefusalLabel, factor, grandRefusalLabel, landRefusalLabel, orderProblemLabel, requirementLines } from './refusals'
 import { realmConsistencyNow, rivalName } from './shell'
 
@@ -257,8 +259,37 @@ export interface MapHex extends HexPoint {
   ruling?: MarchId
   /** Its march's preparation level, on a hex the player doesn't hold (D-19). */
   preparation?: number
+  /** A siege on it (D-22): its wear as a share of the garrison it wears (0 to 1), and whether it is the standing siege. */
+  siege?: { progress: number; standing: boolean }
+  /** A stronghold (D-23). */
+  stronghold?: boolean
+  /** A garrison fallen back here (D-24): the strength it adds today and the days it has left, today included. */
+  fallback?: { strength: number; daysLeft: number }
+  /** The stronghold, still standing, that bars the player's assault here (D-23): its place name. */
+  barredBy?: string
   /** Empty board drawn around the marches (C-05): no rules, no name, never chosen. */
   decor?: boolean
+}
+
+/** The siege on `hex` (D-22): its progress and whether it is the standing siege, or undefined when it carries no wear and isn't besieged. */
+function siegeOn(state: CampaignState, hex: HexState, today: ISODate, standing: string | undefined): { progress: number; standing: boolean } | undefined {
+  if (hex.owner === 'player' || (hex.garrisonDamage <= 0 && hex.id !== standing)) return undefined
+  return { progress: wornShare(state, hex, today), standing: hex.id === standing }
+}
+
+/** The garrisons fallen back onto `hex` (D-24): what they add today, the days left, and the hexes they came from; undefined when none. */
+function fallbackHere(state: CampaignState, hex: HexState, today: ISODate): { strength: number; daysLeft: number; from: string[] } | undefined {
+  const strength = fallbackOn(state, hex, today)
+  if (strength <= 0) return undefined
+  const here = (state.fallbacks ?? []).filter((f) => f.to === hex.id && f.holder === hex.owner && (f.struck === undefined || f.struck > today))
+  const daysLeft = Math.max(...here.map((f) => RULES.sieges.fallback.days - diffDays(f.day, today) + 1))
+  return { strength, daysLeft, from: here.map((f) => f.from) }
+}
+
+/** The standing siege's hex while it stands (D-22). */
+function standingHex(state: CampaignState): string | undefined {
+  const siege = standingSiegeOf(state)
+  return siege && siegeIsLive(state, siege.hexId) ? siege.hexId : undefined
 }
 
 /** Everything the map draws, hex by hex, on `today`. */
@@ -267,10 +298,11 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
   for (const n of tidings(state, today).threats) {
     threats.set(n.hexId, [...(threats.get(n.hexId) ?? []), { kind: n.kind, ...(n.rival ? { rival: n.rival } : {}), ...(n.band ? { band: n.band } : {}) }])
   }
-  const orders = state.orders.find((o) => o.date === today)
+  const orders = ordersFor(state, today)
   const targets = new Set([orders?.assaultTarget, ...(orders?.extraAssaults ?? []).map((a) => a.target)].filter(Boolean) as string[])
   const courting = new Set(state.courtships.map((c) => c.hexId))
   const battles = new Map(pendingBattles(state).map((b) => [b.hexId, b.battleDate]))
+  const standing = standingHex(state)
   return hexLayout(state.hexes).points.map((p, i) => {
     const h = state.hexes[i]
     const out: MapHex = {
@@ -296,6 +328,13 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
     if (courting.has(h.id)) out.courting = true
     const battle = battles.get(h.id)
     if (battle) out.battle = battle
+    const siege = siegeOn(state, h, today, standing)
+    if (siege) out.siege = siege
+    if (isStronghold(state.hexes, h.id)) out.stronghold = true
+    const fallen = fallbackHere(state, h, today)
+    if (fallen) out.fallback = { strength: fallen.strength, daysLeft: fallen.daysLeft }
+    const bar = h.owner !== 'player' ? strongholdBarring(state.hexes, h.id) : undefined
+    if (bar) out.barredBy = hexName(bar)
     if (h.march) {
       out.march = h.march
       out.depth = depthOf(h)
@@ -381,6 +420,16 @@ export interface HexPanel {
   paths: Partial<Record<RivalId, number>>
   /** The exact garrison an assault must beat today: wear, fortification and preparation counted (claimable hexes only). */
   garrison?: number
+  /** A siege on it (D-22): its progress (wear as a share of the garrison it wears) and whether it is the standing siege. */
+  siege?: { progress: number; standing: boolean }
+  /** The daily assault's flanking multiple on it today (D-22), on a hex a daily assault may take. */
+  flank?: number
+  /** A stronghold (D-23): its garrison is × `garrisonMult` while not the player's, and it bars its march beyond. */
+  stronghold?: boolean
+  /** The stronghold, still standing, that bars the player's assault here (D-23). */
+  barredBy?: { hexId: string; label: string }
+  /** Garrisons fallen back here (D-24): what they add today, the days left, and where they came from. */
+  fallback?: { strength: number; daysLeft: number; from: { hexId: string; label: string }[] }
   village?: { loyalty: number; resistance: number; settlingUntil?: ISODate }
   fortification: number
   status: HexState['status']
@@ -441,6 +490,12 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     const code = done.reason ?? 'refused'
     actions.push({ kind: 'challenge', available: done.ok, ...(done.ok ? {} : { reason: { code, label: grandRefusalLabel(code) } }) })
   } else if (hex.owner !== 'player' && isClaimableKind(hex)) {
+    // A stronghold (D-23, P3-02): its Grand Battle, as well as the siege.
+    if (isStronghold(state.hexes, hexId)) {
+      const done = challenge(state, hexId, today)
+      const code = done.reason ?? 'refused'
+      actions.push({ kind: 'challenge', available: done.ok, ...(done.ok ? {} : { reason: { code, label: grandRefusalLabel(code) } }) })
+    }
     const strongest = rosterDetail(state, { day: today }, effects).sort((a, b) => b.company.power - a.company.power)[0]
     const validity = ordersValidity(state, { date: today, assaultTarget: hexId, assault: strongest ? [strongest.company.id] : [], defense: [] }, effects)
     const ok = validity.assaults.some((a) => a.target === hexId)
@@ -466,9 +521,13 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     const offer = reclaimOffer(state, hexId, today)
     actions.push({ kind: 'reclaim', available: offer.ok, cost: offer.cost, ...(offer.ok || !offer.reason ? {} : { reason: { code: offer.reason.code, label: landRefusalLabel(offer.reason), facts: { ...offer.reason } } }) })
   }
-  const orders = state.orders.find((o) => o.date === today)
+  const orders = ordersFor(state, today, effects)
   const contest = combatOf(state).contested.find((c) => c.hexId === hexId)
   const courtship = state.courtships.find((c) => c.hexId === hexId)
+  const siege = siegeOn(state, hex, today, standingHex(state))
+  const assaultable = claimableBy(state.hexes, hexId, 'player', 'assault')
+  const barring = hex.owner !== 'player' ? strongholdBarring(state.hexes, hexId) : undefined
+  const fallen = fallbackHere(state, hex, today)
   return {
     id: hex.id,
     label: hexName(hex),
@@ -483,6 +542,11 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     ...(preparationOf(state, hex, today) > 0 ? { preparation: preparationOf(state, hex, today) } : {}),
     paths: Object.fromEntries(Object.entries(pathShares(hex)).map(([r, s]) => [r, hexWorth(hex) * (s ?? 0)])),
     ...(isClaimableKind(hex) ? { garrison: assaultGarrison(state, hex, today) } : {}),
+    ...(siege ? { siege } : {}),
+    ...(assaultable ? { flank: flankingMult(hexIndex(state.hexes), hexId) } : {}),
+    ...(isStronghold(state.hexes, hexId) ? { stronghold: true } : {}),
+    ...(barring ? { barredBy: { hexId: barring, label: hexName(barring) } } : {}),
+    ...(fallen ? { fallback: { strength: fallen.strength, daysLeft: fallen.daysLeft, from: fallen.from.map((id) => ({ hexId: id, label: hexName(id) })) } } : {}),
     ...(hex.village ? { village: { loyalty: hex.village.loyalty, resistance: resistance(hex), ...(hex.village.settlingUntil ? { settlingUntil: hex.village.settlingUntil } : {}) } } : {}),
     fortification: hex.fortification,
     status: hex.status,

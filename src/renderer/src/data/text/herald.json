@@ -11,6 +11,14 @@
     "template": "{rival} raid expected on {hex} today. Strength: {strength}.",
     "final": null
   },
+  "herald.threat.counterattack": {
+    "template": "The garrison that fell back strikes at {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.fallback": {
+    "template": "The garrison beaten at {hex} fell back to {to}: +{strength} there for {days} days.",
+    "final": null
+  },
   "herald.threat.conquest": {
     "template": "{rival} conquest attempt announced on {hex} for {date}. Strength: {strength}.",
     "final": null
@@ -271,6 +279,10 @@
     "template": "{rival}’s path reached rank {rank}.",
     "final": null
   },
+  "herald.siege.lapsed": {
+    "template": "The siege of {hex} is lifted: it can no longer be assaulted.",
+    "final": null
+  },
   "herald.deed.hexTaken": {
     "template": "{hex} taken: {value} Renown on {rival}’s path.",
     "final": null
@@ -293,6 +305,14 @@
   },
   "herald.deed.resolved": {
     "template": "{rival} resolved: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.strongholdTaken": {
+    "template": "Stronghold {hex} taken: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.counterattackHeld": {
+    "template": "{hex} held against a counterattack: {value} Renown on {rival}’s path.",
     "final": null
   }
 }

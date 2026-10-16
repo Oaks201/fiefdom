@@ -16,7 +16,7 @@ import type { Ledger } from '../../types'
 import { PURSE_GAINS as GAINS, PURSE_SOURCES, sourcePrefix } from '../economy'
 import { RULES } from '../rules'
 import { settle } from '../settle'
-import { weekOn } from '../state'
+import { isPlayable, weekOn } from '../state'
 import type { CampaignState } from '../types'
 
 export interface InvariantInput {
@@ -101,6 +101,14 @@ export function settleViolations(i: InvariantInput): string[] {
     if (seenWeeks.has(w.week)) continue
     if (w.momentum > 1 + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} above the target pace`)
     if (w.tooFast && w.momentum > heldOrFloor + EPSILON) out.push(`week ${w.week}: Momentum ${w.momentum} while the trend is too fast`)
+  }
+
+  // 7. Every Grand Battle has its own id, and none due by the day settled is left unfought.
+  const battleIds = new Set<string>()
+  for (const b of after.grandBattles) {
+    if (battleIds.has(b.id)) out.push(`two Grand Battles share the id ${b.id}`)
+    battleIds.add(b.id)
+    if (isPlayable(after) && b.result === undefined && b.battleDate <= after.settledThrough.day) out.push(`Grand Battle ${b.id} (${b.trigger}) was due ${b.battleDate} and is still unfought`)
   }
   return out
 }

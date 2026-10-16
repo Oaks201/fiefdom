@@ -20,7 +20,7 @@ import type { CampaignState, Emit, GameEvent, ISODate, Skirmish, ThreatKind } fr
 import { amount } from './refusals'
 import { resultLine, rivalName, strengthWord, type HeraldLine } from './shell'
 
-const THREAT_WORDS: Record<ThreatKind, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt' }
+const THREAT_WORDS: Record<ThreatKind, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack' }
 
 export interface SkirmishButton {
   /** Today has fights to lead, or they have begun. */

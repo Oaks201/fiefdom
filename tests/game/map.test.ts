@@ -25,6 +25,7 @@ import {
   ringOf,
   rulingMarch,
   seedVillages,
+  strongholds,
   touchesOwner,
   touchingPairs,
   villageCredits,
@@ -485,10 +486,12 @@ test('Ch 3 rules 4 to 6, A-16: capitals, Gates and Lair Mouths are never assault
   for (const h of withGates.filter((x) => x.kind === 'capital' || x.kind === 'realm' || x.kind === 'lair')) {
     for (const method of ['assault', 'court', 'buy'] as const) assert.equal(claimableBy(withGates, h.id, 'player', method), false, `${method} ${h.id}`)
   }
-  // A rival hex beside the player's land can be assaulted and bought.
+  // A rival hex beside the player's land can be bought; while the Orc's strongholds stand (D-23), it can't be assaulted.
   const front = withOwners(map, { [ray('NW', 10)]: 'player' })
-  assert.ok(claimableBy(front, ray('NW', 11), 'player', 'assault'))
+  assert.equal(claimableBy(front, ray('NW', 11), 'player', 'assault'), false)
   assert.ok(claimableBy(front, ray('NW', 11), 'player', 'buy'))
+  const held = withOwners(front, Object.fromEntries([...strongholds(front)].filter(([, s]) => s.march === 'orc').map(([id]) => [id, 'player' as Owner])))
+  assert.ok(claimableBy(held, ray('NW', 11), 'player', 'assault'))
 })
 
 test('Ch 6: courting only villages; buying only rival hexes; adjacency always required', () => {

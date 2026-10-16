@@ -14,7 +14,7 @@ import { balance, post } from '../economy'
 import { realmEffects } from '../effects'
 import { milestoneUnlocks } from '../armory'
 import { CODEX } from '../codex'
-import { announceGrandBattle, type GrandRequest } from '../grand'
+import { announceGrandBattle, nextBattleId, type GrandRequest } from '../grand'
 import { hexIndex, hexWorth, pathShares, rivalOfRoad, touches } from '../map'
 import { refreshRoster } from '../roster'
 import { RULES } from '../rules'
@@ -240,7 +240,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
       ]
       const rest = realmEffects(state).orders.map((o) => o.id).filter((id) => id !== 'shieldwall')
       const battle: GrandBattle = {
-        id: `gb-${state.grandBattles.length + 1}`,
+        id: nextBattleId(state),
         trigger: 'warhost',
         hexId: borderHex(state).id,
         announcedOn: addDays(today, -2), // rules-ok: dev scenario, announced two days ago

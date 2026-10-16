@@ -405,11 +405,8 @@ const worldPhase: Phase = (state, ctx) =>
     emit: ctx.emit
   })
 
-/** Resets garrison damage and draws next week's threats (T08, A-28). */
-const resetAndSchedule: Phase = (state, ctx) => {
-  const hexes = state.hexes.some((h) => h.garrisonDamage !== 0) ? state.hexes.map((h) => (h.garrisonDamage === 0 ? h : { ...h, garrisonDamage: 0 })) : state.hexes
-  return scheduleThreats({ ...state, hexes }, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
-}
+/** Draws next week's threats (T08, A-28). Patch 3 (D-22, X-07): siege wear no longer resets here; it stays until the hex falls (`sieges.ts`). */
+const resetAndSchedule: Phase = (state, ctx) => scheduleThreats(state, addDays(ctx.day, 1), addDays(ctx.day, RULES.clock.daysPerWeek))
 
 /** Each rival march's preparation level: up after a quiet week, down after a pushed one (D-19). */
 const marchesPhase: Phase = (state, ctx) => prepareMarches(state, ctx.day, ctx.emit)

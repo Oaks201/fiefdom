@@ -4,12 +4,22 @@
  * posting events to the log. They hold no rule of their own beyond what their comments cite; they
  * exist so that combat, land, the rivals and settlement don't each keep a copy.
  */
-import { addDays, campaignWeek } from './clock'
+import { addDays, campaignWeek, diffDays } from './clock'
 import { bandOf } from './map'
 import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
+
+/**
+ * Whether the player has been away on `day` (A-10): no launch for 14 or more days before it,
+ * counted from the last launch as each day settles. Absence never costs anything (X-17): no march
+ * prepares (D-19) and no counterattack comes (R-24, D-24) while it lasts.
+ */
+export function awayOn(state: CampaignState, day: ISODate): boolean {
+  const last = state.settlement.lastLaunch
+  return last !== undefined && diffDays(last, day) >= RULES.clock.absenceDays
+}
 
 /**
  * Whether the campaign still plays: it settles, buys and fights while active and in the Reign
