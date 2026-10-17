@@ -1704,7 +1704,7 @@
     ]
   },
   "event.ugraksChallenge": {
-    "file": null,
+    "file": "event.ugraksChallenge-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1712,7 +1712,7 @@
     ]
   },
   "event.grandAuction": {
-    "file": null,
+    "file": "event.grandAuction-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1720,7 +1720,7 @@
     ]
   },
   "event.deepCall": {
-    "file": null,
+    "file": "event.deepCall-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1728,7 +1728,7 @@
     ]
   },
   "event.beastSurge": {
-    "file": null,
+    "file": "event.beastSurge-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1736,7 +1736,7 @@
     ]
   },
   "event.hungryWinter": {
-    "file": null,
+    "file": "event.hungryWinter-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1744,7 +1744,7 @@
     ]
   },
   "event.dragonWakes": {
-    "file": null,
+    "file": "event.dragonWakes-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1752,7 +1752,7 @@
     ]
   },
   "event.wildHunt": {
-    "file": null,
+    "file": "event.wildHunt-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1760,7 +1760,7 @@
     ]
   },
   "event.pretender": {
-    "file": null,
+    "file": "event.pretender-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1768,7 +1768,7 @@
     ]
   },
   "event.fearOfTheCrown": {
-    "file": null,
+    "file": "event.fearOfTheCrown-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1776,7 +1776,7 @@
     ]
   },
   "event.villageUprising": {
-    "file": null,
+    "file": "event.villageUprising-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1784,7 +1784,7 @@
     ]
   },
   "event.wanderingOrder": {
-    "file": null,
+    "file": "event.wanderingOrder-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1800,7 +1800,7 @@
     ]
   },
   "event.lostHeir": {
-    "file": null,
+    "file": "event.lostHeir-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1808,7 +1808,7 @@
     ]
   },
   "event.envoys": {
-    "file": null,
+    "file": "event.envoys-completion-v1.png",
     "kind": "event",
     "size": [
       768,
@@ -1824,7 +1824,7 @@
     ]
   },
   "milestone.2": {
-    "file": null,
+    "file": "milestone.2-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1840,7 +1840,7 @@
     ]
   },
   "milestone.4": {
-    "file": null,
+    "file": "milestone.4-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1848,7 +1848,7 @@
     ]
   },
   "milestone.5": {
-    "file": null,
+    "file": "milestone.5-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1856,7 +1856,7 @@
     ]
   },
   "milestone.6": {
-    "file": null,
+    "file": "milestone.6-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1864,7 +1864,7 @@
     ]
   },
   "milestone.7": {
-    "file": null,
+    "file": "milestone.7-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1872,7 +1872,7 @@
     ]
   },
   "milestone.8": {
-    "file": null,
+    "file": "milestone.8-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1880,7 +1880,7 @@
     ]
   },
   "milestone.9": {
-    "file": null,
+    "file": "milestone.9-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1888,7 +1888,7 @@
     ]
   },
   "milestone.10": {
-    "file": null,
+    "file": "milestone.10-completion-v1.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1904,7 +1904,7 @@
     ]
   },
   "moment.grandBattleLost": {
-    "file": null,
+    "file": "moment.grandBattleLost-completion-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1912,7 +1912,7 @@
     ]
   },
   "moment.coalition": {
-    "file": null,
+    "file": "moment.coalition-completion-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1920,7 +1920,7 @@
     ]
   },
   "moment.ultimatum": {
-    "file": null,
+    "file": "moment.ultimatum-completion-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1928,7 +1928,7 @@
     ]
   },
   "moment.victory": {
-    "file": null,
+    "file": "moment.victory-completion-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1936,7 +1936,7 @@
     ]
   },
   "moment.fall": {
-    "file": null,
+    "file": "moment.fall-completion-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1984,7 +1984,7 @@
     ]
   },
   "ui.icon.respect": {
-    "file": null,
+    "file": "ui.icon.respect-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -1992,7 +1992,7 @@
     ]
   },
   "ui.icon.valor": {
-    "file": null,
+    "file": "ui.icon.valor-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -2000,7 +2000,7 @@
     ]
   },
   "ui.icon.grace": {
-    "file": null,
+    "file": "ui.icon.grace-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -2008,7 +2008,7 @@
     ]
   },
   "ui.icon.steps": {
-    "file": null,
+    "file": "ui.icon.steps-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -2016,7 +2016,7 @@
     ]
   },
   "ui.icon.calories": {
-    "file": null,
+    "file": "ui.icon.calories-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -2024,7 +2024,7 @@
     ]
   },
   "ui.icon.duties": {
-    "file": null,
+    "file": "ui.icon.duties-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
@@ -2032,7 +2032,7 @@
     ]
   },
   "ui.icon.weight": {
-    "file": null,
+    "file": "ui.icon.weight-completion-v1.png",
     "kind": "icon",
     "size": [
       64,
