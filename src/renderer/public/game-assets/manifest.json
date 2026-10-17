@@ -144,7 +144,7 @@
     ]
   },
   "building.barracks.4": {
-    "file": "building.barracks.4-completion-v1.png",
+    "file": "building.barracks.4-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -152,7 +152,7 @@
     ]
   },
   "building.barracks.5": {
-    "file": "building.barracks.5-completion-v1.png",
+    "file": "building.barracks.5-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -184,7 +184,7 @@
     ]
   },
   "building.merchantHall.4": {
-    "file": "building.merchantHall.4-completion-v1.png",
+    "file": "building.merchantHall.4-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -192,7 +192,7 @@
     ]
   },
   "building.merchantHall.5": {
-    "file": "building.merchantHall.5-completion-v1.png",
+    "file": "building.merchantHall.5-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -224,7 +224,7 @@
     ]
   },
   "building.mageTower.4": {
-    "file": "building.mageTower.4-completion-v1.png",
+    "file": "building.mageTower.4-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -232,7 +232,7 @@
     ]
   },
   "building.mageTower.5": {
-    "file": "building.mageTower.5-completion-v1.png",
+    "file": "building.mageTower.5-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -264,7 +264,7 @@
     ]
   },
   "building.foundry.4": {
-    "file": "building.foundry.4-completion-v1.png",
+    "file": "building.foundry.4-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,
@@ -272,7 +272,7 @@
     ]
   },
   "building.foundry.5": {
-    "file": "building.foundry.5-completion-v1.png",
+    "file": "building.foundry.5-dramatic-v2.png",
     "kind": "building",
     "size": [
       512,

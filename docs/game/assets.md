@@ -80,23 +80,23 @@ Slots: 317. With a file: 317.
 | `building.barracks.1` | Barracks, Tier 1 | `building.barracks.1.png` | 512 × 512 | Castle screen | ok |
 | `building.barracks.2` | Barracks, Tier 2 | `building.barracks.2-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.barracks.3` | Barracks, Tier 3 | `building.barracks.3-early-v3.png` | 512 × 512 | Castle screen | ok |
-| `building.barracks.4` | Barracks, Tier 4 | `building.barracks.4-completion-v1.png` | 512 × 512 | Castle screen | ok |
-| `building.barracks.5` | Barracks, Tier 5 | `building.barracks.5-completion-v1.png` | 512 × 512 | Castle screen | ok |
+| `building.barracks.4` | Barracks, Tier 4 | `building.barracks.4-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
+| `building.barracks.5` | Barracks, Tier 5 | `building.barracks.5-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
 | `building.merchantHall.1` | Merchant Hall, Tier 1 | `building.merchantHall.1-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.merchantHall.2` | Merchant Hall, Tier 2 | `building.merchantHall.2-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.merchantHall.3` | Merchant Hall, Tier 3 | `building.merchantHall.3-early-v3.png` | 512 × 512 | Castle screen | ok |
-| `building.merchantHall.4` | Merchant Hall, Tier 4 | `building.merchantHall.4-completion-v1.png` | 512 × 512 | Castle screen | ok |
-| `building.merchantHall.5` | Merchant Hall, Tier 5 | `building.merchantHall.5-completion-v1.png` | 512 × 512 | Castle screen | ok |
+| `building.merchantHall.4` | Merchant Hall, Tier 4 | `building.merchantHall.4-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
+| `building.merchantHall.5` | Merchant Hall, Tier 5 | `building.merchantHall.5-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
 | `building.mageTower.1` | Mage Tower, Tier 1 | `building.mageTower.1-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.mageTower.2` | Mage Tower, Tier 2 | `building.mageTower.2-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.mageTower.3` | Mage Tower, Tier 3 | `building.mageTower.3-early-v3.png` | 512 × 512 | Castle screen | ok |
-| `building.mageTower.4` | Mage Tower, Tier 4 | `building.mageTower.4-completion-v1.png` | 512 × 512 | Castle screen | ok |
-| `building.mageTower.5` | Mage Tower, Tier 5 | `building.mageTower.5-completion-v1.png` | 512 × 512 | Castle screen | ok |
+| `building.mageTower.4` | Mage Tower, Tier 4 | `building.mageTower.4-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
+| `building.mageTower.5` | Mage Tower, Tier 5 | `building.mageTower.5-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
 | `building.foundry.1` | Foundry, Tier 1 | `building.foundry.1-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.foundry.2` | Foundry, Tier 2 | `building.foundry.2-early-v3.png` | 512 × 512 | Castle screen | ok |
 | `building.foundry.3` | Foundry, Tier 3 | `building.foundry.3-early-v3.png` | 512 × 512 | Castle screen | ok |
-| `building.foundry.4` | Foundry, Tier 4 | `building.foundry.4-completion-v1.png` | 512 × 512 | Castle screen | ok |
-| `building.foundry.5` | Foundry, Tier 5 | `building.foundry.5-completion-v1.png` | 512 × 512 | Castle screen | ok |
+| `building.foundry.4` | Foundry, Tier 4 | `building.foundry.4-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
+| `building.foundry.5` | Foundry, Tier 5 | `building.foundry.5-dramatic-v2.png` | 512 × 512 | Castle screen | ok |
 | `castle.1` | Castle, Tier 1 | `castle.1.png` | 768 × 768 | Map center, castle screen | ok |
 | `castle.2` | Castle, Tier 2 | `castle.2-early-v3.png` | 768 × 768 | Map center, castle screen | ok |
 | `castle.3` | Castle, Tier 3 | `castle.3-completion-v1.png` | 768 × 768 | Map center, castle screen | ok |
