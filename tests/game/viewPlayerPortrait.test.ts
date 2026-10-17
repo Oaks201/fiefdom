@@ -75,7 +75,7 @@ test('the 41 files: the base, then per tier the four pure paths and the six alph
   const files = portraitFiles()
   assert.equal(files.length, 41)
   assert.equal(new Set(files).size, 41)
-  assert.equal(files[0], 'player_t1.png')
+  assert.equal(files[0], 'player_t1-approved-v2.png')
   for (let tier = 2; tier <= 5; tier++) {
     for (const path of ['orc', 'goblin', 'dwarf', 'mage']) assert.ok(files.includes(`player_t${tier}_${path}.png`))
     for (const pair of ['dwarf-goblin', 'dwarf-mage', 'dwarf-orc', 'goblin-mage', 'goblin-orc', 'mage-orc']) assert.ok(files.includes(`player_t${tier}_${pair}.png`), `t${tier} ${pair}`)
@@ -86,28 +86,28 @@ test('the file and its fallback chain: a hybrid, then the leading path at the sa
   const hybrid = portraitChoice(standingFrom(per(100, 90, 0, 0), 4))
   assert.equal(hybrid.wanted, 'player_t4_goblin-orc.png')
   assert.equal(hybrid.key, 't4:goblin-orc')
-  assert.deepEqual(hybrid.chain, ['player_t4_goblin-orc.png', 'player_t4_orc.png', 'player_t3_orc.png', 'player_t2_orc.png', 'player_t1.png'])
+  assert.deepEqual(hybrid.chain, ['player_t4_goblin-orc.png', 'player_t4_orc.png', 'player_t3_orc.png', 'player_t2_orc.png', 'player_t1-approved-v2.png'])
   const emrys = portraitChoice(standingFrom(per(0, 0, 10, 200), 3))
   assert.equal(emrys.wanted, 'player_t3_mage.png', 'Emrys is the mage path')
-  assert.deepEqual(emrys.chain, ['player_t3_mage.png', 'player_t2_mage.png', 'player_t1.png'])
-  assert.deepEqual(portraitChoice(standingFrom(per(30, 0, 0, 0))).chain, ['player_t1.png'], 'tier 1 is always the base')
+  assert.deepEqual(emrys.chain, ['player_t3_mage.png', 'player_t2_mage.png', 'player_t1-approved-v2.png'])
+  assert.deepEqual(portraitChoice(standingFrom(per(30, 0, 0, 0))).chain, ['player_t1-approved-v2.png'], 'tier 1 is always the base')
   assert.equal(portraitChoice(standingFrom(per(0, 0, 0, 0), 5)).key, 't1', 'every path at zero is the base')
-  assert.equal(portraitChoice(null).wanted, 'player_t1.png', 'no campaign')
+  assert.equal(portraitChoice(null).wanted, 'player_t1-approved-v2.png', 'no campaign')
   assert.equal(portraitChoice(standingFrom(per(900, 0, 0, 0), 9)).tier, 5, 'a tier past the last is the last')
 })
 
 test('which file stands in, given the files that exist', () => {
   const choice = portraitChoice(standingFrom(per(100, 90, 0, 0), 4))
   const only = (...files: string[]) => (file: string) => files.includes(file)
-  assert.deepEqual(resolvePortrait(choice, only('player_t1.png', 'player_t4_goblin-orc.png')), { file: 'player_t4_goblin-orc.png', fallback: 'none', pending: false })
-  assert.equal(resolvePortrait(choice, only('player_t1.png', 'player_t4_orc.png')).fallback, 'leadSameTier')
-  assert.deepEqual(resolvePortrait(choice, only('player_t1.png', 'player_t2_orc.png')), { file: 'player_t2_orc.png', fallback: 'lowerTier', pending: false })
-  assert.deepEqual(resolvePortrait(choice, only('player_t1.png')), { file: 'player_t1.png', fallback: 'base', pending: false })
+  assert.deepEqual(resolvePortrait(choice, only('player_t1-approved-v2.png', 'player_t4_goblin-orc.png')), { file: 'player_t4_goblin-orc.png', fallback: 'none', pending: false })
+  assert.equal(resolvePortrait(choice, only('player_t1-approved-v2.png', 'player_t4_orc.png')).fallback, 'leadSameTier')
+  assert.deepEqual(resolvePortrait(choice, only('player_t1-approved-v2.png', 'player_t2_orc.png')), { file: 'player_t2_orc.png', fallback: 'lowerTier', pending: false })
+  assert.deepEqual(resolvePortrait(choice, only('player_t1-approved-v2.png')), { file: 'player_t1-approved-v2.png', fallback: 'base', pending: false })
   assert.deepEqual(resolvePortrait(choice, only()), { file: null, fallback: 'placeholder', pending: false })
   const pure = portraitChoice(standingFrom(per(200, 0, 0, 0), 3))
-  assert.equal(resolvePortrait(pure, only('player_t1.png', 'player_t2_orc.png')).fallback, 'lowerTier')
+  assert.equal(resolvePortrait(pure, only('player_t1-approved-v2.png', 'player_t2_orc.png')).fallback, 'lowerTier')
   // A file not checked yet: the best one known stands in, marked pending.
-  assert.deepEqual(resolvePortrait(choice, (f) => (f === 'player_t1.png' ? true : undefined)), { file: 'player_t1.png', fallback: 'base', pending: true })
+  assert.deepEqual(resolvePortrait(choice, (f) => (f === 'player_t1-approved-v2.png' ? true : undefined)), { file: 'player_t1-approved-v2.png', fallback: 'base', pending: true })
 })
 
 test('the standing card: on a tier rise or a new path, never on a first look or a drop', () => {
@@ -132,7 +132,7 @@ test('a played campaign: each path is its rival’s path Dominion (D-18), and th
 test('a broken data file stays on the base file (or the placeholder) and never throws', () => {
   const noTiers = readSetup({ ...setupJson, tiers: 'many' })
   assert.ok(noTiers.problems.length > 0 && noTiers.config === null)
-  assert.deepEqual(portraitChoice(standingFrom(per(400, 0, 0, 0), 4), noTiers).chain, ['player_t1.png'])
+  assert.deepEqual(portraitChoice(standingFrom(per(400, 0, 0, 0), 4), noTiers).chain, ['player_t1-approved-v2.png'])
   for (const broken of [null, 'text', [], {}, { ...setupJson, paths: { orc: 'orc' } }, { ...setupJson, closeMargin: -1 }, { ...setupJson, files: { base: '' } }]) {
     const setup = readSetup(broken)
     assert.ok(setup.problems.length > 0, JSON.stringify(broken))

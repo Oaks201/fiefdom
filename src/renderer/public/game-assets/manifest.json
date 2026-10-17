@@ -752,7 +752,7 @@
     ]
   },
   "company.ironclads.token": {
-    "file": null,
+    "file": "company.ironclads.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -760,7 +760,7 @@
     ]
   },
   "company.ironclads.portrait": {
-    "file": null,
+    "file": "company.ironclads.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -768,7 +768,7 @@
     ]
   },
   "company.cataphracts.token": {
-    "file": null,
+    "file": "company.cataphracts.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -776,7 +776,7 @@
     ]
   },
   "company.cataphracts.portrait": {
-    "file": null,
+    "file": "company.cataphracts.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -784,7 +784,7 @@
     ]
   },
   "company.ironLegion.token": {
-    "file": null,
+    "file": "company.ironLegion.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -792,7 +792,7 @@
     ]
   },
   "company.ironLegion.portrait": {
-    "file": null,
+    "file": "company.ironLegion.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -800,7 +800,7 @@
     ]
   },
   "company.spellblades.token": {
-    "file": null,
+    "file": "company.spellblades.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -808,7 +808,7 @@
     ]
   },
   "company.spellblades.portrait": {
-    "file": null,
+    "file": "company.spellblades.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -816,7 +816,7 @@
     ]
   },
   "company.battlemages.token": {
-    "file": null,
+    "file": "company.battlemages.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -824,7 +824,7 @@
     ]
   },
   "company.battlemages.portrait": {
-    "file": null,
+    "file": "company.battlemages.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -832,7 +832,7 @@
     ]
   },
   "company.knightsOfTheVeil.token": {
-    "file": null,
+    "file": "company.knightsOfTheVeil.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -840,7 +840,7 @@
     ]
   },
   "company.knightsOfTheVeil.portrait": {
-    "file": null,
+    "file": "company.knightsOfTheVeil.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -848,7 +848,7 @@
     ]
   },
   "company.beastcatchers.token": {
-    "file": null,
+    "file": "company.beastcatchers.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -856,7 +856,7 @@
     ]
   },
   "company.beastcatchers.portrait": {
-    "file": null,
+    "file": "company.beastcatchers.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -864,7 +864,7 @@
     ]
   },
   "company.rangers.token": {
-    "file": null,
+    "file": "company.rangers.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -872,7 +872,7 @@
     ]
   },
   "company.rangers.portrait": {
-    "file": null,
+    "file": "company.rangers.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -880,7 +880,7 @@
     ]
   },
   "company.royalHunt.token": {
-    "file": null,
+    "file": "company.royalHunt.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -888,7 +888,7 @@
     ]
   },
   "company.royalHunt.portrait": {
-    "file": null,
+    "file": "company.royalHunt.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -896,7 +896,7 @@
     ]
   },
   "company.clayGolems.token": {
-    "file": null,
+    "file": "company.clayGolems.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -904,7 +904,7 @@
     ]
   },
   "company.clayGolems.portrait": {
-    "file": null,
+    "file": "company.clayGolems.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -912,7 +912,7 @@
     ]
   },
   "company.runeGolems.token": {
-    "file": "company.runeGolems.token-early-v3.png",
+    "file": "company.runeGolems.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -920,7 +920,7 @@
     ]
   },
   "company.runeGolems.portrait": {
-    "file": "company.runeGolems.portrait-early-v3.png",
+    "file": "company.runeGolems.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -928,7 +928,7 @@
     ]
   },
   "company.runeforgedTitans.token": {
-    "file": null,
+    "file": "company.runeforgedTitans.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -936,7 +936,7 @@
     ]
   },
   "company.runeforgedTitans.portrait": {
-    "file": null,
+    "file": "company.runeforgedTitans.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -944,7 +944,7 @@
     ]
   },
   "company.warWagons.token": {
-    "file": null,
+    "file": "company.warWagons.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -952,7 +952,7 @@
     ]
   },
   "company.warWagons.portrait": {
-    "file": null,
+    "file": "company.warWagons.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -960,7 +960,7 @@
     ]
   },
   "company.bombardBattery.token": {
-    "file": null,
+    "file": "company.bombardBattery.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -968,7 +968,7 @@
     ]
   },
   "company.bombardBattery.portrait": {
-    "file": null,
+    "file": "company.bombardBattery.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -976,7 +976,7 @@
     ]
   },
   "company.dragonfireBattery.token": {
-    "file": null,
+    "file": "company.dragonfireBattery.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -984,7 +984,7 @@
     ]
   },
   "company.dragonfireBattery.portrait": {
-    "file": null,
+    "file": "company.dragonfireBattery.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -992,7 +992,7 @@
     ]
   },
   "company.alchemists.token": {
-    "file": null,
+    "file": "company.alchemists.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -1000,7 +1000,7 @@
     ]
   },
   "company.alchemists.portrait": {
-    "file": null,
+    "file": "company.alchemists.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1008,7 +1008,7 @@
     ]
   },
   "company.illusionists.token": {
-    "file": "company.illusionists.token-early-v3.png",
+    "file": "company.illusionists.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -1016,7 +1016,7 @@
     ]
   },
   "company.illusionists.portrait": {
-    "file": "company.illusionists.portrait-early-v3.png",
+    "file": "company.illusionists.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1024,7 +1024,7 @@
     ]
   },
   "company.shadowCourt.token": {
-    "file": null,
+    "file": "company.shadowCourt.token-crossing-v3.png",
     "kind": "token",
     "size": [
       128,
@@ -1032,7 +1032,7 @@
     ]
   },
   "company.shadowCourt.portrait": {
-    "file": null,
+    "file": "company.shadowCourt.portrait-crossing-v3.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1120,7 +1120,7 @@
     ]
   },
   "company.goldenGuard.token": {
-    "file": null,
+    "file": "company.goldenGuard.token-goblin-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1128,7 +1128,7 @@
     ]
   },
   "company.goldenGuard.portrait": {
-    "file": null,
+    "file": "company.goldenGuard.portrait-goblin-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1136,7 +1136,7 @@
     ]
   },
   "company.sneaks.token": {
-    "file": null,
+    "file": "company.sneaks.token-goblin-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1144,7 +1144,7 @@
     ]
   },
   "company.sneaks.portrait": {
-    "file": null,
+    "file": "company.sneaks.portrait-goblin-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1152,7 +1152,7 @@
     ]
   },
   "company.slingers.token": {
-    "file": "company.slingers.token-early-v3.png",
+    "file": "company.slingers.token-goblin-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1160,7 +1160,7 @@
     ]
   },
   "company.slingers.portrait": {
-    "file": "company.slingers.portrait-early-v3.png",
+    "file": "company.slingers.portrait-goblin-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1168,7 +1168,7 @@
     ]
   },
   "company.trapSetters.token": {
-    "file": "company.trapSetters.token-early-v3.png",
+    "file": "company.trapSetters.token-goblin-host-v5.png",
     "kind": "token",
     "size": [
       128,
@@ -1176,7 +1176,7 @@
     ]
   },
   "company.trapSetters.portrait": {
-    "file": "company.trapSetters.portrait-early-v3.png",
+    "file": "company.trapSetters.portrait-goblin-host-v5.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1184,7 +1184,7 @@
     ]
   },
   "company.hiredOgres.token": {
-    "file": null,
+    "file": "company.hiredOgres.token-goblin-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1192,7 +1192,7 @@
     ]
   },
   "company.hiredOgres.portrait": {
-    "file": null,
+    "file": "company.hiredOgres.portrait-goblin-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1200,7 +1200,7 @@
     ]
   },
   "company.anvilGuard.token": {
-    "file": "company.anvilGuard.token-early-v3.png",
+    "file": "company.anvilGuard.token-dwarf-host-v11.png",
     "kind": "token",
     "size": [
       128,
@@ -1208,7 +1208,7 @@
     ]
   },
   "company.anvilGuard.portrait": {
-    "file": "company.anvilGuard.portrait-early-v3.png",
+    "file": "company.anvilGuard.portrait-dwarf-host-v11.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1216,7 +1216,7 @@
     ]
   },
   "company.thunderers.token": {
-    "file": "company.thunderers.token-early-v3.png",
+    "file": "company.thunderers.token-dwarf-host-v11.png",
     "kind": "token",
     "size": [
       128,
@@ -1224,7 +1224,7 @@
     ]
   },
   "company.thunderers.portrait": {
-    "file": "company.thunderers.portrait-early-v3.png",
+    "file": "company.thunderers.portrait-dwarf-host-v11.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1232,7 +1232,7 @@
     ]
   },
   "company.ironbreakers.token": {
-    "file": "company.ironbreakers.token-early-v3.png",
+    "file": "company.ironbreakers.token-dwarf-host-v11.png",
     "kind": "token",
     "size": [
       128,
@@ -1240,7 +1240,7 @@
     ]
   },
   "company.ironbreakers.portrait": {
-    "file": "company.ironbreakers.portrait-early-v3.png",
+    "file": "company.ironbreakers.portrait-dwarf-host-v11.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1248,7 +1248,7 @@
     ]
   },
   "company.runePriests.token": {
-    "file": "company.runePriests.token-early-v3.png",
+    "file": "company.runePriests.token-dwarf-host-v11.png",
     "kind": "token",
     "size": [
       128,
@@ -1256,7 +1256,7 @@
     ]
   },
   "company.runePriests.portrait": {
-    "file": "company.runePriests.portrait-early-v3.png",
+    "file": "company.runePriests.portrait-dwarf-host-v11.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1264,7 +1264,7 @@
     ]
   },
   "company.hammerers.token": {
-    "file": "company.hammerers.token-early-v3.png",
+    "file": "company.hammerers.token-dwarf-host-v11.png",
     "kind": "token",
     "size": [
       128,
@@ -1272,7 +1272,7 @@
     ]
   },
   "company.hammerers.portrait": {
-    "file": "company.hammerers.portrait-early-v3.png",
+    "file": "company.hammerers.portrait-dwarf-host-v11.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1280,7 +1280,7 @@
     ]
   },
   "company.emrysEcho.token": {
-    "file": "company.emrysEcho.token-early-v3.png",
+    "file": "company.emrysEcho.token-mage-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1288,7 +1288,7 @@
     ]
   },
   "company.emrysEcho.portrait": {
-    "file": "company.emrysEcho.portrait-early-v3.png",
+    "file": "company.emrysEcho.portrait-mage-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1296,7 +1296,7 @@
     ]
   },
   "company.wisps.token": {
-    "file": "company.wisps.token-early-v3.png",
+    "file": "company.wisps.token-mage-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1304,7 +1304,7 @@
     ]
   },
   "company.wisps.portrait": {
-    "file": "company.wisps.portrait-early-v3.png",
+    "file": "company.wisps.portrait-mage-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1312,7 +1312,7 @@
     ]
   },
   "company.apprentices.token": {
-    "file": "company.apprentices.token-early-v3.png",
+    "file": "company.apprentices.token-mage-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1320,7 +1320,7 @@
     ]
   },
   "company.apprentices.portrait": {
-    "file": "company.apprentices.portrait-early-v3.png",
+    "file": "company.apprentices.portrait-mage-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1328,7 +1328,7 @@
     ]
   },
   "company.shadowHounds.token": {
-    "file": "company.shadowHounds.token-early-v3.png",
+    "file": "company.shadowHounds.token-mage-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1336,7 +1336,7 @@
     ]
   },
   "company.shadowHounds.portrait": {
-    "file": "company.shadowHounds.portrait-early-v3.png",
+    "file": "company.shadowHounds.portrait-mage-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1344,7 +1344,7 @@
     ]
   },
   "company.stoneSentinels.token": {
-    "file": "company.stoneSentinels.token-early-v3.png",
+    "file": "company.stoneSentinels.token-mage-host-v4.png",
     "kind": "token",
     "size": [
       128,
@@ -1352,7 +1352,7 @@
     ]
   },
   "company.stoneSentinels.portrait": {
-    "file": "company.stoneSentinels.portrait-early-v3.png",
+    "file": "company.stoneSentinels.portrait-mage-host-v4.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1664,7 +1664,7 @@
     ]
   },
   "banner.orc": {
-    "file": null,
+    "file": "banner.orc-faction-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -1672,7 +1672,7 @@
     ]
   },
   "banner.goblin": {
-    "file": null,
+    "file": "banner.goblin-faction-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -1680,7 +1680,7 @@
     ]
   },
   "banner.dwarf": {
-    "file": null,
+    "file": "banner.dwarf-faction-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -1688,7 +1688,7 @@
     ]
   },
   "banner.archmage": {
-    "file": null,
+    "file": "banner.archmage-faction-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -1696,7 +1696,7 @@
     ]
   },
   "banner.neutral": {
-    "file": null,
+    "file": "banner.neutral-faction-v1.png",
     "kind": "banner",
     "size": [
       256,
@@ -2485,6 +2485,54 @@
     "size": [
       222,
       256
+    ]
+  },
+  "company.wanderingOrder.token": {
+    "file": "company.wanderingOrder.token-navy-v2.png",
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.wanderingOrder.portrait": {
+    "file": "company.wanderingOrder.portrait-navy-v2.png",
+    "kind": "portrait",
+    "size": [
+      512,
+      512
+    ]
+  },
+  "company.bears.token": {
+    "file": "company.bears.token-skirmish-v2.png",
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.wolves.token": {
+    "file": "company.wolves.token-skirmish-v2.png",
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.giantSpiders.token": {
+    "file": "company.giantSpiders.token-skirmish-v2.png",
+    "kind": "token",
+    "size": [
+      128,
+      128
+    ]
+  },
+  "company.villageMilitia.token": {
+    "file": "company.villageMilitia.token-skirmish-v2.png",
+    "kind": "token",
+    "size": [
+      128,
+      128
     ]
   }
 }
