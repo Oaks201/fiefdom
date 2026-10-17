@@ -3,6 +3,7 @@ import { GiArcheryTarget, GiCrossedSwords, GiPlayButton, GiReturnArrow, GiShield
 import { ReplayBoard, RoundLog } from '../components/battle/BattleParts'
 import { FieldGrid } from '../components/battle/FieldGrid'
 import { RoundBoard } from '../components/battle/RoundBoard'
+import { UndoStart } from '../components/battle/StartBattles'
 import { formatShort } from '../lib/dates'
 import type { RoundPlay } from '../lib/game/grand/field'
 import { beginFight, playFightRound, type SkirmishAction } from '../lib/game/skirmish'
@@ -103,6 +104,12 @@ function FightRoll({ day, current }: { day: SkirmishDayView; current: string | n
           </li>
         ))}
       </ol>
+      {day.undoable && (
+        <div className="skirmish__rest">
+          <UndoStart today={day.day} small />
+          <p className="muted">No battle is opened yet: undo the start to unlock your Valor and today’s orders, then start again when you’re ready.</p>
+        </div>
+      )}
       {day.open && day.next && (
         <div className="skirmish__rest">
           <button type="button" className="btn btn--small btn--ghost" onClick={() => useUI.getState().closeSkirmish()}>

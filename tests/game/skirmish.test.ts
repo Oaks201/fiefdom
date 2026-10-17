@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
-import { assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { COMBAT_HOOKS, assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { fieldResult, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
 import { claimableBy, neighbors } from '../../src/renderer/src/lib/game/map'
@@ -26,6 +26,8 @@ import {
   skirmishField,
   startSkirmishes,
   todaysFights,
+  undoStartRefusal,
+  undoStartSkirmishes,
   type FightPlan
 } from '../../src/renderer/src/lib/game/skirmish'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
@@ -351,4 +353,62 @@ test('Spoils of War played in a led fight pays its +50% at the close, in whichev
     // Both post rounded to 0.1.
     assert.ok(Math.abs(won(played.state, played.hexId) - 1.5 * base) <= 0.15, `round ${round}: ${won(played.state, played.hexId)} against ${base}`)
   }
+})
+
+test('Undo start (D-36): before a battle is opened it takes the start back exactly, the orders open again and a new start locks the Valor anew', () => {
+  const started = startSkirmishes(ordered, today, 0.6)
+  assert.ok(started.ok && started.day)
+  assert.equal(started.day.wroteOrders, undefined, 'the day had its own orders')
+  assert.equal(undoStartRefusal(started.state, today), null)
+  const undone = undoStartSkirmishes(started.state, today)
+  assert.ok(undone.ok)
+  const bare = (s: CampaignState): CampaignState => ({ ...s, skirmishes: s.skirmishes ?? [] })
+  assert.deepEqual(bare(undone.state), bare(ordered), 'as if it was never pressed')
+  assert.equal(skirmishButton(undone.state, 0.9, today).started, false)
+  assert.equal(setOrders(undone.state, { date: today, assault: [], defense: [] }).validity.problems.some((p) => p.code === 'ordersLocked'), false, 'the orders open again')
+  assert.equal(startSkirmishes(undone.state, today, 0.9).day?.valor, 0.9, 'started again at the Valor now')
+  const formula = (s: CampaignState): BattleEvent[] => eventsOn(settle(s, ledger, closeOf(today)).state, today)
+  assert.deepEqual(formula(undone.state), formula(ordered), 'the close is the formula’s as before')
+})
+
+test('Undo start clears the standing siege’s orders the start wrote down; a start saved before D-36 keeps them', () => {
+  const sieging = { ...ordered, orders: ordered.orders.filter((o) => o.date !== today) }
+  assert.ok(sieging.standingSiege, 'the assault left a standing siege')
+  const started = startSkirmishes(sieging, today, 0.8)
+  assert.ok(started.ok && started.day?.wroteOrders)
+  assert.ok(started.state.orders.some((o) => o.date === today), 'the siege’s orders are written down')
+  const undone = undoStartSkirmishes(started.state, today)
+  assert.ok(undone.ok)
+  assert.equal(undone.state.orders.some((o) => o.date === today), false)
+  assert.deepEqual(undone.state.standingSiege, sieging.standingSiege, 'the siege still stands')
+
+  const older = { ...started.state, skirmishes: started.state.skirmishes?.map(({ wroteOrders: _w, ...d }) => d) }
+  const kept = undoStartSkirmishes(older, today)
+  assert.ok(kept.ok && kept.state.orders.some((o) => o.date === today), 'a 3.2.0 start keeps its written orders, which match the siege’s')
+})
+
+test('Undo start is refused once a battle is opened or fought, before a start, on another day and under the Veil of Fog', () => {
+  const started = startSkirmishes(ordered, today, 0.8)
+  assert.ok(started.ok && started.day)
+  const opened = beginFight(started.state, today, started.day.fights[0].id)
+  assert.ok(opened.ok)
+  assert.equal(undoStartSkirmishes(opened.state, today).reason, 'opened')
+  assert.equal(undoStartSkirmishes(opened.state, today).state, opened.state, 'nothing changes')
+  assert.equal(skirmishButton(opened.state, 0.8, today).undoable, false)
+  assert.equal(skirmishDayView(opened.state, today)?.undoable, false)
+  assert.equal(undoStartRefusal(marshalAllFights(ordered, today, 0.8), today), 'opened')
+  assert.equal(undoStartRefusal(ordered, today), 'notStarted')
+  assert.equal(undoStartRefusal(started.state, addDays(today, 1)), 'notToday')
+  assert.equal(skirmishButton(started.state, 0.8, today).undoable, true)
+  assert.equal(skirmishDayView(started.state, today)?.undoable, true)
+
+  const bands = COMBAT_HOOKS.bandsHidden
+  COMBAT_HOOKS.bandsHidden = () => true
+  try {
+    assert.equal(undoStartRefusal(started.state, today), 'veiled')
+    assert.deepEqual([skirmishButton(ordered, 0.8, today).veiled, skirmishButton(started.state, 0.8, today).undoable], [true, false])
+  } finally {
+    COMBAT_HOOKS.bandsHidden = bands
+  }
+  assert.equal(skirmishRefusalLabel('opened'), 'A battle is already opened, so the start can’t be taken back.')
 })

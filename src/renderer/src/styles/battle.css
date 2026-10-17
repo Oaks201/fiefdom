@@ -734,6 +734,12 @@
   font-size: 14px;
 }
 
+.start-battles__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .skirmish {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);

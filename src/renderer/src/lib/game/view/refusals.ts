@@ -210,6 +210,12 @@ export function skirmishRefusalLabel(code: SkirmishRefusal | undefined): string 
       return 'That battle is already fought.'
     case 'reputation':
       return 'The purse cannot pay for another hired company.'
+    case 'notStarted':
+      return 'Today’s battles haven’t begun.'
+    case 'opened':
+      return 'A battle is already opened, so the start can’t be taken back.'
+    case 'veiled':
+      return 'Under the Veil of Fog the start can’t be taken back.'
     default:
       return 'It cannot be done now.'
   }

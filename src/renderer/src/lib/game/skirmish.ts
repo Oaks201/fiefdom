@@ -16,12 +16,14 @@
  *   the formula's (combat.ts) and posts spoils, tribute, hexes and Weary as on any day. A fight
  *   begun and not finished by the close is finished by the Marshal (`finishSkirmishes`); one never
  *   begun is left to the formula. Once the day's fights start, its orders hold (`setOrders`).
+ * - **Taking it back** (D-36): until a fight is opened, the start can be undone
+ *   (`undoStartSkirmishes`): the fights come off the field and the Valor and orders unlock.
  *
  * Pure and deterministic: a fight's Order deck (`skirmish:<id>:deck` on its day) and a stray
  * mythic's quarry are the only draws.
  */
 import { CODEX, type MatchupId } from './codex'
-import { assaultOf, calledOff, dayBattles, defenseOf, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
+import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, defenseOf, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
 import { balance } from './economy'
 import { realmEffects, wallsFor } from './effects'
 import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor } from './grand'
@@ -59,7 +61,7 @@ export interface FightPlan {
   walls: number
 }
 
-export type SkirmishRefusal = 'campaignOver' | 'notToday' | 'started' | 'noFights' | 'unknownFight' | 'fought' | 'reputation' | string
+export type SkirmishRefusal = 'campaignOver' | 'notToday' | 'started' | 'noFights' | 'unknownFight' | 'fought' | 'reputation' | 'notStarted' | 'opened' | 'veiled' | string
 
 export interface SkirmishAction {
   ok: boolean
@@ -237,11 +239,44 @@ export function startSkirmishes(state: CampaignState, day: ISODate, valor: numbe
   const plans = todaysFights(state, day, effects)
   if (plans.length === 0) return refused(state, 'noFights')
   const locked = Math.min(1, Math.max(0, valor))
-  const next: SkirmishDay = { day, valor: locked, fights: plans.map((p) => toSkirmish(state, p, locked, day, effects)) }
   // A standing siege's orders (D-22) are written down, so the orders the fights began with hold until the close.
   const orders = ordersFor(state, day, effects)
-  const held = orders && !state.orders.some((o) => o.date === day) ? setOrders(state, orders).state : state
+  const wrote = orders !== undefined && !state.orders.some((o) => o.date === day)
+  const held = wrote ? setOrders(state, orders).state : state
+  const next: SkirmishDay = { day, valor: locked, fights: plans.map((p) => toSkirmish(state, p, locked, day, effects)), ...(wrote ? { wroteOrders: true as const } : {}) }
   return { ok: true, state: withDay(held, next), day: next }
+}
+
+/** Under the Veil of Fog (the Herald's tidings or their strengths hidden), a start can't be taken back (D-36): its roll and field would show what the Herald hides. */
+export function startVeiled(state: CampaignState, day: ISODate): boolean {
+  return COMBAT_HOOKS.tidingsHidden(state, day) || COMBAT_HOOKS.bandsHidden(state, day)
+}
+
+/**
+ * Why "Start battle" can't be taken back on `day` now (D-36), or null if it can: it must be the
+ * open day, its fights begun and none of them opened or fought yet, and not under the Veil of Fog.
+ */
+export function undoStartRefusal(state: CampaignState, day: ISODate): SkirmishRefusal | null {
+  if (!isPlayable(state)) return 'campaignOver'
+  if (day !== openDayOf(state)) return 'notToday'
+  const sd = skirmishDayOf(state, day)
+  if (!sd) return 'notStarted'
+  if (sd.fights.some((f) => f.begun || f.result !== undefined)) return 'opened'
+  if (startVeiled(state, day)) return 'veiled'
+  return null
+}
+
+/**
+ * Takes back "Start battle" (D-36): the day's fights come off the field, its Valor unlocks and
+ * its orders open again as they stood before it was pressed (a standing siege's orders it wrote
+ * down are cleared). Refused once a fight is opened, as `undoStartRefusal` says.
+ */
+export function undoStartSkirmishes(state: CampaignState, day: ISODate): SkirmishAction {
+  const refusal = undoStartRefusal(state, day)
+  if (refusal) return refused(state, refusal)
+  const sd = skirmishDayOf(state, day) as SkirmishDay
+  const orders = sd.wroteOrders ? state.orders.filter((o) => o.date !== day) : state.orders
+  return { ok: true, state: { ...state, orders, skirmishes: (state.skirmishes ?? []).filter((d) => d.day !== day) } }
 }
 
 /** A fight's field now: its setup with every round played so far. */

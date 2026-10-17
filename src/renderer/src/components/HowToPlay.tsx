@@ -587,7 +587,8 @@ export function HowToPlay(): React.JSX.Element | null {
               </ul>
               <p>
                 <b>Lead the battles yourself:</b> <b>Start today’s battles</b> (in the Chronicle and in the day’s orders) lets you fight the day’s battles as short{' '}
-                {RULES.skirmish.rounds}-round fights on the battle field. It locks your Valor so far and the day’s orders. A fight you finish replaces the close’s result; one you leave
+                {RULES.skirmish.rounds}-round fights on the battle field. It locks your Valor so far and the day’s orders; until you open a battle, <b>Undo start</b> unlocks them
+                again (not under the Veil of Fog). A fight you finish replaces the close’s result; one you leave
                 is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. If you never press it, the day closes exactly as before.
               </p>
             </>

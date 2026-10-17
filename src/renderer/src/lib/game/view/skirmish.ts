@@ -14,7 +14,7 @@ import { addDays, campaignWeek } from '../clock'
 import { effectiveGarrison, settleCombat, skirmishDayOf, tidings } from '../combat'
 import { hexName } from '../map'
 import { RULES } from '../rules'
-import { todaysFights } from '../skirmish'
+import { startVeiled, todaysFights, undoStartRefusal } from '../skirmish'
 import { isPlayable, openDayOf } from '../state'
 import type { CampaignState, Emit, GameEvent, ISODate, Skirmish, ThreatKind } from '../types'
 import { amount } from './refusals'
@@ -32,15 +32,23 @@ export interface SkirmishButton {
   fought: number
   /** The Valor the fights use: locked once they begin, else today's so far. */
   valor: number
+  /** The start can be taken back now (D-36): no fight opened yet, and not under the Veil of Fog. */
+  undoable: boolean
+  /** Under the Veil of Fog: a start can't be taken back today (D-36). */
+  veiled: boolean
 }
 
 /** The "Start today's battles" button for the open day, with today's Valor so far (`valor`, 0 to 1). */
 export function skirmishButton(state: CampaignState, valor: number, day: ISODate = openDayOf(state)): SkirmishButton {
   const begun = skirmishDayOf(state, day)
-  if (begun) return { show: true, started: true, count: begun.fights.length, fought: begun.fights.filter((f) => f.result !== undefined).length, valor: begun.valor }
-  if (!isPlayable(state) || day !== openDayOf(state)) return { show: false, started: false, fought: 0, valor }
+  const veiled = startVeiled(state, day)
+  if (begun) {
+    const fought = begun.fights.filter((f) => f.result !== undefined).length
+    return { show: true, started: true, count: begun.fights.length, fought, valor: begun.valor, undoable: undoStartRefusal(state, day) === null, veiled }
+  }
+  if (!isPlayable(state) || day !== openDayOf(state)) return { show: false, started: false, fought: 0, valor, undoable: false, veiled }
   const count = todaysFights(state, day).length
-  return { show: count > 0, started: false, ...(tidings(state, day).hidden ? {} : { count }), fought: 0, valor }
+  return { show: count > 0, started: false, ...(tidings(state, day).hidden ? {} : { count }), fought: 0, valor, undoable: false, veiled }
 }
 
 /** A fight in plain words: "Raid (Ugrak the Unbowed) at Ashfall", "Assault on Ashfall". */
@@ -71,6 +79,8 @@ export interface SkirmishDayView {
   fights: FightRow[]
   /** The first fight not yet finished, in order; null when none is left to play. */
   next: string | null
+  /** The start can be taken back now (D-36). */
+  undoable: boolean
 }
 
 /** The fights of `day` the player started, in the close's order, or null if none were. */
@@ -80,7 +90,8 @@ export function skirmishDayView(state: CampaignState, day: ISODate): SkirmishDay
   const open = day === openDayOf(state) && isPlayable(state)
   const status = (f: Skirmish): FightStatus => f.result ?? (!open ? 'left' : f.begun ? 'underway' : 'waiting')
   const fights = sd.fights.map((f) => ({ id: f.id, label: fightLabel(f), side: f.side, hexId: f.hexId, status: status(f) }))
-  return { day, open, valor: sd.valor, rounds: RULES.skirmish.rounds, fights, next: open ? (sd.fights.find((f) => f.result === undefined)?.id ?? null) : null }
+  const next = open ? (sd.fights.find((f) => f.result === undefined)?.id ?? null) : null
+  return { day, open, valor: sd.valor, rounds: RULES.skirmish.rounds, fights, next, undoable: undoStartRefusal(state, day) === null }
 }
 
 export interface FightIntro {

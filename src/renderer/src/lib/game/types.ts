@@ -425,6 +425,8 @@ export interface SkirmishDay {
   /** Today's Valor so far when the player pressed "Start battle": these fights use it. */
   valor: number
   fights: Skirmish[]
+  /** The start wrote down the standing siege's orders (D-22), so taking it back (D-36) clears them. */
+  wroteOrders?: true
 }
 
 export interface GrandBattle {
