@@ -52,11 +52,12 @@
   position: relative;
 }
 
+/* The sea around the continent. */
 .hexmap__board {
   padding: 6px;
   background:
-    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(255, 244, 214, 0.35), transparent 70%),
-    linear-gradient(160deg, #8a6236, #5e3d1d);
+    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(236, 246, 248, 0.35), transparent 70%),
+    linear-gradient(160deg, #7fa6b8, #4d7489);
   border: 3px solid #4a2c12;
   border-radius: 18px;
   box-shadow:
@@ -102,6 +103,20 @@
 .hex__edge {
   stroke: rgba(42, 26, 12, 0.4);
   stroke-width: 0.035;
+}
+
+/* The land under each hex's picture, so the sea shows only past the coast. */
+.hex__ground {
+  fill: #5e3d1d;
+}
+
+/* The continent beyond the marches (drawing only): never chosen, and darker than any land in play. */
+.hex--terrain {
+  pointer-events: none;
+}
+
+.hex--highland .hex__veil {
+  fill: rgba(52, 46, 36, 0.62);
 }
 
 /* Drawn once, over every hex, so its neighbors' borders never cut into it. */

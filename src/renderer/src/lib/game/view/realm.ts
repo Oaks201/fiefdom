@@ -15,9 +15,10 @@ import { balance } from '../economy'
 import { bidSways, bribeOffer, goblinBidsOf } from '../goblin'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
-import { bandOf, clockwisePair, claimableBy, depthOf, fronts, hexDistance, hexId, hexIndex, hexName, isClaimableKind, isStronghold, marchesBorder, onMap, parseHexId, regionsOf, rulingMarch, strongholdBarring } from '../map'
+import { MAP_RADIUS, bandOf, clockwisePair, claimableBy, depthOf, fronts, hexDistance, hexId, hexIndex, hexName, isClaimableKind, isStronghold, marchesBorder, onMap, parseHexId, regionsOf, ringHexes, rulingMarch, strongholdBarring } from '../map'
 import { preparationOf } from '../marches'
 import { greedBand, marchRule, personalitiesOf, surgeOn, type GreedBand } from '../personalities'
+import { draw } from '../rng'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
 import { fallbackOn, flankingMult, standingSiegeOf } from '../sieges'
@@ -274,6 +275,8 @@ export interface MapHex extends HexPoint {
   barredBy?: string
   /** Empty board drawn around the marches (C-05): no rules, no name, never chosen. */
   decor?: boolean
+  /** The continent beyond the marches (drawing only): highlands, or the shore where they meet the sea. */
+  terrain?: 'highland' | 'shore'
 }
 
 /** The siege on `hex` (D-22): its progress and whether it is the standing siege, or undefined when it carries no wear and isn't besieged. */
@@ -379,7 +382,7 @@ export function mapDecor(state: CampaignState): MapHex[] {
   return [...around.entries()].map(([id, marches]) => {
     const { q, r } = parseHexId(id)
     const region = marches.length >= 2 && marchesBorder(marches[0], marches[1]) ? clockwisePair(marches[0], marches[1]).join('-') : marches[0]
-    const out: MapHex = { id, q, r, ...hexCenter(q, r), label: '', ring: hexDistance(id, '0,0'), kind: 'battlefield', owner: 'neutral', slot: 'hex.battlefield', fortification: 0, status: 'held', decor: true }
+    const out: MapHex = { id, q, r, ...hexCenter(q, r), label: '', ring: hexDistance(id, '0,0'), kind: 'battlefield', owner: 'neutral', slot: 'hex.battlefield', fortification: 0, status: 'held', decor: true, ...(marches[0] ? { march: marches[0] } : {}) }
     if (region) out.regionSlot = `hex.battlefield.${region}`
     const front = badges.get(id)
     if (front) {
@@ -389,6 +392,68 @@ export function mapDecor(state: CampaignState): MapHex[] {
     }
     return out
   })
+}
+
+// ── The continent (drawing only) ─────────────────────────────────────────────
+
+/**
+ * The coastline: an ellipse fitted inside the marches' own frame (10 hex spacings across from the
+ * castle, 14.5 up and down), roughened by two octaves of smooth noise around it, fixed for the
+ * campaign; the marches' tips run out past it as capes. Drawing only: no rules read it.
+ */
+const COAST = { across: 10, along: 14.5, wide: 0.22, fine: 0.08, octaves: [7, 19] } // rules-ok: drawing only, the continent's outline
+/** How far past the map's last ring to look for land (a ring-k hex lies 0.87k to k from the castle). */
+const COAST_REACH = 6 // rules-ok: drawing only
+
+/** Smooth noise at `angle` around the circle, with `k` control points drawn for the campaign. */
+function coastNoise(seed: number, day: ISODate, k: number, angle: number): number {
+  const t = ((angle / (2 * Math.PI)) * k + k) % k
+  const i = Math.floor(t)
+  const f = t - i
+  const a = draw(seed, day, `map:coast:${k}:${i}`)
+  const b = draw(seed, day, `map:coast:${k}:${(i + 1) % k}`)
+  const s = f * f * (3 - 2 * f) // rules-ok: smoothstep
+  return a + (b - a) * s
+}
+
+/**
+ * The continent around the marches (drawing only): every board position inside the campaign's
+ * coastline that is neither a map hex nor the board drawn around them (`mapDecor`) is highland in
+ * the look of the nearest march's far wilds, or shore where it meets the sea. Nothing here has rules,
+ * a name or an owner, and none of it can be chosen.
+ */
+export function mapLand(state: CampaignState): MapHex[] {
+  const { seed, startDate } = state.campaign
+  const marched = state.hexes.filter((h) => h.march)
+  const taken = new Set(state.hexes.map((h) => h.id))
+  for (const h of state.hexes) for (const n of neighborIds(h.q, h.r)) taken.add(n)
+  const land = new Map<string, { q: number; r: number }>()
+  for (let k = 1; k <= MAP_RADIUS + COAST_REACH; k++) {
+    for (const { q, r } of ringHexes(k)) {
+      const id = hexId(q, r)
+      if (taken.has(id)) continue
+      const { x, y } = hexCenter(q, r)
+      const angle = Math.atan2(y, x)
+      const coast = 1 + COAST.wide * (coastNoise(seed, startDate, COAST.octaves[0], angle) - 1 / 2) + COAST.fine * (coastNoise(seed, startDate, COAST.octaves[1], angle) - 1 / 2)
+      if (Math.hypot(x / (COAST.across * SQRT3), y / (COAST.along * SQRT3)) <= coast) land.set(id, { q, r })
+    }
+  }
+  return [...land.entries()].map(([id, { q, r }]) => {
+    let near: HexState | undefined
+    let best = Infinity
+    for (const h of marched) {
+      const d = hexDistance(id, h.id)
+      if (d < best) [best, near] = [d, h]
+    }
+    const march = near?.march
+    const shore = neighborIds(q, r).some((n) => !land.has(n) && !taken.has(n))
+    return { id, q, r, ...hexCenter(q, r), label: '', ring: hexDistance(id, '0,0'), kind: 'battlefield', owner: 'neutral', slot: march ? `hex.wilds.${march}.far` : 'hex.wild', fortification: 0, status: 'held', decor: true, terrain: shore ? 'shore' : 'highland', ...(march ? { march } : {}) }
+  })
+}
+
+/** The six board positions around (q, r), on the map or not. */
+function neighborIds(q: number, r: number): string[] {
+  return [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]].map(([dq, dr]) => hexId(q + dq, r + dr))
 }
 
 // ── The hex panel ────────────────────────────────────────────────────────────

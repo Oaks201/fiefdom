@@ -527,15 +527,15 @@
   margin: 0;
 }
 
-/* The box a court card's portrait fills (150 wide at the rival art's 4:5), framed in its owner's color. */
+/* The box a portrait fills (256 wide at the rival art's 4:5: twice its 128-pixel drawing, so it stays crisp), framed in its owner's color. */
 .audience__frame {
   --frame: var(--court);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   box-sizing: content-box;
-  width: 150px;
-  height: 188px;
+  width: 256px;
+  height: 320px;
   padding: 10px;
   background: rgba(255, 252, 242, 0.55);
   border: 3px solid var(--frame);
@@ -548,7 +548,7 @@
 }
 
 .audience__name {
-  max-width: 190px;
+  max-width: 280px;
   font: 700 18px/1.2 var(--font-caps);
   text-align: center;
   color: var(--court);

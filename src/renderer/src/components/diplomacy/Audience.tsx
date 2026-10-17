@@ -12,7 +12,8 @@ import { AudienceDebug } from './AudienceDebug' // TEMPORARY: the dev Respect ov
 import { DealsList } from './DealsList'
 
 /** The width the court cards draw a ruler's portrait at (RivalCourt). */
-const PORTRAIT_WIDTH = 150
+/** Twice the portraits' 128-pixel drawing (their files are 4×), so the pixel art stays even. */
+const PORTRAIT_WIDTH = 256
 
 /**
  * An audience with one rival court, opened from its card on the Diplomacy page: the player's

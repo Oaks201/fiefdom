@@ -620,6 +620,7 @@ These follow Rich's decisions (section 1); the R- numbers say which decision eac
 - **The thresholds for terms**, tuned to the new length.
 - **New Ch 15-style targets** (X-23).
 - **A full simulator run and a tuning report**; Rich approves each number change (D-02).
+- **Bent marches** (Rich, 2026-10-16): the rival marches, and the lair wedges with them, bend as they run out, each ring of the layout turned a step clockwise every few rings, so the map reads as a continent rather than an X. Every hex keeps its march, depth, lane, owner and name, and only its position moves. A 3.x save carries forward by renaming hex ids: a migration over every hex-id field of the save (47 in `types.ts`), with the 321 names in `data/codex/hexes.json` following their hexes. The 54 hard-coded ids in six test files change with them. The full simulator run decides any retuning together with this patch's own; G-08 and G-10 have the thinnest margins. The drawn continent around the marches (`mapLand`, drawing only, 2026-10-16) is already in place and stays.
 - **Must hit:** G-07 in full, G-11, G-12, G-13, G-15, G-18, and keep the rest.
 
 ### 8.3 Status

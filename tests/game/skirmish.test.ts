@@ -311,3 +311,44 @@ test('the next dawn: the Herald marks the battles the player led and links to th
   assert.deepEqual([fightResult(settled, today, first.id)?.marshal, fightResult(settled, today, second.id)?.marshal], [false, true])
   assert.equal(ledYesterday(settle(ordered, ledger, closeOf(today)).state, tomorrow), null, 'nothing led, no link')
 })
+
+/**
+ * Spoils of War in a led fight (D-12): the Order says +50% spoils. The close posts a led fight's
+ * spoils from the formula, so the fight must carry the Orders' multiple to it: in any round, the
+ * Marshal's play or the player's.
+ */
+test('Spoils of War played in a led fight pays its +50% at the close, in whichever round it is played', () => {
+  const started = startSkirmishes(ordered, today, 0.9)
+  assert.ok(started.ok && started.day)
+  const won = (state: CampaignState, id: string): number => eventsOn(settle(state, ledger, closeOf(today)).state, today).find((e) => e.hexId === id && e.spoils !== undefined)?.spoils ?? 0
+  const playOut = (n: number, round: number | null): { state: CampaignState; hexId: string } => {
+    // Fight `n`, with Spoils of War dealt into the deck so it is offered in round `round` (or never).
+    const day = started.day!
+    const first = day.fights[n]
+    const deck = first.setup.deck.filter((o) => o !== 'spoilsOfWar')
+    const at = round === null ? deck.length : (round - 1) * first.setup.offer
+    // A weak enemy, so the fight is won whatever is played: only the spoils differ.
+    const units = first.setup.units.map((u) => (u.side === 'enemy' ? { ...u, power: u.power / 10, health: u.health / 10 } : u))
+    const fight = { ...first, setup: { ...first.setup, units, deck: [...deck.slice(0, at), 'spoilsOfWar', ...deck.slice(at)] } }
+    let state: CampaignState = { ...started.state, skirmishes: [{ ...day, fights: day.fights.map((f, i) => (i === n ? fight : f)) }] }
+    for (let r = 1; r <= RULES.skirmish.rounds; r++) {
+      const f = state.skirmishes?.[0].fights[n]
+      if (!f || f.result !== undefined) break
+      // The same moves either way: Spoils of War changes only the spoils.
+      const play = r === round ? { order: 'spoilsOfWar' } : {}
+      const done = playFightRound(state, today, f.id, play)
+      assert.ok(done.ok, done.reason)
+      state = done.state
+    }
+    return { state, hexId: first.hexId }
+  }
+  const n = 0
+  const plain = playOut(n, null)
+  const base = won(plain.state, plain.hexId)
+  for (const round of [1, 2]) {
+    const played = playOut(n, round)
+    assert.equal(played.state.skirmishes?.[0].fights[n].spoils, 1.5)
+    // Both post rounded to 0.1.
+    assert.ok(Math.abs(won(played.state, played.hexId) - 1.5 * base) <= 0.15, `round ${round}: ${won(played.state, played.hexId)} against ${base}`)
+  }
+})

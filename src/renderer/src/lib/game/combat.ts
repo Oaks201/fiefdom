@@ -1281,7 +1281,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         if (effects.royalHunt.trophy) emit('trophy', { hexId: hex.id, source: 'royalHunt', ...trophy(undefined, true) })
       } else {
         const perRing = outcome === 'rout' ? spoilsRules.routPerRing : spoilsRules.winPerRing
-        const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+        const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe) * (led?.spoils ?? 1), bonus)
         gains.push({ kind: 'spoils', amount, source: `defense:${b.kind}:${hex.id}` })
         report.spoils = roundPosting(amount)
       }
@@ -1399,7 +1399,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
       const perRing = rout ? RULES.combat.spoils.routPerRing : RULES.combat.spoils.winPerRing
-      const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe), bonus)
+      const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe) * (led?.spoils ?? 1), bonus)
       gains.push({ kind: 'spoils', amount, source: `assault:${hex.id}` })
       if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: RULES.respect.change.hexConquered, reason: 'hexConquered' })
       taken.push({ hex, from: owner })

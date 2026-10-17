@@ -665,11 +665,62 @@
 }
 
 .guide__toc {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
   gap: 6px;
   margin-bottom: 16px;
+}
+
+/* One row of the contents a category: its name, then its sections. */
+.guide__group {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.guide__group-title {
+  font: 700 12px var(--font-caps);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3, var(--ink-2));
+  text-align: right;
+}
+
+.guide__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* A category's heading in the guide, above its sections. */
+.guide__category-title {
+  margin: 18px 0 0;
+  font: 700 13px var(--font-caps);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-deep, var(--crimson));
+}
+
+.guide__category:first-child .guide__category-title {
+  margin-top: 0;
+}
+
+/* Each section in one plain sentence, first. */
+.guide .guide__lead {
+  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 560px) {
+  .guide__group {
+    grid-template-columns: 1fr;
+  }
+
+  .guide__group-title {
+    text-align: left;
+  }
 }
 
 .guide__chip {

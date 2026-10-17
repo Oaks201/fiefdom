@@ -272,9 +272,10 @@ export function beginFight(state: CampaignState, dayOf: ISODate, id: string): Sk
   return { ok: true, state: withFight(state, found.day, fight), fight }
 }
 
-/** The fight played on `field` to its end: its log, result and hires. */
+/** The fight played on `field` to its end: its log, result, hires and the Orders' multiple on its spoils (every round's, as a Grand Battle's). */
 function finished(fight: Skirmish, field: Field, log: Skirmish['log']): Skirmish {
-  return { ...fight, begun: true, log, result: fieldResult(field), ...(field.hired > 0 ? { hired: field.hired } : {}) }
+  const spoils = log.reduce((m, r) => (r.order ? m * orderMods(r.order, r.target ?? {}, 0).spoils : m), 1)
+  return { ...fight, begun: true, log, result: fieldResult(field), ...(field.hired > 0 ? { hired: field.hired } : {}), ...(spoils !== 1 ? { spoils } : {}) }
 }
 
 /** Plays the fight's next round with the player's Order (and target) and one optional swap; the last round sets its result. */

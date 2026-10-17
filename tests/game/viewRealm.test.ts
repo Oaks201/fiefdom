@@ -35,6 +35,7 @@ import {
   hexLayout,
   hexPanel,
   mapDecor,
+  mapLand,
   mapView,
   mapViewBox,
   panMap,
@@ -441,4 +442,21 @@ test('Convention 8: every art slot the Realm and Diplomacy views name is in the 
     ]
     for (const slot of named) assert.ok(slots.has(slot), `${slot} is in the manifest`)
   }
+})
+
+test('The continent (drawing only): land around the marches, fixed for the campaign, never a map hex, never chosen, and the frame barely grows', () => {
+  const state = realm()
+  const land = mapLand(state)
+  assert.deepEqual(mapLand(realm()), land, 'the same coast every time')
+  const onBoard = new Set([...state.hexes.map((h) => h.id), ...mapDecor(state).map((h) => h.id)])
+  assert.ok(land.length > 0)
+  for (const h of land) {
+    assert.ok(!onBoard.has(h.id), `${h.id} is not a map hex or the board around them`)
+    assert.ok(h.decor && h.terrain && h.owner === 'neutral', `${h.id} has no rules and no owner`)
+  }
+  assert.ok(land.some((h) => h.terrain === 'shore') && land.some((h) => h.terrain === 'highland'))
+  const before = hexLayout([...mapDecor(state), ...state.hexes])
+  const after = hexLayout([...land, ...mapDecor(state), ...state.hexes])
+  assert.ok(after.width <= before.width * 1.15 && after.height <= before.height * 1.1, `${after.width} x ${after.height} against ${before.width} x ${before.height}`)
+  assert.notDeepEqual(mapLand({ ...state, campaign: { ...state.campaign, seed: state.campaign.seed + 1 } }).map((h) => h.id), land.map((h) => h.id), 'another campaign, another coast')
 })

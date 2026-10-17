@@ -481,3 +481,28 @@ test('result() gives the card for a fought battle and null before', () => {
   assert.ok(card.rounds >= 1 && card.rounds <= 4)
 })
 
+
+test('Appendix C: Spoils of War pays its +50% on a Grand Battle won, in whichever round it is played (round 1 too)', () => {
+  const { state, hexId } = incursionSetup(4, [40, 40])
+  const a = announced(state, { trigger: 'incursion', hexId, announcedOn: START, rival: 'orc' })
+  const begun = begin(a.state, a.battle.id, { today: a.battle.battleDate, valors: SEVEN_FULL })
+  assert.ok(begun.ok && begun.battle?.setup)
+  const spoilsWith = (round: number | null): number => {
+    // Spoils of War dealt into the deck so it is offered in round `round` (or never); every other round plays no Order. This host lasts 3 rounds.
+    const setup = begun.battle!.setup!
+    const deck = setup.deck.filter((o) => o !== 'spoilsOfWar')
+    const at = round === null ? deck.length : (round - 1) * setup.offer
+    const battle = { ...begun.battle!, setup: { ...setup, deck: [...deck.slice(0, at), 'spoilsOfWar', ...deck.slice(at)] } }
+    let s: CampaignState = { ...begun.state, grandBattles: begun.state.grandBattles.map((b) => (b.id === battle.id ? battle : b)) }
+    for (let r = 1; battleOf(s, battle.id)?.result === undefined; r++) {
+      const done = playRound(s, battle.id, r === round ? { order: 'spoilsOfWar' } : {}, battle.battleDate)
+      assert.ok(done.ok, done.reason)
+      s = done.state
+    }
+    assert.notEqual(battleOf(s, battle.id)?.result, 'defeat')
+    return battleOf(s, battle.id)?.outcome?.spoils ?? 0
+  }
+  const plain = spoilsWith(null)
+  assert.ok(plain > 0)
+  for (const round of [1, 2]) near(spoilsWith(round), 1.5 * plain, 0.15)
+})

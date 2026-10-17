@@ -413,6 +413,8 @@ export interface Skirmish {
   result?: 'rout' | 'victory' | 'defeat'
   /** Companies hired by an Order (Reserves) during the fight; their fee posts at the close. */
   hired?: number
+  /** The Orders' multiple on the fight's spoils (Spoils of War), when not 1; the close applies it, as a Grand Battle's does. */
+  spoils?: number
   /** The Marshal finished it at the close: the player opened it and left it unfinished. */
   marshal?: boolean
 }

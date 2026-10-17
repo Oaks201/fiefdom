@@ -24,6 +24,7 @@ import {
   clampMapZoom,
   hexLayout,
   mapDecor,
+  mapLand,
   mapView,
   mapViewBox,
   marchName,
@@ -104,20 +105,30 @@ function mix(a: string, b: string, t: number): string {
   return `#${[0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
 }
 
-/** A hex's flat color in the realm view: its holder's banner, or for unclaimed land a pale tint of its march. */
+/** The continent's ground: highland a grey-brown with a hint of its nearest march (never a holder's color), shore sand. */
+const HIGHLAND = '#77705f'
+const SAND = '#d8c89a'
+
+/** A march's own color: its rival's banner, or a lair's tint. */
+function marchTint(march: string): string {
+  return LAIR_TINTS[march] ?? OWNER_COLORS[march as Owner]?.fill ?? OWNER_COLORS.neutral.fill
+}
+
+/** A hex's flat color in the realm view: its holder's banner, or for unclaimed land a pale tint of its march; beyond the marches, the continent. */
 function realmColor(hex: MapHex): string {
-  if (hex.decor) return BOARD
+  if (hex.terrain === 'shore') return SAND
+  if (hex.terrain === 'highland') return hex.march ? mix(marchTint(hex.march), HIGHLAND, 0.82) : HIGHLAND
+  if (hex.decor) return hex.march ? mix(marchTint(hex.march), HIGHLAND, 0.7) : BOARD
   if (hex.owner !== 'neutral') return OWNER_COLORS[hex.owner].fill
   if (!hex.march) return PARCHMENT
-  const base = LAIR_TINTS[hex.march] ?? OWNER_COLORS[hex.march as Owner]?.fill ?? OWNER_COLORS.neutral.fill
-  return mix(base, PARCHMENT, LAIR_TINTS[hex.march] ? 0.35 : 0.62)
+  return mix(marchTint(hex.march), PARCHMENT, LAIR_TINTS[hex.march] ? 0.35 : 0.62)
 }
 
 /** One hex in the realm view: a flat color, a faint edge, and only the castle and capitals marked. */
 function RealmCell({ hex }: { hex: MapHex }): React.JSX.Element {
   return (
     <>
-      <polygon points={OUTLINE} fill={realmColor(hex)} fillOpacity={hex.decor ? 0.35 : 1} stroke="rgba(40, 28, 18, 0.28)" strokeWidth={0.04} />
+      <polygon points={OUTLINE} fill={realmColor(hex)} stroke={hex.terrain ? realmColor(hex) : 'rgba(40, 28, 18, 0.28)'} strokeWidth={0.04} />
       {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={0} size={0.8} color={OWNER_COLORS[hex.owner].edge} />}
       {hex.kind === 'castle' && <Mark icon={GiCastle} x={0} y={0} size={0.8} color={OWNER_COLORS.player.fill} />}
     </>
@@ -160,6 +171,16 @@ const HexCell = memo(
     const color = OWNER_COLORS[hex.owner]
     const unowned = hex.kind === 'battlefield' || hex.kind === 'lair'
     const threat = hex.threats?.[0]
+    // The continent beyond the marches: no rules, never chosen; its far-wilds art under a veil, or flat in the realm view.
+    if (hex.terrain) {
+      return (
+        <g className={`hex hex--terrain hex--${hex.terrain}`} transform={place}>
+          {!realm && <polygon className="hex__ground" points={OUTLINE} />}
+          {realm || hex.terrain === 'shore' ? <RealmCell hex={hex} /> : <GameArt slot={hex.slot} owner="neutral" place={TERRAIN} className="hex__terrain" />}
+          {!realm && hex.terrain === 'highland' && <polygon className="hex__veil" points={OUTLINE} />}
+        </g>
+      )
+    }
     if (realm) {
       return (
         <g className={`hex hex--realm${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
@@ -170,6 +191,7 @@ const HexCell = memo(
     }
     return (
       <g className={`hex hex--${hex.kind} hex--${hex.owner}${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
+        <polygon className="hex__ground" points={OUTLINE} />
         <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
         {hex.status === 'contested' && <GameArt slot="hex.overlay.contested" place={TERRAIN} />}
         {hex.status === 'scorched' && <GameArt slot="hex.overlay.scorched" place={TERRAIN} />}
@@ -316,7 +338,8 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
   /** The last press was a drag, so the click that ends it chooses nothing. */
   const dragged = useRef(false)
   const decor = useMemo(() => mapDecor(campaign), [campaign])
-  const layout = useMemo(() => hexLayout([...decor, ...campaign.hexes]), [decor, campaign.hexes])
+  const land = useMemo(() => mapLand(campaign), [campaign])
+  const layout = useMemo(() => hexLayout([...land, ...decor, ...campaign.hexes]), [land, decor, campaign.hexes])
   /** Each hex's place on the tilted board, the board's extent (what the zoom frames), and where each march is named in the realm view. */
   const { places, box, labels } = useMemo(() => {
     const tilted = tiltedBoard(layout.points, layout, TILT, DISTANCE, MARGIN)
@@ -331,7 +354,7 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
     })
     return { places: new Map(layout.points.map((p) => [p.id, `matrix(${tilted.place(p.x, p.y).join(' ')})`])), box: tilted.box, labels }
   }, [layout, campaign.hexes])
-  const cells = useMemo(() => [...decor, ...mapView(campaign, today)].map((hex) => ({ hex, sig: JSON.stringify(hex) })), [decor, campaign, today])
+  const cells = useMemo(() => [...land, ...decor, ...mapView(campaign, today)].map((hex) => ({ hex, sig: JSON.stringify(hex) })), [land, decor, campaign, today])
   const byId = useMemo(() => new Map(cells.map((c) => [c.hex.id, c.hex])), [cells])
   const stored = useMapZoom((s) => s.view)
   const view = stored ? clampMapZoom(stored, box, MAX_ZOOM) : wholeMap(box)
