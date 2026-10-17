@@ -1,0 +1,1 @@
+Orc Warlord concept: restored low circlet-style crown, now carved from bone, with mythic beast pelts on the shoulders. Preview only; live game assets are unchanged. Run prepare.cjs with a sharp module path to rebuild portrait, token, icon, gallery, and contact sheet.
