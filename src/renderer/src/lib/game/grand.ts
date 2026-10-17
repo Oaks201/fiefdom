@@ -32,6 +32,7 @@ import { pactBars } from './personalities'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
+import { respectChange } from './respect'
 import { adjustRespect, EventBuffer, hexOf, isPlayable, openDayOf, patchRival, replaceHex, resolutionAllowed, scaleArmy, toPlayer, toRival, weekOn } from './state'
 import {
   RIVAL_IDS,
@@ -956,7 +957,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
       if (won) {
         state = takeHex(state, battle.hexId, day, emit, outcome)
         const before = state.rivals[rival].respect
-        state = adjustRespect(state, rival, RULES.respect.change.hexConquered, 'hexConquered', emit)
+        state = adjustRespect(state, rival, respectChange(rival, 'hexConquered', RULES.respect.change.hexConquered), 'hexConquered', emit)
         outcome.respect = state.rivals[rival].respect - before
       } else {
         const paid = postTribute(state, day, G.outcomes.gateLoss.tributePerRing, hex, `grandBattle:${battle.id}`)
@@ -994,7 +995,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
         state = takeHex(state, battle.hexId, day, emit, outcome)
         if (battle.rival) {
           const before = state.rivals[battle.rival].respect
-          state = adjustRespect(state, battle.rival, RULES.respect.change.hexConquered, 'hexConquered', emit)
+          state = adjustRespect(state, battle.rival, respectChange(battle.rival, 'hexConquered', RULES.respect.change.hexConquered), 'hexConquered', emit)
           outcome.respect = state.rivals[battle.rival].respect - before
         }
       } else {

@@ -14,7 +14,8 @@ import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, ty
 import { claimableBy, hexName } from '../map'
 import { greedBand, orcTrackOf, pactHolds, surgeOn } from '../personalities'
 import { RULES } from '../rules'
-import { respectEffects, rivalView, type ArmyBand, type RespectEffects, type TreasuryBand } from '../rivals'
+import { marksOf } from '../respect'
+import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
 import { openDayOf, weekOn } from '../state'
 import { stanceOf, weighsMost } from '../terms'
 import { t, type RivalMoment } from '../text'
@@ -30,9 +31,10 @@ export type Mood = 'calm' | 'angry' | 'humbled'
 
 export interface RespectMark {
   at: number
-  /** What Respect at this mark opens (`respectEffects`), as keys and in plain words. */
-  opens: (keyof RespectEffects)[]
+  /** What Respect at this mark opens or brings (D-39, `marksOf`), as keys and in plain words. */
+  opens: string[]
   labels: string[]
+  /** Reached: at or above a mark from 0 up, at or below one under 0. */
   reached: boolean
 }
 
@@ -64,28 +66,45 @@ export interface RivalPanel {
   stance?: { band: StanceBand; label: string }
   /** His march's state in plain lines (D-28 to D-31): the Orc's war track, the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge. */
   march: MarchLine[]
-  /** What his disposition means and what would change it (Ch 12), in plain words; empty once he is resolved. */
-  dispositionNote: string
+  /** Patch 5 (D-40, C-65): what his standing means, the marks that change it, and what moves his Respect, in plain words; empty once he is resolved. */
+  standingNote: string
+}
+
+const RC = RULES.respect.change
+const signed = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
+
+/** What moves each rival's Respect, in plain words (D-39, P5-07): every number from `RULES`. */
+function drivers(rival: RivalId): { up: string[]; down: string[] } {
+  const own = RULES.respect.byRival[rival] as Readonly<Record<string, number>>
+  const conquered = own.hexConquered ?? RC.hexConquered
+  const beaten = `his raids and attacks beaten (${signed(RC.raidDefeated)})`
+  const lost = `a battle lost to him (${signed(RC.raidLost)})`
+  const taken = `his land taken (${signed(conquered)})`
+  const courted = `his villages courted away (${signed(RC.villageCourted)})`
+  switch (rival) {
+    case 'orc':
+      return { up: [beaten, `a Grand Battle won against him (${signed(own.grandBattleWon)})`, `a week with no battle lost (${signed(RC.prizedWeek)})`], down: [lost, `a Grand Battle lost to him (${signed(own.grandBattleLost)})`, taken] }
+    case 'goblin':
+      return { up: [beaten, `a bribe paid (${signed(own.bribePaid)})`, `a buy-off taken (${signed(own.buyOffAccepted)})`, `a hex sold to him (${signed(RC.hexSold)})`, `a week within your food budget (${signed(RC.prizedWeek)})`], down: [lost, taken, `a buy-off refused (${signed(own.buyOffRefused)})`, `his bid for a village held off (${signed(own.bidHeld)})`, courted] }
+    case 'dwarf':
+      return { up: [beaten, `a pact kept to its end (${signed(own.pactKept)})`, `a week meeting your step pool (${signed(RC.prizedWeek)})`], down: [lost, taken, `each wall of his broken (${signed(own.wallBroken)})`, courted] }
+    case 'archmage':
+      return { up: [beaten, `a week with every duty kept (${signed(RC.prizedWeek)})`, `a week at Realm Consistency ${Math.round(RULES.respect.constantWeekAt * PERCENT)}% or more (${signed(own.constantWeek)})`, `a surge strike held (${signed(own.surgeHeld)})`, `a Ritual endured (${signed(own.ritualEndured)})`], down: [lost, taken, courted] }
+  }
 }
 
 /**
- * Peace, Tension or War in plain words (Ch 12; read at each week close by `dispositionFor`): what each
- * allows him, and what moves it. Every number in it is public (Respect, weeks).
+ * Patch 5 (D-40, C-65): his standing in plain words: what it allows him, the marks that change it, and what
+ * moves his Respect. Read at each week close from Respect (`standingFor`). Every number in it is public.
  */
-export function dispositionNote(state: CampaignState, rival: RivalId): string {
+export function standingNote(state: CampaignState, rival: RivalId): string {
   const r = state.rivals[rival]
   if (r.status !== 'active') return ''
-  const d = RULES.rivals.disposition
-  const peace = `Peace comes with Respect ${d.peaceRespect} and ${d.peaceQuietWeeks} weeks with no fighting between you; his raids count, so a Truce, which stops them, helps.`
-  const war = 'War comes if you take his land, if your strength alarms him, or if he joins a coalition against you.'
-  switch (r.disposition.player) {
-    case 'war':
-      return `War: he sends conquest attempts as well as raids. ${peace}`
-    case 'peace':
-      return `Peace: no raids and no conquest attempts. Attacking him or taking his land ends it.`
-    default:
-      return `Tension: he raids your border but sends no conquest attempts. ${peace} ${war}`
-  }
+  const S = RULES.respect.standing
+  const now = { war: 'War: he sends conquest attempts as well as raids.', tension: 'Tension: he raids your border but sends no conquest attempts.', peace: 'Peace: no raids and no conquest attempts.' }[r.disposition.player]
+  const marks = S.neverAtPeace.includes(rival) ? `He never makes peace; War comes at Respect ${signed(S.war)}, or if he joins a coalition against you.` : `Peace comes at Respect ${signed(S.peace)}; War at ${signed(S.war)}, or if he joins a coalition against you.`
+  const d = drivers(rival)
+  return `${now} ${marks} He respects ${d.up.join(', ')}; he resents ${d.down.join(', ')}.`
 }
 
 /** One line of a march's state; a date the screen formats. */
@@ -155,32 +174,34 @@ function greetingMoment(status: RivalState['status'], mood: Mood): RivalMoment {
 
 const FALL_HOW: Partial<Record<RivalState['status'], string>> = { conquered: 'conquest', abdicated: 'abdication' }
 
-const OPENS: Record<keyof RespectEffects, (rival: RivalId) => string> = {
+const OWN = RULES.respect.own
+const OPENS: Record<string, (rival: RivalId) => string> = {
   raidsWeaker: () => `Its raids strike ${Math.round((1 - RULES.respect.raidsWeakerMult) * PERCENT)}% weaker`,
+  raidsStronger: () => `Its raids strike ${Math.round((RULES.respect.raidsStrongerMult - 1) * PERCENT)}% stronger`,
+  war: () => 'War: conquest attempts as well as raids',
+  peace: () => 'Peace: no raids or conquest attempts',
   sellsHex: () => 'It sells you hexes',
   buysHex: () => 'It buys your hexes',
   pact: () => 'Non-aggression pacts',
   envoy: () => `Its envoy fights for you at ${RULES.respect.envoyCostPerBattle} a battle`,
   accordTalks: () => 'Accord talks open',
   callToArms: () => 'Calls to arms',
-  accordEasier: () => 'Its Accord is easier'
+  accordEasier: () => 'Its Accord is easier',
+  accordSigned: () => 'An Accord signed: allied',
+  challenge: () => 'Ugrak’s Challenge instead of his final Warhost',
+  'own.orc.up': () => 'His envoy fights for you at no fee',
+  'own.orc.down': () => `${OWN.orcConquests === 1 ? 'One more conquest attempt' : `${OWN.orcConquests} more conquest attempts`} a week`,
+  'own.goblin.up': () => 'He bids for none of your villages',
+  'own.goblin.down': () => 'He gouges: dearer bribes and richer bids for your villages',
+  'own.dwarf.up': () => 'He raises no walls on the wilds facing you',
+  'own.dwarf.down': () => `His walls on the wilds rise to level ${OWN.dwarfWildWallMax}`,
+  'own.archmage.up': () => 'You see tomorrow’s surge',
+  'own.archmage.down': () => `His swells and surge strikes ${Math.round((OWN.archmageSurgeMult - 1) * PERCENT)}% stronger`
 }
 
-/** Patch 4 (C-43): what Respect no longer opens with a rival. The Goblin sells no hex by deal (his are bribed) and buys one at any Respect. */
-const NOT_BY_RESPECT: Partial<Record<RivalId, readonly (keyof RespectEffects)[]>> = { goblin: ['sellsHex', 'buysHex'] }
-
-/** The Respect marks of Ch 12's table, each with what it opens for this rival. */
+/** Every mark on `rival`'s track, both sides (D-39, `marksOf`), with what each brings for him; reached at or above one from 0 up, at or below one under 0. */
 export function respectMarks(rival: RivalId, respect: number): RespectMark[] {
-  const th = RULES.respect.thresholds
-  const marks = [...new Set([th.raidsWeaker, th.goblinBuysHex, th.pact, th.envoy, th.accordTalks, th.accordEasier, th.buyHex, th.callToArms, th.sellHex])].sort((a, b) => a - b)
-  return marks
-    .map((at) => {
-      const below = respectEffects(rival, at - 1)
-      const here = respectEffects(rival, at)
-      const opens = (Object.keys(here) as (keyof RespectEffects)[]).filter((k) => here[k] && !below[k] && !(NOT_BY_RESPECT[rival] ?? []).includes(k))
-      return { at, opens, labels: opens.map((k) => OPENS[k](rival)), reached: respect >= at }
-    })
-    .filter((m) => m.opens.length > 0)
+  return marksOf(rival).map((m) => ({ at: m.at, opens: m.opens, labels: m.opens.map((k) => OPENS[k](rival)), reached: m.at >= 0 ? respect >= m.at : respect <= m.at }))
 }
 
 export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effects = realmEffects(state), today: ISODate = openDayOf(state)): RivalPanel {
@@ -219,7 +240,7 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     greeting: { textId: greetingId, text: t(greetingId, { rival: name, disposition: view.disposition, how: FALL_HOW[r.status] ?? r.status }) },
     ...(stance ? { stance } : {}),
     march: marchLines(state, rival, today),
-    dispositionNote: dispositionNote(state, rival)
+    standingNote: standingNote(state, rival)
   }
 }
 

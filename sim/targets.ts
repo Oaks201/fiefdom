@@ -16,22 +16,46 @@ import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, SURGE_FROM_WEEK, TERMS_FROM_WEEK, type
 import type { PolicyId } from './policy'
 import type { ProfileId } from './profiles'
 
+/** Patch 5 (P5-01, G-11): the smarter players' horizon, past G-11's week 76. The greedy players keep the run's own, so G-01 to G-10 still compare. */
+export const LONG_WEEKS = 90
+/** Patch 5 (C-72): G-08 is judged on this many Steadfast greedy seeds (they share their bad weeks across versions); the rest of the targets read the run's own. */
+export const G08_SEEDS = 100
+/** The run's usual horizon: shorter runs (a quick look) keep every player on it. */
+const USUAL_WEEKS = 70
+/** Patch 5 (G-07 in full): the smarter player steered along one path, two halfway, three a third each, or all four. */
+const MIXES: readonly { label: string; policies: readonly PolicyId[] }[] = [
+  { label: 'one path', policies: RIVAL_IDS.map((r): PolicyId => `smarter+paths:${r}`) },
+  { label: 'two halfway', policies: ['smarter+paths:orc+goblin', 'smarter+paths:dwarf+archmage'] },
+  { label: 'three a third', policies: ['smarter+paths:orc+goblin+dwarf'] },
+  { label: 'all four', policies: ['smarter+paths:all'] }
+]
+/** Patch 5 (P5-01, R-17): G-11's windows for the smarter player's median victory week, and Committed's share won by week 76. */
+const G11 = { perfect: [50, 56], steadfast: [58, 64], committed: [64, 72], by: 76, share: 0.6 } as const
+/** Patch 5 (C-71, R-18): G-19's ceiling on Steadfast falls by week 76. */
+const G19_FALLS = 0.05
+/** Patch 5 (G-21): behavior income over the benchmark's, weeks 1 to 60, by profile; and behavior's least share of reputation earned. */
+const G21 = { weeks: 60, steadfast: [1, 1.2], committed: [0.8, 1], waveringBelow: 0.75, behaviorShare: 0.5 } as const
+
 /** The campaigns the targets need. */
 export function targetPlan(seeds: number, weeks: number): RunOptions[] {
   const runs: RunOptions[] = []
-  const add = (profile: ProfileId, policy: PolicyId, n: number): void => {
-    for (let seed = 1; seed <= n; seed++) runs.push({ seed, profile, policy, weeks, variant: 'base' })
+  const add = (profile: ProfileId, policy: PolicyId, n: number, horizon = weeks, from = 1): void => {
+    for (let seed = from; seed <= n; seed++) runs.push({ seed, profile, policy, weeks: horizon, variant: 'base' })
   }
   for (const p of ['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]) add(p, 'greedy', seeds)
+  // Patch 5 (C-72): G-08's further seeds.
+  add('steadfast', 'greedy', G08_SEEDS, weeks, seeds + 1)
   const half = Math.max(1, Math.round(seeds / 2))
   for (const r of RIVAL_IDS) add('steadfast', `paths:${r}`, half)
   add('steadfast', 'paths:orc+goblin', half)
   add('steadfast', 'paths:dwarf+archmage', half)
   add('steadfast', 'paths:orc+goblin+dwarf', half)
   add('steadfast', 'paths:all', seeds)
-  // Patch 4 (G-18, C-47): the smarter player, unsteered and steered along each one path.
-  add('steadfast', 'smarter', seeds)
-  for (const r of RIVAL_IDS) add('steadfast', `smarter+paths:${r}`, half)
+  // Patch 4 (G-18, C-47) and Patch 5 (G-11, G-19, G-07 in full): the smarter player, unsteered for every
+  // profile and steered along each mix of paths, to a horizon past G-11's week 76.
+  const long = weeks < USUAL_WEEKS ? weeks : Math.max(weeks, LONG_WEEKS)
+  for (const p of ['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]) add(p, 'smarter', seeds, long)
+  for (const mix of MIXES) for (const policy of mix.policies) add('steadfast', policy, half, long)
   return runs
 }
 
@@ -97,7 +121,11 @@ function row(id: string, target: string, measure: string, value: string, pass: b
 /** The G-01 to G-17 rows from the results. */
 export function targetRows(results: readonly RunResult[]): Row[] {
   const of = (profile: ProfileId, policy: PolicyId): RunResult[] => results.filter((r) => r.profile === profile && r.policy === policy)
-  const steadfast = of('steadfast', 'greedy')
+  // Patch 5 (C-72): G-08 reads every Steadfast greedy seed; the other targets the run's own (those Perfect has).
+  const perfectSeeds = of('perfect', 'greedy').map((r) => r.seed)
+  const mainSeeds = perfectSeeds.length > 0 ? Math.max(...perfectSeeds) : Number.POSITIVE_INFINITY
+  const steadfastAll = of('steadfast', 'greedy')
+  const steadfast = steadfastAll.filter((r) => r.seed <= mainSeeds)
   const rows: Row[] = []
 
   // G-01 (C-27: a Breach counts; the strict reading without it is reported beside the verdict)
@@ -159,15 +187,39 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     const months = run.measures.weeks.filter((x) => x.week % MONTH === 0 && x.week <= WEEK40).map((x) => x.held)
     return months.every((h, i) => i === 0 || h > months[i - 1])
   }).length / Math.max(1, focused.length)
-  rows.push(row('G-07', 'Every mix can win (Patch 2 half: no stalls on one path)', 'One-path players with all four buildings at Tier III by week 26; with hexes held rising every month to week 40', `${pct(tierIII)}; ${pct(rising)}`, tierIII >= 0.9 && rising >= 0.9))
+  // Patch 5 (G-07 in full): the smarter path mixes win alike, as often and as soon.
+  const mixes = MIXES.map((m) => {
+    const runs = m.policies.flatMap((p) => of('steadfast', p))
+    const won = runs.flatMap((r) => (r.wonWeek !== undefined ? [r.wonWeek] : []))
+    return { runs: runs.length, share: won.length / Math.max(1, runs.length), week: median(won) }
+  })
+  const full = mixes.every((m) => m.runs > 0)
+  const spread = (v: number[]): number => Math.max(...v) - Math.min(...v)
+  const fullPass = full && spread(mixes.map((m) => m.share)) <= 0.05 && spread(mixes.map((m) => m.week)) <= 3
+  rows.push(
+    row(
+      'G-07',
+      'Every mix can win',
+      `One-path players with all four buildings at Tier III by week 26; with hexes held rising every month to week 40 (the Patch 2 half). In full (Patch 5): the smarter player along ${MIXES.map((m) => m.label).join(', ')}: win shares within 5 points, median victory weeks within 3`,
+      `${pct(tierIII)}; ${pct(rising)}${full ? `; in full: won ${mixes.map((m) => pct(m.share)).join(' / ')}, median week ${mixes.map((m) => m.week).join(' / ')}` : ''}`,
+      tierIII >= 0.9 && rising >= 0.9 && (!full || fullPass)
+    )
+  )
 
-  // G-08
-  const mid = steadfast.flatMap((r) => r.measures.weeks.filter((w) => w.week >= 13 && w.week <= 36).map((w) => w.doubtDefenses))
-  const lostIn = (test: (v: number) => boolean): number => mean(steadfast.flatMap((r) => r.measures.weeks.filter((w) => test(w.valor)).map((w) => w.lost)))
-  const bad = lostIn((v) => v < BAD_VALOR)
-  const good = lostIn((v) => v > GOOD_VALOR)
-  const lostShare = sumOf(steadfast, (w) => w.lost) / Math.max(1, sumOf(steadfast, (w) => w.gained))
-  rows.push(row('G-08', 'Defending matters', 'Mid-game defenses a week banded Matched or worse (mean); land lost a week in bad vs good weeks; land lost ÷ gained', `${f1(mean(mid))}; ${f2(bad)} vs ${f2(good)}; ${pct(lostShare)}`, mean(mid) >= 2 && bad >= 2 * good && lostShare <= 0.25))
+  // G-08 (Patch 5, C-72: judged on every Steadfast greedy seed, the run's own beside it)
+  const g08 = (runs: readonly RunResult[]): { mid: number; bad: number; good: number; lostShare: number } => {
+    const lostIn = (test: (v: number) => boolean): number => mean(runs.flatMap((r) => r.measures.weeks.filter((w) => test(w.valor)).map((w) => w.lost)))
+    return {
+      mid: mean(runs.flatMap((r) => r.measures.weeks.filter((w) => w.week >= 13 && w.week <= 36).map((w) => w.doubtDefenses))),
+      bad: lostIn((v) => v < BAD_VALOR),
+      good: lostIn((v) => v > GOOD_VALOR),
+      lostShare: sumOf(runs, (w) => w.lost) / Math.max(1, sumOf(runs, (w) => w.gained))
+    }
+  }
+  const g = g08(steadfastAll)
+  const own = g08(steadfast)
+  const beside = steadfastAll.length > steadfast.length ? ` (${f2(g.bad / g.good)}× on ${steadfastAll.length} seeds; ${f2(own.bad / own.good)}× on ${steadfast.length})` : ''
+  rows.push(row('G-08', 'Defending matters', `Mid-game defenses a week banded Matched or worse (mean); land lost a week in bad vs good weeks; land lost ÷ gained (every Steadfast greedy seed, C-72)`, `${f1(g.mid)}; ${f2(g.bad)} vs ${f2(g.good)}${beside}; ${pct(g.lostShare)}`, g.mid >= 2 && g.bad >= 2 * g.good && g.lostShare <= 0.25))
 
   // G-09: fallbacks come in Patch 3's stage 4; until then, the wins they will be counted against.
   // G-09: fallbacks after non-rout assault wins, and the next day's target changed by them.
@@ -175,7 +227,7 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   const fell = steadfast.reduce((s, r) => ({ posted: s.posted + r.measures.fallbacks.posted, dawns: s.dawns + r.measures.fallbacks.dawns, changed: s.changed + r.measures.fallbacks.changed }), { posted: 0, dawns: 0, changed: 0 })
   const fellShare = fell.posted / Math.max(1, nonRoutWins)
   const changedShare = fell.changed / Math.max(1, fell.dawns)
-  rows.push(row('G-09', 'Routed enemies change choices', "Non-rout assault wins followed by a fallback; dawns after a fallback whose target differs from the one chosen without it", `${pct(fellShare)}; ${pct(changedShare)}`, fellShare >= 0.6 && changedShare >= 0.2))
+  rows.push(row('G-09', 'Routed enemies change choices', "Non-rout assault wins followed by a fallback; dawns after a fallback whose target differs from the one chosen without it (that second half retired by Patch 5's P5-05, reported only)", `${pct(fellShare)}; ${pct(changedShare)}`, fellShare >= 0.6))
   // G-10 (Patch 4, spec section 2): per march, Steadfast greedy.
   const g10 = marchReadings(steadfast)
   const by = (k: keyof MarchReading): Record<RivalId, number> => Object.fromEntries(RIVAL_IDS.map((r) => [r, g10[r][k]])) as Record<RivalId, number>
@@ -198,10 +250,23 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     )
   )
 
-  // G-11
-  const wonWeeks = (p: ProfileId): number[] => of(p, 'greedy').flatMap((r) => (r.wonWeek !== undefined ? [r.wonWeek] : []))
-  const winShare = (p: ProfileId): number => wonWeeks(p).length / Math.max(1, of(p, 'greedy').length)
-  rows.push(row('G-11', 'Campaign length (Patch 5)', 'Median victory week and win share: Perfect; Steadfast; Committed', `${median(wonWeeks('perfect'))} (${pct(winShare('perfect'))}); ${median(wonWeeks('steadfast'))} (${pct(winShare('steadfast'))}); ${median(wonWeeks('committed'))} (${pct(winShare('committed'))})`, null))
+  // G-11 (Patch 5, P5-01): on the smarter player; the greedy player's beside it.
+  const wonWeeks = (p: ProfileId, policy: PolicyId): number[] => of(p, policy).flatMap((r) => (r.wonWeek !== undefined ? [r.wonWeek] : []))
+  const winShare = (p: ProfileId, policy: PolicyId, by = Number.POSITIVE_INFINITY): number => wonWeeks(p, policy).filter((w) => w <= by).length / Math.max(1, of(p, policy).length)
+  const inside = (v: number, [lo, hi]: readonly number[]): boolean => v >= lo && v <= hi
+  const g11Built = (['perfect', 'steadfast', 'committed'] as ProfileId[]).every((p) => of(p, 'smarter').length > 0)
+  const g11Pass = inside(median(wonWeeks('perfect', 'smarter')), G11.perfect) && inside(median(wonWeeks('steadfast', 'smarter')), G11.steadfast) && inside(median(wonWeeks('committed', 'smarter')), G11.committed) && winShare('committed', 'smarter', G11.by) >= G11.share
+  rows.push(
+    row(
+      'G-11',
+      'Campaign length (R-17)',
+      `The smarter player's median victory week and win share: Perfect (${G11.perfect.join(' to ')}); Steadfast (${G11.steadfast.join(' to ')}); Committed (${G11.committed.join(' to ')}, and its share won by week ${G11.by}); the greedy players' win shares beside`,
+      g11Built
+        ? `${median(wonWeeks('perfect', 'smarter'))} (${pct(winShare('perfect', 'smarter'))}); ${median(wonWeeks('steadfast', 'smarter'))} (${pct(winShare('steadfast', 'smarter'))}); ${median(wonWeeks('committed', 'smarter'))} (${pct(winShare('committed', 'smarter'))}; ${pct(winShare('committed', 'smarter', G11.by))} by week ${G11.by}); greedy ${pct(winShare('perfect', 'greedy'))} / ${pct(winShare('steadfast', 'greedy'))} / ${pct(winShare('committed', 'greedy'))}`
+        : `greedy: ${median(wonWeeks('perfect', 'greedy'))} (${pct(winShare('perfect', 'greedy'))}); ${median(wonWeeks('steadfast', 'greedy'))} (${pct(winShare('steadfast', 'greedy'))}); ${median(wonWeeks('committed', 'greedy'))} (${pct(winShare('committed', 'greedy'))})`,
+      g11Built ? g11Pass : null
+    )
+  )
 
   // G-12
   const violations = results.reduce((s, r) => s + r.violations.length, 0)
@@ -269,7 +334,74 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       built ? median(byTerms) >= 2 && early16 === 0 && median(refused) >= 1 : null
     )
   )
+
+  // G-19 (Patch 5, R-18, C-71): Steadfast rarely falls; Committed and Wavering reported.
+  const fallShare = (runs: readonly RunResult[], by = Number.POSITIVE_INFINITY): number => runs.filter((r) => r.fallWeek !== undefined && r.fallWeek <= by).length / Math.max(1, runs.length)
+  const ultimatumShare = (runs: readonly RunResult[]): number => runs.filter((r) => r.ultimatums.length > 0).length / Math.max(1, runs.length)
+  const steadfastBoth = [...steadfast, ...of('steadfast', 'smarter')]
+  const both = (p: ProfileId): RunResult[] => [...of(p, 'greedy'), ...of(p, 'smarter')]
+  rows.push(
+    row(
+      'G-19',
+      'Defeat stays rare (R-18)',
+      `Steadfast (greedy and smarter) falls by week ${G11.by} (under ${pct(G19_FALLS)}); Committed and Wavering falls (Ch 15: 20 to 35%, 60 to 80%), reported; campaigns with an Ultimatum: Steadfast; Committed; Wavering`,
+      `${pct(fallShare(steadfastBoth, G11.by))}; ${pct(fallShare(both('committed')))}; ${pct(fallShare(both('wavering')))}; Ultimatums ${pct(ultimatumShare(steadfastBoth))}; ${pct(ultimatumShare(both('committed')))}; ${pct(ultimatumShare(both('wavering')))}`,
+      steadfastBoth.length > 0 ? fallShare(steadfastBoth, G11.by) < G19_FALLS : null
+    )
+  )
+
+  // G-20 (Patch 5): Respect moves both ways, and with it the standing.
+  const ever = (r: RunResult, i: number, s: string): boolean => r.measures.weeks.some((w) => w.standing?.[i] === s)
+  const smarterSteadfast = of('steadfast', 'smarter')
+  const peaceful = (['goblin', 'dwarf', 'archmage'] as RivalId[]).map((rv) => RIVAL_IDS.indexOf(rv))
+  const orc = RIVAL_IDS.indexOf('orc')
+  const reachedPeace = smarterSteadfast.map((r) => peaceful.filter((i) => ever(r, i, 'p')).length)
+  const orcAtPeace = [...smarterSteadfast, ...steadfast].filter((r) => ever(r, orc, 'p')).length
+  const reachedWar = steadfast.map((r) => RIVAL_IDS.filter((_, i) => ever(r, i, 'w')).length)
+  const changes = smarterSteadfast.flatMap((r) =>
+    RIVAL_IDS.map((_, i) => {
+      let n = 0
+      let last: string | undefined
+      for (const w of r.measures.weeks) {
+        const s = w.standing?.[i]
+        if (s === undefined || s === '-') continue
+        if (last !== undefined && s !== last) n++
+        last = s
+      }
+      return n
+    })
+  )
+  const standings = results.some((r) => r.measures.weeks.some((w) => w.standing !== undefined))
+  rows.push(
+    row(
+      'G-20',
+      'Respect moves both ways',
+      "Steadfast smarter: of the Goblin, the Dwarf and the Archmage, those reaching Peace before they are resolved (median; at least 2); campaigns with the Orc at Peace (none); Steadfast greedy: rivals reaching War (median; at least 2); each active rival's changes of standing a campaign (median; at least 1)",
+      standings ? `${median(reachedPeace)}; ${orcAtPeace}; ${median(reachedWar)}; ${median(changes)}` : 'not yet built',
+      standings && smarterSteadfast.length > 0 ? median(reachedPeace) >= 2 && orcAtPeace === 0 && median(reachedWar) >= 2 && median(changes) >= 1 : null
+    )
+  )
+
+  // G-21 (Patch 5, X-11): behavior leads income (Pillar 1), against the benchmark as Ch 15 counts it.
+  const ratio = (runs: readonly RunResult[]): number => mean(runs.filter((r) => r.incomeBase.length >= G21.weeks).map((r) => sumTo(r.incomeBase, G21.weeks) / Math.max(1, sumTo(r.benchmarkGrace, G21.weeks))))
+  const behaviorShare = median(steadfast.flatMap((r) => (r.measures.income ? [r.measures.income.behavior / Math.max(1, r.measures.income.behavior + r.measures.income.tithe + r.measures.income.spoils + r.measures.income.other)] : [])))
+  const rs = ratio(steadfast)
+  const rc = ratio(of('committed', 'greedy'))
+  const rw = ratio(of('wavering', 'greedy'))
+  rows.push(
+    row(
+      'G-21',
+      'Behavior leads income (Pillar 1)',
+      `Behavior income over the benchmark's, weeks 1 to ${G21.weeks} (greedy): Steadfast (${G21.steadfast.join(' to ')}); Committed (${G21.committed.join(' to ')}); Wavering (under ${G21.waveringBelow}); Steadfast's behavior share of reputation earned (median; at least ${pct(G21.behaviorShare)})`,
+      `${f2(rs)}; ${f2(rc)}; ${f2(rw)}; ${pct(behaviorShare)}`,
+      Number.isFinite(rs) && Number.isFinite(rc) && Number.isFinite(rw) ? inside(rs, G21.steadfast) && inside(rc, G21.committed) && rw < G21.waveringBelow && behaviorShare >= G21.behaviorShare : null
+    )
+  )
   return rows
+}
+
+function sumTo(v: readonly number[], weeks: number): number {
+  return v.slice(0, weeks).reduce((s, x) => s + x, 0)
 }
 
 /** G-10's share of weeks with a surge on a hex the player could assault ("at least weekly"). */
@@ -347,6 +479,107 @@ function termsLines(results: readonly RunResult[]): string[] {
   return lines
 }
 
+/** Patch 5 (G-11, G-19, G-07 in full): how long each player takes, how it ends, and when each rival is resolved. */
+function lengthLines(results: readonly RunResult[]): string[] {
+  const groups: { label: string; runs: RunResult[] }[] = [
+    ...(['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]).map((p) => ({ label: `${p[0].toUpperCase()}${p.slice(1)} smarter`, runs: results.filter((r) => r.profile === p && r.policy === 'smarter') })),
+    ...MIXES.map((m) => ({ label: `Smarter, ${m.label}`, runs: results.filter((r) => r.profile === 'steadfast' && m.policies.includes(r.policy)) })),
+    ...(['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]).map((p) => ({ label: `${p[0].toUpperCase()}${p.slice(1)} greedy`, runs: results.filter((r) => r.profile === p && r.policy === 'greedy') }))
+  ]
+  const lines = ['## Length and the endgame', '', 'Median victory week [quartiles], the share won by week 76, falls, campaigns with an Ultimatum, and the median week of the first to fourth resolution, with resolutions by kind a campaign (mean).', '', '| Group | Campaigns | Won (median [quartiles]) | By week 76 | Falls | Ultimatum | Resolutions 1st–4th | Allied; abdicated; conquered |', '| --- | --- | --- | --- | --- | --- | --- | --- |']
+  for (const { label, runs } of groups) {
+    if (runs.length === 0) continue
+    const won = runs.flatMap((r) => (r.wonWeek !== undefined ? [r.wonWeek] : [])).sort((a, b) => a - b)
+    const q = (p: number): number => won[Math.min(won.length - 1, Math.floor(p * won.length))]
+    const nth = [0, 1, 2, 3].map((i) => median(runs.flatMap((r) => (r.resolutions[i] ? [[...r.resolutions].sort((a, b) => a.week - b.week)[i].week] : []))))
+    const kind = (how: string): string => f1(mean(runs.map((r) => r.resolutions.filter((x) => x.how === how).length)))
+    lines.push(`| ${label} | ${runs.length} | ${won.length > 0 ? `${median(won)} [${q(0.25)}–${q(0.75)}] (${pct(won.length / runs.length)})` : '–'} | ${pct(won.filter((w) => w <= G11.by).length / runs.length)} | ${runs.filter((r) => r.fallWeek !== undefined).length} | ${pct(runs.filter((r) => r.ultimatums.length > 0).length / runs.length)} | ${nth.map((w) => (Number.isFinite(w) ? w : '–')).join(' / ')} | ${kind('allied')}; ${kind('abdicated')}; ${kind('conquered')} |`)
+  }
+  return lines
+}
+
+/** Patch 5 (G-20): each rival's Respect and standing, Steadfast smarter and greedy. */
+function respectLines(results: readonly RunResult[]): string[] {
+  const groups = [
+    { label: 'smarter', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter') },
+    { label: 'greedy', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy') }
+  ].filter((g) => g.runs.length > 0 && g.runs.some((r) => r.measures.weeks.some((w) => w.standing !== undefined)))
+  if (groups.length === 0) return []
+  const lines = ['## Respect and standing', '', "Steadfast. Each rival's Respect at the week closes (median), his active weeks at Peace, Tension and War, the campaigns in which he reached Peace and War (with the median first week), and his Respect changes a campaign by reason (how many; their sum).", '', '| Rival | Player | Respect at weeks 8 / 16 / 26 / 40 / 52 | Peace / Tension / War | Reached Peace | Reached War |', '| --- | --- | --- | --- | --- | --- |']
+  const reasons: string[] = []
+  for (const [i, rival] of RIVAL_IDS.entries()) {
+    for (const { label, runs } of groups) {
+      const at = (week: number): string => {
+        const v = runs.flatMap((r) => {
+          const x = r.measures.weeks.find((w) => w.week === week)?.respect?.[i]
+          return typeof x === 'number' ? [x] : []
+        })
+        return v.length * 2 >= runs.length ? f1(median(v)) : '–'
+      }
+      const counts = { p: 0, t: 0, w: 0 }
+      const first = { p: [] as number[], w: [] as number[] }
+      for (const r of runs) {
+        for (const w of r.measures.weeks) {
+          const s = w.standing?.[i]
+          if (s === 'p' || s === 't' || s === 'w') counts[s]++
+        }
+        for (const s of ['p', 'w'] as const) {
+          const w = r.measures.weeks.find((x) => x.standing?.[i] === s)
+          if (w) first[s].push(w.week)
+        }
+      }
+      const total = counts.p + counts.t + counts.w
+      const reached = (s: 'p' | 'w'): string => `${first[s].length} of ${runs.length}${first[s].length > 0 ? ` (week ${median(first[s])})` : ''}`
+      lines.push(`| ${rival} | ${label} | ${[8, 16, 26, 40, 52].map(at).join(' / ')} | ${pct(counts.p / Math.max(1, total))} / ${pct(counts.t / Math.max(1, total))} / ${pct(counts.w / Math.max(1, total))} | ${reached('p')} | ${reached('w')} |`)
+      const by: Record<string, [number, number]> = {}
+      for (const r of runs) for (const [why, [n, sum]] of Object.entries(r.measures.respectReasons?.[rival] ?? {})) by[why] = [(by[why]?.[0] ?? 0) + n / runs.length, (by[why]?.[1] ?? 0) + sum / runs.length]
+      reasons.push(`| ${rival} | ${label} | ${Object.entries(by).sort((a, b) => b[1][0] - a[1][0]).map(([why, [n, sum]]) => `${why} ${f1(n)}; ${sum >= 0 ? '+' : ''}${f1(sum)}`).join(' · ')} |`)
+    }
+  }
+  return [...lines, '', '| Rival | Player | Respect changes a campaign, by reason |', '| --- | --- | --- |', ...reasons]
+}
+
+/** Patch 5 (X-10, X-15): Grand Battles by month and by trigger, and when each world event first fires. */
+function worldLines(results: readonly RunResult[]): string[] {
+  const groups = [
+    { label: 'Steadfast greedy', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy') },
+    { label: 'Steadfast smarter', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter') }
+  ].filter((g) => g.runs.length > 0)
+  const lines = ['## Grand Battles and the world', '', 'Grand Battles a 4-week month (mean over the campaigns still running that month), and each trigger a campaign (mean).', '', '| Group | By month | By trigger |', '| --- | --- | --- |']
+  for (const { label, runs } of groups) {
+    const months = Math.max(...runs.map((r) => r.grandBattles.perMonth.length))
+    const by = Array.from({ length: months }, (_, m) => f1(mean(runs.filter((r) => r.grandBattles.perMonth.length > m).map((r) => r.grandBattles.perMonth[m]))))
+    const trig: Record<string, number> = {}
+    for (const r of runs) for (const [t, n] of Object.entries(r.grandBattles.byTrigger)) trig[t] = (trig[t] ?? 0) + n / runs.length
+    lines.push(`| ${label} | ${by.join(' ')} | ${Object.entries(trig).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t} ${f1(n)}`).join(' · ')} |`)
+  }
+  lines.push('', 'Each world event, and the first coalition: the share of campaigns it fired in, and its median first week.', '', '| Group | Events |', '| --- | --- |')
+  for (const { label, runs } of groups) {
+    const first: Record<string, number[]> = {}
+    for (const r of runs) for (const [id, w] of Object.entries(r.measures.eventWeeks ?? {})) (first[id] ??= []).push(w)
+    const coalitions = runs.flatMap((r) => (r.coalitions.length > 0 ? [r.coalitions[0]] : []))
+    if (coalitions.length > 0) first['a coalition'] = coalitions
+    lines.push(`| ${label} | ${Object.entries(first).sort((a, b) => median(a[1]) - median(b[1])).map(([id, w]) => `${id} ${pct(w.length / runs.length)}, week ${median(w)}`).join(' · ')} |`)
+  }
+  return lines
+}
+
+/** Patch 5 (G-21, X-11): where reputation comes from, and behavior income against the benchmark by phase. */
+function incomeLines(results: readonly RunResult[]): string[] {
+  const groups = (['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]).map((p) => ({ label: `${p[0].toUpperCase()}${p.slice(1)} greedy`, runs: results.filter((r) => r.profile === p && r.policy === 'greedy' && r.measures.income !== undefined) })).filter((g) => g.runs.length > 0)
+  if (groups.length === 0) return []
+  const lines = ['## Income', '', "Reputation earned by the end, by source (median shares), and behavior income over the benchmark's (as Ch 15 counts it: no tithes, spoils or bonus) by phase.", '', '| Group | Behavior | Tithes | Spoils | Other | Weeks 1–48 | 1–60 | 49–64 |', '| --- | --- | --- | --- | --- | --- | --- | --- |']
+  for (const { label, runs } of groups) {
+    const share = (k: 'behavior' | 'tithe' | 'spoils' | 'other'): string => pct(median(runs.map((r) => {
+      const i = r.measures.income as NonNullable<Measures['income']>
+      return i[k] / Math.max(1, i.behavior + i.tithe + i.spoils + i.other)
+    })))
+    const phase = (from: number, to: number): string => f2(mean(runs.filter((r) => r.incomeBase.length >= to).map((r) => r.incomeBase.slice(from - 1, to).reduce((s, x) => s + x, 0) / Math.max(1, r.benchmarkGrace.slice(from - 1, to).reduce((s, x) => s + x, 0)))))
+    lines.push(`| ${label} | ${share('behavior')} | ${share('tithe')} | ${share('spoils')} | ${share('other')} | ${phase(1, 48)} | ${phase(1, 60)} | ${phase(49, 64)} |`)
+  }
+  return lines
+}
+
 function sumOf(runs: readonly RunResult[], f: (w: Measures['weeks'][number]) => number): number {
   return runs.reduce((s, r) => s + r.measures.weeks.reduce((t, w) => t + f(w), 0), 0)
 }
@@ -417,7 +650,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
   const lines = [
     `# The blueprint's targets, rules ${RULES.ruleVersion}`,
     '',
-    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each), Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four, and the smarter Steadfast player, unsteered and along each one path (${meta.weeks}-week horizon; ${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path. G-01 and G-03 are counted as \`docs/redesign/patch-3-spec.md\` C-27 rules: a Breach day (a repulse that left its target within the next day's reach) is player-view meaningful, and a target is a hex that falls within ${RULES.autoplay.siegeHorizon} assault days; the strict readings are given beside them.`,
+    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each; Steadfast to ${G08_SEEDS} seeds for G-08 alone, C-72), Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four (${meta.weeks}-week horizon); and the smarter player for every profile, and steered along each of those mixes (${meta.weeks < USUAL_WEEKS ? meta.weeks : Math.max(meta.weeks, LONG_WEEKS)}-week horizon; Patch 5, P5-01) (${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path. G-01 and G-03 are counted as \`docs/redesign/patch-3-spec.md\` C-27 rules: a Breach day (a repulse that left its target within the next day's reach) is player-view meaningful, and a target is a hex that falls within ${RULES.autoplay.siegeHorizon} assault days; the strict readings are given beside them.`,
     '',
     '| # | Target | Measure | Value | Verdict |',
     '| --- | --- | --- | --- | --- |',
@@ -430,7 +663,10 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     '| Month | Meaningful | Strict | Breach | No target | No reach | Land days | Net hexes | Held (median) |',
     '| --- | --- | --- | --- | --- | --- | --- | --- | --- |'
   ]
-  const steadfast = results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy')
+  // The run's own seeds (those Perfect has); G-08's further seeds are read by G-08 alone (C-72).
+  const perfectSeeds = results.filter((r) => r.profile === 'perfect' && r.policy === 'greedy').map((r) => r.seed)
+  const mainSeeds = perfectSeeds.length > 0 ? Math.max(...perfectSeeds) : Number.POSITIVE_INFINITY
+  const steadfast = results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy' && r.seed <= mainSeeds)
   const months = Math.ceil(max(steadfast.map((r) => r.measures.days.length)) / (WEEK * MONTH))
   for (let m = 0; m < months; m++) {
     const slice = (r: RunResult): number[] => r.measures.days.slice(m * WEEK * MONTH, (m + 1) * WEEK * MONTH)
@@ -441,7 +677,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     const before = alive.map((r) => r.measures.weeks.find((w) => w.week === m * MONTH)?.held ?? r.measures.weeks[0]?.held ?? 0)
     lines.push(`| ${m + 1} | ${f1(perWeek(PLAYER_VIEW))} | ${f1(perWeek(PLAYER_VIEW_STRICT))} | ${f1(perWeek(LABEL.breach))} | ${f1(perWeek(LABEL.noTarget))} | ${f1(perWeek(LABEL.noReach))} | ${f1(perWeek(LABEL.land))} | ${f1(mean(held.map((h, i) => (h - before[i]) / MONTH)))} | ${median(held)} |`)
   }
-  lines.push('', ...siegeLines(steadfast), '', ...marchLines(steadfast), '', ...termsLines(results), '', ...deedLines(results), '')
+  lines.push('', ...siegeLines(steadfast), '', ...marchLines(steadfast), '', ...termsLines(results), '', ...deedLines(results), '', ...lengthLines(results), '', ...worldLines(results), '', ...respectLines(results), '', ...incomeLines(results), '')
   fs.mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `targets-${RULES.ruleVersion}.md`)
   fs.writeFileSync(file, lines.join('\n'))

@@ -19,6 +19,7 @@ import { CODEX } from './codex'
 import { hexIndex, isClaimableKind, isLairMarch, rulingMarch, touches } from './map'
 import { RULES } from './rules'
 import { isWeekCloseDay } from './clock'
+import { ownMark } from './respect'
 import { patchRival, weekOn } from './state'
 import { type CampaignState, type Emit, type GameEvent, type HexState, type ISODate, type PersonalitiesState, type RivalId, type Surge } from './types'
 
@@ -76,7 +77,8 @@ export function marchGarrisonMult(state: CampaignState, hex: Pick<HexState, 'id'
 
 /** Conquest attempts the Orc plans a week: one more while his track stands at its `extraConquestAt` end (he pushes). */
 export function extraConquests(state: CampaignState, rival: RivalId): number {
-  return rival === 'orc' && orcTrackOf(state) <= P.orc.track.extraConquestAt ? 1 : 0
+  // Patch 5 (D-39): or at his own mark below, −75 (one, never two).
+  return rival === 'orc' && (orcTrackOf(state) <= P.orc.track.extraConquestAt || ownMark(state, 'orc', 'down')) ? RULES.respect.own.orcConquests : 0
 }
 
 // ── The Goblin's pact (D-33) ─────────────────────────────────────────────────
@@ -91,6 +93,15 @@ export function pactBars(state: CampaignState, hex: Pick<HexState, 'id' | 'march
   return marchRule(state, hex, day) === 'goblin' && pactHolds(state, day)
 }
 
+/**
+ * How high the Dwarf walls the wilds of his march (P4-06, S-36), as his Respect has it (D-39): not at all at
+ * his own mark above, +75; higher at his own mark below, −75.
+ */
+export function wildWallCap(state: CampaignState): number {
+  if (ownMark(state, 'dwarf', 'up')) return 0
+  return ownMark(state, 'dwarf', 'down') ? RULES.respect.own.dwarfWildWallMax : P.dwarf.wildWallMax
+}
+
 // ── The Goblin's greed (D-29) ───────────────────────────────────────────────
 
 export type GreedBand = 'fair' | 'dear' | 'gouging'
@@ -103,7 +114,9 @@ export function goblinGreedOf(state: CampaignState): number {
 /** His greed's multiple on a bribe: 1 + a share a step + a share a level of his march's preparation (P4-07). Hidden: screens show its band. */
 export function greedMult(state: CampaignState): number {
   const g = P.goblin.greed
-  return 1 + g.perStep * goblinGreedOf(state) + g.perLevel * (state.marches?.preparation.goblin ?? 0)
+  // Patch 5 (D-39): at his own mark below, −75, he gouges: his greed counts more steps.
+  const steps = goblinGreedOf(state) + (ownMark(state, 'goblin', 'down') ? RULES.respect.own.goblinGreedSteps : 0)
+  return 1 + g.perStep * steps + g.perLevel * (state.marches?.preparation.goblin ?? 0)
 }
 
 /** His greed as the player is told it (C-49): fair, dear or gouging. */
@@ -228,7 +241,7 @@ export function freeWalls(state: CampaignState, day: ISODate): CampaignState {
     const byId = hexIndex(next.hexes)
     const own = next.hexes.filter((h) => h.owner === 'dwarf' && isClaimableKind(h) && touches(byId, h.id, 'player'))
     const order = new Map(next.hexes.map((h, i) => [h.id, i]))
-    const wilds = wildWalls(next, 'dwarf', day).filter((h) => h.fortification < P.dwarf.wildWallMax)
+    const wilds = wildWalls(next, 'dwarf', day).filter((h) => h.fortification < wildWallCap(next))
     const pick = [...own, ...wilds]
       .filter((h) => h.fortification < RULES.land.dwarfFortificationMax)
       .sort((a, b) => a.fortification - b.fortification || a.ring - b.ring || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0]

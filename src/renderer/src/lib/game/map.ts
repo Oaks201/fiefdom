@@ -21,6 +21,11 @@
  *   march. A seam counts half for each side; each dawn a draw picks whose rules apply.
  * - Everything else is empty board: on screen only (C-05).
  *
+ * Patch 5 (D-37): the marches bend as they run out. Beyond the heartland each ring of this layout turns
+ * clockwise a step every three rings (`bendShift`), so a hex keeps its march, seam, lane, kind and name
+ * and only its position moves; "on each ring" above means on its straight ring. A hex's id on the
+ * straight layout (`straightId`) keys its seeded draws (C-54) and the migration of older saves (D-38).
+ *
  * Changing owners over time is the war's job (combat, land, rivals); this module builds and reads.
  */
 import { CODEX } from './codex'
@@ -300,19 +305,58 @@ function slotAt(k: number, p: number, at: Axial): Slot | null {
   return null
 }
 
-/** Every hex's layout, castle first, then ring by ring clockwise from each NW corner. */
-const LAYOUT: readonly Slot[] = (() => {
-  const out: Slot[] = []
+/**
+ * Patch 5 (D-37, P5-06): how many positions clockwise ring k turns as the marches bend. The heartland
+ * never turns; beyond it, a step every `RULES.map.bend.everyRings` rings.
+ */
+export function bendShift(k: number): number {
+  const b = M.bend
+  return k <= b.fromRing ? 0 : Math.floor((k - b.fromRing) / b.everyRings)
+}
+
+/** Each hex's layout, with its position on the straight ring (before the bend) and its id there. */
+interface Placed {
+  slot: Slot
+  /** Its clockwise position on the straight ring, from the ring's NW corner. */
+  straight: number
+  /** Its id on the straight layout: the stable key of its seeded draws (C-54) and the bend migration's source (D-38). */
+  straightId: string
+}
+
+/**
+ * Every hex's layout, castle first, then ring by ring clockwise from each NW corner of the straight
+ * layout (map order, C-55). Each slot is laid out on its straight position, as D-16 built it, and only
+ * its coordinates come from the position `bendShift(k)` steps further clockwise (D-37): a hex keeps its
+ * march, seam, lane and kind, and only where it sits moves.
+ */
+const PLACED: readonly Placed[] = (() => {
+  const out: Placed[] = []
   for (let k = 0; k <= MAP_RADIUS; k++) {
-    ringHexes(k).forEach((at, p) => {
-      const slot = slotAt(k, p, at)
-      if (slot) out.push(slot)
+    const ring = ringHexes(k)
+    ring.forEach((at, p) => {
+      const bent = ring[(p + bendShift(k)) % ring.length]
+      const slot = slotAt(k, p, bent)
+      if (slot) out.push({ slot, straight: p, straightId: hexId(at.q, at.r) })
     })
   }
   return out
 })()
 
+const LAYOUT: readonly Slot[] = PLACED.map((x) => x.slot)
+
 const SLOT_OF = new Map(LAYOUT.map((s) => [hexId(s.q, s.r), s]))
+
+const PLACED_OF = new Map(PLACED.map((x) => [hexId(x.slot.q, x.slot.r), x]))
+
+/** A map hex's id on the straight layout (C-54): the stable key of every seeded draw read again for a day already played. */
+export function straightId(id: string): string {
+  return PLACED_OF.get(id)?.straightId ?? id
+}
+
+/** D-38: each hex's id on the straight layout, to its id on the bent map (only the hexes the bend moves). */
+export function bentIds(): ReadonlyMap<string, string> {
+  return new Map(PLACED.filter((x) => x.straightId !== hexId(x.slot.q, x.slot.r)).map((x) => [x.straightId, hexId(x.slot.q, x.slot.r)]))
+}
 
 /** Whether a hex id is on the map. */
 export function onMap(id: string): boolean {
@@ -379,7 +423,7 @@ function strengthOf(seed: number, id: string, slot: Slot): number {
   if (!isClaimableKind(slot)) return 0
   const c = RULES.land.depthCurve
   const curve = isLairMarch(slot.march) ? c.lair : c.rival
-  const jitter = 1 + c.jitter * (2 * draw(seed, MAP_DRAW_DAY, `strength:${id}`) - 1)
+  const jitter = 1 + c.jitter * (2 * draw(seed, MAP_DRAW_DAY, `strength:${straightId(id)}`) - 1)
   return curve.first * depthOf(slot) ** curve.exponent * jitter
 }
 
@@ -700,12 +744,8 @@ export function claimableBy(hexes: readonly HexState[], id: string, claimant: Ow
 
 // ── Strongholds (Patch 3, D-23; P3-01) ───────────────────────────────────────
 
-/** Each ring's hexes by id, with their clockwise position on the ring (from its NW corner). */
-const POSITION_OF: ReadonlyMap<string, number> = (() => {
-  const out = new Map<string, number>()
-  for (let k = HEARTLAND + 1; k <= MAP_RADIUS; k++) ringHexes(k).forEach((at, p) => out.set(hexId(at.q, at.r), p))
-  return out
-})()
+/** Each march hex by id, with its clockwise position on its straight ring (from its NW corner): its lane, which the bend never moves (C-57). */
+const POSITION_OF: ReadonlyMap<string, number> = new Map(PLACED.filter((x) => x.slot.ring > HEARTLAND).map((x) => [hexId(x.slot.q, x.slot.r), x.straight]))
 
 const strongholdCache = new WeakMap<readonly HexState[], ReadonlyMap<string, { march: RivalId; depth: number }>>()
 
@@ -765,11 +805,12 @@ export function strongholdBarring(hexes: readonly HexState[], id: string): strin
 
 /**
  * Whose march rules apply on a hex on `day` (P2-06): its march, or for a seam one of its two,
- * drawn each dawn from the campaign seed (`seam:<id>`). A heartland hex has none.
+ * drawn each dawn from the campaign seed (`seam:<id>`, its straight-layout id, C-54: the bend never
+ * changes a day already played). A heartland hex has none.
  */
 export function rulingMarch(seed: number, hex: Pick<HexState, 'id' | 'march' | 'seam'>, day: ISODate): MarchId | undefined {
   if (!hex.march || !hex.seam) return hex.march
-  return draw(seed, day, `seam:${hex.id}`) < M.seamFirstChance ? hex.march : hex.seam
+  return draw(seed, day, `seam:${straightId(hex.id)}`) < M.seamFirstChance ? hex.march : hex.seam
 }
 
 // ── The Rim fronts ───────────────────────────────────────────────────────────

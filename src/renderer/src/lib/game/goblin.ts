@@ -21,6 +21,7 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { claimableBy } from './map'
 import { greedMult, marchRule, pactHolds, personalitiesOf, rulesHarden, withPersonalities } from './personalities'
+import { ownMark } from './respect'
 import { RULES } from './rules'
 import { roll } from './rng'
 import { trust } from './land'
@@ -133,13 +134,16 @@ export function placeGoblinBid(input: CampaignState, day: ISODate, allowance: nu
   const state = input
   const tomorrow = addDays(day, 1)
   if (state.rivals.goblin.status !== 'active' || weekOn(state, tomorrow) < G.villageBid.fromWeek || !rulesHarden(state, tomorrow)) return { state, spent: 0 }
+  // Patch 5 (D-39): at his own mark above, +75, he bids for none of the player's villages.
+  if (ownMark(state, 'goblin', 'up')) return { state, spent: 0 }
   if (pactHolds(state, tomorrow) || state.deals.some((d) => d.rival === 'goblin' && d.kind === 'truce' && d.madeOn <= tomorrow && (d.until === undefined || tomorrow <= d.until))) return { state, spent: 0 }
   const order = new Map(state.hexes.map((h, i) => [h.id, i]))
   const target = biddable(state, tomorrow).sort(
     (a, b) => b.ring - a.ring || (a.village?.loyalty ?? 0) - (b.village?.loyalty ?? 0) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
   )[0]
   if (!target?.village) return { state, spent: 0 }
-  const offer = roundPosting(target.village.loyalty * G.villageBid.offerMult * (1 + roll(state.campaign.seed, day, `goblinBid:${target.id}`, -G.villageBid.roll, G.villageBid.roll)))
+  const offerMult = ownMark(state, 'goblin', 'down') ? RULES.respect.own.goblinOfferMult : G.villageBid.offerMult
+  const offer = roundPosting(target.village.loyalty * offerMult * (1 + roll(state.campaign.seed, day, `goblinBid:${target.id}`, -G.villageBid.roll, G.villageBid.roll)))
   if (offer <= 0 || offer > allowance || offer > state.rivals.goblin.treasury) return { state, spent: 0 }
   let next = patchRival(state, 'goblin', { treasury: state.rivals.goblin.treasury - offer })
   next = withPersonalities(next, { goblinBids: [...goblinBidsOf(next), { hexId: target.id, offer, placedOn: day }] })

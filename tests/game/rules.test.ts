@@ -362,7 +362,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'Rivals',
     parameter: 'War with player',
-    keys: { 'rivals.disposition.warThreat': 60, 'rivals.disposition.warLandTakenWeeks': 2 }
+    keys: {} // D-40 (Patch 5): War now comes from Respect (`respect.standing`), not Threat or land taken
   },
   {
     area: 'Respect',
@@ -394,7 +394,7 @@ const APPENDIX_B: { area: string; parameter: string; keys: Record<string, unknow
   {
     area: 'World',
     parameter: 'Resolution pacing',
-    keys: { 'world.resolution.notBeforeWeek': 12, 'world.resolution.oncePerWeeks': 8 }
+    keys: {} // D-41 (Patch 5, R-19, N-06): none before week 16, one per 12 weeks
   },
   {
     area: 'Defeat',
@@ -483,8 +483,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 3.2.0 (Patch 4: D-27 on), a 3.x campaign carried forward in place (C-33, C-48)', () => {
-  assert.equal(RULES.ruleVersion, '3.2.0')
+test('RULES is versioned 3.3.0 (Patch 5: D-37 on), a 3.x campaign carried forward in place (C-33, C-48, C-50)', () => {
+  assert.equal(RULES.ruleVersion, '3.3.0')
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {

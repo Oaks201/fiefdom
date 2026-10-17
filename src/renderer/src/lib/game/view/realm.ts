@@ -397,11 +397,12 @@ export function mapDecor(state: CampaignState): MapHex[] {
 // ── The continent (drawing only) ─────────────────────────────────────────────
 
 /**
- * The coastline: an ellipse fitted inside the marches' own frame (10 hex spacings across from the
- * castle, 14.5 up and down), roughened by two octaves of smooth noise around it, fixed for the
- * campaign; the marches' tips run out past it as capes. Drawing only: no rules read it.
+ * The coastline: an ellipse fitted inside the marches' own frame (12 hex spacings across from the
+ * castle, 14.5 up and down; the bend widened the frame from 8 to 10 across, D-37, C-59), roughened by
+ * two octaves of smooth noise around it, fixed for the campaign; the marches' tips run out past it as
+ * capes. Drawing only: no rules read it.
  */
-const COAST = { across: 10, along: 14.5, wide: 0.22, fine: 0.08, octaves: [7, 19] } // rules-ok: drawing only, the continent's outline
+const COAST = { across: 12, along: 14.5, wide: 0.22, fine: 0.08, octaves: [7, 19] } // rules-ok: drawing only, the continent's outline
 /** How far past the map's last ring to look for land (a ring-k hex lies 0.87k to k from the castle). */
 const COAST_REACH = 6 // rules-ok: drawing only
 

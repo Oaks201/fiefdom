@@ -45,6 +45,7 @@ import { refreshRoster, roster } from './roster'
 import { pathRank } from './dominion'
 import { dissolves, fallbackShareOn, pactBars, personalitiesOf, surgeOn, withPersonalities, inMarchOf, marchRule, orcStrikeMult, raidWeight, rulesHarden, strikeChance, wearDecayOn, wildsMayReclaim } from './personalities'
 import { decayedWear, fortificationShare, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
+import { envoyFee, raidRespectMult, respectChange } from './respect'
 import { adjustRespect, awayOn, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds, withWorld, worldOf } from './state'
 import {
   RIVAL_IDS,
@@ -84,6 +85,8 @@ const DAILY_KINDS: readonly DailyThreatKind[] = ['beasts', 'mythic', 'raid']
 const GRAND_BATTLE_KINDS: ReadonlySet<HexKind> = new Set<HexKind>(['gate', 'capital', 'lairMouth'])
 /** The between-lands the lairs open onto: mythics come from these sides (A-27). */
 const LAIR_LANDS: ReadonlySet<Land> = new Set(CODEX.lairs.map((l) => l.land as Land))
+/** Patch 5 (C-62): a rival's attacks whose outcome moves his Respect: his raids, conquest attempts and his garrisons' counterattacks. */
+const RESPECTED_ATTACKS: ReadonlySet<ThreatKind> = new Set<ThreatKind>(['raid', 'conquest', 'counterattack'])
 
 // ── Extension points for world modifiers (T10, T13) ──────────────────────────
 
@@ -255,12 +258,12 @@ export function isSiegeDay(date: ISODate): boolean {
   return weekdayOf(date) === RULES.combat.siegeDay.weekday
 }
 
-/** A raid's multipliers: Respect 25 (×0.9), the Spy Network, Emboldened (+15%) and Humbled (−15%). */
+/** A raid's multipliers: Respect 25 (×0.9) or −50 (×1.1, D-39), the Spy Network, Emboldened (+15%) and Humbled (−15%). */
 function raidMult(state: CampaignState, effects: Effects, rival: RivalId, date: ISODate): number {
   const r = state.rivals[rival]
   const fronts = RULES.rivals.fronts
   let mult = effects.raidStrength.value
-  if (r.respect >= RULES.respect.thresholds.raidsWeaker) mult *= RULES.respect.raidsWeakerMult
+  mult *= raidRespectMult(r.respect)
   const tracks = Object.values(r.frontTracks)
   if (tracks.some((t) => t >= fronts.track.max)) mult *= 1 + fronts.emboldenedRaid
   if (tracks.some((t) => t <= fronts.track.min) || (r.humbledUntil !== undefined && r.humbledUntil >= date)) mult *= 1 - fronts.humbledRaid
@@ -862,7 +865,7 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   }
   for (const rival of orders?.envoys ?? []) {
     if (!envoyAvailable(state, rival)) problems.push({ code: 'envoyUnavailable', rival })
-    else fees += RULES.respect.envoyCostPerBattle
+    else fees += envoyFee(state, { id: `envoy:${rival}`, source: 'envoy' })
   }
   const have = balance(state.purse)
   if (fees > have) problems.push({ code: 'cannotAfford', needed: fees, have })
@@ -1240,7 +1243,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 
   const fee = (c: Company): number => {
     if (c.source === 'hired') return RULES.buildings.merchantHall.hiredBlades.costPerBattle
-    return c.source === 'envoy' ? RULES.respect.envoyCostPerBattle : 0
+    return envoyFee(state, c)
   }
 
   // 1. Conquest attempts (contested hexes first, then the ones announced for today) and the daily threat.
@@ -1285,7 +1288,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         gains.push({ kind: 'spoils', amount, source: `defense:${b.kind}:${hex.id}` })
         report.spoils = roundPosting(amount)
       }
-      if (b.kind === 'raid') respect.push({ rival: needRival(b), change: RULES.respect.change.raidDefeated, reason: 'raidDefeated' })
+      if (b.rival && RESPECTED_ATTACKS.has(b.kind)) respect.push({ rival: b.rival, change: RULES.respect.change.raidDefeated, reason: 'raidDefeated' })
       if (b.kind === 'mythic') {
         const side = lairSide(hex)
         const lair = side ? CODEX.lairs.find((l) => l.land === side)?.id : undefined
@@ -1343,7 +1346,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         setHex(scorched)
         if (scorched.status === 'scorched') report.scorchedUntil = scorched.statusUntil
       }
-      if (b.kind === 'raid') respect.push({ rival: needRival(b), change: RULES.respect.change.raidLost, reason: 'raidLost' })
+      if (b.rival && RESPECTED_ATTACKS.has(b.kind)) respect.push({ rival: b.rival, change: RULES.respect.change.raidLost, reason: 'raidLost' })
     } else if (hex.ring <= RULES.land.protectedThroughRing) {
       // Rings 0 to 2 never pass: a lost conquest battle only scorches (Ch 3 rule 2).
       contested.delete(hex.id)
@@ -1401,7 +1404,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       const perRing = rout ? RULES.combat.spoils.routPerRing : RULES.combat.spoils.winPerRing
       const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe) * (led?.spoils ?? 1), bonus)
       gains.push({ kind: 'spoils', amount, source: `assault:${hex.id}` })
-      if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: RULES.respect.change.hexConquered, reason: 'hexConquered' })
+      if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: respectChange(owner, 'hexConquered', RULES.respect.change.hexConquered), reason: 'hexConquered' })
       taken.push({ hex, from: owner })
       const melts = result.outcome === 'taken' && !hex.village && !hex.mythic && dissolves(marchRule(state, hex, day))
       emit('assault', { hexId: hex.id, owner, outcome: result.outcome, spoils: roundPosting(amount), value: roundPosting(value), ...ledFlag, ...(melts ? { dissolved: true } : {}) })

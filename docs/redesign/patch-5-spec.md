@@ -685,4 +685,52 @@ New or changed tests, named after the rule they check:
 
 ## 11. What the build changed
 
-(Empty until the build. Each change from this spec is listed here as S-48 onward, with its stage, what the spec said, what was built and why.)
+Built on 2026-10-17 on branch `patch-5`, stages 1 to 4, at Rich's go-ahead ("cut it and start, you can keep working on subsequent stages"). Rules **3.3.0**. Nothing past the spec's own commit is committed.
+
+### 11.1 What the build changed from the spec
+
+| # | Stage | Spec said | Built | Why |
+| --- | --- | --- | --- | --- |
+| S-48 | 1 | The smarter one-path players at 10 seeds each for G-07 in full | 20 each (the plan's half, as for G-18) | They serve G-18 and G-07 alike; more seeds, the same players |
+| S-49 | 1 | `scripts/fixture-3.2.0.ts` tops up the saved state so every field of the inventory holds a moved hex | The fixture is the campaign as played; the top-up is built in `migrate.test.ts` on a copy | Synthetic records in a saved campaign could break the 12 weeks the carry-forward test plays on it |
+| S-50 | 2 | C-54: the stable key for a seam's daily draw | Also for a founding's strength jitter, so a campaign founded on the bent map has, hex for hex, the garrisons the straight map gave its seed | The probe's −0.08 on G-08 came largely from new jitters; with them kept the bend costs about 0.01 (1.99× to 1.98×) |
+| S-51 | 2 | C-59: the coastline refitted (the spec's figure: 12.5 across) | 12 spacings across | The continent's test holds the drawn board within 15% wider than the map; 12.5 made it 17% wider |
+| S-52 | 2 | Screenshots of the bent map | Not taken: the map was rendered as an SVG and opened in the preview pane, which can't be captured | Left for Rich to look at in the app |
+| S-53 | 3 | Herald placeholders `herald.standing.<…>` and `herald.respect.mark` | Not built: no Herald line told a disposition or Respect change before either; the court's standing note and marks carry it | A follow-up with the text catalog (A3) |
+| S-54 | 3 | — | The Dragon's test reads "the player's hex nearest the Wyrmfells' mouth" rather than "a western hex"; five scenario tests move their weeks to 16 and 12 | The bend turns the mouth toward the north, so the Barracks can be nearest; the rule is unchanged |
+
+### 11.2 Targets by stage
+
+Each stage's `npm run sim -- --targets` (720 campaigns: the greedy profiles at 70 weeks, the smarter players at 90, G-08 on 100 Steadfast seeds). The last column is [targets-3.3.0](../game/sim/targets-3.3.0.md).
+
+| Target | 3.2.0 (stage 1) | The bend (stage 2) | Respect (stage 3) | Length (stage 4) | |
+| --- | --- | --- | --- | --- | --- |
+| G-01 | 5.9; 84% | 5.8; 83% | 5.9; 84% | 5.9; 85% | kept |
+| G-04 | 3.26; 4.1 | 3.37; 4.1 | 3.31; 4.1 | 3.34; 4.2 | kept |
+| G-05 | 16% | 19% | 19% | 18% | kept |
+| G-06 | 2.26×; 100% | 2.45×; 100% | 2.36×; 100% | 2.36×; 100% | kept |
+| G-07 in full (median weeks: one path, two, three, four) | 57 / 65 / 61.5 / 60.5 | 57 / 65.5 / 61 / 71 | 52 / 57.5 / 65 / 66 | **60 / 61 / 61 / 60**, all 100% | **met** |
+| G-08 (100 seeds; 40) | 1.99×; 2.10× | 1.98×; 1.95× | **2.05×**; 2.08× | **1.94×; 1.88×** | **missed** (11.3) |
+| G-10 | met | met | met (the Goblin 46% by deal) | met (48%) | kept |
+| G-11 (Perfect; Steadfast; Committed, by week 76) | 43; 53; 64 (93%) | 43; 52.5; 65 (98%) | 43; 50; 63.5 (95%) | **55; 59.5**; 74.5 (63%) | **missed** on Committed's median (11.3) |
+| G-13 | 1.4 | 1.5 | 1.5 | 1.5 | met |
+| G-15 | 1.70 MB | 1.75 MB | 1.77 MB | 1.76 MB; the 365-day catch-up 0.93 s and re-founding 1.88 s; the migration 7 ms | met |
+| G-16; G-17 | 1.29×; 100% | 1.32×; 100% | 1.28×; 100% | 1.28×; 100% | kept |
+| G-18 | 2 (75%); 0; 1 | 2 (83%); 0; 1 | 2 (100%); 0; 1 | 2 (100%); 0; 1 | met |
+| G-19 (Steadfast falls by 76; Committed; Wavering) | 0%; 0%; 3% | 0%; 0%; 6% | 0%; 0%; 3% | 0%; 0%; 3% | met |
+| G-20 (Peace of 3; the Orc at Peace; War; changes) | 1; 4; 4; 2 | 1; 3; 4; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | **met** |
+| G-21 (Steadfast; Committed; Wavering; behavior share) | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | **missed** on the share (11.3) |
+
+G-02, G-03, G-09's first half, G-12 and G-13 held at every stage. With Respect both ways, the Dwarf and the Archmage come to Peace (Steadfast smarter: weeks 8 and 15) and the Goblin rarely; the Orc never, and in 100 greedy campaigns he is never at War either, since beating his raids raises his Respect to 100 by week 40.
+
+### 11.3 Tuning report
+
+Nothing below is changed: each is a proposal for Rich (D-02).
+
+| # | Target | Reading | Options | Recommendation |
+| --- | --- | --- | --- | --- |
+| T-06 | G-08 | 1.94× on 100 seeds (2.05× before the pacing changed; 1.98× before Respect). The cause of stage 4's drop is not isolated: the 16/12 pacing keeps rivals active longer, and the Orc no longer reaches War, so his conquest attempts (the land a bad week loses most, D-15) are gone | (a) a probe on the 100 seeds of the War line (−25 to −15), of D-15's overrun (`wildsReclaim.routedAt` 1.25 to 1.15) and of the two together; (b) accept 1.94× and report it | (a): measure before changing a number |
+| T-07 | G-11, Committed | Median 74.5 against 64 to 72, though 63% win by week 76 (the clause's share is met). Committed's first resolution comes in week 37.5 (Steadfast 23), and victory follows about 36 weeks later | (a) keep it missed and look for the lever that brings Committed's first Accord sooner; (b) an 11-week interval (Steadfast would fall to about 56, under 58); (c) read Committed's clause as its share by week 76 alone | (a) |
+| T-08 | G-21, behavior's share | Behavior is 36% of the reputation a Steadfast campaign earns, tithes 42%, spoils 22%, already so on 3.2.0; against the benchmark behavior holds (1.05, 0.87, 0.64) | (a) re-read the target as behavior at least a third of reputation earned, since tithes and spoils come from land held and battles fought, both earned by play; (b) a probe of tithes at 1.5 a band (2.5 today, D-17), which reshapes the economy and every land target | Rich's call: (a) keeps every number; (b) if behavior must lead |
+
+Also measured: Ultimatums come in 75% of Steadfast campaigns (greedy and smarter together) and 99% of Committed ones, and every Siege is won or the knee bent (no fall before week 76). R-18 asks only that the risk stay under 5%, and it does.

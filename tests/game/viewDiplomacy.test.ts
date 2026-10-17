@@ -13,7 +13,7 @@ import { settle } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { hasText, t } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { courtableVillages, courtshipsView, dealReaction, dealsView, dispositionNote, moodOf, respectMarks, rivalPanel, rivalPanels } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealReaction, dealsView, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -26,7 +26,7 @@ import { realm, withCrossings, withPurse } from './support/realm'
  * numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path) || path === 'dispositionNote') return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote') return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -108,15 +108,21 @@ test('Ch 17: a deal struck gets the rival’s one-line reaction, its placeholder
   assert.match(line.text, /135/)
 })
 
-test('Ch 12: the Respect marks at 25, 40, 50, 60 and 75, and what each opens (the Goblin’s hex trades need no Respect, C-43)', () => {
+test('D-39: the Respect marks on both sides, each rival his own (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord and never makes peace)', () => {
   const goblin = respectMarks('goblin', 30)
-  assert.deepEqual(goblin.map((m) => m.at), [25, 40, 50, 60, 75])
-  assert.ok(goblin[0].opens.includes('raidsWeaker'))
+  assert.deepEqual(goblin.map((m) => m.at), [-75, -50, -25, 25, 40, 50, 60, 75, 100])
+  assert.ok(goblin.find((m) => m.at === 25)?.opens.includes('raidsWeaker'))
   assert.ok(!goblin.some((m) => m.opens.includes('sellsHex') || m.opens.includes('buysHex')), 'his hexes are bribed, and he buys at any Respect')
-  assert.deepEqual(goblin.map((m) => m.reached), [true, false, false, false, false])
+  assert.deepEqual(goblin.map((m) => m.reached), [false, false, false, true, false, false, false, false, false])
+  assert.deepEqual(respectMarks('goblin', -60).filter((m) => m.reached).map((m) => m.at), [-50, -25], 'below 0 a mark is reached at or under it')
+  assert.ok(goblin.find((m) => m.at === 75)?.opens.includes('own.goblin.up'))
+  assert.ok(goblin.find((m) => m.at === -75)?.opens.includes('own.goblin.down'))
+  assert.ok(goblin.find((m) => m.at === 50)?.opens.includes('peace'))
   const orc = respectMarks('orc', 0)
   assert.ok(orc.find((m) => m.at === 50)?.opens.includes('sellsHex'))
-  assert.ok(orc.find((m) => m.at === 60)?.opens.includes('accordTalks'))
+  assert.ok(orc.find((m) => m.at === 50)?.opens.includes('challenge'))
+  assert.ok(!orc.some((m) => m.opens.includes('peace') || m.opens.includes('accordTalks') || m.opens.includes('accordSigned')))
+  for (const m of [...goblin, ...orc]) for (const l of m.labels) assert.doesNotMatch(l, /undefined|NaN/)
 })
 
 test('Ch 17: the portrait’s mood follows disposition: calm at Peace, angry at War, humbled when resolved', () => {
@@ -160,13 +166,16 @@ test('Ch 6: the courtships list: open bids with their Offer at today’s Trust a
   assert.deepEqual([again?.available, again?.reason?.code], [false, 'alreadyCourting'])
 })
 
-test('Ch 12: each court says what Peace, Tension or War means and what would change it; a resolved rival says nothing', () => {
+test('D-40, C-65: each court says what its standing means, the marks that change it and what moves his Respect; a resolved rival says nothing', () => {
   const state = realm()
-  const at = (d: 'peace' | 'tension' | 'war'): CampaignState => ({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, disposition: { ...state.rivals.orc.disposition, player: d } } } })
-  assert.match(dispositionNote(at('tension'), 'orc'), /^Tension: he raids your border but sends no conquest attempts\./)
-  assert.match(dispositionNote(at('tension'), 'orc'), new RegExp(`Respect ${RULES.rivals.disposition.peaceRespect} and ${RULES.rivals.disposition.peaceQuietWeeks} weeks`))
-  assert.match(dispositionNote(at('war'), 'orc'), /^War: he sends conquest attempts/)
-  assert.match(dispositionNote(at('peace'), 'orc'), /^Peace: no raids/)
-  assert.equal(rivalPanel(at('war'), 'orc').dispositionNote, dispositionNote(at('war'), 'orc'))
-  assert.equal(dispositionNote({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, status: 'conquered' } } }, 'orc'), '')
+  const at = (d: 'peace' | 'tension' | 'war', r: RivalId = 'orc'): CampaignState => ({ ...state, rivals: { ...state.rivals, [r]: { ...state.rivals[r], disposition: { ...state.rivals[r].disposition, player: d } } } })
+  assert.match(standingNote(at('tension'), 'orc'), /^Tension: he raids your border but sends no conquest attempts\./)
+  assert.match(standingNote(at('tension'), 'orc'), /He never makes peace/)
+  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), new RegExp(`Peace comes at Respect \\+${RULES.respect.standing.peace}`))
+  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), /a pact kept to its end \(\+5\)/)
+  assert.match(standingNote(at('war'), 'orc'), /^War: he sends conquest attempts/)
+  assert.match(standingNote(at('peace', 'goblin'), 'goblin'), /^Peace: no raids/)
+  assert.equal(rivalPanel(at('war'), 'orc').standingNote, standingNote(at('war'), 'orc'))
+  assert.equal(standingNote({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, status: 'conquered' } } }, 'orc'), '')
+  for (const r of ['orc', 'goblin', 'dwarf', 'archmage'] as RivalId[]) assert.doesNotMatch(standingNote(state, r), /undefined|NaN/)
 })

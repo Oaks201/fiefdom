@@ -97,24 +97,24 @@ function ultimatum(state: CampaignState = base()): { state: CampaignState; event
 
 // ── Pacing (Ch 14) ───────────────────────────────────────────────────────────
 
-test('Ch 14 pacing: with every rival ready from day 1, none is resolved before week 12, one per 8 weeks after; the Orc never defects (Patch 4, C-41)', () => {
+test('Ch 14 pacing (D-41, N-06): with every rival ready from day 1, none is resolved before week 16, one per 12 weeks after; the Orc never defects (Patch 4, C-41)', () => {
   const ready = allDefecting(realm(), '2026-10-08')
-  const { state, events } = weeks(ready, 1, 40)
+  const { state, events } = weeks(ready, 1, 44)
   const resolved = events.filter((e) => e.kind === 'rivalResolved').map((e) => e.week)
-  assert.deepEqual(resolved, [12, 20, 28])
+  assert.deepEqual(resolved, [16, 28, 40])
   assert.ok((['goblin', 'dwarf', 'archmage'] as const).every((r) => state.rivals[r].status === 'abdicated'))
   assert.equal(state.rivals.orc.status, 'active', 'he yields only to his last battle (D-33)')
   assert.equal(state.campaign.status, 'active')
 })
 
-test('Ch 14 / A-168: an Accord signed in week 8 is held, and the rival is allied at week 12’s close', () => {
+test('Ch 14 / A-168 (D-41): an Accord signed in week 8 is held, and the rival is allied at week 16’s close', () => {
   const c = collector()
   const signed = accordPaid({ ...realm(), rivals: { ...realm().rivals, archmage: { ...realm().rivals.archmage, respect: 60 } } }, { contractId: 'none', rival: 'archmage', curve: 1 }, closeOf(8), c.emit)
   assert.equal(signed.rivals.archmage.respect, 100)
   assert.equal(signed.rivals.archmage.status, 'active')
   assert.deepEqual(worldOf(signed).pending.map((p) => [p.rival, p.how]), [['archmage', 'allied']])
-  assert.equal(weeks(signed, 9, 11).state.rivals.archmage.status, 'active')
-  assert.equal(weeks(signed, 9, 12).state.rivals.archmage.status, 'allied')
+  assert.equal(weeks(signed, 9, 15).state.rivals.archmage.status, 'active')
+  assert.equal(weeks(signed, 9, 16).state.rivals.archmage.status, 'allied')
 })
 
 // ── Ascendancy and the Ultimatum (Ch 14) ─────────────────────────────────────
@@ -311,11 +311,11 @@ test('Ch 14 rule 6: losing the Siege is the Fall; settlement stops that day and 
 // ── Victory and the Reign (Ch 14) ────────────────────────────────────────────
 
 test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Tier V purchase still works', () => {
-  const ledger = ledgerWith('2026-09-10', 400)
+  const ledger = ledgerWith('2026-09-10', 480)
   let state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
-  state = settle(state, ledger, chicago(addDays(closeOf(35), 1))).state
-  // Three rivals were resolved in weeks 12, 20 and 28; the Dwarf has lost every village to influence.
-  const resolved: [RivalId, 'conquered' | 'allied' | 'abdicated', number][] = [['orc', 'conquered', 12], ['goblin', 'allied', 20], ['archmage', 'abdicated', 28]]
+  state = settle(state, ledger, chicago(addDays(closeOf(51), 1))).state
+  // Three rivals were resolved in weeks 16, 28 and 40 (D-41); the Dwarf has lost every village to influence.
+  const resolved: [RivalId, 'conquered' | 'allied' | 'abdicated', number][] = [['orc', 'conquered', 16], ['goblin', 'allied', 28], ['archmage', 'abdicated', 40]]
   for (const [rival, how, n] of resolved) {
     state = logged(state, { day: closeOf(n), kind: 'rivalResolved', rival, how })
     state = { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], status: how, resolvedOn: closeOf(n) } } }
@@ -325,20 +325,20 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
     const h = state.hexes.find((x) => x.id === id) as HexState
     if (h.owner === 'dwarf') {
       state = setHex(state, id, { owner: 'player', garrison: 0 })
-      state = logged(state, { day: closeOf(30), kind: 'hexTransfer', hexId: id, from: 'dwarf', to: 'player', how: 'influence' })
+      state = logged(state, { day: closeOf(50), kind: 'hexTransfer', hexId: id, from: 'dwarf', to: 'player', how: 'influence' })
     }
   }
   state = { ...state, hexes: state.hexes.map((h) => (h.owner === 'dwarf' && h.village ? { ...h, owner: 'neutral' as const } : h)) }
 
-  const r = settle(state, ledger, chicago(addDays(closeOf(36), 1)))
+  const r = settle(state, ledger, chicago(addDays(closeOf(52), 1)))
   assert.equal(r.state.campaign.status, 'won')
   assert.equal(r.state.castleTier, 5)
-  assert.deepEqual(r.events.filter((e) => e.kind === 'campaignEnd').map((e) => [e.day, e.kind === 'campaignEnd' && e.outcome]), [[closeOf(36), 'won']])
+  assert.deepEqual(r.events.filter((e) => e.kind === 'campaignEnd').map((e) => [e.day, e.kind === 'campaignEnd' && e.outcome]), [[closeOf(52), 'won']])
   assert.ok(r.state.roster.some((c) => c.id === 'vassal:dwarf'))
 
   // The Reign: the next days and weeks still settle.
-  const reign = settle(r.state, ledger, chicago(addDays(closeOf(38), 1)))
-  assert.equal(reign.state.settledThrough.day, closeOf(38))
+  const reign = settle(r.state, ledger, chicago(addDays(closeOf(54), 1)))
+  assert.equal(reign.state.settledThrough.day, closeOf(54))
   assert.ok(reign.events.some((e) => e.kind === 'weekClosed'))
   assert.equal(reign.state.campaign.status, 'won')
 
@@ -347,7 +347,7 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
   const gate = RULES.buildings.tierDominion[4]
   if (totalDominion(shop) < gate) shop = withDominion(shop, 'barracks', gate)
   assert.ok(totalDominion(shop) >= gate)
-  const bought = buyTier(shop, 'barracks', addDays(closeOf(38), 1))
+  const bought = buyTier(shop, 'barracks', addDays(closeOf(54), 1))
   assert.ok(bought.ok, JSON.stringify(bought.reason))
   assert.equal(bought.state.buildings.barracks, 5)
 
@@ -355,15 +355,15 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
   const record = chronicleRecord(reign.state)
   assert.equal(record.status, 'won')
   assert.deepEqual(record.rivals, [
-    { rival: 'orc', status: 'conquered', week: 12 },
-    { rival: 'goblin', status: 'allied', week: 20 },
-    { rival: 'dwarf', status: 'abdicated', week: 36 },
-    { rival: 'archmage', status: 'abdicated', week: 28 }
+    { rival: 'orc', status: 'conquered', week: 16 },
+    { rival: 'goblin', status: 'allied', week: 28 },
+    { rival: 'dwarf', status: 'abdicated', week: 52 },
+    { rival: 'archmage', status: 'abdicated', week: 40 }
   ])
   assert.equal(record.daysKept, record.daysSettled, 'every day of this ledger kept every duty')
   assert.equal(record.hexesHeld, reign.state.hexes.filter((h) => h.owner === 'player').length)
   assert.ok(record.realmConsistency > 0.9)
-  assert.equal(record.week, 38)
+  assert.equal(record.week, 54)
 })
 
 test('Ch 14: no Ascendancy in the Reign, and no Siege can be announced once the realm has fallen', () => {

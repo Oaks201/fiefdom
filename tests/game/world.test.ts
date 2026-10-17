@@ -15,7 +15,7 @@ import { balance } from '../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { GRAND_HOOKS, pendingBattles } from '../../src/renderer/src/lib/game/grand'
 import { makeDeal, offerDeal, originalVillages, placeBid, resolveCourtships } from '../../src/renderer/src/lib/game/land'
-import { capitals, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
+import { borderHexesOf, capitals, hexDistance, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RIVAL_HOOKS, falloutThreat, rivalIncome, threatOf } from '../../src/renderer/src/lib/game/rivals'
 import { roster } from '../../src/renderer/src/lib/game/roster'
@@ -220,19 +220,19 @@ function dwarfDown(how: 'influence' | 'trade' | 'conquest'): { state: CampaignSt
 test('Ch 14: courting the Dwarf’s last village, with half its villages won by influence or trade, makes it abdicate; its land passes to the player', () => {
   const { state: down, gate, spare } = dwarfDown('influence')
   assert.equal(defects(down, 'dwarf'), false, 'it still holds its Gate')
-  const bid = placeBid(down, gate, 400, addDays(closeOf(14), -3))
+  const bid = placeBid(down, gate, 400, addDays(closeOf(16), -3))
   assert.ok(bid.ok, JSON.stringify(bid.reason))
   const c = collector()
-  const courted = resolveCourtships(bid.state, { day: closeOf(14), realmConsistency: 1, emit: c.emit })
+  const courted = resolveCourtships(bid.state, { day: closeOf(16), realmConsistency: 1, emit: c.emit })
   assert.equal(hex(courted, gate).owner, 'player')
   assert.equal(defects(courted, 'dwarf'), true)
-  const { state, c: w } = worldAt(courted, 14)
+  const { state, c: w } = worldAt(courted, 16)
   assert.equal(state.rivals.dwarf.status, 'abdicated')
   assert.deepEqual(w.of('rivalResolved'), [{ rival: 'dwarf', how: 'abdicated' }])
   assert.equal(hex(state, spare).owner, 'player', 'its remaining hexes pass to the player')
   assert.ok(state.hexes.every((h) => h.owner !== 'dwarf' || !isClaimableKind(h)))
   assert.equal(hex(state, capitals(state.hexes).dwarf).owner, 'dwarf', 'the rim stays put: its capital is never the player’s (A-175)')
-  assert.equal(falloutThreat(state, 'orc', closeOf(14)), 10, 'Threat +10 from every rival')
+  assert.equal(falloutThreat(state, 'orc', closeOf(16)), 10, 'Threat +10 from every rival')
   // The Goblin, active, offers to buy one of those hexes.
   const offer = worldOf(state).offers.find((o) => o.kind === 'goblinBuys')
   assert.ok(offer && offer.kind === 'goblinBuys')
@@ -255,17 +255,17 @@ test('Ch 14: with more than half of its villages conquered, a rival that holds n
   assert.equal(worldAt(courted, 14).state.rivals.dwarf.status, 'active')
 })
 
-test('Ch 14 pacing / A-168: a defection before week 12 waits for week 12’s close, checked again then', () => {
+test('Ch 14 pacing / A-168: a defection before week 16 waits for week 16’s close (D-41), checked again then', () => {
   const { state: down, gate, marches } = dwarfDown('influence')
   const courted = setHex(logged(down, { day: closeOf(8), kind: 'hexTransfer', hexId: gate, from: 'dwarf', to: 'player', how: 'influence' }), gate, { owner: 'player' })
   const early = worldAt(courted, 8).state
   assert.equal(early.rivals.dwarf.status, 'active')
   assert.deepEqual(worldOf(early).pending.map((p) => [p.rival, p.how]), [['dwarf', 'abdicated']])
-  assert.equal(worldAt(early, 11).state.rivals.dwarf.status, 'active')
-  assert.equal(worldAt(early, 12).state.rivals.dwarf.status, 'abdicated')
+  assert.equal(worldAt(early, 15).state.rivals.dwarf.status, 'active')
+  assert.equal(worldAt(early, 16).state.rivals.dwarf.status, 'abdicated')
   // Had it won a village back meanwhile, the held defection would lapse.
   const regained = setHex(early, marches[0], { owner: 'dwarf' })
-  const later = worldAt(regained, 12).state
+  const later = worldAt(regained, 16).state
   assert.equal(later.rivals.dwarf.status, 'active')
   assert.deepEqual(worldOf(later).pending, [])
 })
@@ -442,8 +442,8 @@ test('Ch 13: a conquered rival’s capital and realm become ruins; its other hex
   const marches = villages.map((id) => hex(state, id).village?.loyalty ?? 0)
   const c = collector()
   const capital = capitals(state.hexes).orc
-  const battle: GrandBattle = { id: 'gb-1', trigger: 'capital', hexId: capital, announcedOn: closeOf(13), battleDate: closeOf(14), enemy: [], rival: 'orc' }
-  const won = GRAND_HOOKS.capital({ ...state, grandBattles: [battle] }, battle, { day: closeOf(14), won: true, result: 'victory', spoilsMult: 1, emit: c.emit }).state
+  const battle: GrandBattle = { id: 'gb-1', trigger: 'capital', hexId: capital, announcedOn: closeOf(15), battleDate: closeOf(16), enemy: [], rival: 'orc' }
+  const won = GRAND_HOOKS.capital({ ...state, grandBattles: [battle] }, battle, { day: closeOf(16), won: true, result: 'victory', spoilsMult: 1, emit: c.emit }).state
   assert.equal(won.rivals.orc.status, 'conquered')
   assert.equal(hex(won, capital).owner, 'neutral')
   assert.equal(hex(won, capital).ruins, true)
@@ -578,18 +578,21 @@ test('Ch 13: at most one new event fires a week; the next waits for a later clos
   assert.deepEqual(fired(worldAt(first, 6).state), ['grandAuction', 'deepCall'])
 })
 
-test('Appendix C: the Dragon Wakes from week 30 while the Wyrmfells are unsealed, at the player’s hex nearest the west', () => {
-  const state = quiet(realm(), 30)
-  assert.ok(!fired(worldAt(state, 29).state).includes('dragonWakes'))
-  const { state: woke } = worldAt(state, 30)
+test('Appendix C (D-41, N-07): the Dragon Wakes from week 40 while the Wyrmfells are unsealed, at the player’s hex nearest the lair', () => {
+  const state = quiet(realm(), 40)
+  assert.ok(!fired(worldAt(state, 39).state).includes('dragonWakes'))
+  const { state: woke } = worldAt(state, 40)
   assert.equal(newEvents(state, woke)[0].id, 'dragonWakes')
   const battle = pendingBattles(woke).find((b) => b.eventId === 'dragonWakes') as GrandBattle
   assert.equal(battle.quarry, 'dragon')
-  assert.ok(hex(woke, battle.hexId).id.startsWith('-'), 'a western hex')
-  assert.ok(diffDays(battle.announcedOn, battle.battleDate) >= 2)
   const mouth = state.hexes.find((h) => h.kind === 'lairMouth' && h.march === 'wyrmfells')!.id
+  // A-169: the player's hex nearest the Wyrmfells' mouth (the book's "westernmost"; on the bent map, D-37, it may be the Barracks).
+  const border = borderHexesOf(woke.hexes, 'player').filter(isClaimableKind)
+  const pool = border.length > 0 ? border : woke.hexes.filter((h) => h.owner === 'player' && h.ring > 0)
+  assert.equal(hexDistance(hex(woke, battle.hexId).id, mouth), Math.min(...pool.map((h) => hexDistance(h.id, mouth))), 'the player’s hex nearest the lair')
+  assert.ok(diffDays(battle.announcedOn, battle.battleDate) >= 2)
   const sealed = setHex(state, mouth, { owner: 'player', mythic: false })
-  assert.ok(!newEvents(sealed, worldAt(sealed, 30).state).some((e) => e.id === 'dragonWakes'), 'not once the lair is sealed')
+  assert.ok(!newEvents(sealed, worldAt(sealed, 40).state).some((e) => e.id === 'dragonWakes'), 'not once the lair is sealed')
 })
 
 test('Appendix C / A-170: the Wild Hunt from week 26 while the Thornwild is unsealed, fought on the next full moon at the player’s hex nearest the east', () => {

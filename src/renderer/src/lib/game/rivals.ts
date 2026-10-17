@@ -41,7 +41,8 @@ import { chance, draw, int, pick, roll, shuffle } from './rng'
 import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
-import { extraConquests, wildWalls } from './personalities'
+import { extraConquests, wildWallCap, wildWalls } from './personalities'
+import { standingFor, weeklyRespect } from './respect'
 import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
 import type { HostUnitEntry } from './codex'
 import {
@@ -281,22 +282,18 @@ export function threatScore(i: ThreatInput): number {
 }
 
 export interface DispositionInput {
-  threat: number
-  /** The player took its land in the last 2 weeks. */
-  tookLand: boolean
+  rival: RivalId
+  respect: number
   /** It is in a coalition against the player. */
   inCoalition: boolean
-  respect: number
-  /** No hostile act either way in the last 4 weeks. */
-  quiet: boolean
 }
 
-/** War at Threat 60, land taken in 2 weeks or a coalition; Peace at Respect 50 and 4 quiet weeks; otherwise Tension. */
+/**
+ * Patch 5 (D-40, N-09): his standing toward the player, from Respect alone (`standingFor`): War at −25 or a
+ * coalition, Peace at +50 (never the Orc), otherwise Tension. Threat, land taken and quiet weeks no longer decide it.
+ */
 export function dispositionFor(i: DispositionInput): Disposition {
-  const d = RULES.rivals.disposition
-  if (i.threat >= d.warThreat || i.tookLand || i.inCoalition) return 'war'
-  if (i.respect >= d.peaceRespect && i.quiet) return 'peace'
-  return 'tension'
+  return standingFor(i.rival, i.respect, i.inCoalition)
 }
 
 /** The `days` days ending `end` (inclusive): a test for an event's day. */
@@ -449,6 +446,8 @@ export interface RivalWeek {
   /** The Valor a rival expects the player to defend with: the week's average (step 7). */
   valor: number
   habits: WeekHabits
+  /** Patch 5 (D-39): Realm Consistency at the close, for the Archmage's constant week. */
+  realmConsistency?: number
   emit: Emit
 }
 
@@ -481,6 +480,8 @@ export function rivalTurn(input: CampaignState, w: RivalWeek): RivalTurnResult {
   for (const rival of active) {
     if (prizedWeek(state, rival, w.habits, w.day, w.weekStartsOn)) state = adjustRespect(state, rival, RULES.respect.change.prizedWeek, 'prizedWeek', w.emit)
   }
+  // Patch 5 (D-39): what each rival alone values, read from the week's log.
+  state = weeklyRespect(state, w)
   const warhosts: WarhostRequest[] = []
   for (const rival of shuffle(state.campaign.seed, w.day, 'rivals:order', active)) {
     const turn = oneTurn(state, rival, w, effects)
@@ -654,7 +655,7 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number, 
   let wildRaised = 0
   for (;;) {
     const byId = hexIndex(state.hexes)
-    const wilds = wildRaised < W.wildWallsPerWeek ? wildWalls(state, rival, day).filter((h) => h.fortification < W.wildWallMax) : []
+    const wilds = wildRaised < W.wildWallsPerWeek ? wildWalls(state, rival, day).filter((h) => h.fortification < wildWallCap(state)) : []
     const candidates = [...borderHexesOf(state.hexes, rival), ...wilds]
       .filter((h) => isClaimableKind(h) && h.fortification < cap)
       .map((h) => ({ hex: h, facing: touches(byId, h.id, 'player'), cost: rivalFortificationCost(h.fortification + 1, bandOf(h), mult) }))
@@ -858,15 +859,9 @@ installCombatHooks()
 
 function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effects: Effects): CampaignState {
   const r = state.rivals[rival]
+  // Threat is still kept (the Last Alliance's order, A-174); it no longer sets the standing (D-40).
   const threat = threatOf(state, rival, w.day, effects)
-  const d = RULES.rivals.disposition
-  const to = dispositionFor({
-    threat,
-    tookLand: tookLandFrom(state, rival, w.day, weeksToDays(d.warLandTakenWeeks)),
-    inCoalition: inCoalition(state, rival, w.day),
-    respect: r.respect,
-    quiet: !hostileAct(state, rival, w.day, weeksToDays(d.peaceQuietWeeks))
-  })
+  const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, w.day) })
   const from = r.disposition.player
   if (from !== to) w.emit('disposition', { rival, from, to })
   return patchRival(state, rival, { threat, disposition: { ...r.disposition, player: to } })

@@ -36,6 +36,7 @@ import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { hostUnits } from './rivals'
 import { roster } from './roster'
+import { envoyFee } from './respect'
 import { isPlayable, openDayOf } from './state'
 import type { BattleSetup, CampaignState, Company, Effects, HexState, ISODate, RivalId, SlotKey, Skirmish, SkirmishDay, ThreatKind } from './types'
 
@@ -78,10 +79,10 @@ function fightId(side: FightPlan['side'], hexId: string, threat?: ThreatKind, ri
   return side === 'assault' ? `assault:${hexId}` : `defense:${threat}:${rival ?? ''}:${hexId}${restrike ? ':restrike' : ''}`
 }
 
-/** What a company costs to field in a defense battle: hired blades and envoys are paid per battle. */
-function feeOf(c: Company): number {
+/** What a company costs to field in a defense battle: hired blades and envoys are paid per battle (the Orc's envoy free at his own mark, D-39). */
+function feeOf(state: CampaignState, c: Company): number {
   if (c.source === 'hired') return HIRE_FEE
-  return c.source === 'envoy' ? RULES.respect.envoyCostPerBattle : 0
+  return envoyFee(state, c)
 }
 
 function enemyOfThreat(kind: ThreatKind, rival?: RivalId): EnemyKind {
@@ -114,7 +115,7 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
   for (const b of dayBattles(state, day, effects)) {
     const hex = state.hexes.find((h) => h.id === b.hexId)
     if (!hex || calledOff(state, b, hex, day)) continue
-    const affordable = defensePool.filter((c) => feeOf(c) === 0 || feeOf(c) <= purse)
+    const affordable = defensePool.filter((c) => feeOf(state, c) === 0 || feeOf(state, c) <= purse)
     const { fielded } = defenseOf(effects, affordable, hex, b.kind, b.rival, 1, orders?.defenseOverride)
     if (fielded.length === 0) continue
     const foe = b.kind === 'beasts' ? 'beast' : b.kind === 'mythic' ? 'mythic' : 'rival'

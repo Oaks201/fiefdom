@@ -44,7 +44,7 @@
     "name": "The Dragon Wakes",
     "kind": "world",
     "recurring": false,
-    "criteria": { "id": "lairUnsealedFromWeek", "params": { "lair": "wyrmfells", "week": 30 } },
+    "criteria": { "id": "lairUnsealedFromWeek", "params": { "lair": "wyrmfells", "week": 40 } },
     "effect": { "battle": "dragon", "target": "westernmostHex", "winReputation": 400, "winItem": "dragonsHeart" }
   },
   {

@@ -74,7 +74,17 @@ export interface Campaign {
   weekStartsOn: WeekStartsOn
   /** T14: medical supervision confirmed at founding: every later Charter check lets the limit sit below the floor (Ch 4, Ch 16). */
   medicalSupervision?: boolean
+  /**
+   * Patch 5 (D-38, C-51): the one-time migrations this save has had, in order (`ruleVersion` stays the
+   * founding version, so it can't say). A campaign founded on rules that need none is born with them all.
+   * Absent means none.
+   */
+  migrations?: MigrationId[]
 }
+
+/** Patch 5 (D-38): the one-time migrations of older saves, in the order they run. */
+export const MIGRATION_IDS = ['bentMarches'] as const
+export type MigrationId = (typeof MIGRATION_IDS)[number]
 
 export interface Charter {
   stepPool: number

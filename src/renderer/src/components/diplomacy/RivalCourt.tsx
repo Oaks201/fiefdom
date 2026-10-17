@@ -11,16 +11,16 @@ const TREASURY: Record<string, string> = { meager: 'Meager', modest: 'Modest', p
 const ARMY: Record<string, string> = { weaker: 'Weaker than yours', matched: 'Matched with yours', stronger: 'Stronger than yours', overwhelming: 'Overwhelming' }
 const FRONTS: Record<string, string> = { north: 'North', south: 'South', west: 'West', east: 'East' }
 
-/** Respect toward the player on a 0 to 100 meter, with Ch 12's marks and what each opens. */
+/** Respect toward the player on a −100 to +100 meter (D-39), with his marks on both sides and what each brings. */
 export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Element {
   return (
     <div className="respect">
       <div className="respect__head">
-        <span>Respect</span> <strong>{panel.respect}</strong>
+        <span>Respect</span> <strong>{panel.respect > 0 ? `+${panel.respect}` : panel.respect < 0 ? `−${-panel.respect}` : '0'}</strong>
       </div>
-      <div className="respect__bar" style={{ ['--fill' as string]: Math.min(100, Math.max(0, panel.respect)) / 100 }} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={panel.respect} aria-label="Respect">
+      <div className="respect__bar" style={{ ['--fill' as string]: (Math.min(100, Math.max(-100, panel.respect)) + 100) / 200 }} role="meter" aria-valuemin={-100} aria-valuemax={100} aria-valuenow={panel.respect} aria-label="Respect">
         {panel.marks.map((m) => (
-          <span key={m.at} className={`respect__mark ${m.reached ? 'is-reached' : ''}`} style={{ left: `${m.at}%` }} title={`${m.at}: ${m.labels.join('; ')}`}>
+          <span key={m.at} className={`respect__mark ${m.reached ? 'is-reached' : ''}`} style={{ left: `${(m.at + 100) / 2}%` }} title={`${m.at}: ${m.labels.join('; ')}`}>
             <span className="respect__at">{m.at}</span>
           </span>
         ))}
@@ -57,7 +57,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
           {resolved ? (
             <span className="court__status">{STATUSES[panel.status]}</span>
           ) : (
-            <span className={`disposition disposition--${panel.disposition}`} title={panel.dispositionNote}>
+            <span className={`disposition disposition--${panel.disposition}`} title={panel.standingNote}>
               {DISPOSITIONS[panel.disposition]}
             </span>
           )}
@@ -68,7 +68,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
             </span>
           )}
         </p>
-        {!resolved && panel.dispositionNote && <p className="court__why">{panel.dispositionNote}</p>}
+        {!resolved && panel.standingNote && <p className="court__why">{panel.standingNote}</p>}
         <blockquote className="court__greeting" data-text-id={panel.greeting.textId}>
           {panel.greeting.text}
         </blockquote>

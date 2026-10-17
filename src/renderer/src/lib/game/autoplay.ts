@@ -264,7 +264,7 @@ function holdVillages(input: CampaignState, today: ISODate): CampaignState {
 /**
  * Patch 4 (C-46, G-18): the rivals' terms. Under `offers: 'accept'`, or as the smarter player, it takes
  * each buy-off and surrender, except that a steered player refuses those from a rival on its own path
- * until that path reaches `refuseOwnPathUntilRank`, and at least `refuseOwnPathAtLeast` of them (it keeps
+ * until that path reaches the rank `refuseOwnPathUntilRank` gives for its number of paths (C-69), and at least `refuseOwnPathAtLeast` of them (it keeps
  * fighting for its path's deeds), and it refuses the Goblin's first `refuseBuyOffs` buy-offs (the next is
  * richer). Otherwise it refuses them all.
  */
@@ -273,7 +273,8 @@ function answerTerms(input: CampaignState, today: ISODate, plan: AutoplayPlan): 
   for (const o of openTerms(state, today)) {
     const takes = plan.offers === 'accept' || plan.smarter === true
     const refused = state.log.filter((e) => e.kind === 'terms' && e.rival === o.rival && e.stage === 'refused').length
-    const ownPath = plan.paths?.includes(o.rival) === true && (pathRank(state, o.rival) < A.refuseOwnPathUntilRank || refused < A.refuseOwnPathAtLeast)
+    const until = A.refuseOwnPathUntilRank[Math.min(plan.paths?.length ?? 1, A.refuseOwnPathUntilRank.length) - 1]
+    const ownPath = plan.paths?.includes(o.rival) === true && (pathRank(state, o.rival) < until || refused < A.refuseOwnPathAtLeast)
     const haggles = o.offer === 'buyOff' && (termsOf(state).byRival.goblin?.refused ?? 0) < A.refuseBuyOffs
     const done = takes && !ownPath && !haggles ? acceptTerms(state, o.rival, today) : refuseTerms(state, o.rival, today)
     if (done.ok) state = done.state

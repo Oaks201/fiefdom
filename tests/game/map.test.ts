@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   DIRECTIONS,
   bandOf,
+  bendShift,
+  bentIds,
   borderHexes,
   buildMap,
   capitals,
@@ -25,6 +27,7 @@ import {
   ringOf,
   rulingMarch,
   seedVillages,
+  straightId,
   strongholds,
   touchesOwner,
   touchingPairs,
@@ -33,6 +36,7 @@ import {
   wildGarrison
 } from '../../src/renderer/src/lib/game/map'
 import { CODEX } from '../../src/renderer/src/lib/game/codex'
+import { draw } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { MAP_ASCII_LEGEND, mapAscii } from '../../src/renderer/src/lib/game/dev/mapAscii'
 import { RIVAL_IDS, type BuildingId, type HexState, type MarchId, type Owner, type RivalId } from '../../src/renderer/src/lib/game/types'
@@ -52,7 +56,11 @@ function withOwners(hexes: HexState[], owners: Record<string, Owner>): HexState[
 }
 
 const count = <T>(list: T[], pred: (x: T) => boolean): number => list.filter(pred).length
-const ray = (d: keyof typeof DIRECTIONS, k: number): string => hexId(DIRECTIONS[d].q * k, DIRECTIONS[d].r * k)
+const BENT = bentIds()
+/** D-37: where a hex of the straight layout sits on the bent map. */
+const bent = (id: string): string => BENT.get(id) ?? id
+/** The hex k steps out along a corner ray of the straight layout, where it sits on the bent map. */
+const ray = (d: keyof typeof DIRECTIONS, k: number): string => bent(hexId(DIRECTIONS[d].q * k, DIRECTIONS[d].r * k))
 
 /** Checks D-16's village rules on one map (P2-02): the quotas, spacing and per-path credit. */
 function villageProblems(hexes: HexState[]): string[] {
@@ -169,9 +177,6 @@ test('D-16: the heartland is rings 0 to 2 as Ch 3 built it; beyond, rings hold m
   // Rings 3 to 5 are wholly marches; from ring 6 the gaps open between them.
   assert.deepEqual([3, 4, 5].map((k) => count(map, (h) => h.ring === k)), [18, 24, 30])
   assert.equal(count(map, (h) => h.ring === 6), 34)
-  // 125 of today's 127 ids are still on the map: the two middle battlefields of the north and south fronts fall in the gaps.
-  const gone = CODEX.hexes.length === 321 ? ['3,-6', '-3,6'] : []
-  for (const id of gone) assert.equal(onMap(id), false, id)
 })
 
 test('Ch 3: ring 1 has the Barracks NW, Merchant Hall NE, Mage Tower SW, Foundry SE and wild hexes W and E', () => {
@@ -258,7 +263,8 @@ test('hexDistance, neighbors and ringOf', () => {
   assert.equal(hexDistance('0,0', '3,-3'), 3)
   assert.equal(hexDistance({ q: -2, r: 1 }, { q: 2, r: -1 }), 4)
   assert.deepEqual(neighbors('0,0'), ['1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1'])
-  assert.equal(neighbors(ray('NW', 15)).length, 3, 'a capital touches its Gate and its two realm hexes')
+  const capital = neighbors(ray('NW', 15))
+  for (const id of [ray('NW', 14), bent(hexId(-1, -14)), bent(hexId(1, -15))]) assert.ok(capital.includes(id), 'a capital touches its Gate and its two realm hexes')
   for (const h of map) for (const n of neighbors(h.id)) assert.equal(hexDistance(h.id, n), 1)
   for (const h of map) for (const n of neighbors(h.id)) assert.ok(onMap(n), 'neighbors are on the map only')
   assert.equal(ringOf('-4,1'), 4)
@@ -274,7 +280,7 @@ test('hexLabel counts clockwise from 1 at the NW corner of each ring (A-109)', (
   assert.equal(hexLabel('0,-3'), '3-1')
   assert.equal(hexLabel('1,-3'), '3-2')
   assert.equal(hexLabel('-1,-2'), '3-18')
-  assert.equal(hexLabel(hex(map, 0, -14)), '14-1')
+  assert.equal(hexLabel(ray('NW', 14)), `14-${bendShift(14) + 1}`, 'D-37: the Orc’s Gate, a corner of the straight ring, turned with its ring')
   assert.equal(new Set(map.map((h) => hexLabel(h))).size, 321)
 })
 
@@ -294,6 +300,60 @@ test('hexName reads the codex; the names of Gates, capitals and Lair Mouths move
   assert.equal(hexName(capitals(map).dwarf), 'Kaldor Deep')
   assert.equal(hexName(ray('NW', 14)), 'Ashgate') // the Orc's Gate, now at depth 12
   assert.notEqual(hexName('0,-3'), hexLabel('0,-3'))
+})
+
+// ── The bent marches (Patch 5, D-37) ─────────────────────────────────────────
+
+test('D-37: each ring beyond the heartland turns clockwise a step every three rings, and every hex keeps its ring', () => {
+  assert.deepEqual(
+    Array.from({ length: 16 }, (_, k) => bendShift(k)),
+    [0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4]
+  )
+  for (const h of map) {
+    const from = straightId(h.id)
+    const ring = ringHexes(h.ring)
+    const p = ring.findIndex((a) => hexId(a.q, a.r) === from)
+    assert.ok(p >= 0, `${h.id} sat on its own ring`)
+    assert.equal(h.id, hexId(ring[(p + bendShift(h.ring)) % ring.length].q, ring[(p + bendShift(h.ring)) % ring.length].r))
+  }
+  assert.equal(map.filter((h) => straightId(h.id) !== h.id).length, 260)
+})
+
+test('D-37: every road runs unbroken from its building to its capital, and every claimable hex is reachable from the castle', () => {
+  for (const road of ['barracks', 'merchantHall', 'mageTower', 'foundry'] as BuildingId[]) {
+    const line = map.filter((h) => h.road === road).sort((a, b) => a.ring - b.ring)
+    assert.equal(line.length, 15)
+    for (let i = 1; i < line.length; i++) assert.ok(neighbors(line[i].id).includes(line[i - 1].id), `${road} at ring ${line[i].ring}`)
+  }
+  const claimable = new Set(map.filter((h) => isClaimableKind(h) || h.kind === 'castle').map((h) => h.id))
+  const seen = new Set(['0,0'])
+  const queue = ['0,0']
+  while (queue.length > 0) for (const n of neighbors(queue.shift() as string)) if (claimable.has(n) && !seen.has(n)) (seen.add(n), queue.push(n))
+  assert.equal(seen.size, claimable.size, 'no claimable hex is cut off')
+})
+
+test('C-57: the strongholds stay on their roads, at depths 4 and 8, as on the straight layout', () => {
+  const held = strongholds(map)
+  assert.equal(held.size, 8)
+  for (const [id, s] of held) {
+    const h = map.find((x) => x.id === id) as HexState
+    assert.equal(depthOf(h), s.depth)
+    assert.equal(h.march, s.march)
+    const road = map.find((x) => x.march === s.march && x.ring === h.ring && x.kind === 'road') as HexState
+    assert.ok(id === road.id || (road.village && hexDistance(id, road.id) === 1), `${s.march} at depth ${s.depth}: on the road, or beside a village road`)
+  }
+})
+
+test('C-54: a seam’s ruling march is drawn on its straight-layout id, so the bend never changes a day already played', () => {
+  const seams = map.filter((h) => h.seam)
+  assert.equal(seams.length, 22)
+  assert.ok(seams.some((h) => straightId(h.id) !== h.id), 'some seams moved')
+  for (const h of seams) {
+    for (const day of ['2026-10-01', '2026-11-15', '2027-03-02']) {
+      const want = draw(7, day, `seam:${straightId(h.id)}`) < RULES.map.seamFirstChance ? h.march : h.seam
+      assert.equal(rulingMarch(7, h, day), want)
+    }
+  }
 })
 
 // ── Strength, bands and loyalty (D-17) ───────────────────────────────────────
@@ -360,7 +420,7 @@ test('D-17: bands: the heartland’s rings 1 and 2, then 3 / 4 / 5 every 4 depth
 
 test('A-13, D-17: starting loyalty is 15 × band for neutral villages and 30 × band for rival villages', () => {
   for (const v of map.filter((h) => h.village)) assert.equal(v.village?.loyalty, (v.owner === 'neutral' ? 15 : 30) * bandOf(v), v.id)
-  assert.equal(hex(map, 0, -14).village?.loyalty, 150, 'the Orc Gate, band 5 (×2 applies when courted, A-16)')
+  assert.equal(map.find((h) => h.id === ray('NW', 14))?.village?.loyalty, 150, 'the Orc Gate, band 5 (×2 applies when courted, A-16)')
 })
 
 // ── Path shares (D-18) ───────────────────────────────────────────────────────

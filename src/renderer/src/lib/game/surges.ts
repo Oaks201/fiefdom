@@ -16,6 +16,7 @@ import { COMBAT_HOOKS, earlyGraceMult } from './combat'
 import { pathRank } from './dominion'
 import { hexIndex, isClaimableKind, neighbors, touches, wildGarrison } from './map'
 import { marchRule, personalitiesOf, rulesHarden, surgeOn, withPersonalities } from './personalities'
+import { ownMark } from './respect'
 import { RULES } from './rules'
 import { pick, roll, weighted } from './rng'
 import { awayOn, isPlayable, openDayOf, weekOn } from './state'
@@ -31,7 +32,8 @@ export function surgesOf(state: CampaignState): Surge[] {
 
 /** Whether the realm foresees tomorrow's surge (P4-04): Mage Tower IV, or the Archmage's path at rank I or more. */
 export function foreseesSurges(state: CampaignState): boolean {
-  return state.buildings.mageTower >= RULES.buildings.mageTower.foresight.tier || pathRank(state, 'archmage') >= PERK.foresightRank
+  // Patch 5 (D-39): or the Archmage's own mark above, +75.
+  return state.buildings.mageTower >= RULES.buildings.mageTower.foresight.tier || pathRank(state, 'archmage') >= PERK.foresightRank || ownMark(state, 'archmage', 'up')
 }
 
 /** The Archmage's path at rank III turns a curse drawn against the player into a blessing (C-36). */
@@ -41,7 +43,8 @@ export function cursesBlocked(state: CampaignState): boolean {
 
 /** The multiple his march's preparation puts on a swell and a strike (P4-07): a neglected Archmage surges harder. */
 function prepared(state: CampaignState): number {
-  return 1 + A.perLevel * (state.marches?.preparation.archmage ?? 0)
+  // Patch 5 (D-39): at his own mark below, −75, his swells and strikes grow stronger.
+  return (1 + A.perLevel * (state.marches?.preparation.archmage ?? 0)) * (ownMark(state, 'archmage', 'down') ? RULES.respect.own.archmageSurgeMult : 1)
 }
 
 /**

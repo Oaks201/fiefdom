@@ -384,6 +384,7 @@ function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
     days: days.length,
     valor: valors.length > 0 ? valors.reduce((s, v) => s + v, 0) / valors.length : 0,
     habits: { days, pillars: weekPillars(days, currentTerms(state, ctx.day)) },
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
     emit: ctx.emit
   }
 }

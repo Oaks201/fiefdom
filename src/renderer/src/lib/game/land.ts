@@ -33,6 +33,7 @@ import { realmEffects } from './effects'
 import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
 import { pactBars } from './personalities'
 import { RULES, byTier } from './rules'
+import { respectChange } from './respect'
 import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
 import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
@@ -617,7 +618,8 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     }
     case 'truce':
       deal.until = lasting(t.truce.days)
-      next = adjustRespect(next, rival, RULES.respect.change.tradeOrTruce, 'truce', emit)
+      // Patch 5 (D-39): the Orc gives nothing for a Truce.
+      if (respectChange(rival, 'truce', RULES.respect.change.tradeOrTruce) !== 0) next = adjustRespect(next, rival, respectChange(rival, 'truce', RULES.respect.change.tradeOrTruce), 'truce', emit)
       break
     case 'pact':
       deal.until = lasting(t.pact.days)

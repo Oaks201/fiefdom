@@ -22,10 +22,12 @@
 import { pickAssault, siegeReach, type AutoplayPlan } from '../src/renderer/src/lib/game/autoplay'
 import { addDays, isWeekCloseDay } from '../src/renderer/src/lib/game/clock'
 import { assaultGarrison, tidings } from '../src/renderer/src/lib/game/combat'
+import { PURSE_SOURCES, sourcePrefix } from '../src/renderer/src/lib/game/dev/invariants'
 import { pathRank, pathTotals, renown } from '../src/renderer/src/lib/game/dominion'
 import { isClaimableKind, regionsOf } from '../src/renderer/src/lib/game/map'
 import { marchesOf } from '../src/renderer/src/lib/game/marches'
 import { valorOn } from '../src/renderer/src/lib/game/settle'
+import { weekOn } from '../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, RIVAL_IDS, STANCE_BANDS, type CampaignState, type GameEvent, type HexState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
 
 export const LABEL = { land: 1, grand: 2, build: 4, choice: 8, noReach: 16, doubt: 32, auto: 64, breach: 128, noTarget: 256 } as const
@@ -51,6 +53,10 @@ export interface WeekMeasure {
   /** Claimable hexes held, Lair Mouths aside, and how many there are. */
   claimableHeld: number
   claimable: number
+  /** Patch 5 (G-20): each rival's Respect at the close, in RIVAL_IDS order; null once he is resolved. */
+  respect?: (number | null)[]
+  /** Patch 5 (G-20): each rival's standing toward the player at the close, one letter each in RIVAL_IDS order: p, t, w, or - once resolved. */
+  standing?: string
 }
 
 export interface Measures {
@@ -91,6 +97,12 @@ export interface Measures {
   surgeWeeks: { hit: number; weeks: number }
   /** Patch 4 (G-18): terms offered (and before week 16), refused or lapsed, rivals resolved by terms, and the first week each rival reached each stance band. */
   terms: { offered: number; before16: number; refused: number; byTerms: number; firstOffer?: number; firstBand: Record<RivalId, (number | null)[]> }
+  /** Patch 5 (G-20): each rival's Respect changes by reason over the campaign: [how many, their sum]. */
+  respectReasons?: Record<RivalId, Record<string, [number, number]>>
+  /** Patch 5 (X-15): the campaign week each world event first fired. */
+  eventWeeks?: Record<string, number>
+  /** Patch 5 (G-21): reputation earned by the end: behavior income, tithes, spoils (battles and land), and every other gain. */
+  income?: { behavior: number; tithe: number; spoils: number; other: number }
 }
 
 /** Patch 4 (G-10): one rival march, over the campaign. */
@@ -354,7 +366,9 @@ export class Recorder {
       paths: RIVAL_IDS.map((r) => totals[r]),
       tiers: BUILDING_IDS.map((b) => state.buildings[b]),
       claimableHeld: claimable.filter((h) => h.owner === 'player').length,
-      claimable: claimable.length
+      claimable: claimable.length,
+      respect: RIVAL_IDS.map((r) => (state.rivals[r].status === 'active' ? state.rivals[r].respect : null)),
+      standing: RIVAL_IDS.map((r) => (state.rivals[r].status === 'active' ? state.rivals[r].disposition.player[0] : '-')).join('')
     })
     if (week === WEEK26) {
       this.m.week26Garrison = meanGarrisonByMarch(state, state.settledThrough.day)
@@ -374,6 +388,24 @@ export class Recorder {
     const mix: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deed') mix[e.deed] = (mix[e.deed] ?? 0) + e.value
     this.m.deedMix = mix
+    const reasons = Object.fromEntries(RIVAL_IDS.map((r) => [r, {}])) as Record<RivalId, Record<string, [number, number]>>
+    const eventWeeks: Record<string, number> = {}
+    for (const e of state.log) {
+      if (e.kind === 'respect') {
+        const [n, sum] = reasons[e.rival][e.reason] ?? [0, 0]
+        reasons[e.rival][e.reason] = [n + 1, sum + e.change]
+      } else if (e.kind === 'worldEvent' && eventWeeks[e.eventId] === undefined) eventWeeks[e.eventId] = weekOn(state, e.day)
+    }
+    this.m.respectReasons = reasons
+    this.m.eventWeeks = eventWeeks
+    const behavior = new Set<string>(PURSE_SOURCES.behavior)
+    const income = { behavior: 0, tithe: 0, spoils: 0, other: 0 }
+    for (const p of state.purse.events) {
+      if (p.kind === 'tithe') income.tithe += p.amount
+      else if (p.kind === 'spoils') income.spoils += p.amount
+      else if (p.kind === 'earn') income[behavior.has(sourcePrefix(p.source)) ? 'behavior' : 'other'] += p.amount
+    }
+    this.m.income = income
     return this.m
   }
 }

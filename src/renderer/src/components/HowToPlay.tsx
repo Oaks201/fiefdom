@@ -740,18 +740,31 @@ export function HowToPlay(): React.JSX.Element | null {
         {
           id: 'diplomacy',
           title: 'Diplomacy and Respect',
-          lead: 'Each court’s Respect for you opens deals, pacts and, in time, an Accord.',
+          lead: 'Each court’s Respect for you runs both ways: it opens deals, pacts and, in time, an Accord, and as it falls it brings war.',
           body: (
             <ul>
               <li>
-                <b>Respect</b> (0 to 100, on each court) rises when you beat a rival’s raids, trade or make peace with him, and falls when you take his land or villages. Its marks
-                open more: weaker raids, non-aggression pacts, envoys, buying hexes, calls to arms and Accord talks.
+                <b>Respect</b> runs from {RULES.respect.min} to +{RULES.respect.max} on each court, and every ruler starts at {RULES.rivals.start.respect}. It rises and falls with
+                what that ruler values. Beating his raids and other attacks raises it (+{RULES.respect.change.raidDefeated}), losing to them lowers it ({RULES.respect.change.raidLost}),
+                taking his land lowers it ({RULES.respect.change.hexConquered}; the Orc, who respects force, {RULES.respect.byRival.orc.hexConquered}), and each ruler prizes one
+                habit of yours (+{RULES.respect.change.prizedWeek} a week). The Orc also counts every Grand Battle against him (+{RULES.respect.byRival.orc.grandBattleWon} won,{' '}
+                {RULES.respect.byRival.orc.grandBattleLost} lost) and gives nothing for a Truce. The Goblin likes your coin: a bribe +{RULES.respect.byRival.goblin.bribePaid}, a
+                buy-off taken +{RULES.respect.byRival.goblin.buyOffAccepted}, refused {RULES.respect.byRival.goblin.buyOffRefused}, his bid for a village held off{' '}
+                {RULES.respect.byRival.goblin.bidHeld}. The Dwarf honors a pact kept to its end (+{RULES.respect.byRival.dwarf.pactKept}) and resents each wall of his you break (
+                {RULES.respect.byRival.dwarf.wallBroken}). The Archmage values constancy: +{RULES.respect.byRival.archmage.constantWeek} a week at Realm Consistency{' '}
+                {Math.round(RULES.respect.constantWeekAt * 100)}% or more, +{RULES.respect.byRival.archmage.surgeHeld} for a surge strike held, +
+                {RULES.respect.byRival.archmage.ritualEndured} for a Ritual endured. Weight never counts.
               </li>
               <li>
-                <b>Peace, Tension or War</b> (beside each ruler’s name) is how he stands with you, read at each week close. Every rival starts at Tension: he raids your border
-                but sends no conquest attempts. <b>War</b> comes if you take his land, if your strength alarms him, or if he joins a coalition against you, and lets him send
-                conquest attempts. <b>Peace</b> comes with Respect {RULES.rivals.disposition.peaceRespect} and {RULES.rivals.disposition.peaceQuietWeeks} weeks with no fighting
-                between you, and stops his raids. His raids count as fighting, so a Truce, which stops them, is the usual road to Peace.
+                <b>Its marks</b> open more as it rises: weaker raids ({RULES.respect.thresholds.raidsWeaker}), pacts ({RULES.respect.thresholds.pact}), envoys and Peace (
+                {RULES.respect.standing.peace}), calls to arms and Accord talks ({RULES.respect.thresholds.callToArms}), an easier Accord ({RULES.respect.thresholds.accordEasier}),
+                and each ruler’s own perk at +{RULES.respect.own.up}. As it falls they bring worse: War ({RULES.respect.standing.war}), stronger raids (
+                {RULES.respect.raidsStrongerAt}) and each ruler’s own threat at {RULES.respect.own.down}. Each court lists its marks and what they bring.
+              </li>
+              <li>
+                <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each week close. <b>War</b> at {RULES.respect.standing.war} or below, or while
+                he stands in a coalition against you: raids and conquest attempts. <b>Peace</b> at {RULES.respect.standing.peace} or above: no raids and no conquest attempts. The
+                Orc never makes peace. <b>Tension</b> between: raids only. A Truce, which stops his raids for a while, is open at any Respect.
               </li>
               <li>
                 <b>Deals</b> (choose a court): Truces, pacts, buying and selling hexes. Each shows what it costs and needs.

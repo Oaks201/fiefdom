@@ -34,6 +34,7 @@ import type {
   ISODate,
   WeekStartsOn
 } from './types'
+import { MIGRATION_IDS } from './types'
 
 export interface FoundingInput {
   startWeight: number
@@ -167,6 +168,8 @@ export function foundCampaign(input: FoundingInput, now: Date): CampaignState {
     targetPace,
     status: 'active',
     weekStartsOn,
+    // Patch 5 (D-38): founded on the bent map, so it needs no migration.
+    migrations: [...MIGRATION_IDS],
     ...(input.heightCm !== undefined ? { heightCm: input.heightCm } : {}),
     ...(input.sex !== undefined ? { sex: input.sex } : {}),
     ...(input.birthYear !== undefined ? { birthYear: input.birthYear } : {}),

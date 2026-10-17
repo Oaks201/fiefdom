@@ -36,7 +36,7 @@ export type LengthUnlock =
 type PerRival<T> = Record<RivalId, T>
 
 const RULES_TABLE = {
-  ruleVersion: '3.2.0',
+  ruleVersion: '3.3.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -485,8 +485,6 @@ const RULES_TABLE = {
       recentLand: { weeks: 4, bonus: 10 },
       max: 100
     },
-    /** War at Threat 60 or land taken in 2 weeks; Peace at Respect 50 and 4 quiet weeks. */
-    disposition: { warThreat: 60, warLandTakenWeeks: 2, peaceRespect: 50, peaceQuietWeeks: 4 },
     /** Conquest attempts need 0.5 × AV ≥ 0.8 × the player's expected defense. */
     conquestAttempt: { armyShare: 0.5, defenseShare: 0.8 },
     /** Every rival's state at the founding. */
@@ -523,8 +521,42 @@ const RULES_TABLE = {
   },
 
   respect: {
-    min: 0,
+    /** Patch 5 (D-39, N-08): each court's Respect runs both ways, −100 to +100; it still starts at 20 (`rivals.start`). */
+    min: -100,
     max: 100,
+    /**
+     * Patch 5 (D-39, P5-07, N-10): what moves each rival's Respect his own way: a common change he weighs
+     * differently (the Orc: a hex taken from him by force −2, a Truce nothing), and what he alone values.
+     * The Orc: a Grand Battle against him won or lost. The Goblin: a bribe paid, a buy-off accepted or
+     * refused, his bid for a village held against him. The Dwarf: a pact kept to its end, a wall level of
+     * his march broken. The Archmage: a week closing at Realm Consistency `constantWeekAt` or more, a surge
+     * strike held, a Ritual endured. TUNE.
+     */
+    byRival: {
+      orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5 },
+      goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: -5, bidHeld: -2 },
+      dwarf: { pactKept: 5, wallBroken: -1 },
+      archmage: { constantWeek: 1, surgeHeld: 2, ritualEndured: 2 }
+    } as PerRival<Record<string, number>>,
+    constantWeekAt: 0.85,
+    /**
+     * Patch 5 (D-40, P5-08, N-09): the standing toward the player, read from Respect at each week close:
+     * War at `war` or below (or in a coalition against the player), Peace at `peace` or above, Tension
+     * between. The rivals in `neverAtPeace` never come to Peace. TUNE.
+     */
+    standing: { war: -25, peace: 50, neverAtPeace: ['orc'] as RivalId[] },
+    /** Patch 5 (D-39): raids 10% stronger at −50, the mirror of the 10% weaker at 25. TUNE. */
+    raidsStrongerAt: -50,
+    raidsStrongerMult: 1.1,
+    /**
+     * Patch 5 (D-39, P5-07): each rival's own mark on each side, at `up` and `down`. Up: the Orc's envoy at
+     * no fee; the Goblin bids for none of the player's villages; the Dwarf raises no walls on the wilds
+     * facing the player; the Archmage's surge is foretold. Down: the Orc plans `orcConquests` more conquest
+     * attempt a week; the Goblin's greed counts `goblinGreedSteps` higher and his bids offer `goblinOfferMult`
+     * × loyalty; the Dwarf's walls on the wilds rise to `dwarfWildWallMax`; the Archmage's swells and strikes
+     * are × `archmageSurgeMult`. TUNE.
+     */
+    own: { up: 75, down: -75, orcConquests: 1, goblinGreedSteps: 2, goblinOfferMult: 1.5, dwarfWildWallMax: 2, archmageSurgeMult: 1.1 },
     change: {
       raidDefeated: 3,
       prizedWeek: 4,
@@ -565,8 +597,8 @@ const RULES_TABLE = {
       lastAllianceRefusalRespect: 60,
       graceIIIShortenWeeks: 2
     },
-    /** No rival resolved before week 12, and one per 8 weeks. */
-    resolution: { notBeforeWeek: 12, oncePerWeeks: 8 },
+    /** No rival resolved before week 16, and one per 12 weeks (Patch 5, D-41, R-19, N-06: the book's 12 and 8). */
+    resolution: { notBeforeWeek: 16, oncePerWeeks: 12 },
     /** Ch 13: what a rival's fall does to the others. */
     fallout: { conqueredThreat: 15, abdicatedThreat: 10, alliedThreat: 5, conqueredLoyaltyMult: 0.5 },
     /** An allied rival may join one Grand Battle a month. */
@@ -658,7 +690,13 @@ const RULES_TABLE = {
      */
     villages: { heartland: 4, perRivalThird: 5, perLairBand: 2, maxCreditSpread: 1, maxTouchingPairs: 6, maxAttempts: 1_000 }, // TUNE
     /** D-16 (P2-06): each dawn a seam's ruling march is drawn: its first march at this chance. */
-    seamFirstChance: 0.5
+    seamFirstChance: 0.5,
+    /**
+     * Patch 5 (D-37, P5-06, mockup C): the marches bend as they run out. Each ring beyond `fromRing` turns
+     * clockwise by ⌊(ring − fromRing) ÷ `everyRings`⌋ positions: rings 5 to 7 one step, 8 to 10 two, 11 to
+     * 13 three, 14 and 15 four. TUNE.
+     */
+    bend: { fromRing: 2, everyRings: 3 }
   },
 
   /** Patch 2 (D-18): Dominion as the chronicle of the player's war (R-05). Every value TUNE. */
@@ -823,8 +861,11 @@ const RULES_TABLE = {
     bribeReserve: 0.5,
     /** Patch 4 (C-46): it holds a village the Goblin bids for while the hold needed is at most this share of the purse. TUNE. */
     holdShare: 0.25,
-    /** Patch 4 (C-46, G-18): a steered player refuses terms from a rival on its own path until that path reaches this rank. */
-    refuseOwnPathUntilRank: 5,
+    /**
+     * Patch 4 (C-46, G-18): a steered player refuses terms from a rival on its own path until that path reaches this rank;
+     * Patch 5 (C-69, N-13): by how many paths it follows (one, two, three, four), the rank its share of the paths aims at. TUNE.
+     */
+    refuseOwnPathUntilRank: [5, 3, 2, 2],
     /** Patch 4 (C-46, G-18): and refuses at least this many from that rival, whatever its rank (it keeps fighting for its path's deeds). TUNE. */
     refuseOwnPathAtLeast: 1,
     /** Patch 4 (C-46, G-18): every player that takes terms refuses this many of the Goblin's buy-offs first (each refused one makes the next richer, C-35). TUNE. */
