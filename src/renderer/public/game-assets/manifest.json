@@ -1520,7 +1520,7 @@
     ]
   },
   "item.bannerOfTheRealm": {
-    "file": null,
+    "file": "item.bannerOfTheRealm-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1528,7 +1528,7 @@
     ]
   },
   "item.healersSatchel": {
-    "file": null,
+    "file": "item.healersSatchel-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1536,7 +1536,7 @@
     ]
   },
   "item.huntersNets": {
-    "file": null,
+    "file": "item.huntersNets-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1544,7 +1544,7 @@
     ]
   },
   "item.wardingCharms": {
-    "file": null,
+    "file": "item.wardingCharms-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1552,7 +1552,7 @@
     ]
   },
   "item.dragonbonePlate": {
-    "file": null,
+    "file": "item.dragonbonePlate-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1560,7 +1560,7 @@
     ]
   },
   "item.stormglassBolts": {
-    "file": null,
+    "file": "item.stormglassBolts-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1568,7 +1568,7 @@
     ]
   },
   "item.oathRing": {
-    "file": null,
+    "file": "item.oathRing-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1576,7 +1576,7 @@
     ]
   },
   "item.heraldsHorn": {
-    "file": null,
+    "file": "item.heraldsHorn-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1584,7 +1584,7 @@
     ]
   },
   "item.unbrokenBanner": {
-    "file": null,
+    "file": "item.unbrokenBanner-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1592,7 +1592,7 @@
     ]
   },
   "item.gildedLedger": {
-    "file": null,
+    "file": "item.gildedLedger-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1600,7 +1600,7 @@
     ]
   },
   "item.starglassOrb": {
-    "file": null,
+    "file": "item.starglassOrb-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1608,7 +1608,7 @@
     ]
   },
   "item.anvilHeart": {
-    "file": null,
+    "file": "item.anvilHeart-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1616,7 +1616,7 @@
     ]
   },
   "item.wyvernScaleCloak": {
-    "file": null,
+    "file": "item.wyvernScaleCloak-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1624,7 +1624,7 @@
     ]
   },
   "item.basiliskEye": {
-    "file": null,
+    "file": "item.basiliskEye-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1632,7 +1632,7 @@
     ]
   },
   "item.griffinFeather": {
-    "file": null,
+    "file": "item.griffinFeather-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1640,7 +1640,7 @@
     ]
   },
   "item.manticoreBarb": {
-    "file": null,
+    "file": "item.manticoreBarb-completion-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1648,7 +1648,7 @@
     ]
   },
   "item.dragonsHeart": {
-    "file": null,
+    "file": "item.dragonsHeart-completion-v1.png",
     "kind": "item",
     "size": [
       128,
