@@ -747,6 +747,12 @@ export function HowToPlay(): React.JSX.Element | null {
                 open more: weaker raids, non-aggression pacts, envoys, buying hexes, calls to arms and Accord talks.
               </li>
               <li>
+                <b>Peace, Tension or War</b> (beside each ruler’s name) is how he stands with you, read at each week close. Every rival starts at Tension: he raids your border
+                but sends no conquest attempts. <b>War</b> comes if you take his land, if your strength alarms him, or if he joins a coalition against you, and lets him send
+                conquest attempts. <b>Peace</b> comes with Respect {RULES.rivals.disposition.peaceRespect} and {RULES.rivals.disposition.peaceQuietWeeks} weeks with no fighting
+                between you, and stops his raids. His raids count as fighting, so a Truce, which stops them, is the usual road to Peace.
+              </li>
+              <li>
                 <b>Deals</b> (choose a court): Truces, pacts, buying and selling hexes. Each shows what it costs and needs.
               </li>
               <li>

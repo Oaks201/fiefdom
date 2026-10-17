@@ -8,11 +8,12 @@ import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { armyValue } from '../../src/renderer/src/lib/game/combat'
 import { makeDeal, placeBid } from '../../src/renderer/src/lib/game/land'
 import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome, holdings, rivalIncome } from '../../src/renderer/src/lib/game/rivals'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { hasText, t } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { courtableVillages, courtshipsView, dealReaction, dealsView, moodOf, respectMarks, rivalPanel, rivalPanels } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealReaction, dealsView, dispositionNote, moodOf, respectMarks, rivalPanel, rivalPanels } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -21,10 +22,11 @@ import { realm, withCrossings, withPurse } from './support/realm'
 /**
  * Every number a rival panel shows outside its public fields (Respect, the Respect marks with the
  * rules they open, the front tracks, and Patch 4's march lines: the Orc's war track, the Dwarf's walls,
- * hired companies and their dates, C-49), with its path; numbers written inside its text count too.
+ * hired companies and their dates, C-49, and the disposition note's Respect and weeks), with its path;
+ * numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path)) return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path) || path === 'dispositionNote') return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -156,4 +158,15 @@ test('Ch 6: the courtships list: open bids with their Offer at today’s Trust a
   }
   const again = courtableVillages(placed.state).find((v) => v.hexId === target.id)
   assert.deepEqual([again?.available, again?.reason?.code], [false, 'alreadyCourting'])
+})
+
+test('Ch 12: each court says what Peace, Tension or War means and what would change it; a resolved rival says nothing', () => {
+  const state = realm()
+  const at = (d: 'peace' | 'tension' | 'war'): CampaignState => ({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, disposition: { ...state.rivals.orc.disposition, player: d } } } })
+  assert.match(dispositionNote(at('tension'), 'orc'), /^Tension: he raids your border but sends no conquest attempts\./)
+  assert.match(dispositionNote(at('tension'), 'orc'), new RegExp(`Respect ${RULES.rivals.disposition.peaceRespect} and ${RULES.rivals.disposition.peaceQuietWeeks} weeks`))
+  assert.match(dispositionNote(at('war'), 'orc'), /^War: he sends conquest attempts/)
+  assert.match(dispositionNote(at('peace'), 'orc'), /^Peace: no raids/)
+  assert.equal(rivalPanel(at('war'), 'orc').dispositionNote, dispositionNote(at('war'), 'orc'))
+  assert.equal(dispositionNote({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, status: 'conquered' } } }, 'orc'), '')
 })

@@ -64,6 +64,28 @@ export interface RivalPanel {
   stance?: { band: StanceBand; label: string }
   /** His march's state in plain lines (D-28 to D-31): the Orc's war track, the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge. */
   march: MarchLine[]
+  /** What his disposition means and what would change it (Ch 12), in plain words; empty once he is resolved. */
+  dispositionNote: string
+}
+
+/**
+ * Peace, Tension or War in plain words (Ch 12; read at each week close by `dispositionFor`): what each
+ * allows him, and what moves it. Every number in it is public (Respect, weeks).
+ */
+export function dispositionNote(state: CampaignState, rival: RivalId): string {
+  const r = state.rivals[rival]
+  if (r.status !== 'active') return ''
+  const d = RULES.rivals.disposition
+  const peace = `Peace comes with Respect ${d.peaceRespect} and ${d.peaceQuietWeeks} weeks with no fighting between you; his raids count, so a Truce, which stops them, helps.`
+  const war = 'War comes if you take his land, if your strength alarms him, or if he joins a coalition against you.'
+  switch (r.disposition.player) {
+    case 'war':
+      return `War: he sends conquest attempts as well as raids. ${peace}`
+    case 'peace':
+      return `Peace: no raids and no conquest attempts. Attacking him or taking his land ends it.`
+    default:
+      return `Tension: he raids your border but sends no conquest attempts. ${peace} ${war}`
+  }
 }
 
 /** One line of a march's state; a date the screen formats. */
@@ -196,7 +218,8 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     fronts,
     greeting: { textId: greetingId, text: t(greetingId, { rival: name, disposition: view.disposition, how: FALL_HOW[r.status] ?? r.status }) },
     ...(stance ? { stance } : {}),
-    march: marchLines(state, rival, today)
+    march: marchLines(state, rival, today),
+    dispositionNote: dispositionNote(state, rival)
   }
 }
 

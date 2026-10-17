@@ -242,6 +242,14 @@
   color: var(--crimson);
 }
 
+/* What Peace, Tension or War means for this court, and what would change it. */
+.court__why {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
 /* Patch 4 (D-33): a rival’s stance, Defiant to Ready to yield. */
 .court__stance {
   font-weight: 700;

@@ -57,7 +57,9 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
           {resolved ? (
             <span className="court__status">{STATUSES[panel.status]}</span>
           ) : (
-            <span className={`disposition disposition--${panel.disposition}`}>{DISPOSITIONS[panel.disposition]}</span>
+            <span className={`disposition disposition--${panel.disposition}`} title={panel.dispositionNote}>
+              {DISPOSITIONS[panel.disposition]}
+            </span>
           )}
           {panel.stance && (
             <span className={`court__stance court__stance--${panel.stance.band}`} title="How near he is to yielding, as his court shows it; no number is told">
@@ -66,6 +68,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
             </span>
           )}
         </p>
+        {!resolved && panel.dispositionNote && <p className="court__why">{panel.dispositionNote}</p>}
         <blockquote className="court__greeting" data-text-id={panel.greeting.textId}>
           {panel.greeting.text}
         </blockquote>
