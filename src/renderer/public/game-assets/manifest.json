@@ -144,7 +144,7 @@
     ]
   },
   "building.barracks.4": {
-    "file": null,
+    "file": "building.barracks.4-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -152,7 +152,7 @@
     ]
   },
   "building.barracks.5": {
-    "file": null,
+    "file": "building.barracks.5-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -184,7 +184,7 @@
     ]
   },
   "building.merchantHall.4": {
-    "file": null,
+    "file": "building.merchantHall.4-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -192,7 +192,7 @@
     ]
   },
   "building.merchantHall.5": {
-    "file": null,
+    "file": "building.merchantHall.5-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -224,7 +224,7 @@
     ]
   },
   "building.mageTower.4": {
-    "file": null,
+    "file": "building.mageTower.4-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -232,7 +232,7 @@
     ]
   },
   "building.mageTower.5": {
-    "file": null,
+    "file": "building.mageTower.5-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -264,7 +264,7 @@
     ]
   },
   "building.foundry.4": {
-    "file": null,
+    "file": "building.foundry.4-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -272,7 +272,7 @@
     ]
   },
   "building.foundry.5": {
-    "file": null,
+    "file": "building.foundry.5-completion-v1.png",
     "kind": "building",
     "size": [
       512,
@@ -296,7 +296,7 @@
     ]
   },
   "castle.3": {
-    "file": null,
+    "file": "castle.3-completion-v1.png",
     "kind": "castle",
     "size": [
       768,
@@ -304,7 +304,7 @@
     ]
   },
   "castle.4": {
-    "file": null,
+    "file": "castle.4-completion-v1.png",
     "kind": "castle",
     "size": [
       768,
@@ -312,7 +312,7 @@
     ]
   },
   "castle.5": {
-    "file": null,
+    "file": "castle.5-completion-v1.png",
     "kind": "castle",
     "size": [
       768,
