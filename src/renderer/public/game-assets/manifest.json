@@ -1480,7 +1480,7 @@
     ]
   },
   "item.towerShields": {
-    "file": null,
+    "file": "item.towerShields-rank-i-v2.png",
     "kind": "item",
     "size": [
       128,
@@ -1488,7 +1488,7 @@
     ]
   },
   "item.coldIronEdges": {
-    "file": null,
+    "file": "item.coldIronEdges-rank-i-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1496,7 +1496,7 @@
     ]
   },
   "item.luckyCoin": {
-    "file": null,
+    "file": "item.luckyCoin-rank-i-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1504,7 +1504,7 @@
     ]
   },
   "item.runeChalk": {
-    "file": null,
+    "file": "item.runeChalk-rank-i-v1.png",
     "kind": "item",
     "size": [
       128,
@@ -1512,7 +1512,7 @@
     ]
   },
   "item.powderKegs": {
-    "file": null,
+    "file": "item.powderKegs-rank-i-v1.png",
     "kind": "item",
     "size": [
       128,
