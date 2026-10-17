@@ -56,9 +56,13 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `combat.ts` | Threats, daily battles, the daily assault | T08 |
 | `land.ts` | Courtships, trades, fortification, reclaiming | T09 |
 | `rivals.ts` | Benchmark income, the weekly rival turn, Respect, fronts (Border Campaigns retired, R-26) | T10 |
-| `dominion.ts` | Dominion as the chronicle (D-18): path shares, Holdings, Renown from deeds (Patch 3 adds a stronghold taken and a counterattack held, D-25), path ranks | Patch 2 |
+| `dominion.ts` | Dominion as the chronicle (D-18): path shares, Holdings, Renown from deeds (Patch 3 adds a stronghold taken and a counterattack held, D-25; Patch 4 each rival's signature deeds, D-34), path ranks | Patch 2 |
 | `marches.ts` | Neglected marches harden (D-19): each rival march's preparation level | Patch 2 |
 | `sieges.ts` | Sieges (D-22): the standing siege's record, siege wear's decay and cap, flanking, a stronghold's garrison (D-23), fallen forces' strength (D-24), and the siege arithmetic (`fallsWithin`, `assaultDays`); the day's orders from a standing siege (`ordersFor`), fallbacks and counterattacks are settled in `combat.ts` | Patch 3 |
+| `personalities.ts` | Each rival march's own rules (D-27 to D-32): which rival rules a hex today, the Orc's war track and garrisons, the Goblin's greed, reading the Archmage's surges, fallbacks and the wilds by personality, the Dwarf's walls on the wilds; the `marchRules` day phase | Patch 4 |
+| `goblin.ts` | The Goblin's march (D-29): bribes and their price, his bids for the player's villages and the player's hold, buy-back offers | Patch 4 |
+| `surges.ts` | The Archmage's daily surges (D-31): drawing them at dawn (a `COMBAT_HOOKS.dawn` wrapper), Mage Tower foresight, bending a swell at rank V | Patch 4 |
+| `terms.ts` | Terms (D-33): each rival's stance from the six measures, the Goblin's buy-offs, surrenders, the Orc's last battle; accepting and refusing are in `world.ts` | Patch 4 |
 | `autoplay.ts` | The automatic player: the re-founding's catch-up player and the simulator's players (P2-09) | Patch 2 |
 | `refound.ts` | The re-founding (D-21): a campaign founded as of the journey's start, its real contracts carried over and every day since played and settled | Patch 2 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state | quality pass, 2026-10-07 |

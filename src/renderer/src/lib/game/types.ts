@@ -214,6 +214,8 @@ export interface RivalState {
   humbledUntil?: ISODate
   /** T12: the day it was resolved (Ch 14), for the pacing of the next. */
   resolvedOn?: ISODate
+  /** Patch 4 (R-12): the Dwarf yielded as a grudging vassal: no levy company joins the player. */
+  grudging?: boolean
   specialFund: number
   /** −3..+3 per front, from this rival's side. */
   frontTracks: Record<string, number>
@@ -451,6 +453,8 @@ export interface GrandBattle {
   outcome?: GrandOutcome
   /** T12: an event's id when an event raised it. */
   eventId?: string
+  /** Patch 4 (D-33, R-11): the Orc's last battle (a final Warhost or Ugrak's Challenge): won, he is conquered. */
+  final?: boolean
 }
 
 /** What a Grand Battle's result did (Ch 11 "Outcomes"), for the result card. */
@@ -645,8 +649,17 @@ export type EffectKind = Effect['kind']
 // ── The game log: events for the Herald and the Chronicle ────────────────────
 
 export type BattleOutcome = 'rout' | 'victory' | 'defeat'
-/** `counterattack`: Patch 3 (D-24), a fallen garrison striking back at the hex it lost. */
-export type ThreatKind = 'beasts' | 'mythic' | 'raid' | 'conquest' | 'counterattack'
+/** `counterattack`: Patch 3 (D-24), a fallen garrison striking back at the hex it lost. `surge`: Patch 4 (D-31), the Archmage's surge striking a hex of the player's in his march. */
+export type ThreatKind = 'beasts' | 'mythic' | 'raid' | 'conquest' | 'counterattack' | 'surge'
+
+/** Patch 4 (D-33): a rival's stance toward terms, from his hidden measures; only the band is shown (R-08). */
+export const STANCE_BANDS = ['defiant', 'wary', 'shaken', 'ready'] as const
+export type StanceBand = (typeof STANCE_BANDS)[number]
+/** Patch 4 (D-31): what the Archmage's surge does on its day. */
+export const SURGE_KINDS = ['swell', 'ebb', 'summoning', 'blessing', 'curse', 'strike'] as const
+export type SurgeKind = (typeof SURGE_KINDS)[number]
+/** Patch 4 (D-33): the terms a rival offers, and the Orc's last battles. */
+export type TermsOffer = 'buyOff' | 'surrender' | 'buyBack' | 'finalWarhost' | 'challenge'
 
 /**
  * Payloads by event kind. Open for later tasks: add a key here (one line each) and the
@@ -687,7 +700,7 @@ export interface GameEventMap {
    * `value`: Patch 3, the Assault it was fought at (the formula's, at the Valor it used; a led fight's at the Valor locked when it began).
    * `breach`: Patch 3 (D-22), a repulse that wore the garrison down within that Assault: the same assault would now take it.
    */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; value?: number; breach?: boolean; led?: boolean }
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; value?: number; breach?: boolean; led?: boolean; dissolved?: boolean }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
@@ -697,7 +710,7 @@ export interface GameEventMap {
     hexId: string
     from: Owner
     to: Owner
-    how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' | 'wilds'
+    how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' | 'wilds' | 'bribe'
     /** Patch 2: the fortification the hex had as it changed hands (a deed counts the levels broken). */
     fortification?: number
   }
@@ -711,8 +724,22 @@ export interface GameEventMap {
   standingSiege: { hexId: string; change: 'lapsed' }
   /** Patch 3 (D-24): the garrison beaten at `hexId` fell back to `to`, adding `strength` there. */
   fallback: { hexId: string; to: string; holder: Owner; strength: number }
+  /** Patch 4 (D-29): the player paid a hex's garrison in the Goblin's march to walk away; `garrison` is what an assault had to beat. */
+  bribe: { hexId: string; owner: Owner; price: number; garrison: number }
+  /** Patch 4 (D-29): the Goblin's bid for one of the player's villages: placed at his turn, resolved at the next week close. */
+  goblinBid: { hexId: string; stage: 'placed' | 'held' | 'lost' | 'void'; offer: number; hold?: number }
+  /** Patch 4 (D-31): the Archmage's surge for the day; `target` when it touched a hex the player could assault that day. */
+  surge: { surge: SurgeKind; hexId?: string; companyId?: string; mult?: number; target?: boolean; steered?: boolean }
+  /** Patch 4 (D-28): the Orc's war track against the player moved (positive: the player's way). */
+  orcTrack: { from: number; to: number }
+  /** Patch 4 (D-33): a rival's stance band moved. */
+  stance: { rival: RivalId; from: StanceBand; to: StanceBand }
+  /** Patch 4 (D-33): terms offered, accepted, refused or lapsed; the Orc's last battle won or lost. */
+  terms: { rival: RivalId; offer: TermsOffer; stage: 'offered' | 'accepted' | 'refused' | 'lapsed' | 'won' | 'lost'; hexId?: string; gift?: string }
+  /** Patch 4 (D-33): a hex the Dwarf gave up as a grudging vassal rose; it was settled, or lost. */
+  restless: { hexId: string; stage: 'uprising' | 'settled' | 'lost' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
-  courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner }
+  courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner; rivals?: RivalId[] }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
   deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId }
   /** Rival news the Herald may pass on as rumor or report. */
@@ -822,7 +849,7 @@ export interface Deal {
   id: string
   rival: RivalId
   /** T12 adds `buyout`: a coalition member paid to walk away (Ch 13). */
-  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout'
+  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout' | 'buyOff'
   madeOn: ISODate
   until?: ISODate
   hexId?: string
@@ -877,6 +904,79 @@ export interface CampaignState {
   standingSiege?: StandingSiege
   /** Patch 3 (D-24): fallen garrisons, while they last. Absent means none. */
   fallbacks?: Fallback[]
+  /** Patch 4 (D-27 to D-32): what each march's rules remember. Absent means none yet. */
+  personalities?: PersonalitiesState
+  /** Patch 4 (D-33): each rival's stance and terms so far, and the Goblin's hired companies. Absent means none yet. */
+  terms?: TermsState
+}
+
+/** Patch 4 (C-35): what the Goblin gives for a buy-off: a hex, an Armory item, or hired companies. Never reputation. */
+export type TermsGift = { kind: 'hex'; hexId: string } | { kind: 'item'; itemId: string } | { kind: 'hires'; count: number }
+
+/** Patch 4 (D-33): one rival's terms record. */
+export interface RivalTerms {
+  /** His stance band at the last week close (hidden scores, shown band). */
+  band?: StanceBand
+  /** Buy-offs refused or lapsed (the Goblin's). */
+  refused?: number
+  /** The day he last offered each kind of terms, or fought his last battle (`lastBattle`). */
+  last?: Partial<Record<string, ISODate>>
+}
+
+/** Patch 4 (D-33): the rivals' terms. */
+export interface TermsState {
+  byRival: Partial<Record<RivalId, RivalTerms>>
+  /** The Goblin's hired companies from a buy-off, with the player through `until`. */
+  hires?: { count: number; until: ISODate }
+}
+
+/** Patch 4 (D-27 to D-32): what the four marches' rules remember between days. Every field may be absent in an older save. */
+export interface PersonalitiesState {
+  /** The Orc's war track against the player, −3 to +3, positive the player's way (D-28). */
+  orcTrack?: number
+  /** The Goblin's greed steps, 0 up to `RULES.personalities.goblin.greed.maxSteps` (D-29). */
+  goblinGreed?: number
+  /** The campaign week his greed last rose, and how many steps it rose that week. */
+  goblinGreedRose?: { week: number; n: number }
+  /** The Archmage's surges, fixed at dawn for their day (D-31). */
+  surges?: Surge[]
+  /** The Goblin's bids for the player's villages, waiting for the next week close (D-29). */
+  goblinBids?: GoblinBid[]
+  /** Hexes an Archmage garrison dissolved from, steering the next dawn's surge (D-32). */
+  dissolved?: { hexId: string; day: ISODate }[]
+  /** The day of the last surge the player bent from a swell into an ebb (the Archmage's path at rank V). */
+  surgeBentOn?: ISODate
+  /** Hexes a surge made mythic, until the day they return to beasts (D-31). */
+  summoned?: { hexId: string; until: ISODate }[]
+  /** Hexes the Dwarf gave up as a grudging vassal, restless until `until` (D-33). */
+  restless?: { hexId: string; until: ISODate }[]
+}
+
+/** Patch 4 (D-31): one day's surge in the Archmage's march. */
+export interface Surge {
+  date: ISODate
+  surge: SurgeKind
+  hexId?: string
+  companyId?: string
+  /** A swell's or ebb's multiple on the hex's garrison for the day. */
+  mult?: number
+  /** It landed beside a hex the player could assault that day. */
+  target?: boolean
+  /** The player bent it from a swell into an ebb (the Archmage's rank V). */
+  bent?: boolean
+  /** A strike's strength, fixed when it was drawn. */
+  strength?: number
+  /** It landed beside the hex an Archmage garrison dissolved from the day before (C-44). */
+  steered?: boolean
+}
+
+/** Patch 4 (D-29): the Goblin's bid for one of the player's villages, and the player's hold against it. */
+export interface GoblinBid {
+  hexId: string
+  offer: number
+  placedOn: ISODate
+  /** Reputation the player spent to hold it, counted × Trust at the close. */
+  hold?: number
 }
 
 /** Patch 3 (D-22, C-22): a standing siege names its target only; the Marshal picks the companies each day. */
@@ -896,7 +996,29 @@ export interface CharterSpan {
 // ── Dominion as the chronicle and neglected marches (Patch 2) ────────────────
 
 /** The deeds that add Renown to a path (D-18). */
-export type DeedKind = 'hexTaken' | 'battleWon' | 'heldAgainstBeasts' | 'heldAgainstMythic' | 'grandBattleWon' | 'resolved' | 'strongholdTaken' | 'counterattackHeld'
+export type DeedKind =
+  | 'hexTaken'
+  | 'battleWon'
+  | 'heldAgainstBeasts'
+  | 'heldAgainstMythic'
+  | 'grandBattleWon'
+  | 'resolved'
+  | 'strongholdTaken'
+  | 'counterattackHeld'
+  /** Patch 4 (D-34): each rival's signature deeds, to his path alone. */
+  | 'battleLost'
+  | 'retaken'
+  | 'dealTaken'
+  | 'bargain'
+  | 'bribeBeaten'
+  | 'counterBidBeaten'
+  | 'wallsBroken'
+  | 'siegeEndured'
+  | 'siegeBroken'
+  | 'surgeWeathered'
+  | 'surgeSeized'
+  | 'ritualEndured'
+  | 'summonedDefeated'
 
 export interface PathState {
   /** Permanent: the sum of the path's deeds. */
@@ -932,6 +1054,10 @@ export type WorldOffer =
   | { kind: 'goblinBuys'; hexId: string; price: number; until: ISODate }
   | { kind: 'uprising'; hexId: string; price: number; until: ISODate }
   | { kind: 'envoys'; rival: RivalId; foe: RivalId; until: ISODate }
+  /** Patch 4 (D-29, C-44): the Goblin's beaten garrison offers to buy back the hex it lost, while its window lasts. */
+  | { kind: 'buyBack'; hexId: string; price: number; until: ISODate }
+  /** Patch 4 (D-33): a rival's terms: the Goblin's buy-off (with its gift), or a surrender. */
+  | { kind: 'terms'; rival: RivalId; offer: 'buyOff' | 'surrender'; until: ISODate; gift?: TermsGift }
 
 export interface WorldState {
   /** Week closes in a row the player's Power stood at 1.5× the average rival's, before any rival was resolved (the Rising Crown). */
@@ -1153,6 +1279,8 @@ export type EffectSourceRef =
   | { kind: 'event'; id: string }
   /** Patch 2 (D-18): a path's rank, standing in for its perks until Patch 4. */
   | { kind: 'pathRank'; path: RivalId; rank: number }
+  /** Patch 4 (D-31): the Archmage's surge that blessed or cursed a company on its day. */
+  | { kind: 'surge'; date: ISODate }
 
 export interface Contribution {
   from: EffectSourceRef

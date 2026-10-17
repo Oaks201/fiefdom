@@ -49,8 +49,10 @@ import {
   withWorld,
   worldOf
 } from './state'
-import { RIVAL_IDS, type CampaignState, type Coalition, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type RivalState } from './types'
+import { RIVAL_IDS, type CampaignState, type Coalition, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type RivalState, type TermsGift } from './types'
 import { eventInForce, eventsWeek } from './world/events'
+import { pactBars, personalitiesOf, withPersonalities } from './personalities'
+import { giftLabel, openTerms, patchRivalTerms, termsWeek, withHires } from './terms'
 
 export { auctionBid, eventHint, eventInForce, keepVillage, lendToEnvoy, nextFullMoon, type WorldAction } from './world/events'
 
@@ -150,7 +152,8 @@ function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, 
 
 /** Defection (Ch 14): the rival holds no village, and at least half of its original villages were won by influence or trade. */
 export function defects(state: CampaignState, rival: RivalId): boolean {
-  if (state.rivals[rival].status !== 'active') return false
+  // Patch 4 (R-13, C-41): the Orc never defects; he is only conquered.
+  if (state.rivals[rival].status !== 'active' || rival === 'orc') return false
   const tally = defectionTally(state, rival)
   return tally.holds === 0 && (tally.won.influence + tally.won.trade) * 2 >= tally.original.length
 }
@@ -189,7 +192,7 @@ export function acceptGoblinOffer(state: CampaignState, hexId: string, today: IS
 
 // ── Accords (Ch 14, D-01) ────────────────────────────────────────────────────
 
-export type AccordRefusal = 'campaignOver' | 'rivalResolved' | 'respect' | 'castle' | 'coalition' | 'contractRunning'
+export type AccordRefusal = 'campaignOver' | 'rivalResolved' | 'respect' | 'castle' | 'coalition' | 'contractRunning' | 'orcNeverSigns'
 
 export interface AccordGate {
   ok: boolean
@@ -213,6 +216,8 @@ export function accordGate(state: CampaignState, rival: RivalId, today: ISODate 
   const no = (reason: AccordRefusal): AccordGate => ({ ok: false, reason, threshold, respect })
   if (!isPlayable(state)) return no('campaignOver')
   if (state.rivals[rival].status !== 'active') return no('rivalResolved')
+  // Patch 4 (R-13, C-41): the Orc signs no Accord; he is only conquered.
+  if (rival === 'orc') return no('orcNeverSigns')
   if (state.castleTier < RULES.contracts.accord.castleTier) return no('castle')
   if (inCoalition(state, rival, today)) return no('coalition')
   if (state.contracts.active || state.contracts.queued) return no('contractRunning')
@@ -590,6 +595,122 @@ function capitalOutcome(state: CampaignState, battle: GrandBattle, ctx: OutcomeC
 GRAND_HOOKS.capital = capitalOutcome
 GRAND_HOOKS.coalitionOffensive = offensiveOutcome
 GRAND_HOOKS.siege = siegeOutcome
+GRAND_HOOKS.final = finalOutcome
+
+// ── Terms (Patch 4, D-33) ────────────────────────────────────────────────────
+
+/** The Orc's last battle (R-11, C-40): won, he is conquered, as the pacing allows; lost, he comes again after a wait. Either way, posted as his terms. */
+function finalOutcome(input: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome } {
+  const offer = battle.trigger === 'event' ? 'challenge' : 'finalWarhost'
+  ctx.emit('terms', { rival: 'orc', offer, stage: ctx.won ? 'won' : 'lost', hexId: battle.hexId })
+  if (!ctx.won) return { state: input, outcome: {} }
+  return { state: resolveRival(input, 'orc', 'conquered', ctx.day, ctx.emit), outcome: {} }
+}
+
+export type TermsRefusal = 'campaignOver' | 'noOffer'
+
+/**
+ * The player accepts `rival`'s open terms (D-33). A surrender resolves him as an abdication (C-39): his
+ * claimable land and his company pass to the player; the Dwarf yields as a grudging vassal, with no
+ * company and the hexes he gave up restless (R-12). The Goblin's buy-off gives its gift and seals a
+ * 4-week pact to leave his march alone (C-35).
+ */
+export function acceptTerms(state: CampaignState, rival: RivalId, today: ISODate = openDayOf(state)): { ok: boolean; reason?: TermsRefusal; state: CampaignState } {
+  if (!isPlayable(state)) return { ok: false, reason: 'campaignOver', state }
+  const offer = openTerms(state, today).find((o) => o.rival === rival)
+  if (!offer) return { ok: false, reason: 'noOffer', state }
+  const events = new EventBuffer()
+  const emit = events.emitter(today)
+  let next = withWorld(state, { offers: worldOf(state).offers.filter((o) => o !== offer) })
+  emit('terms', { rival, offer: offer.offer, stage: 'accepted', ...(offer.gift ? { gift: giftLabel(offer.gift) } : {}) })
+  if (offer.offer === 'surrender') {
+    if (rival === 'dwarf') next = patchRival(next, 'dwarf', { grudging: true })
+    const before = new Set(next.hexes.filter((h) => h.owner === rival).map((h) => h.id))
+    next = resolveRival(next, rival, 'abdicated', today, emit)
+    if (rival === 'dwarf') next = makeRestless(next, [...before].filter((id) => hexOf(next, id)?.owner === 'player'), today)
+    return { ok: true, state: events.flush(next) }
+  }
+  next = giveGift(next, offer.gift, today, emit)
+  const T = RULES.terms.goblin
+  const dealNo = next.log.filter((e) => e.kind === 'deal').length + 1
+  next = { ...next, deals: [...next.deals, { id: `deal-${dealNo}`, rival: 'goblin', kind: 'buyOff', madeOn: today, until: addDays(today, T.pactWeeks * DAYS - 1), price: 0 }] }
+  emit('deal', { rival: 'goblin', deal: 'buyOff', price: 0 })
+  // His march is left alone: a standing siege there is lifted.
+  const siege = next.standingSiege
+  const besieged = siege ? hexOf(next, siege.hexId) : undefined
+  if (siege && besieged && pactBars(next, besieged, today)) {
+    const { standingSiege: _gone, ...rest } = next
+    next = rest
+  }
+  return { ok: true, state: events.flush(next) }
+}
+
+/** What a buy-off gives (C-35): its hex at once, its item to the stash, or its hired companies for 4 weeks. */
+function giveGift(input: CampaignState, gift: TermsGift | undefined, today: ISODate, emit: Emit): CampaignState {
+  let state = input
+  if (!gift) return state
+  if (gift.kind === 'hex') {
+    const hex = hexOf(state, gift.hexId)
+    if (hex && hex.owner !== 'player' && isClaimableKind(hex)) {
+      state = replaceHex(state, toPlayer(hex, today, false))
+      emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'trade', fortification: hex.fortification })
+    }
+  } else if (gift.kind === 'item') {
+    const armory = state.armory ?? { wings: [], elites: [], stash: [] }
+    state = { ...state, armory: { ...armory, stash: [...armory.stash, gift.itemId] } }
+  } else {
+    state = withHires(state, { count: gift.count, until: addDays(today, RULES.terms.goblin.hireWeeks * DAYS - 1) })
+    state = refreshRoster(state)
+  }
+  return state
+}
+
+/** The player refuses `rival`'s open terms (X-24 item 4): they come back no sooner than 4 weeks later; a refused buy-off makes the next one richer. */
+export function refuseTerms(state: CampaignState, rival: RivalId, today: ISODate = openDayOf(state)): { ok: boolean; reason?: TermsRefusal; state: CampaignState } {
+  if (!isPlayable(state)) return { ok: false, reason: 'campaignOver', state }
+  const offer = openTerms(state, today).find((o) => o.rival === rival)
+  if (!offer) return { ok: false, reason: 'noOffer', state }
+  const events = new EventBuffer()
+  events.emitter(today)('terms', { rival, offer: offer.offer, stage: 'refused' })
+  let next = withWorld(state, { offers: worldOf(state).offers.filter((o) => o !== offer) })
+  if (offer.offer === 'buyOff') next = patchRivalTerms(next, rival, { refused: (next.terms?.byRival[rival]?.refused ?? 0) + 1 })
+  return { ok: true, state: events.flush(next) }
+}
+
+/** The hexes the Dwarf gave up as a grudging vassal (R-12): restless for some weeks, a village at half loyalty and Settling. */
+function makeRestless(input: CampaignState, ids: readonly string[], today: ISODate): CampaignState {
+  const D = RULES.terms.dwarf
+  const until = addDays(today, D.restlessWeeks * DAYS - 1)
+  let state = input
+  for (const id of ids) {
+    const hex = hexOf(state, id)
+    if (!hex?.village) continue
+    state = replaceHex(state, { ...hex, village: { loyalty: hex.village.loyalty * RULES.land.villageLoyalty.afterConquestShare, settlingUntil: until } })
+  }
+  return withPersonalities(state, { restless: [...(personalitiesOf(state).restless ?? []), ...ids.map((hexId) => ({ hexId, until }))] })
+}
+
+/**
+ * The Dwarf's restless hexes at a week close (R-12): each restless village of the player's may rise
+ * (`uprisingChance`), an offer to settle it for `settlePerBand` × band for 7 days, which the Village
+ * Uprising's own rules close (A-171). Their time over, they are restless no more. Never undoes his
+ * resolution.
+ */
+function restlessWeek(input: CampaignState, w: { day: ISODate; emit: Emit }): CampaignState {
+  const list = personalitiesOf(input).restless
+  if (!list || list.length === 0) return input
+  let state = input
+  const D = RULES.terms.dwarf
+  const open = new Set(worldOf(state).offers.filter((o) => o.kind === 'uprising').map((o) => o.hexId))
+  for (const r of list) {
+    const hex = hexOf(state, r.hexId)
+    if (r.until < w.day || !hex?.village || hex.owner !== 'player' || open.has(hex.id)) continue
+    if (!chance(state.campaign.seed, w.day, `restless:${hex.id}`, D.uprisingChance)) continue
+    state = withWorld(state, { offers: [...worldOf(state).offers, { kind: 'uprising', hexId: hex.id, price: D.settlePerBand * bandOf(hex), until: addDays(w.day, RULES.worldAi.offerDays) }] })
+    w.emit('restless', { hexId: hex.id, stage: 'uprising' })
+  }
+  return withPersonalities(state, { restless: list.filter((r) => r.until >= w.day) })
+}
 
 // ── The week phase ───────────────────────────────────────────────────────────
 
@@ -607,6 +728,9 @@ export function worldWeek(input: CampaignState, w: WorldWeek): CampaignState {
   if (!isPlayable(input)) return input
   // Resolutions first, so a rival that defects at this close sets off the First Fall at the same close.
   let state = resolutionsWeek(input, w.day, w.emit)
+  // Patch 4 (D-33): the rivals' stances and terms, and the Dwarf's restless hexes.
+  state = termsWeek(state, w)
+  state = restlessWeek(state, w)
   state = coalitionsWeek(state, w)
   state = eventsWeek(state, w)
   if (state.campaign.status === 'active') state = ascendancyWeek(state, w)

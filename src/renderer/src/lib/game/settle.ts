@@ -20,7 +20,11 @@ import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions
 import { chronicle } from './dominion'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
+import { resolveGoblinBids } from './goblin'
+// Patch 4 (D-31): installs the Archmage's surges into combat's dawn.
+import './surges'
 import { prepareMarches } from './marches'
+import { marchRulesDay } from './personalities'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
@@ -42,7 +46,9 @@ export const DAY_PHASE_NAMES = [
   'grandBattlesAuto',
   'expireTimers',
   'contractEnd',
-  'chronicle'
+  'chronicle',
+  /** Patch 4 (D-28): the day's battles with the Orc move his war track; his beaten attacks cost him army. */
+  'marchRules'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -340,7 +346,9 @@ const weeklyIncomePhase: Phase = (input, ctx) => {
  */
 const courtshipsPhase: Phase = (state, ctx) => {
   const week = { day: ctx.day, realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn), emit: ctx.emit }
-  const resolved = recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, ctx.day), week), week))
+  // Patch 4 (D-29, P4-03): the Goblin's bids for the player's villages resolve first, against loyalty and the player's holds.
+  const bids = resolveGoblinBids(state, ctx.day, week.realmConsistency, ctx.emit)
+  const resolved = recoverLoyalty(resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(bids, ctx.day), week), week))
   // Villages courted away can raise an Incursion (A-33, T11).
   return raiseIncursions(state, resolved, addDays(ctx.day, 1), ctx.emit)
 }
@@ -414,6 +422,9 @@ const marchesPhase: Phase = (state, ctx) => prepareMarches(state, ctx.day, ctx.e
 /** The chronicle (D-18): the deeds the log holds since it last read it, their Renown, and new path ranks. */
 const chroniclePhase: Phase = (state, ctx) => chronicle(state, ctx.emit)
 
+/** Patch 4 (D-28): the march rules that read the day once it has closed: the Orc's war track and his attrition. */
+const marchRulesPhase: Phase = (state, ctx) => marchRulesDay(state, ctx.day, ctx.emit)
+
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
@@ -423,7 +434,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   grandBattlesAuto, // T11
   expireTimers,
   contractEnd,
-  chronicle: chroniclePhase // Patch 2 (D-18)
+  chronicle: chroniclePhase, // Patch 2 (D-18)
+  marchRules: marchRulesPhase // Patch 4 (D-28)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */

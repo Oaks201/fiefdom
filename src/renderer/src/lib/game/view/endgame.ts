@@ -9,7 +9,8 @@
  * is told as chronicle, in the same plain words as the victory.
  */
 import { RULES } from '../rules'
-import { openDayOf, weekOn } from '../state'
+import { isPlayable, openDayOf, weekOn } from '../state'
+import { giftLabel, openTerms } from '../terms'
 import { t, type TextFacts } from '../text'
 import type { CampaignState, GameEvent, ISODate, RivalId } from '../types'
 import { accordView, chronicleRecord, coalitionView, ultimatumView, type AccordRefusal } from '../world'
@@ -18,7 +19,7 @@ import { resultView } from './battle'
 import { dealsView, type DealLine } from './diplomacy'
 import { milestoneCard } from './armory'
 import { amount } from './refusals'
-import { realmConsistencyNow, rivalName, rivalNames } from './shell'
+import { giftWords, realmConsistencyNow, rivalName, rivalNames } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
 const TENTH = 10 // rules-ok: weights shown to 0.1
@@ -52,6 +53,8 @@ function accordRefusalLabel(code: AccordRefusal, rival: RivalId, threshold: numb
       return `${rivalName(rival)} stands in a coalition against you.`
     case 'contractRunning':
       return 'A contract holds the slot. An Accord is the one running contract for its 30 days (D-01), so it waits until the slot is free.'
+    case 'orcNeverSigns':
+      return `${rivalName(rival)} signs no Accord. He is only conquered.`
   }
 }
 
@@ -264,4 +267,41 @@ export function momentsFor(state: CampaignState, events: readonly GameEvent[]): 
     }
   }
   return [...out, ...endings]
+}
+
+// ── Terms (Patch 4, D-33) ────────────────────────────────────────────────────
+
+export interface TermsBanner {
+  rival: RivalId
+  name: string
+  offer: 'buyOff' | 'surrender'
+  /** The last day it stands open. */
+  until: ISODate
+  textId: string
+  text: string
+  /** What accepting does, in plain words. */
+  accept: string
+  /** What refusing does. */
+  refuse: string
+}
+
+/**
+ * The terms open to the player today (D-33): a Goblin's buy-off or a surrender, each with what
+ * accepting and refusing do. No stance score, threshold or measure reaches it (C-49).
+ */
+export function termsBanners(state: CampaignState, today: ISODate = openDayOf(state)): TermsBanner[] {
+  if (!isPlayable(state)) return []
+  return openTerms(state, today).map((o) => {
+    const name = rivalName(o.rival)
+    const gift = o.gift ? giftWords(giftLabel(o.gift)) : ''
+    const textId = `herald.terms.offered.${o.offer}`
+    const accept =
+      o.offer === 'buyOff'
+        ? `${gift}, and a pact for ${RULES.terms.goblin.pactWeeks} weeks: you leave his march alone (no assault, siege, Grand Battle, bribe or courtship there), and he neither raids you nor bids for your villages.`
+        : o.rival === 'dwarf'
+          ? `He yields as a grudging vassal: his land passes to you and he is resolved. He sends no company, and the villages he gives up stay restless for ${RULES.terms.dwarf.restlessWeeks} weeks.`
+          : 'He abdicates: his land passes to you, his company joins you, and he is resolved.'
+    const refuse = `The war goes on; he may offer again in ${RULES.terms.retryWeeks} weeks${o.offer === 'buyOff' ? ', and a refused buy-off makes his next one richer' : ''}.`
+    return { rival: o.rival, name, offer: o.offer, until: o.until, textId, text: t(textId, { rival: name, gift }), accept, refuse }
+  })
 }

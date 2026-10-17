@@ -14,7 +14,9 @@
  */
 import { diffDays } from './clock'
 import { claimableBy, isStronghold, neighbors, type HexIndex } from './map'
+import { pathRank } from './dominion'
 import { preparationMult } from './marches'
+import { marchGarrisonMult } from './personalities'
 import { RULES } from './rules'
 import type { CampaignState, Fallback, HexState, ISODate, StandingSiege } from './types'
 
@@ -41,23 +43,38 @@ export function siegeStands(state: CampaignState, siege: StandingSiege | undefin
   return siege !== undefined && claimableBy(state.hexes, siege.hexId, 'player', 'assault')
 }
 
-/** A hex's wear after a day it was not assaulted (C-20): `perDay` of it gone (a stronghold's `stronghold`, P3-02), and cleared once it is a trace. */
-export function decayedWear(wear: number, stronghold = false): number {
-  const left = wear * (1 - (stronghold ? S.wearDecay.stronghold : S.wearDecay.perDay))
+/**
+ * A hex's wear after a day it was not assaulted (C-20): `rate` of it gone (`perDay`; a stronghold's
+ * `stronghold`, P3-02; the Dwarf's march slower, N-03), and cleared once it is a trace.
+ */
+export function decayedWear(wear: number, rate: number = S.wearDecay.perDay): number {
+  const left = wear * (1 - rate)
   return left < S.wearDecay.clearBelow ? 0 : left
 }
 
-/** A stronghold's multiple on its garrison while the player doesn't hold it (D-23: `garrisonMult`), else 1. */
-export function strongholdMult(hexes: readonly HexState[], hex: Pick<HexState, 'id' | 'owner'>): number {
-  return hex.owner !== 'player' && isStronghold(hexes, hex.id) ? S.stronghold.garrisonMult : 1
+/** A stronghold's multiple on its garrison while the player doesn't hold it (D-23: `garrisonMult`; `mult` from the Dwarf's path at rank V, C-36), else 1. */
+export function strongholdMult(hexes: readonly HexState[], hex: Pick<HexState, 'id' | 'owner'>, mult: number = S.stronghold.garrisonMult): number {
+  return hex.owner !== 'player' && isStronghold(hexes, hex.id) ? mult : 1
+}
+
+/** What a stronghold weighs against the player's assault (D-23): its multiple, less from the Dwarf's path at rank V (C-36). */
+function strongholdWeight(state: CampaignState): number {
+  const perk = RULES.dominion.rankPerks.dwarf
+  return pathRank(state, 'dwarf') >= perk.strongholdRank ? perk.strongholdMult : S.stronghold.garrisonMult
+}
+
+/** The share of a hex's walls that count against the player's assault: less with each rank of the Dwarf's path (C-36). */
+export function fortificationShare(state: CampaignState): number {
+  return Math.max(0, 1 - RULES.dominion.rankPerks.dwarf.fortificationCut * pathRank(state, 'dwarf'))
 }
 
 /**
  * The multiple on `hex`'s garrison as the player's assault weighs it on `day`: its march's
- * preparation (D-19) × a stronghold's (D-23). A rival's own den assault reads neither (C-29).
+ * preparation (D-19) × a stronghold's (D-23) × its march's rules (Patch 4: the Orc's weaker
+ * garrisons, the Archmage's surges). A rival's own den assault reads none of it (C-29).
  */
 export function garrisonMult(state: CampaignState, hex: HexState, day: ISODate): number {
-  return preparationMult(state, hex, day) * strongholdMult(state.hexes, hex)
+  return preparationMult(state, hex, day) * strongholdMult(state.hexes, hex, strongholdWeight(state)) * marchGarrisonMult(state, hex, day)
 }
 
 /** The most wear a hex can carry: the garrison it wears, as an assault must beat it (fortification and preparation counted). */

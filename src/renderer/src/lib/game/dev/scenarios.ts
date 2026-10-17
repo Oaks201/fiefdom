@@ -166,7 +166,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
   {
     id: 'goblinTrade',
     title: 'Goblin Respect 25, land touching its March, 600 reputation',
-    detail: 'Buy one of the Goblin’s March hexes from the Diplomacy page (or the hex panel).',
+    detail: 'Bribe a hex of the Goblin’s march from the hex panel (Patch 4: his hexes have a price, not a deal).',
     apply: (input, today) => {
       const state = claimRoad(input, 'merchantHall', MARCHES, today)
       const goblin = state.rivals.goblin

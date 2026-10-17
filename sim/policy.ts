@@ -12,11 +12,13 @@
  * - **paths:<rivals>** (Patch 2, blueprint section 7): greedy, steered along the named rivals' paths,
  *   shared evenly (`paths:orc` is the focused player; `paths:orc+goblin` two halfway;
  *   `paths:orc+goblin+dwarf` three a third each; `paths:all` all four evenly).
+ * - **smarter+paths:<rivals>** (Patch 4, G-18): the smarter player steered along the named paths; it takes
+ *   the terms it is offered but refuses its own path's rival until that path reaches rank V (C-46).
  */
 import { autoplay, GREEDY, type AutoplayPlan } from '../src/renderer/src/lib/game/autoplay'
 import { RIVAL_IDS, type CampaignState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
 
-export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}`
+export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}` | `smarter+paths:${string}`
 
 export interface PolicyDay {
   policy: PolicyId
@@ -29,9 +31,12 @@ export interface PolicyDay {
 }
 
 /** The rivals a `paths:` policy follows. */
+const SMARTER_PATHS = 'smarter+'
+
 export function policyPaths(policy: PolicyId): RivalId[] | null {
-  if (!policy.startsWith('paths:')) return null
-  const named = policy.slice('paths:'.length)
+  const bare = policy.startsWith(SMARTER_PATHS) ? policy.slice(SMARTER_PATHS.length) : policy
+  if (!bare.startsWith('paths:')) return null
+  const named = bare.slice('paths:'.length)
   if (named === 'all') return [...RIVAL_IDS]
   const rivals = named.split('+')
   for (const r of rivals) if (!(RIVAL_IDS as readonly string[]).includes(r)) throw new Error(`No rival "${r}" in policy ${policy}`)
@@ -44,6 +49,7 @@ export function planOf(policy: PolicyId): AutoplayPlan {
   if (policy === 'push') return { ...GREEDY, push: true }
   if (policy === 'skirmish') return { ...GREEDY, skirmish: true }
   const paths = policyPaths(policy)
+  if (paths && policy.startsWith(SMARTER_PATHS)) return { ...GREEDY, paths, smarter: true }
   return paths ? { ...GREEDY, paths } : GREEDY
 }
 

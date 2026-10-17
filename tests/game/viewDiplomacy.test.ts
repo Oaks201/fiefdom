@@ -20,10 +20,11 @@ import { realm, withCrossings, withPurse } from './support/realm'
 
 /**
  * Every number a rival panel shows outside its public fields (Respect, the Respect marks with the
- * rules they open, and the front tracks), with its path; numbers written inside its text count too.
+ * rules they open, the front tracks, and Patch 4's march lines: the Orc's war track, the Dwarf's walls,
+ * hired companies and their dates, C-49), with its path; numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path)) return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path)) return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -45,8 +46,10 @@ test('Convention 6: across every day of a 70-week settled trace, rival panels ho
       const shown = shownNumbers(rivalPanel(state, r))
       // None of the hidden values shows, exact or rounded…
       for (const h of hidden) assert.ok(!shown.some((x) => x.n === h || x.n === Math.round(h)), `day ${day}, ${r}: ${h} leaked`)
-      // …and unrevealed, a panel shows no number at all beyond Respect, its marks and the front tracks.
+      // …and unrevealed, a panel shows no number at all beyond Respect, its marks, the front tracks and its march lines…
       assert.deepEqual(shown, [], `day ${day}, ${r}`)
+      // …and the Goblin's lines never put a number to his greed (C-49).
+      if (r === 'goblin') assert.ok(rivalPanel(state, r).march.filter((m) => !m.label.includes('hired')).every((m) => !/\d/.test(m.label)), `day ${day}: his prices`)
       checked++
     }
     if (day % 70 === 69) {
@@ -103,10 +106,11 @@ test('Ch 17: a deal struck gets the rival’s one-line reaction, its placeholder
   assert.match(line.text, /135/)
 })
 
-test('Ch 12: the Respect marks at 25, 40, 50, 60 and 75, and what each opens (the Goblin trades from 25)', () => {
+test('Ch 12: the Respect marks at 25, 40, 50, 60 and 75, and what each opens (the Goblin’s hex trades need no Respect, C-43)', () => {
   const goblin = respectMarks('goblin', 30)
   assert.deepEqual(goblin.map((m) => m.at), [25, 40, 50, 60, 75])
-  assert.ok(goblin[0].opens.includes('sellsHex') && goblin[0].opens.includes('raidsWeaker'))
+  assert.ok(goblin[0].opens.includes('raidsWeaker'))
+  assert.ok(!goblin.some((m) => m.opens.includes('sellsHex') || m.opens.includes('buysHex')), 'his hexes are bribed, and he buys at any Respect')
   assert.deepEqual(goblin.map((m) => m.reached), [true, false, false, false, false])
   const orc = respectMarks('orc', 0)
   assert.ok(orc.find((m) => m.at === 50)?.opens.includes('sellsHex'))

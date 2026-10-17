@@ -42,19 +42,19 @@ test('D-01: proposing an Accord while a contract runs is refused with a clear re
   // A week of good days settled, so Realm Consistency (and the Accord's expected Respect) is above 0.
   const state = settle(respectful(withCastle(realm(7, ledger), 3), 60), ledger, chicago('2026-10-16')).state
   const today = openDayOf(state)
-  const open = accordPanel(state, 'orc', today)
+  const open = accordPanel(state, 'archmage', today)
   assert.equal(open.open, true)
   assert.ok(open.expectedGain > 0)
   const busy = sealContract(state, { id: 'c-1', termDays: 3 }, today).state
-  const refused = accordPanel(busy, 'orc', today)
+  const refused = accordPanel(busy, 'archmage', today)
   assert.equal(refused.open, false)
   assert.equal(refused.reason?.code, 'contractRunning')
   assert.match(refused.reason?.label ?? '', /contract slot|holds the slot/)
-  const sealed = sealAccord(state, 'orc', { id: 'a-1' }, today)
+  const sealed = sealAccord(state, 'archmage', { id: 'a-1' }, today)
   assert.ok(sealed.ok)
   const page = contractPageView(sealed.state, today)
   assert.equal(page.running?.contract.kind, 'accord')
-  assert.equal(page.running?.accord?.rival, 'orc')
+  assert.equal(page.running?.accord?.rival, 'archmage')
   assert.equal(accordPanel(sealed.state, 'goblin', today).reason?.code, 'contractRunning')
 })
 

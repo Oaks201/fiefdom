@@ -10,6 +10,8 @@ import { tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { CODEX } from '../../src/renderer/src/lib/game/codex'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { ordersEstimate, ordersValidity, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { balance } from '../../src/renderer/src/lib/game/economy'
+import { bribeOffer } from '../../src/renderer/src/lib/game/goblin'
 import { challenge } from '../../src/renderer/src/lib/game/grand'
 import { bidCheck, fortifyOffer, offerDeal, reclaimOffer } from '../../src/renderer/src/lib/game/land'
 import { holdingSources, holdings, pathTotals } from '../../src/renderer/src/lib/game/dominion'
@@ -18,6 +20,8 @@ import { shuffle } from '../../src/renderer/src/lib/game/rng'
 import { rosterDetail } from '../../src/renderer/src/lib/game/roster'
 import { settle, valorOn } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
+import { bendSurge } from '../../src/renderer/src/lib/game/surges'
+import { realmConsistencyNow } from '../../src/renderer/src/lib/game/view/shell'
 import { BUILDING_IDS, type CampaignState, type HexState, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
 import {
@@ -234,6 +238,21 @@ test('T15: every action the hex panel offers matches the engine, for 200 seeded 
             break
           case 'reclaim':
             engine = reclaimOffer(state, id, today).ok
+            break
+          case 'bribe':
+            engine = bribeOffer(state, id, realmConsistencyNow(state), today).ok
+            break
+          case 'hold':
+            engine = balance(state.purse) > 0
+            break
+          case 'sellBack':
+            engine = state.rivals.goblin.status === 'active'
+            break
+          case 'keep':
+            engine = balance(state.purse) >= (a.cost ?? 0)
+            break
+          case 'bend':
+            engine = bendSurge(state, today).ok
             break
         }
         assert.equal(a.available, engine, `${a.kind} on ${id}`)

@@ -245,7 +245,7 @@ test('Test 9 (part): settlement resolves a courtship once, at the week close; se
 
 // ── Deals ────────────────────────────────────────────────────────────────────
 
-test('Ch 6 buy a hex: a ring-4 village from the Dwarf costs 50 × 4 × 2.0 × 1.5 = 600; refused at Respect 49, allowed from the Goblin at 25', () => {
+test('Ch 6 buy a hex: a ring-4 village from the Dwarf costs 50 × 4 × 2.0 × 1.5 = 600; refused at Respect 49; the Goblin’s are bribed instead (Patch 4, C-43)', () => {
   const { state: s0, id } = rivalVillage(withPurse(realm(), 2_000), 'dwarf', 4)
   const low = offerDeal(withRespect(s0, 'dwarf', 49), 'dwarf', { kind: 'buyHex', hexId: id }, TODAY)
   assert.equal(low.price, 600)
@@ -267,9 +267,8 @@ test('Ch 6 buy a hex: a ring-4 village from the Dwarf costs 50 × 4 × 2.0 × 1.
 
   const { state: g0, id: gid } = rivalVillage(withPurse(realm(), 2_000), 'goblin', 4)
   const goblin = offerDeal(withRespect(g0, 'goblin', 25), 'goblin', { kind: 'buyHex', hexId: gid }, TODAY)
-  assert.equal(goblin.allowed, true)
-  assert.equal(goblin.price, 360) // 50 × 4 × 1.2 × 1.5
-  assert.equal(offerDeal(withRespect(g0, 'goblin', 24), 'goblin', { kind: 'buyHex', hexId: gid }, TODAY).reason?.code, 'respect')
+  assert.equal(goblin.allowed, false)
+  assert.equal(goblin.reason?.code, 'useBribe')
 })
 
 test('Ch 6 buy a hex: refused for any Gate, while at war, and for a second hex deal with the same rival within 4 weeks', () => {

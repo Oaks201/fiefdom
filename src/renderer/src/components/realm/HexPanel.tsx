@@ -1,20 +1,24 @@
 import { useState } from 'react'
-import { GiCastle, GiHornInternal, GiQuill, GiShakingHands, GiShield, GiSiegeTower, GiTreasureMap } from 'react-icons/gi'
+import { GiCastle, GiCoins, GiCrystalBall, GiHornInternal, GiQuill, GiScales, GiShakingHands, GiShield, GiSiegeTower, GiTreasureMap } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { formatShort } from '../../lib/dates'
 import { formatNumber } from '../../lib/format'
 import { laySiege } from '../../lib/game/combat'
+import { acceptBuyBack, bribe } from '../../lib/game/goblin'
 import { challenge } from '../../lib/game/grand'
 import { fortify, reclaim } from '../../lib/game/land'
+import { bendSurge } from '../../lib/game/surges'
+import { keepVillage } from '../../lib/game/world/events'
 import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
 import { hexPanel, marchName, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
 import { amount } from '../../lib/game/view/refusals'
-import { rivalName } from '../../lib/game/view/shell'
+import { SURGE_WORDS, realmConsistencyNow, rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
 import { toast } from '../../state/toasts'
 import { useUI } from '../../state/ui'
 import { BidForm } from '../diplomacy/BidForm'
+import { HoldForm } from '../diplomacy/HoldForm'
 
 const KIND_NAMES: Record<string, string> = {
   castle: 'The castle',
@@ -29,7 +33,17 @@ const KIND_NAMES: Record<string, string> = {
   battlefield: 'Battlefield'
 }
 
-const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack' }
+const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack', surge: 'A surge of wild magic' }
+
+/** Each rival's march rules in a line (D-27; How to play, The rivals' marches). */
+const RULES_OF: Record<RivalId, string> = {
+  orc: 'The Orc’s: a garrison beaten here strikes back at once, and his war track eases or hardens the march',
+  goblin: 'The Goblin’s: its garrisons take bribes, and he bids for your villages',
+  dwarf: 'The Dwarf’s: walls on the wilds, slow-fading siege wear, nothing lost back to the wilds',
+  archmage: 'The Archmage’s: a surge of wild magic each day'
+}
+
+const GREED: Record<string, string> = { fair: 'Fair', dear: 'Dear', gouging: 'Gouging' }
 
 const ACTION_TITLES: Record<HexAction['kind'], string> = {
   assault: 'Lay siege',
@@ -37,7 +51,12 @@ const ACTION_TITLES: Record<HexAction['kind'], string> = {
   court: 'Court the village',
   buy: 'Buy the hex',
   fortify: 'Fortify',
-  reclaim: 'Reclaim'
+  reclaim: 'Reclaim',
+  bribe: 'Bribe the garrison',
+  hold: 'Hold against his bid',
+  sellBack: 'Sell it back',
+  keep: 'Keep the village',
+  bend: 'Bend tomorrow’s swell'
 }
 
 function kindName(view: HexPanelView): string {
@@ -56,6 +75,7 @@ function kindName(view: HexPanelView): string {
 export function HexPanel({ campaign, today, hexId, onClose }: { campaign: CampaignState; today: ISODate; hexId: string; onClose(): void }): React.JSX.Element | null {
   const view = hexPanel(campaign, hexId, today)
   const [bidding, setBidding] = useState(false)
+  const [holding, setHolding] = useState(false)
   if (!view) return null
   const paths = (Object.entries(view.paths) as [RivalId, number][]).filter(([, v]) => v > 0)
   return (
@@ -90,6 +110,57 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
           <div>
             <dt>Preparation</dt>
             <dd title="A march left alone prepares: its garrisons grow each quiet week">Level {view.preparation}</dd>
+          </div>
+        )}
+        {view.rule && (
+          <div>
+            <dt>Rules</dt>
+            <dd title="Each rival’s march plays by his own rules; see How to play, The rivals’ marches">{RULES_OF[view.rule]}</dd>
+          </div>
+        )}
+        {view.surge && (
+          <div>
+            <dt>Surge</dt>
+            <dd title="The Archmage’s wild magic: one surge a day in his march">
+              {[view.surge.today ? `today ${SURGE_WORDS[view.surge.today]}` : '', view.surge.tomorrow ? `tomorrow ${SURGE_WORDS[view.surge.tomorrow]} (foreseen)` : ''].filter(Boolean).join('; ')}
+            </dd>
+          </div>
+        )}
+        {view.greed && (
+          <div>
+            <dt>His prices</dt>
+            <dd title="The Goblin’s greed: it rises when you take his march by force, and eases in a quiet week">{GREED[view.greed]}</dd>
+          </div>
+        )}
+        {view.goblinBid && (
+          <div>
+            <dt>The Goblin bids</dt>
+            <dd title="At the week close his offer meets the village’s loyalty plus your hold × Trust; his offer is not known">
+              {view.goblinBid.sways ? 'As it stands, it goes to him at the week close' : 'As it stands, it holds'}
+              {view.goblinBid.hold > 0 ? ` · you have held it with ${amount(view.goblinBid.hold)}` : ''}
+            </dd>
+          </div>
+        )}
+        {view.buyBack && (
+          <div>
+            <dt>Buy-back</dt>
+            <dd>
+              {rivalName('goblin')} offers {amount(view.buyBack.price)} for it, until {formatShort(view.buyBack.until)}
+            </dd>
+          </div>
+        )}
+        {view.restless && (
+          <div>
+            <dt>Restless</dt>
+            <dd title="Given up by the Dwarf: it may rise; settle it when it does">Until {formatShort(view.restless)}</dd>
+          </div>
+        )}
+        {view.uprising && (
+          <div>
+            <dt>Rising</dt>
+            <dd>
+              Keep it for {amount(view.uprising.price)} by {formatShort(view.uprising.until)}
+            </dd>
           </div>
         )}
         {view.garrison !== undefined && view.owner !== 'player' && (
@@ -176,7 +247,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         <ul className="hex-actions">
           {view.actions.map((a) => (
             <li key={a.kind} className={`hex-action ${a.available ? 'is-open' : 'is-shut'}`}>
-              <ActionButton action={a} view={view} today={today} onCourt={() => setBidding(!bidding)} />
+              <ActionButton action={a} view={view} today={today} onCourt={() => setBidding(!bidding)} onHold={() => setHolding(!holding)} />
               {!a.available && a.reason && <p className="hex-action__why">{a.reason.label}</p>}
               {a.kind === 'court' && bidding && a.available && (
                 <BidForm
@@ -189,6 +260,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
                   onDone={() => setBidding(false)}
                 />
               )}
+              {a.kind === 'hold' && holding && a.available && <HoldForm campaign={campaign} today={today} hexId={view.id} trust={trustNow(campaign)} onDone={() => setHolding(false)} />}
             </li>
           ))}
         </ul>
@@ -198,7 +270,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
   )
 }
 
-function ActionButton({ action: a, view, today, onCourt }: { action: HexAction; view: HexPanelView; today: ISODate; onCourt(): void }): React.JSX.Element {
+function ActionButton({ action: a, view, today, onCourt, onHold }: { action: HexAction; view: HexPanelView; today: ISODate; onCourt(): void; onHold(): void }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const apply = useCampaign((s) => s.apply)
   const cost = a.cost !== undefined ? ` · ${amount(a.cost)}` : ''
@@ -280,6 +352,78 @@ function ActionButton({ action: a, view, today, onCourt }: { action: HexAction; 
           }}
         >
           <GiCastle aria-hidden="true" /> {label}
+        </button>
+      )
+    case 'bribe':
+      return (
+        <button
+          type="button"
+          className="btn btn--small"
+          disabled={!a.available}
+          title="The garrison takes the price and walks away: the hex is yours at once, with no battle"
+          onClick={() => {
+            if (act((s) => bribe(s, view.id, realmConsistencyNow(s), today))) {
+              sfx('coin')
+              toast(`${view.label} is yours: its garrison took the price and left.`, 'success')
+            }
+          }}
+        >
+          <GiCoins aria-hidden="true" /> {label}
+        </button>
+      )
+    case 'hold':
+      return (
+        <button type="button" className="btn btn--small" disabled={!a.available} onClick={onHold}>
+          <GiShield aria-hidden="true" /> {label}
+        </button>
+      )
+    case 'sellBack':
+      return (
+        <button
+          type="button"
+          className="btn btn--small"
+          disabled={!a.available}
+          onClick={() => {
+            if (act((s) => acceptBuyBack(s, view.id, today))) {
+              sfx('coin')
+              toast(`${view.label} is sold back to ${rivalName('goblin')}.`, 'info')
+            }
+          }}
+        >
+          <GiScales aria-hidden="true" /> {ACTION_TITLES[a.kind]}{a.cost !== undefined ? ` for ${amount(a.cost)}` : ''}
+        </button>
+      )
+    case 'keep':
+      return (
+        <button
+          type="button"
+          className="btn btn--small"
+          disabled={!a.available}
+          onClick={() => {
+            if (act((s) => keepVillage(s, view.id, today))) {
+              sfx('coin')
+              toast(`${view.label} is settled.`, 'success')
+            }
+          }}
+        >
+          <GiShield aria-hidden="true" /> {label}
+        </button>
+      )
+    case 'bend':
+      return (
+        <button
+          type="button"
+          className="btn btn--small"
+          disabled={!a.available}
+          title="Once a week: tomorrow’s swell here becomes an ebb"
+          onClick={() => {
+            if (act((s) => bendSurge(s, today))) {
+              sfx('stamp')
+              toast(`Tomorrow’s surge at ${view.label} is bent: an ebb, not a swell.`, 'success')
+            }
+          }}
+        >
+          <GiCrystalBall aria-hidden="true" /> {label}
         </button>
       )
   }

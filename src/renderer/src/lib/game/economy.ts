@@ -13,7 +13,7 @@ import type { ISODate, PurseEvent, PurseEventKind, PurseLine, PurseState } from 
 export const PURSE_SOURCES = {
   behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'contract', 'correction'],
   battle: ['defense', 'assault', 'grandBattle', 'mythicHunt', 'royalHunt', 'tribute', 'mythic'],
-  land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim'],
+  land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim', 'buyBack'],
   /** The founding grant, and the Bank's interest on what the player has already earned. */
   other: ['founding', 'interest']
 } as const

@@ -12,14 +12,16 @@ import { CODEX } from '../codex'
 import { realmEffects } from '../effects'
 import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer } from '../land'
 import { claimableBy, hexName } from '../map'
+import { greedBand, orcTrackOf, pactHolds, surgeOn } from '../personalities'
 import { RULES } from '../rules'
 import { respectEffects, rivalView, type ArmyBand, type RespectEffects, type TreasuryBand } from '../rivals'
-import { openDayOf } from '../state'
+import { openDayOf, weekOn } from '../state'
+import { stanceOf, weighsMost } from '../terms'
 import { t, type RivalMoment } from '../text'
-import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type ISODate, type Owner, type RivalId, type RivalState } from '../types'
+import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
 import { suggestedBid, trustNow } from './realm'
 import { landRefusalLabel } from './refusals'
-import { rivalName } from './shell'
+import { STANCE_WORDS, SURGE_WORDS, rivalName } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
 const PURSE_STEP = 10 // rules-ok: the purse's 0.1 precision (A-11)
@@ -58,6 +60,60 @@ export interface RivalPanel {
   fronts: { front: FrontId; other: RivalId; otherName: string; state: Disposition; track: number }[]
   /** A one-line greeting in its mood (the words are A3's; until then the placeholder). */
   greeting: { textId: string; text: string }
+  /** His stance toward the player from week 16 (D-33): a band, never the score or which measure is close. */
+  stance?: { band: StanceBand; label: string }
+  /** His march's state in plain lines (D-28 to D-31): the Orc's war track, the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge. */
+  march: MarchLine[]
+}
+
+/** One line of a march's state; a date the screen formats. */
+export interface MarchLine {
+  label: string
+  until?: ISODate
+}
+
+/** What his march looks like today, in the plain facts the player may know (no hidden number). */
+function marchLines(state: CampaignState, rival: RivalId, today: ISODate): MarchLine[] {
+  if (state.rivals[rival].status !== 'active') return state.rivals[rival].grudging ? [{ label: 'A grudging vassal: he sends no company' }] : []
+  switch (rival) {
+    case 'orc': {
+      const track = orcTrackOf(state)
+      const side = track > 0 ? 'your way' : track < 0 ? 'his way' : 'even'
+      const tr = RULES.personalities.orc.track
+      return [{ label: `War track ${track > 0 ? `+${track}` : track < 0 ? `−${-track}` : '0'} (−${-tr.min} to +${tr.max}), ${side}` }]
+    }
+    case 'goblin': {
+      const lines: MarchLine[] = [{ label: `His prices: ${({ fair: 'fair', dear: 'dear', gouging: 'gouging' } as const)[greedBand(state)]}` }]
+      const pact = state.deals.find((d) => d.rival === 'goblin' && d.kind === 'buyOff' && d.madeOn <= today && d.until !== undefined && today <= d.until)
+      if (pact?.until && pactHolds(state, today)) lines.push({ label: 'A buy-off pact: his march left alone', until: pact.until })
+      const hires = state.terms?.hires
+      if (hires && today <= hires.until) lines.push({ label: `${hires.count} hired ${hires.count === 1 ? 'company' : 'companies'} of his with you`, until: hires.until })
+      return lines
+    }
+    case 'dwarf': {
+      const walls = state.hexes.filter((h) => h.march === 'dwarf' && h.owner === 'neutral' && h.fortification > 0).reduce((s, h) => s + h.fortification, 0)
+      return walls > 0 ? [{ label: `Walls on the wilds of his march: ${walls} ${walls === 1 ? 'level' : 'levels'}` }] : []
+    }
+    case 'archmage': {
+      const s = surgeOn(state, today)
+      if (!s) return []
+      const on = s.hexId ? hexName(s.hexId) : (state.roster.find((c) => c.id === s.companyId)?.name ?? 'a company')
+      return [{ label: `Today’s surge: ${SURGE_WORDS[s.surge]} on ${on}` }]
+    }
+  }
+}
+
+/** His stance, from the week terms start (D-33). */
+function stanceLine(state: CampaignState, rival: RivalId, today: ISODate): { band: StanceBand; label: string } | undefined {
+  if (state.rivals[rival].status !== 'active' || weekOn(state, today) < RULES.terms.fromWeek) return undefined
+  const band = stanceOf(state, rival)
+  return { band, label: STANCE_WORDS[band] }
+}
+
+/** The Herald's rumors of what he watches (D-33, C-49): his two weightiest measures, never how close they are. */
+function watchRumors(state: CampaignState, rival: RivalId, today: ISODate): string[] {
+  if (state.rivals[rival].status !== 'active' || weekOn(state, today) < RULES.terms.fromWeek) return []
+  return weighsMost(rival).slice(0, 2).map((m) => `herald.terms.rumor.${m}`)
 }
 
 /** Humbled when resolved or pinned at −3 on a front; angry at War; calm otherwise (Ch 17's portrait moods). */
@@ -88,6 +144,9 @@ const OPENS: Record<keyof RespectEffects, (rival: RivalId) => string> = {
   accordEasier: () => 'Its Accord is easier'
 }
 
+/** Patch 4 (C-43): what Respect no longer opens with a rival. The Goblin sells no hex by deal (his are bribed) and buys one at any Respect. */
+const NOT_BY_RESPECT: Partial<Record<RivalId, readonly (keyof RespectEffects)[]>> = { goblin: ['sellsHex', 'buysHex'] }
+
 /** The Respect marks of Ch 12's table, each with what it opens for this rival. */
 export function respectMarks(rival: RivalId, respect: number): RespectMark[] {
   const th = RULES.respect.thresholds
@@ -96,14 +155,15 @@ export function respectMarks(rival: RivalId, respect: number): RespectMark[] {
     .map((at) => {
       const below = respectEffects(rival, at - 1)
       const here = respectEffects(rival, at)
-      const opens = (Object.keys(here) as (keyof RespectEffects)[]).filter((k) => here[k] && !below[k])
+      const opens = (Object.keys(here) as (keyof RespectEffects)[]).filter((k) => here[k] && !below[k] && !(NOT_BY_RESPECT[rival] ?? []).includes(k))
       return { at, opens, labels: opens.map((k) => OPENS[k](rival)), reached: respect >= at }
     })
     .filter((m) => m.opens.length > 0)
 }
 
-export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effects = realmEffects(state)): RivalPanel {
+export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effects = realmEffects(state), today: ISODate = openDayOf(state)): RivalPanel {
   const r = state.rivals[rival]
+  const stance = stanceLine(state, rival, today)
   const entry = CODEX.rivals.find((x) => x.id === rival)
   const name = rivalName(rival)
   const view = rivalView(state, rival, effects)
@@ -132,9 +192,11 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     armyBand: view.armyBand,
     ...(view.treasury !== undefined ? { treasury: view.treasury } : {}),
     ...(view.army !== undefined ? { army: view.army } : {}),
-    rumors: view.rumors.map((id) => ({ textId: id, text: t(id, { rival: name }) })),
+    rumors: [...view.rumors, ...watchRumors(state, rival, today)].map((id) => ({ textId: id, text: t(id, { rival: name }) })),
     fronts,
-    greeting: { textId: greetingId, text: t(greetingId, { rival: name, disposition: view.disposition, how: FALL_HOW[r.status] ?? r.status }) }
+    greeting: { textId: greetingId, text: t(greetingId, { rival: name, disposition: view.disposition, how: FALL_HOW[r.status] ?? r.status }) },
+    ...(stance ? { stance } : {}),
+    march: marchLines(state, rival, today)
   }
 }
 
@@ -179,6 +241,8 @@ export function dealName(kind: DealKind, hexId?: string, target?: RivalId): stri
       return target ? `Call to arms against ${rivalName(target)}` : 'Call to arms'
     case 'buyout':
       return 'Buy-out from its coalition'
+    case 'buyOff':
+      return 'Buy-off pact'
   }
 }
 
@@ -193,7 +257,7 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
       }
     case 'sellHex':
       return {
-        requires: `Respect ${th.sellHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
+        requires: rival === 'goblin' ? 'Any time; not rings 1 and 2, nor a Gate' : `Respect ${th.sellHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
         effect: `You receive ${Math.round(tr.sellShare * PERCENT)}% of its buy price; +${RULES.respect.change.hexSold} Respect`
       }
     case 'truce':
@@ -204,6 +268,8 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
       return { requires: `Respect ${th.callToArms}; a front between them; not coalition partners`, effect: `It declares war on the other for ${tr.callToArms.days} days` }
     case 'buyout':
       return { requires: `Respect ${RULES.world.coalitions.buyout.minRespect}; it stands in a coalition against you`, effect: 'It walks away and the coalition ends today' }
+    case 'buyOff':
+      return { requires: 'Offered by the Goblin only', effect: 'You leave his march alone for a while; he neither raids you nor bids for your villages' }
   }
 }
 

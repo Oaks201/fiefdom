@@ -102,5 +102,17 @@
   "battle.royalHunt": {
     "template": "Royal Hunt at {hex}: {reputation} reputation and {item}.",
     "final": null
+  },
+  "battle.surge.victory": {
+    "template": "Surge on {hex}: held. Spoils {spoils}.",
+    "final": null
+  },
+  "battle.surge.rout": {
+    "template": "Surge on {hex}: routed. Spoils {spoils}.",
+    "final": null
+  },
+  "battle.surge.defeat": {
+    "template": "Surge on {hex}: lost. The hex is scorched until {until}. Tribute {tribute}.",
+    "final": null
   }
 }

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { GiCoins, GiCrossedSwords, GiSpeaker } from 'react-icons/gi'
+import { formatShort } from '../../lib/dates'
 import type { RivalPanel } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
@@ -58,6 +59,12 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
           ) : (
             <span className={`disposition disposition--${panel.disposition}`}>{DISPOSITIONS[panel.disposition]}</span>
           )}
+          {panel.stance && (
+            <span className={`court__stance court__stance--${panel.stance.band}`} title="How near he is to yielding, as his court shows it; no number is told">
+              {' '}
+              · {panel.stance.label}
+            </span>
+          )}
         </p>
         <blockquote className="court__greeting" data-text-id={panel.greeting.textId}>
           {panel.greeting.text}
@@ -83,6 +90,16 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
             </dd>
           </div>
         </dl>
+        {panel.march.length > 0 && (
+          <ul className="court__march">
+            {panel.march.map((m) => (
+              <li key={m.label}>
+                {m.label}
+                {m.until ? ` through ${formatShort(m.until)}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
         {panel.rumors.length > 0 && (
           <ul className="court__rumors">
             {panel.rumors.map((r) => (

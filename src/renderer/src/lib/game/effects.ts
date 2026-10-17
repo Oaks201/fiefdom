@@ -244,25 +244,27 @@ export function realmEffects(state: CampaignState): Effects {
     push(e.crownguardBonus, milestone(unlocks.crownguardAscendant, 'crownguardAscendant'), RULES.crownguard.ascendantBonus)
   }
 
-  // Path ranks (D-18): each rank adds a little to its path's building's role, standing in for Patch 4's perks (C-18).
+  // Path ranks (D-18): each path's real perks (Patch 4, C-36, N-01), on its building's role. Those
+  // that act on one rule alone (Weary, siege wear, walls, holds, surges) read the rank where they apply.
   const perks = RULES.dominion.rankPerks
   for (const r of RIVAL_IDS) {
     const rank = state.paths?.byRival[r].rank ?? 0
     if (rank <= 0) continue
     const ref: EffectSourceRef = { kind: 'pathRank', path: r, rank }
-    switch (CODEX.rivals.find((x) => x.id === r)?.road) {
-      case 'barracks':
-        push(e.rallyFloor, ref, perks.rallyFloor * rank)
+    switch (r) {
+      case 'orc':
+        push(e.rallyFloor, ref, perks.orc.rallyFloor * rank)
         break
-      case 'merchantHall':
-        push(e.reputationBonus, ref, perks.reputationBonus * rank)
+      case 'goblin':
+        push(e.trust, ref, perks.goblin.trust * rank)
+        push(e.costs.trade, ref, 1 - perks.goblin.prices * rank)
+        if (rank >= perks.goblin.slotRank) push(e.courtshipSlots, ref, perks.goblin.slots)
         break
-      case 'mageTower':
-        push(e.mythicStrength, ref, 1 - perks.mythicReduction * rank)
+      case 'archmage':
+        push(e.mythicStrength, ref, 1 - perks.archmage.mythicCut * rank)
         break
-      case 'foundry':
-        push(e.armsBonus, ref, perks.armsBonus * rank)
-        push(e.walls, ref, perks.walls * rank)
+      case 'dwarf':
+        push(e.walls, ref, perks.dwarf.walls * rank)
         break
     }
   }
@@ -460,5 +462,7 @@ export function sourceLabel(ref: EffectSourceRef): string {
       return CODEX.events.find((x) => x.id === ref.id)?.name ?? ref.id
     case 'pathRank':
       return `${CODEX.rivals.find((x) => x.id === ref.path)?.people ?? ref.path} path ${numeral(ref.rank)}`
+    case 'surge':
+      return 'Wild magic'
   }
 }

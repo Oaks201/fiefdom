@@ -104,6 +104,9 @@ export function HowToPlay(): React.JSX.Element | null {
   const slots = inf.courtshipSlots
   const sg = RULES.sieges
   const deeds = RULES.dominion.deeds
+  const pm = RULES.personalities
+  const pa = RULES.personalities.archmage
+  const rp = RULES.dominion.rankPerks
   const strongholdRings = sg.stronghold.depths.map((d) => d + RULES.map.heartlandRings)
 
   const sections: Section[] = [
@@ -368,6 +371,10 @@ export function HowToPlay(): React.JSX.Element | null {
             {sg.fallback.stackCap === 1 ? '' : `${sg.fallback.stackCap} × `}that hex’s own garrison. A rout scatters it, and a village’s militia never falls back.
           </p>
           <p>
+            In the four rivals’ marches a beaten garrison behaves as its rival would (see The rivals’ marches): the Orc’s strike back at once, the Dwarf’s only dig in, the
+            Goblin’s offer to buy the hex back, and the Archmage’s dissolve into the next day’s wild magic. In the lair wedges:
+          </p>
+          <p>
             The fallen-back force <b>may strike back</b> at the hex it lost within {sg.fallback.days} days: from week {sg.counterattack.fromWeek}, never while you have
             been away {RULES.clock.absenceDays} days or more, and never from a rival who may not raid you. The Herald posts it as one of the day’s battles. Hold it and the force
             scatters, for spoils; lose it and the hex goes back at once to whoever held it, with tribute but no scorch.
@@ -376,6 +383,113 @@ export function HowToPlay(): React.JSX.Element | null {
             <b>Renown.</b> Taking a stronghold adds {deeds.strongholdPerDepth} × its depth (its ring less {RULES.map.heartlandRings}) on its rival’s path, on top of the hex’s own.
             Holding a counterattack adds {deeds.counterattackHeld} on that rival’s path ({deeds.counterattackHeldBeasts} against beasts), in place of the battle’s
             usual Renown.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'marches',
+      title: 'The rivals’ marches',
+      body: (
+        <>
+          <p>
+            Each rival’s march plays by his rules: every hex of it you don’t hold, his own and the wilds and villages alike. A seam follows whichever march rules it that day
+            (shown on the map). The lair wedges and your heartland keep the common rules. What makes a march harder starts in week {pm.fromWeek}.
+          </p>
+          <ul>
+            <li>
+              <b>The Orc</b> wars without rest: a garrison beaten in his march strikes back at once, and harder ({pct(pm.orc.counterMult)} of a usual counterattack), and his
+              raids come at his march most. Every battle with him moves a <b>war track</b> ({pm.orc.track.min} to +{pm.orc.track.max}, on his court): win more than you lose in a
+              day and it moves a step your way, lose more and it moves his. Each step your way his strikes are {pct(pm.orc.track.strikePerStep)} weaker and his march’s
+              garrisons {pct(pm.orc.track.garrisonPerStep)} easier; each step his way, stronger and harder, and from {pm.orc.track.extraConquestAt} he plans an extra conquest
+              attempt. Each attack of his you beat costs him {pct(pm.orc.attritionPerWin)} of his army.
+            </li>
+            <li>
+              <b>The Goblin</b> sells. Any hex of his march you could assault has a <b>bribe</b> price on its panel: the garrison an assault must beat (a siege lowers it), raised by
+              his greed, lowered by your Trust and his Respect. Pay it and the hex is yours at once, its walls still standing. His greed (fair, dear or gouging) rises when you take his march by force,
+              and eases in a quiet week. From week {pm.goblin.villageBid.fromWeek} he bids each week for one of your villages in his march: the Herald names it, and until the
+              week closes you can <b>Hold</b> it with reputation (it counts with your Trust). His own beaten garrisons may offer to buy back the hex they lost. He sells you no hex
+              by deal; you can sell him one at any time.
+            </li>
+            <li>
+              <b>The Dwarf</b> is slow but steady. He raises walls on the wilds of his march that face you, a few levels a week; siege wear there fades only{' '}
+              {pct(pm.dwarf.wearDecay)} a day; his beaten garrisons dig in deeper and never strike back; his raids stay in his march; and a hex you take from his march is
+              never lost back to the wilds.
+            </li>
+            <li>
+              <b>The Archmage</b> works wild magic: each day one surge lands in his march, beside your land when it can: a garrison swells (×{pa.swell}) or ebbs (×{pa.ebb}) for the
+              day, a mythic is summoned for {pa.summonDays} days, one of your companies is blessed or cursed ({pct(pa.companyShare)} for the day), or a surge strikes one of your
+              hexes there as a battle (lost, it is only scorched). The Herald tells the day’s surge; Mage Tower Tier {numeral(RULES.buildings.mageTower.foresight.tier)}, or his
+              path at rank I, shows tomorrow’s. His Rituals go on as before.
+            </li>
+          </ul>
+          <p>
+            <b>Left alone</b>, a march still hardens by {pct(RULES.marches.preparation.perLevel)} a quiet week, and each rival prepares his own way too: the Dwarf adds a wall, the
+            Orc’s Warhost comes sooner, the Goblin grows greedier, the Archmage’s swells and strikes grow stronger.
+          </p>
+          <p>
+            <b>Each path counts its rival’s own deeds</b> as Renown, on his path alone: the Orc every battle with him, a loss too ({deeds.battleLost}), and a hex he took from you
+            retaken ({deeds.retaken}); the Goblin a hex of his march won by a deal ({deeds.dealTakenPerDepth} × its depth), a bribe paid below the garrison it bought (
+            {deeds.bargain}), his bid held ({deeds.bribeBeaten}) and a courtship won against his bid ({deeds.counterBidBeaten}); the Dwarf each wall level broken (
+            {deeds.wallsBroken}), each repulse a siege of his march endured, up to {deeds.siegeEnduredCap} ({deeds.siegeEndured} each), and his conquest attempt beaten (
+            {deeds.siegeBroken}); the Archmage a surge strike held ({deeds.surgeWeathered}), a hex taken on its ebb ({deeds.surgeSeized}), a Ritual endured (
+            {deeds.ritualEndured}) and a summoned mythic beaten ({deeds.summonedDefeated}).
+          </p>
+          <p>
+            <b>Path ranks</b> give each path its own perks; every rank adds a step, and ranks III and V add more:
+          </p>
+          <ul>
+            <li>
+              <b>The Orc’s</b> (the Barracks): the rally floor +{pct(rp.orc.rallyFloor)} and Weary {pct(rp.orc.wearyEase)} lighter a rank; at III a Grand Battle’s Weary lasts{' '}
+              {rp.orc.grandWearyDays} day less; at V no company is made Weary by a repulsed assault.
+            </li>
+            <li>
+              <b>The Goblin’s</b> (the Merchant Hall): Trust +{rp.goblin.trust} and bribes and trades {pct(rp.goblin.prices)} cheaper a rank; at III your holds against his bids
+              count ×{rp.goblin.holdMult}; at V one more courtship.
+            </li>
+            <li>
+              <b>The Dwarf’s</b> (the Foundry): each repulse wears {pct(rp.dwarf.repulseWear)} more of the Assault off a garrison, walls count {pct(rp.dwarf.fortificationCut)} less
+              against your assault, and every defense has {rp.dwarf.walls} more wall a rank; at III your siege wear fades half as fast; at V a stronghold counts ×
+              {rp.dwarf.strongholdMult}.
+            </li>
+            <li>
+              <b>The Archmage’s</b> (the Mage Tower): at I tomorrow’s surge is foretold; mythics and surge strikes {pct(rp.archmage.mythicCut)} weaker a rank; at III no curse
+              lands on your companies; at V, once a week, bend a foretold swell into an ebb (on its hex’s panel).
+            </li>
+          </ul>
+        </>
+      )
+    },
+    {
+      id: 'terms',
+      title: 'Terms',
+      body: (
+        <>
+          <p>
+            From week {RULES.terms.fromWeek}, each rival weighs your realm his own way (your reputation, your army against his, your land, your Grand Battles won, your Dominion
+            and how steadily you keep your habits) and his court shows his <b>stance</b>: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what he watches. No
+            number is shown. Terms come to you; you may take them or refuse and keep fighting, and a refused offer comes back later. An offer stays open{' '}
+            {RULES.worldAi.offerDays} days. None comes from a rival in a coalition against you or about to issue an Ultimatum.
+          </p>
+          <ul>
+            <li>
+              <b>The Goblin</b> first tries to buy his way out: a hex, an item or hired companies, for a pact to leave his march alone for {RULES.terms.goblin.pactWeeks} weeks.
+              Later, or after you turn him down, he offers to surrender.
+            </li>
+            <li>
+              <b>The Archmage</b> surrenders when he fears for his life: when you hold his Gate, or your army and victories frighten him enough.
+            </li>
+            <li>
+              <b>The Dwarf</b> surrenders, grudgingly, once you hold about two thirds of his march. He sends no company, and the villages he gives up stay restless for{' '}
+              {RULES.terms.dwarf.restlessWeeks} weeks.
+            </li>
+            <li>
+              <b>The Orc</b> never yields. When he is ready to settle it, he comes with his whole army against your border if he doesn’t respect you, or calls Ugrak’s Challenge
+              (two companies a side) if he does. Win and he is conquered; lose and he comes again later. His Gate and capital remain a road too.
+            </li>
+          </ul>
+          <p>
+            A surrender passes the rival’s land to you and counts as resolving him. Accords and defection still resolve the Goblin, the Archmage and the Dwarf; the Orc signs none.
           </p>
         </>
       )
@@ -550,10 +664,13 @@ export function HowToPlay(): React.JSX.Element | null {
               <b>Conquest:</b> take its Gate, then its capital, each in a Grand Battle.
             </li>
             <li>
-              <b>Defection:</b> win its villages until it holds none, at least half of them by courting or trade.
+              <b>Defection:</b> win its villages until it holds none, at least half of them by courting or trade (never the Orc).
             </li>
             <li>
-              <b>Accord:</b> raise its Respect to {RULES.respect.thresholds.accordTalks}, then keep {c.accord.days}-day Accord contracts (from Castle Tier{' '}
+              <b>Terms:</b> a surrender, or the Orc’s last battle won (see Terms).
+            </li>
+            <li>
+              <b>Accord</b> (never the Orc): raise its Respect to {RULES.respect.thresholds.accordTalks}, then keep {c.accord.days}-day Accord contracts (from Castle Tier{' '}
               {numeral(c.accord.castleTier)}) until its Respect reaches {c.accord.signedAtRespect}.
             </li>
           </ul>

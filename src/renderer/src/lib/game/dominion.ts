@@ -15,6 +15,7 @@
  */
 import { CODEX } from './codex'
 import { depthOf, hexIndex, hexWorth, isClaimableKind, isStronghold, marchShares, pathShares, type Shares } from './map'
+import { addDays } from './clock'
 import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type GameEvent, type HexState, type LairId, type Owner, type PathsState, type RivalId } from './types'
 
@@ -113,8 +114,48 @@ function lairShares(lair: string): Shares {
   return marchShares(lair as LairId)
 }
 
-/** The deeds one log event records (D-18), with the hexes as they stand. */
-function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, HexState>): Deed[] {
+/** The events before `at` in the log, last first, while `more` holds. */
+function* before(log: readonly GameEvent[], at: number, more: (e: GameEvent) => boolean): Generator<GameEvent> {
+  for (let i = at - 1; i >= 0 && more(log[i]); i--) yield log[i]
+}
+
+/** One rival's signature deed (D-34), to his path alone, × his share of the hex where there is one. */
+function signature(path: RivalId, deed: DeedKind, value: number, e: GameEvent, hexId?: string): Deed[] {
+  return value > 0 ? [{ path, deed, value, ...(hexId ? { hexId } : {}), source: e.id }] : []
+}
+
+const DEAL_WAYS: ReadonlySet<string> = new Set(['bribe', 'influence', 'trade'])
+
+/** The signature deeds a hex the player took records (D-34): the Goblin's deals, the Dwarf's walls and sieges, the Orc's retaking, the Archmage's ebbs and summoned mythics. */
+function takenSignatures(state: CampaignState, e: Extract<GameEvent, { kind: 'hexTransfer' }>, hex: HexState, at: number): Deed[] {
+  const d = D.deeds
+  const shares = pathShares(hex)
+  const out: Deed[] = []
+  if (DEAL_WAYS.has(e.how) && shares.goblin) out.push(...signature('goblin', 'dealTaken', d.dealTakenPerDepth * depthOf(hex) * shares.goblin, e, hex.id))
+  if (shares.dwarf && e.fortification) out.push(...signature('dwarf', 'wallsBroken', d.wallsBroken * e.fortification * shares.dwarf, e, hex.id))
+  // Looking back from the taking: this hex's own history since it last changed hands, and the day's surges.
+  let repulses = 0
+  let lastHolder: string | undefined
+  let ebbed = false
+  let summoned = false
+  // ISO dates compare as strings: the lookback's first day, and the first day a summoning still counts.
+  const since = addDays(e.day, -d.lookbackDays)
+  const summonedSince = addDays(e.day, 1 - RULES.personalities.archmage.summonDays)
+  for (const x of before(state.log, at, (x) => (lastHolder === undefined && x.day >= since) || x.day === e.day)) {
+    if (x.kind === 'hexTransfer' && x.hexId === hex.id && lastHolder === undefined) lastHolder = x.from === 'player' ? `player>${x.to}` : 'other'
+    if (x.kind === 'assault' && x.hexId === hex.id && x.outcome === 'repulsed' && lastHolder === undefined) repulses++
+    if (x.kind === 'surge' && x.hexId === hex.id && x.day === e.day && x.surge === 'ebb') ebbed = true
+    if (lastHolder === undefined && ((x.kind === 'surge' && x.surge === 'summoning') || (x.kind === 'ritual' && x.ritualId === 'summoning')) && x.hexId === hex.id && x.day >= summonedSince) summoned = true
+  }
+  if (shares.dwarf && e.how === 'conquest' && repulses > 0) out.push(...signature('dwarf', 'siegeEndured', d.siegeEndured * Math.min(d.siegeEnduredCap, repulses) * shares.dwarf, e, hex.id))
+  if (lastHolder === 'player>orc') out.push(...signature('orc', 'retaken', d.retaken, e, hex.id))
+  if (ebbed && shares.archmage) out.push(...signature('archmage', 'surgeSeized', d.surgeSeized * shares.archmage, e, hex.id))
+  if (summoned) out.push(...signature('archmage', 'summonedDefeated', d.summonedDefeated, e, hex.id))
+  return out
+}
+
+/** The deeds one log event records (D-18; Patch 4's signature deeds, D-34), with the hexes as they stand. `at` is its place in the log. */
+function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, HexState>, at: number): Deed[] {
   const d = D.deeds
   switch (e.kind) {
     case 'hexTransfer': {
@@ -122,13 +163,26 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
       const hex = byId.get(e.hexId)
       if (e.to !== 'player' || e.how === 'abdication' || !hex || hex.ring <= HEARTLAND || !isClaimableKind(hex)) return []
       const value = d.hexTakenPerDepth * depthOf(hex) + d.perFortification * (e.fortification ?? 0)
-      const taken = spread(pathShares(hex), 'hexTaken', value, hex.id, e.id)
+      const taken = [...spread(pathShares(hex), 'hexTaken', value, hex.id, e.id), ...takenSignatures(state, e, hex, at)]
       // A stronghold (D-25) adds its own deed on top; one won in battle has the Grand Battle's too.
       if (!isStronghold(state.hexes, hex.id)) return taken
       return [...taken, ...spread(pathShares(hex), 'strongholdTaken', d.strongholdPerDepth * depthOf(hex), hex.id, e.id)]
     }
+    case 'assault':
+      // The Orc: every battle with him counts, a repulse too (D-34).
+      return e.outcome === 'repulsed' && e.owner === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
+    case 'bribe':
+      return e.price < e.garrison ? signature('goblin', 'bargain', d.bargain, e, e.hexId) : []
+    case 'goblinBid':
+      return e.stage === 'held' ? signature('goblin', 'bribeBeaten', d.bribeBeaten, e, e.hexId) : []
+    case 'courtship':
+      return e.outcome === 'defected' && e.winner === 'player' && e.rivals?.includes('goblin') ? signature('goblin', 'counterBidBeaten', d.counterBidBeaten, e, e.hexId) : []
+    case 'ritual':
+      return signature('archmage', 'ritualEndured', d.ritualEndured, e, e.hexId)
     case 'defense': {
-      if (e.outcome === 'defeat') return []
+      if (e.outcome === 'defeat') return e.rival === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
+      if (e.threat === 'surge') return signature('archmage', 'surgeWeathered', d.surgeWeathered, e, e.hexId)
+      if (e.threat === 'conquest' && e.rival === 'dwarf') return signature('dwarf', 'siegeBroken', d.siegeBroken, e, e.hexId)
       if (e.threat === 'counterattack') {
         // D-25: a counterattack held is its own deed, in place of the battle's ordinary one.
         if (e.rival) return [{ path: e.rival, deed: 'counterattackHeld', value: d.counterattackHeld, hexId: e.hexId, source: e.id }]
@@ -143,7 +197,8 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
       return []
     }
     case 'grandBattle': {
-      if (e.stage !== 'fought' || e.result === 'defeat' || e.result === undefined) return []
+      if (e.stage === 'fought' && e.result === 'defeat') return e.rival === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
+      if (e.stage !== 'fought' || e.result === undefined) return []
       const battle = state.grandBattles.find((b) => b.id === e.battleId)
       const members = battle?.members ?? (e.rival ? [e.rival] : [])
       if (members.length > 0) return members.map((path) => ({ path, deed: 'grandBattleWon' as const, value: d.grandBattleWon / members.length, hexId: e.hexId, source: e.id }))
@@ -167,8 +222,8 @@ export function chronicle(input: CampaignState, emit: Emit): CampaignState {
   if (paths.logRead >= input.log.length && input.paths) return checkRanks(input, emit)
   const byId = hexIndex(input.hexes)
   const byRival = { ...paths.byRival }
-  for (const e of input.log.slice(paths.logRead)) {
-    for (const deed of deedsOf(input, e, byId)) {
+  for (let at = paths.logRead; at < input.log.length; at++) {
+    for (const deed of deedsOf(input, input.log[at], byId, at)) {
       byRival[deed.path] = { ...byRival[deed.path], renown: byRival[deed.path].renown + deed.value }
       emit('deed', deed)
     }

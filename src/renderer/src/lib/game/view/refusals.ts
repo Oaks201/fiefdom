@@ -9,10 +9,12 @@ import type { Refusal, Requirement } from '../buildings'
 import { CODEX } from '../codex'
 import type { OrderProblem } from '../combat'
 import { numeral } from '../effects'
+import type { BribeRefusal, HoldRefusal } from '../goblin'
 import type { GrandRefusal } from '../grand'
 import type { LandRefusal } from '../land'
 import { hexName } from '../map'
 import type { SkirmishRefusal } from '../skirmish'
+import type { BendRefusal } from '../surges'
 import type { RivalId } from '../types'
 
 const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
@@ -73,6 +75,8 @@ export function landRefusalLabel(r: LandRefusal): string {
       return `It was lost ${r.have ?? 0} days ago; a hex can be reclaimed for ${r.needed ?? 0} days.`
     case 'notTouching':
       return 'It no longer touches your land.'
+    case 'pact':
+      return 'A buy-off pact holds: you have agreed to leave the Goblin’s march alone for now.'
   }
 }
 
@@ -136,6 +140,8 @@ export function orderProblemLabel(p: OrderProblem): string {
       return `${hexName(p.stronghold)} still stands: no assault reaches deeper into its march until it falls.`
     case 'grandBattlePending':
       return `A Grand Battle is announced at ${hexName(p.hexId)}; no assault goes there until it is fought.`
+    case 'pact':
+      return `A buy-off pact holds: ${hexName(p.hexId)} lies in the Goblin’s march, which you have agreed to leave alone for now.`
     case 'duplicateTarget':
       return `${hexName(p.hexId)} is already a target.`
     case 'noCompanies':
@@ -248,5 +254,55 @@ export function armoryRefusalLabel(r: ArmoryRefusal): string {
       return `Choose exactly ${r.count} different tags.`
     case 'noArmorer':
       return 'The third slot needs the Armorer Wing.'
+  }
+}
+
+/** Why a hex of the Goblin's march can't be bribed (D-29). */
+export function bribeRefusalLabel(code: BribeRefusal, price?: number): string {
+  switch (code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'unknownHex':
+      return 'There is no such hex.'
+    case 'notHisMarch':
+      return 'Only the hexes of the Goblin’s march take bribes.'
+    case 'gate':
+      return 'His Gate is fought for in a Grand Battle, never bought.'
+    case 'notAssaultable':
+      return 'Only a hex you could assault today takes a bribe.'
+    case 'battlePending':
+      return 'A Grand Battle is announced there.'
+    case 'pact':
+      return 'A buy-off pact holds: you have agreed to leave the Goblin’s march alone for now.'
+    case 'reputation':
+      return price !== undefined ? `It costs ${amount(price)}; the purse cannot pay it.` : 'The purse cannot pay it.'
+  }
+}
+
+/** Why the player can't hold a village the Goblin bids for (D-29). */
+export function holdRefusalLabel(code: HoldRefusal): string {
+  switch (code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'noBid':
+      return 'The Goblin bids for no village of yours here.'
+    case 'badAmount':
+      return 'Hold it with a whole amount of reputation.'
+    case 'reputation':
+      return 'The purse cannot pay it.'
+  }
+}
+
+/** Why tomorrow's surge can't be bent (D-31, the Archmage's path at rank V). */
+export function bendRefusalLabel(code: BendRefusal): string {
+  switch (code) {
+    case 'campaignOver':
+      return 'The campaign is over.'
+    case 'rank':
+      return 'It opens at rank V on the Archmage’s path.'
+    case 'noSwell':
+      return 'Only a swell foreseen for tomorrow can be bent.'
+    case 'used':
+      return 'A surge was bent less than a week ago.'
   }
 }

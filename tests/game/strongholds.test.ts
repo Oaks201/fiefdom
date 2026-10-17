@@ -62,11 +62,12 @@ test('P3-01 (D-23): two strongholds in each rival march, at depths 4 and 8, on t
 })
 
 test('D-23: a stronghold’s garrison counts twice while not the player’s, as the player’s assault weighs it; a rival’s den assault reads it plain (C-29)', () => {
+  // The Goblin's march: his rules put no multiple on a garrison (Patch 4).
   const state = realm()
-  const fort = fortOf(state.hexes, 'orc', 4)
+  const fort = fortOf(state.hexes, 'goblin', 4)
   near(assaultGarrison(state, fort, START), S.garrisonMult * fort.garrison)
   near(effectiveGarrison(fort), fort.garrison)
-  const plain = state.hexes.find((h) => h.march === 'orc' && depthOf(h) === 4 && h.id !== fort.id && !h.village && !h.seam) as HexState
+  const plain = state.hexes.find((h) => h.march === 'goblin' && depthOf(h) === 4 && h.id !== fort.id && !h.village && !h.seam) as HexState
   near(assaultGarrison(state, plain, START), plain.garrison)
 })
 

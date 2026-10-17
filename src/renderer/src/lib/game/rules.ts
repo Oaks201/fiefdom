@@ -36,7 +36,7 @@ export type LengthUnlock =
 type PerRival<T> = Record<RivalId, T>
 
 const RULES_TABLE = {
-  ruleVersion: '3.1.0',
+  ruleVersion: '3.2.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -679,14 +679,54 @@ const RULES_TABLE = {
       strongholdPerDepth: 2,
       /** D-25: a counterattack held, to the rival's path; against beasts, `counterattackHeldBeasts` × the hex's shares. It replaces that battle's ordinary deed. TUNE. */
       counterattackHeld: 2,
-      counterattackHeldBeasts: 1
+      counterattackHeldBeasts: 1,
+      /**
+       * Patch 4 (D-34, C-42): each rival's signature deeds, to his path alone. The Orc: every battle with
+       * him counts, a loss `battleLost`; a hex he took, taken back, `retaken`. The Goblin: a hex of his march
+       * won by deal `dealTakenPerDepth` × depth; a bribe under the garrison it bought `bargain`; his bid held
+       * `bribeBeaten`; his bid beaten in a courtship `counterBidBeaten`. The Dwarf: `wallsBroken` a wall level
+       * of his march taken; `siegeEndured` a siege day beyond the first (at most `siegeEnduredCap`); his conquest
+       * attempt beaten `siegeBroken`. The Archmage: a surge strike held `surgeWeathered`; a hex taken on its
+       * ebb's day `surgeSeized`; a Ritual endured `ritualEndured`; a summoned mythic's hex taken `summonedDefeated`. TUNE.
+       */
+      battleLost: 0.5,
+      retaken: 2,
+      dealTakenPerDepth: 0.5,
+      bargain: 2,
+      bribeBeaten: 3,
+      counterBidBeaten: 2,
+      wallsBroken: 1,
+      siegeEndured: 1,
+      siegeEnduredCap: 5,
+      siegeBroken: 3,
+      surgeWeathered: 1,
+      surgeSeized: 1,
+      ritualEndured: 3,
+      summonedDefeated: 3,
+      /** How far back a taking reads its hex's history (its last change of hands, its siege days, a summoning). TUNE. */
+      lookbackDays: 90
     },
     /** A fully walked path: its march held (Holdings about 440), its hexes taken, its battles fought and its rival resolved (Renown about 660). TUNE. */
     fullPath: 1_100,
     /** P2-14: ranks I to V at these shares of a full path. Ranks never fall (P2-15). */
     rankShares: [0.1, 0.25, 0.45, 0.7, 1],
-    /** C-18: each rank's stand-in perk on its building's role, until Patch 4's real perks. */
-    rankPerks: { rallyFloor: 0.01, reputationBonus: 0.005, mythicReduction: 0.02, armsBonus: 0.01, walls: 1 }
+    /**
+     * Patch 4 (C-36, N-01): each path's rank perks, replacing C-18's stand-ins. Every rank adds its
+     * path's step; the named ranks unlock more (rank V is the capstone). TUNE.
+     */
+    rankPerks: {
+      /** The Orc's path, the Barracks: endurance for attrition. Each rank: rally floor and a lighter Weary; III: Grand Battle Weary a day shorter; V: iron ranks (no Weary from a repulse). */
+      orc: { rallyFloor: 0.01, wearyEase: 0.02, grandWearyRank: 3, grandWearyDays: 1, ironRanksRank: 5 },
+      /** The Goblin's path, the Merchant Hall: prices, bribes and Trust. Each rank: Trust and cheaper bribes and trades; III: holds count more; V: a courtship slot. */
+      goblin: { trust: 0.02, prices: 0.04, holdRank: 3, holdMult: 1.5, slotRank: 5, slots: 1 },
+      /**
+       * The Dwarf's path, the Foundry: siege speed and breaking walls, and walls of the player's own. Each rank: more wear a repulse, walls counting less,
+       * and a wall on every defense (3.1.0's stand-in, kept: G-08); III: the player's sieges decay slower; V: strongholds weigh less. TUNE.
+       */
+      dwarf: { repulseWear: 0.02, fortificationCut: 0.1, walls: 1, slowDecayRank: 3, slowDecayMult: 0.5, strongholdRank: 5, strongholdMult: 1.5 },
+      /** The Archmage's path, the Mage Tower: surge foresight and resistance. I: tomorrow's surge foretold; each rank: mythics and surge strikes weaker; III: no curses; V: bend a foretold swell once a week. */
+      archmage: { foresightRank: 1, mythicCut: 0.05, curseBlockRank: 3, bendRank: 5 }
+    }
   },
 
   /** Patch 2 (D-19): neglected marches harden (R-03, R-06). TUNE. */
@@ -772,7 +812,25 @@ const RULES_TABLE = {
      * the 40 focused campaigns: always 3.25× and 75% rising; 7 days 2.27× and 95%; 10 days 2.72× and
      * 90%. A habit of play. TUNE.
      */
-    strongholdCommitHorizon: 7
+    strongholdCommitHorizon: 7,
+    /**
+     * Patch 4 (C-46): under the land answers `deals` and `both`, a bribe a day in the Goblin's march on
+     * the plan's paths, best Dominion per price, while it costs at most this share of the purse beyond `bribeReserve` of the next build's price, and the
+     * hex wouldn't fall to today's assault. A habit of play. TUNE.
+     */
+    bribeShare: 0.5,
+    /** Patch 4 (C-46, G-08): the share of the next build's price (tier, castle tier or Crossing stage) its bribes leave in the purse. TUNE. */
+    bribeReserve: 0.5,
+    /** Patch 4 (C-46): it holds a village the Goblin bids for while the hold needed is at most this share of the purse. TUNE. */
+    holdShare: 0.25,
+    /** Patch 4 (C-46, G-18): a steered player refuses terms from a rival on its own path until that path reaches this rank. */
+    refuseOwnPathUntilRank: 5,
+    /** Patch 4 (C-46, G-18): and refuses at least this many from that rival, whatever its rank (it keeps fighting for its path's deeds). TUNE. */
+    refuseOwnPathAtLeast: 1,
+    /** Patch 4 (C-46, G-18): every player that takes terms refuses this many of the Goblin's buy-offs first (each refused one makes the next richer, C-35). TUNE. */
+    refuseBuyOffs: 1,
+    /** Patch 4 (C-46): in the Dwarf's march, where a siege's wear holds (N-03), it commits this many more assault days to a siege. TUNE. */
+    dwarfSiegeExtra: 2
   },
 
   /** T12: the living world's and the endgame's numbers the book leaves open. */
@@ -818,6 +876,123 @@ const RULES_TABLE = {
      * campaign week, at its strength that day × `strengthMult` (T-03, approved 2026-10-15). TUNE.
      */
     counterattack: { chancePerDay: 0.3, fromWeek: 3, strengthMult: 1.5 }
+  },
+
+  /**
+   * Patch 4 (D-33; R-07 to R-09, R-11 to R-13, C-34 to C-41): how each rival yields. Six measures, each
+   * scored as a share of its hidden threshold (at most 1), weighted per rival, give his stance; its band
+   * (Defiant below the first cut, Wary, Shaken, Ready to yield from the last) is all the player sees.
+   * Every value TUNE, and hidden: screens show bands only.
+   */
+  terms: {
+    fromWeek: 16,
+    /** Reputation earned; best army over his; claimable land held (the Dwarf: or his march's share); Grand Battles won (+ `resolvedVictories` a rival resolved); total Dominion; Realm Consistency over `constancyWeeks`. */
+    thresholds: { reputation: 30_000, army: 1.25, land: 0.45, victories: 12, dominion: 1_400, constancy: 0.85 },
+    weights: {
+      orc: { army: 0.4, land: 0.1, victories: 0.4, dominion: 0.1 },
+      goblin: { reputation: 0.45, army: 0.1, land: 0.15, dominion: 0.15, constancy: 0.15 },
+      dwarf: { reputation: 0.1, army: 0.2, land: 0.4, victories: 0.1, dominion: 0.2 },
+      archmage: { army: 0.2, victories: 0.2, dominion: 0.3, constancy: 0.3 }
+    } as PerRival<Partial<Record<'reputation' | 'army' | 'land' | 'victories' | 'dominion' | 'constancy', number>>>,
+    /** R-09: the Archmage's life at risk: army and victories weighed alike, at the top band's cut. */
+    archmageDanger: { army: 0.5, victories: 0.5 },
+    resolvedVictories: 5,
+    constancyWeeks: 12,
+    bands: [0.6, 0.75, 0.9],
+    /** A refused or lapsed offer comes back no sooner than this. */
+    retryWeeks: 4,
+    /** C-35: buy-offs from Shaken (band 2), every `buyOffEveryWeeks`, a gift worth `giftValue` × (1 + `giftGrowth` × refused), a pact of `pactWeeks`; surrender after `surrenderAfterRefused`. */
+    goblin: { buyOffFromBand: 2, buyOffEveryWeeks: 4, pactWeeks: 4, giftValue: 150, giftGrowth: 0.5, maxHires: 3, hireWeeks: 4, surrenderAfterRefused: 2 },
+    /** R-09: his army at most this share of the player's best. */
+    archmage: { armyRatio: 0.5 },
+    /** R-12: two thirds of his march held; the hexes he gave up restless for `restlessWeeks`, rising at `uprisingChance` a week, settled for `settlePerBand` × band. */
+    dwarf: { marchShare: 0.67, restlessWeeks: 8, uprisingChance: 0.15, settlePerBand: 15 },
+    /** R-11, C-40: a final Warhost below `respectBar` (his whole army), Ugrak's Challenge from it; `retryWeeks` after a loss. */
+    orc: { respectBar: 50, hostShare: 1, retryWeeks: 8 }
+  },
+
+  /**
+   * Patch 4 (D-27 to D-32; R-14, P4-01 to P4-07): each rival march plays by its rival's rules, on every
+   * hex of it the player doesn't hold. What makes a march harder starts at `fromWeek` (C-37). Every value TUNE.
+   */
+  personalities: {
+    fromWeek: 3,
+    /** P4-05: the unrelenting force. */
+    orc: {
+      /**
+       * N-04: his march's garrisons, as the player's assault weighs them, before his track (S-36: no flat
+       * discount; as P4-05 has it, his garrisons ease as his track turns the player's way).
+       */
+      garrisonMult: 1,
+      /** His raids weigh the player's border hexes in his march this many times more. */
+      ownMarchWeight: 3,
+      /** N-02: a force fallen back in his march strikes at its first dawn at this chance (D-24's on later dawns). */
+      firstDawnChance: 1,
+      /** N-02 (blueprint 5.3: "the Orc counterattacks hardest"): his counterattacks strike this many times D-24's strength. */
+      counterMult: 1.15,
+      /**
+       * The war track against the player, −3 to +3 (positive: the player's way), moving at most a step a
+       * day. Each step the player's way his raids, conquest attempts and counterattacks strike
+       * `strikePerStep` weaker and his march's garrisons are `garrisonPerStep` easier; each step his way,
+       * stronger and harder; at `extraConquestAt` he plans one more conquest attempt a week.
+       */
+      track: { min: -3, max: 3, strikePerStep: 0.05, garrisonPerStep: 0.02, extraConquestAt: -2 },
+      /** Each attack of his the player beats costs him this share of his army. */
+      attritionPerWin: 0.02,
+      /** P4-07: his Warhost fund's 600 falls by this share a preparation level. */
+      warhostFundPerLevel: 0.05
+    },
+    /** P4-02, P4-03: always a deal. */
+    goblin: {
+      /**
+       * A bribe on a hex of his march: the garrison an assault must beat × `perPoint` × his greed ÷ the
+       * player's Trust × (1 − `respectOff` × Respect), × the realm's trade cost (the Exchange Wing, the
+       * Merchant Hall path).
+       */
+      bribe: { perPoint: 1, respectOff: 0.003 },
+      /**
+       * His greed: 1 + `perStep` a step + `perLevel` a level of his march's preparation (P4-07). A step
+       * for each hex of his march the player takes by force (at most `maxRisePerWeek` a week, to
+       * `maxSteps`); a step off at each week close with none. Shown only as a band: fair below the first
+       * cut, dear below the second, gouging above (C-49).
+       */
+      greed: { perStep: 0.1, perLevel: 0.05, maxSteps: 6, maxRisePerWeek: 2, bands: [1.15, 1.35] },
+      /**
+       * P4-03: from `fromWeek`, at his turn, a bid for one of the player's villages in his march: its
+       * loyalty × `offerMult`, ± `roll`, paid from his expansion share; resolved at the next week close
+       * against loyalty + the player's hold × Trust.
+       */
+      villageBid: { fromWeek: 6, offerMult: 1.3, roll: 0.15 },
+      /** C-44: each dawn of a fallen force's window, his own garrison offers to buy back the hex it lost at this chance. */
+      buyBack: { chancePerDay: 0.3 }
+    },
+    /**
+     * P4-04: wild magic. One surge a day from week 3 by these weights: a swell (× `swell`) or ebb (× `ebb`)
+     * of a garrison for the day, a mythic summoned for `summonDays`, one company blessed or cursed by
+     * `companyShare` for the day, or a strike at `strikeShare` of the hex's strength. P4-07: swells and
+     * strikes grow `perLevel` a level of his march's preparation.
+     */
+    archmage: {
+      surgeWeights: { swell: 0.3, ebb: 0.3, summoning: 0.1, blessing: 0.1, curse: 0.1, strike: 0.1 },
+      swell: 1.75,
+      ebb: 0.7,
+      companyShare: 0.2,
+      summonDays: 5,
+      strikeShare: 1,
+      perLevel: 0.05
+    },
+    /** P4-06: the immovable object. */
+    dwarf: {
+      /** N-03: siege wear in his march decays this share a day. */
+      wearDecay: 0.05,
+      /** N-02: a force fallen back in his march adds this share of the garrison beaten, and never strikes. */
+      fallbackShare: 0.75,
+      /** P4-07: free wall levels he raises at a week close his preparation rises. */
+      freeWallsPerQuietWeek: 1,
+      /** P4-06: the walls he raises on the wilds of his march: at most this many levels a week, each wild hex to at most `wildWallMax`. */
+      wildWallsPerWeek: 3,
+      wildWallMax: 1
+    }
   }
 }
 

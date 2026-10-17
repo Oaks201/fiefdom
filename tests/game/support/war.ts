@@ -4,7 +4,7 @@
  */
 import { campaignWeek } from '../../../src/renderer/src/lib/game/clock'
 import { settleCombat, type CombatOutcome } from '../../../src/renderer/src/lib/game/combat'
-import { neighbors, strongholds } from '../../../src/renderer/src/lib/game/map'
+import { isLairMarch, neighbors, strongholds } from '../../../src/renderer/src/lib/game/map'
 import type { CampaignState, GameEventKind, GameEventMap, HexState, Owner, RivalId, Tiding } from '../../../src/renderer/src/lib/game/types'
 import { realm } from './realm'
 
@@ -95,9 +95,12 @@ export function reachable(state: CampaignState, ring: number, also: (h: HexState
   return { state: withOwner(state, [inner], 'player'), target: target.id }
 }
 
-/** A ring-3 beast den the player can reach (D-15's worked den: garrison 0.9 × 55 = 49.5). */
+/**
+ * A ring-3 beast den the player can reach, in a lair's wedge: no rival's march rules apply there
+ * (Patch 4, P4-01), so the common rules (D-22 to D-24) read plain.
+ */
 export function den(state: CampaignState = realm()): { state: CampaignState; target: string } {
-  return reachable(state, 3, (h) => !h.village)
+  return reachable(state, 3, (h) => !h.village && isLairMarch(h.march) && h.seam === undefined)
 }
 
 /** Parks `day`'s daily threat on a building, where it is always beaten. */

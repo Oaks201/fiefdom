@@ -14,13 +14,15 @@ import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
 import { hostView } from '../grand/hosts'
 import { hexName } from '../map'
+import { surgeOn } from '../personalities'
 import { rivalView } from '../rivals'
 import { RULES } from '../rules'
 import { realmConsistencyOn, type SettleSummary } from '../settle'
-import { isPlayable, openDayOf, weekOn } from '../state'
+import { foreseesSurges } from '../surges'
+import { isPlayable, openDayOf, weekOn, worldOf } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type WeekStartsOn } from '../types'
+import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type StanceBand, type Surge, type SurgeKind, type WeekStartsOn } from '../types'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
@@ -156,6 +158,49 @@ function threatLines(state: CampaignState, today: ISODate): { hidden: boolean; l
   return { hidden: view.hidden, lines }
 }
 
+/** A rival's stance toward the player, as his court shows it (D-33). */
+export const STANCE_WORDS: Record<StanceBand, string> = { defiant: 'Defiant', wary: 'Wary', shaken: 'Shaken', ready: 'Ready to yield' }
+
+/** A surge's kind in plain words (D-31). */
+export const SURGE_WORDS: Record<SurgeKind, string> = { swell: 'a swell', ebb: 'an ebb', summoning: 'a summoning', blessing: 'a blessing', curse: 'a curse', strike: 'a strike' }
+
+/** A buy-off's gift from its log label (`hex:<id>`, `item:<id>`, `hires:<n>`) in plain words. */
+export function giftWords(label: string | undefined): string {
+  if (!label) return ''
+  const [kind, id] = label.split(':')
+  if (kind === 'hex') return hexName(id)
+  if (kind === 'item') return CODEX.items.find((i) => i.id === id)?.name ?? id
+  const n = Number(id)
+  return `${n} hired ${n === 1 ? 'company' : 'companies'} for ${RULES.terms.goblin.hireWeeks} weeks`
+}
+
+/** What a surge lands on: its hex, or the company it blesses or curses. */
+function surgeTarget(state: CampaignState, s: Surge): string {
+  if (s.hexId) return hexName(s.hexId)
+  return state.roster.find((c) => c.id === s.companyId)?.name ?? 'a company'
+}
+
+/** The Archmage's surge today (a strike is told among the threats) and, when foreseen, tomorrow's (D-31). */
+function surgeLines(state: CampaignState, today: ISODate): HeraldLine[] {
+  const lines: HeraldLine[] = []
+  const s = surgeOn(state, today)
+  const a = RULES.personalities.archmage
+  if (s && s.surge !== 'strike') {
+    const facts: TextFacts = { hex: s.hexId ? hexName(s.hexId) : '', company: surgeTarget(state, s), mult: s.mult ?? 1, days: a.summonDays, share: percent(a.companyShare) }
+    lines.push(line('threat', `herald.surge.${s.surge}`, facts, { rival: 'archmage', ...(s.hexId ? { hexId: s.hexId } : {}) }))
+  }
+  const next = foreseesSurges(state) ? surgeOn(state, addDays(today, 1)) : undefined
+  if (next) lines.push(line('warning', 'herald.surge.tomorrow', { what: SURGE_WORDS[next.surge], target: surgeTarget(state, next) }, { rival: 'archmage', ...(next.hexId ? { hexId: next.hexId } : {}) }))
+  return lines
+}
+
+/** The Goblin's open offers to buy back a hex his garrison lost (C-44). */
+function buyBackLines(state: CampaignState, today: ISODate): HeraldLine[] {
+  return worldOf(state)
+    .offers.flatMap((o) => (o.kind === 'buyBack' && today <= o.until ? [o] : []))
+    .map((o) => line('warning', 'herald.buyBack', { rival: rivalName('goblin'), hex: hexName(o.hexId), price: o.price }, { hexId: o.hexId, rival: 'goblin' }))
+}
+
 function warningLines(state: CampaignState, today: ISODate): HeraldLine[] {
   return pendingBattles(state)
     .filter((b) => b.announcedOn <= today && b.battleDate >= today)
@@ -220,6 +265,22 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     case 'grandBattle':
       if (e.stage === 'queued' && e.battleDate) return line('warning', 'herald.grandBattle.queued', { trigger: e.trigger, hex: hexName(e.hexId), date: e.battleDate }, { hexId: e.hexId })
       return null
+    case 'bribe':
+      return line('result', 'herald.bribe', { hex: hexName(e.hexId), price: e.price }, { hexId: e.hexId, rival: 'goblin' })
+    case 'goblinBid':
+      return line(e.stage === 'placed' ? 'warning' : 'result', `herald.goblinBid.${e.stage}`, { rival: rivalName('goblin'), hex: hexName(e.hexId) }, { hexId: e.hexId, rival: 'goblin' })
+    case 'orcTrack':
+      return line('world', 'herald.orcTrack', { rival: rivalName('orc'), track: e.to > 0 ? `+${e.to}` : String(e.to) }, { rival: 'orc' })
+    case 'stance':
+      return line('world', 'herald.terms.stance', { rival: rivalName(e.rival), band: STANCE_WORDS[e.to] }, { rival: e.rival })
+    case 'terms': {
+      const facts: TextFacts = { rival: rivalName(e.rival), ...(e.hexId ? { hex: hexName(e.hexId) } : {}), ...(e.gift ? { gift: giftWords(e.gift) } : {}) }
+      const extra = { rival: e.rival, ...(e.hexId ? { hexId: e.hexId } : {}) }
+      if (e.stage === 'offered') return line(e.offer === 'finalWarhost' || e.offer === 'challenge' ? 'warning' : 'world', `herald.terms.offered.${e.offer}`, facts, extra)
+      return line('world', `herald.terms.${e.stage}`, facts, extra)
+    }
+    case 'restless':
+      return e.stage === 'uprising' ? line('warning', 'herald.restless.uprising', { hex: hexName(e.hexId) }, { hexId: e.hexId }) : null
     default:
       return null
   }
@@ -234,7 +295,8 @@ export function heraldView(state: CampaignState, today: ISODate = openDayOf(stat
   const yesterday = addDays(today, -1)
   const threats = isPlayable(state) ? threatLines(state, today) : { hidden: false, lines: [] }
   const results = state.log.filter((e) => e.day === yesterday).flatMap((e) => resultLine(e) ?? [])
-  return { date: today, hidden: threats.hidden, lines: [...threats.lines, ...(isPlayable(state) ? warningLines(state, today) : []), ...rumorLines(state), ...results] }
+  const live = isPlayable(state) ? [...surgeLines(state, today), ...warningLines(state, today), ...buyBackLines(state, today)] : []
+  return { date: today, hidden: threats.hidden, lines: [...threats.lines, ...live, ...rumorLines(state), ...results] }
 }
 
 // ── The Homecoming (A-45, Ch 16) ─────────────────────────────────────────────

@@ -6,7 +6,8 @@
  *   npm run sim -- --quick           a few campaigns of each kind, for a fast look (writes to the scratch folder)
  *   npm run sim -- --report-only     rebuild the report and CSVs from the last run's saved results
  *   npm run sim -- --targets         the blueprint's targets (Patch 2): docs/game/sim/targets-<ruleVersion>.md
- *                                    (--runs sets the seeds per greedy profile, default 40)
+ *                                    (--runs sets the seeds per greedy profile, default 40; --save-results also
+ *                                    writes the campaigns' raw results beside it, for a scratch --out only)
  *
  * Options: --runs 300 (per profile, for greedy and smarter), --push-runs 50, --income-runs 50, --sweep-runs 30,
  * --weeks 70, --workers <n> (default: every core), --out docs/game/sim, --results sim/.results.
@@ -38,6 +39,7 @@ interface Options {
   reportOnly: boolean
   targets: boolean
   runsSet: boolean
+  saveResults: boolean
 }
 
 const ROOT = path.resolve(__dirname, '..')
@@ -63,7 +65,8 @@ function parseArgs(argv: string[]): Options {
     results: path.join(ROOT, 'sim', '.results'),
     reportOnly: false,
     targets: false,
-    runsSet: false
+    runsSet: false,
+    saveResults: false
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -74,6 +77,7 @@ function parseArgs(argv: string[]): Options {
       o.results = path.join(o.out, '.results')
     } else if (a === '--report-only') o.reportOnly = true
     else if (a === '--targets') o.targets = true
+    else if (a === '--save-results') o.saveResults = true
     else if (a === '--runs') {
       o.runs = Number(next())
       o.runsSet = true
@@ -187,6 +191,8 @@ async function runTargets(o: Options): Promise<void> {
   const started = Date.now()
   const { results } = await runAll(new Map([[BASE, runs]]), o.workers)
   const file = writeTargets(results, { seeds, weeks: o.weeks, seconds: Math.round((Date.now() - started) / 1000) }, o.out)
+  // With --save-results, the campaigns' raw results go beside the report, for a closer look (never into the repo).
+  if (o.saveResults) fs.writeFileSync(path.join(o.out, 'targets-results.json'), JSON.stringify(results))
   process.stderr.write(`Wrote ${path.relative(ROOT, file)}\n`)
 }
 

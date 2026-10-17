@@ -33,7 +33,7 @@ import { CODEX } from './codex'
 import { effectiveGarrison, liftSiege, ordersEstimate, setOrders } from './combat'
 import { sealContract, takeRespite } from './contractActions'
 import { availableLengths } from './contracts'
-import { hexWorth, pathShares, pathTotals } from './dominion'
+import { hexWorth, pathRank, pathShares, pathTotals } from './dominion'
 import { balance } from './economy'
 import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
@@ -44,12 +44,16 @@ import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
 import { readinessValors, valorOn } from './settle'
-import { assaultDays, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
+import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
 import { inCoalition } from './state'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId } from './types'
 import { trustNow } from './view/realm'
-import { accordGate, acceptGoblinOffer, bendTheKnee, sealAccord, ultimatumView } from './world'
+import { realmConsistencyNow } from './view/shell'
+import { marchRule, surgeMult } from './personalities'
+import { bidSways, bribe, bribePrice, bribeProblem, goblinBidsOf, holdVillage, holdWeight } from './goblin'
+import { accordGate, acceptGoblinOffer, acceptTerms, bendTheKnee, refuseTerms, sealAccord, ultimatumView } from './world'
+import { openTerms, termsOf } from './terms'
 import { keepVillage } from './world/events'
 
 export interface AutoplayPlan {
@@ -108,6 +112,13 @@ function buyCheapest(input: CampaignState, today: ISODate): CampaignState {
     state = offers[0].buy(state)
   }
   return state
+}
+
+/** What the next build waits on: the cheapest tier, castle tier or Crossing stage open but for its price (0 with none). Bribes leave `bribeReserve` of it alone. */
+function buildReserve(state: CampaignState): number {
+  const waiting = (o: { ok: boolean; reason?: { code: string }; cost: number }): boolean => o.ok || o.reason?.code === 'reputation'
+  const costs = [castleOffer(state), ...BUILDING_IDS.map((b) => tierOffer(state, b)), ...CODEX.crossings.map((x) => crossingOffer(state, x.id))].filter(waiting).map((o) => o.cost)
+  return costs.length > 0 ? A.bribeReserve * Math.min(...costs) : 0
 }
 
 /** Hexes the player doesn't hold that touch its land: the only ones `claimableBy` can allow (a cheap first cut). */
@@ -202,6 +213,74 @@ function useArmory(input: CampaignState, today: ISODate): CampaignState {
   return state
 }
 
+/**
+ * Patch 4 (C-46): a bribe a day in the Goblin's march (D-29): the hex on the plan's paths with the most
+ * Dominion per price, while the price is at most `bribeShare` of the purse beyond `bribeReserve` of what
+ * the next build waits on (so the realm builds much as it did before bribes, G-08), among the hexes its army could
+ * take by siege within `siegeHorizon` days but not today (it buys time, never land beyond its reach); never
+ * a village it is courting.
+ */
+function bribeOne(state: CampaignState, today: ISODate, plan: AutoplayPlan, effects: Effects): CampaignState {
+  // The cheap checks first (a re-founding plays a year of days through here): a hex he'd take a bribe for, a purse to pay it, its price.
+  const courted = new Set(state.courtships.map((c) => c.hexId))
+  const open = frontier(state).filter((h) => !courted.has(h.id) && onPlan(plan, h) && !bribeProblem(state, h.id, today))
+  if (open.length === 0) return state
+  const rc = realmConsistencyNow(state)
+  const all = open.map((h) => ({ h, price: bribePrice(state, h, today, rc, effects) })).filter((x) => x.price <= A.bribeShare * balance(state.purse))
+  if (all.length === 0) return state
+  const purse = balance(state.purse) - buildReserve(state)
+  const priced = all.filter((x) => x.price <= A.bribeShare * purse)
+  if (priced.length === 0) return state
+  const options = new Map(assaultOptions(state, today, effects, new Set(priced.map((x) => x.h.id))).map((o) => [o.hex.id, o]))
+  let pick: { hexId: string; worth: number } | undefined
+  for (const { h, price } of priced) {
+    const o = options.get(h.id)
+    if (!o || o.today || !fallsWithin(o.value, o.garrison, A.siegeHorizon)) continue
+    const worth = hexWorth(h) / Math.max(1, price)
+    if (!pick || worth > pick.worth) pick = { hexId: h.id, worth }
+  }
+  if (!pick) return state
+  const done = bribe(state, pick.hexId, rc, today)
+  return done.ok ? done.state : state
+}
+
+/** Patch 4 (C-46): holds each village the Goblin bids for, when his offer sways it and the hold needed is at most `holdShare` of the purse. */
+function holdVillages(input: CampaignState, today: ISODate): CampaignState {
+  let state = input
+  if (goblinBidsOf(state).length === 0) return state
+  const rc = realmConsistencyNow(state)
+  const t = holdWeight(state, rc)
+  for (const b of goblinBidsOf(state)) {
+    const hex = state.hexes.find((h) => h.id === b.hexId)
+    if (!hex?.village || hex.owner !== 'player' || !bidSways(state, b, rc)) continue
+    const need = Math.ceil((b.offer - hex.village.loyalty - (b.hold ?? 0) * t) / t) + 1
+    if (need > A.holdShare * balance(state.purse)) continue
+    const done = holdVillage(state, b.hexId, need, today)
+    if (done.ok) state = done.state
+  }
+  return state
+}
+
+/**
+ * Patch 4 (C-46, G-18): the rivals' terms. Under `offers: 'accept'`, or as the smarter player, it takes
+ * each buy-off and surrender, except that a steered player refuses those from a rival on its own path
+ * until that path reaches `refuseOwnPathUntilRank`, and at least `refuseOwnPathAtLeast` of them (it keeps
+ * fighting for its path's deeds), and it refuses the Goblin's first `refuseBuyOffs` buy-offs (the next is
+ * richer). Otherwise it refuses them all.
+ */
+function answerTerms(input: CampaignState, today: ISODate, plan: AutoplayPlan): CampaignState {
+  let state = input
+  for (const o of openTerms(state, today)) {
+    const takes = plan.offers === 'accept' || plan.smarter === true
+    const refused = state.log.filter((e) => e.kind === 'terms' && e.rival === o.rival && e.stage === 'refused').length
+    const ownPath = plan.paths?.includes(o.rival) === true && (pathRank(state, o.rival) < A.refuseOwnPathUntilRank || refused < A.refuseOwnPathAtLeast)
+    const haggles = o.offer === 'buyOff' && (termsOf(state).byRival.goblin?.refused ?? 0) < A.refuseBuyOffs
+    const done = takes && !ownPath && !haggles ? acceptTerms(state, o.rival, today) : refuseTerms(state, o.rival, today)
+    if (done.ok) state = done.state
+  }
+  return state
+}
+
 /** Takes the world's offers the purse can pay for: keeping a rising village, the Goblin buying an abdicated hex. */
 function takeOffers(input: CampaignState, today: ISODate): CampaignState {
   let state = input
@@ -259,11 +338,13 @@ interface AssaultOption extends InReach {
  * the estimate fields the best-matched companies the assault banners allow; the Assault is
  * estimated once per kind of garrison.
  */
-function assaultOptions(state: CampaignState, today: ISODate, effects: Effects): AssaultOption[] {
+function assaultOptions(state: CampaignState, today: ISODate, effects: Effects, only?: ReadonlySet<string>): AssaultOption[] {
   const everyone = roster(state, { day: today }, effects).map((c) => c.id)
   const valor = expectedValor(state)
   const byId = hexIndex(state.hexes)
-  const candidates = frontier(state).filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
+  // A hex whose Grand Battle waits can't be assaulted until it is fought (S-14): no target while it waits.
+  const waiting = new Set(pendingBattles(state).map((b) => b.hexId))
+  const candidates = frontier(state).filter((h) => (!only || only.has(h.id)) && !waiting.has(h.id) && claimableBy(state.hexes, h.id, 'player', 'assault'))
   const pool = new Map<string, { base: number; fielded: string[] }>()
   const out: AssaultOption[] = []
   for (const h of candidates) {
@@ -275,7 +356,7 @@ function assaultOptions(state: CampaignState, today: ISODate, effects: Effects):
     const { base, fielded } = pool.get(kind) as { base: number; fielded: string[] }
     if (fielded.length === 0 || base <= 0) continue
     const value = base * flankingMult(byId, h.id)
-    const garrison = effectiveGarrison(h, effects.assaultIgnoresFortification.on, garrisonMult(state, h, today), fallbackOn(state, h, today))
+    const garrison = effectiveGarrison(h, effects.assaultIgnoresFortification.on, garrisonMult(state, h, today), fallbackOn(state, h, today), fortificationShare(state))
     out.push({ hex: h, score: hexWorth(h) / Math.max(1, garrison), fielded, today: value >= garrison, value, garrison, days: assaultDays(value, garrison) })
   }
   return out
@@ -338,7 +419,17 @@ function nearestToFalling(list: readonly AssaultOption[]): AssaultOption | undef
  */
 function planOptions(state: CampaignState, today: ISODate, _plan: AutoplayPlan, effects: Effects): AssaultOption[] {
   const courted = new Set(state.courtships.map((c) => c.hexId))
-  return assaultOptions(state, today, effects).filter((o) => !courted.has(o.hex.id))
+  // Patch 4 (C-46): an ebb that brings a hex within reach it couldn't hold otherwise is no reason to take it (the player doesn't overreach on wild magic).
+  const overreach = (o: AssaultOption): boolean => {
+    const m = surgeMult(state, o.hex.id, today)
+    return m < 1 && !fallsWithin(o.value, o.garrison / m, A.siegeHorizon)
+  }
+  return assaultOptions(state, today, effects).filter((o) => !courted.has(o.hex.id) && !overreach(o))
+}
+
+/** The assault days a siege may run on `o` (C-46): `days`, longer in the Dwarf's march. */
+function horizon(state: CampaignState, o: AssaultOption, today: ISODate, days: number): number {
+  return marchRule(state, o.hex, today) === 'dwarf' ? days + A.dwarfSiegeExtra : days
 }
 
 function onPath<T extends InReach>(list: readonly T[], p: RivalId): T[] {
@@ -355,12 +446,12 @@ function onPath<T extends InReach>(list: readonly T[], p: RivalId): T[] {
  * which asks it what the player would have done without a fallback.
  */
 export function pickAssault(state: CampaignState, today: ISODate, plan: AutoplayPlan, effects: Effects = realmEffects(state)): InReach | undefined {
-  return pickOption(planOptions(state, today, plan, effects), state, plan)
+  return pickOption(planOptions(state, today, plan, effects), state, plan, today)
 }
 
-function pickOption(options: readonly AssaultOption[], state: CampaignState, plan: AutoplayPlan): AssaultOption | undefined {
+function pickOption(options: readonly AssaultOption[], state: CampaignState, plan: AutoplayPlan, today: ISODate): AssaultOption | undefined {
   const now = options.filter((o) => o.today)
-  const within = (days: number): AssaultOption[] => options.filter((o) => !o.today && fallsWithin(o.value, o.garrison, days))
+  const within = (days: number): AssaultOption[] => options.filter((o) => !o.today && fallsWithin(o.value, o.garrison, horizon(state, o, today, days)))
   if (plan.paths) {
     const ownSieges = within(A.pathSiegeHorizon)
     const forts = options.filter((o) => isStronghold(state.hexes, o.hex.id))
@@ -409,7 +500,7 @@ function orders(input: CampaignState, today: ISODate, plan: AutoplayPlan): Campa
     const siege = standingSiegeOf(next)
     return siege && !wanted.has(siege.hexId) ? liftSiege(next, today) : next
   }
-  const pick = pickOption(options, state, plan)
+  const pick = pickOption(options, state, plan, today)
   if (pick) {
     const long = isStronghold(state.hexes, pick.hex.id) && !fallsWithin(pick.value, pick.garrison, A.siegeHorizon)
     const challenged = long ? tryChallenge(pick) : undefined
@@ -540,6 +631,11 @@ export function autoplay(input: CampaignState, today: ISODate, plan: AutoplayPla
     if (plan.offers === 'accept') state = takeOffers(state, today)
   }
   if (plan.smarter) state = smarterDaily(state, today, day)
+  state = answerTerms(state, today, plan)
+  if (plan.land !== 'force') {
+    state = holdVillages(state, today)
+    state = bribeOne(state, today, plan, realmEffects(state))
+  }
   state = fightBattles(state, today)
   state = orders(state, today, plan)
   if (plan.skirmish) state = marshalAllFights(state, today, day.valor ?? 0)

@@ -27,6 +27,8 @@ import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } 
 import { realmEffects } from './effects'
 import { originalVillages } from './land'
 import { bandOf, hexIndex, isStronghold, neighbors, rivalOfRoad, strongholdBarring } from './map'
+import { pathRank } from './dominion'
+import { pactBars } from './personalities'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
@@ -125,6 +127,8 @@ export interface GrandRequest {
   limit?: number
   /** The day it must fall on or after (the Wild Hunt's full moon; the Siege after an absence). */
   notBefore?: ISODate
+  /** Patch 4 (D-33, R-11): the Orc's last battle: won, he is conquered. */
+  final?: boolean
 }
 
 export type GrandRefusal =
@@ -330,6 +334,7 @@ export function announceGrandBattle(state: CampaignState, r: GrandRequest, emit:
   if (r.revealed) battle.revealed = true
   if (r.eventId) battle.eventId = r.eventId
   if (r.limit !== undefined) battle.limit = r.limit
+  if (r.final) battle.final = true
   const facts = { battleId: id, trigger: r.trigger, hexId: r.hexId, battleDate, ...(r.rival ? { rival: r.rival } : {}), ...(quarry ? { quarry } : {}) }
   emit('grandBattle', { ...facts, stage: 'announced' })
   if (battleDate !== nominal) emit('grandBattle', { ...facts, stage: 'queued' })
@@ -404,6 +409,8 @@ export function challenge(state: CampaignState, hexId: string, today: ISODate = 
   if (!neighbors(hexId).some((n) => hexOf(state, n)?.owner === 'player')) return refused(state, 'notTouching')
   // A stronghold still standing bars the player's way deeper into its march, its Gate included (D-23).
   if (hex.owner !== 'player' && strongholdBarring(state.hexes, hexId)) return refused(state, 'barred')
+  // Patch 4 (C-35): a buy-off pact leaves the Goblin's march alone.
+  if (pactBars(state, hex, today)) return refused(state, 'pact')
   const owner = hex.owner
   let r: GrandRequest
   if (hex.kind === 'gate' && isRival(owner)) r = { trigger: 'gate', hexId, announcedOn: today, rival: owner }
@@ -825,6 +832,8 @@ export interface GrandOutcomeHooks {
   coalitionOffensive(state: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome }
   siege(state: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome }
   event(state: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome }
+  /** Patch 4 (D-33): what the Orc's last battle does beyond its trigger's outcome (world.ts: won, he is conquered). */
+  final(state: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome }
 }
 
 function retryFrom(day: ISODate, days: number): ISODate {
@@ -858,7 +867,9 @@ export const GRAND_HOOKS: GrandOutcomeHooks = {
   /** Ch 14: T12. */
   siege: (state) => ({ state, outcome: {} }),
   /** T12. */
-  event: (state) => ({ state, outcome: {} })
+  event: (state) => ({ state, outcome: {} }),
+  /** Patch 4: world.ts. */
+  final: (state) => ({ state, outcome: {} })
 }
 
 /** A hex the player loses to `rival` after a lost Incursion or Warhost; rings 0 to 2 are only scorched (Ch 3 rule 2). */
@@ -903,7 +914,9 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
 
   // Routed companies are Weary for 3 days and never destroyed (Ch 11 rule 2); the Veterans' Hall takes a day off.
   const routed = field.units.filter((u) => u.side === 'player' && u.routed && !u.hired).map((u) => u.id)
-  const wearyDays = G.wearyDaysAfterRout + effects.wearyDays.value
+  // Patch 4 (C-36): from the Orc's path rank III a Grand Battle's Weary lasts a day less.
+  const orcPerk = RULES.dominion.rankPerks.orc
+  const wearyDays = G.wearyDaysAfterRout + effects.wearyDays.value - (pathRank(state, 'orc') >= orcPerk.grandWearyRank ? orcPerk.grandWearyDays : 0)
   if (routed.length > 0 && wearyDays > 0) {
     const until = addDays(day, wearyDays)
     if (routed.some((id) => !state.roster.some((c) => c.id === id))) state = refreshRoster(state)
@@ -922,6 +935,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
     case 'incursion':
     case 'warhost': {
       const rival = battle.rival as RivalId
+      if (won && battle.final) break
       if (won) {
         const sent = battle.sent?.[rival] ?? 0
         const av = baseArmyValue(state, rival)
@@ -1000,6 +1014,13 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
       Object.assign(outcome, done.outcome)
       break
     }
+  }
+
+  // Patch 4 (D-33): the Orc's last battle, won or lost.
+  if (battle.final) {
+    const done = GRAND_HOOKS.final(state, battle, ctx)
+    state = done.state
+    Object.assign(outcome, done.outcome)
   }
 
   emit('grandBattle', {

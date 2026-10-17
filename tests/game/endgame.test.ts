@@ -20,7 +20,6 @@ import { playerPower, rivalPower } from '../../src/renderer/src/lib/game/rivals'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { worldOf } from '../../src/renderer/src/lib/game/state'
 import type { CampaignState, GameEvent, GrandBattle, HexState, RivalId, WorldEvent } from '../../src/renderer/src/lib/game/types'
-import { RIVAL_IDS } from '../../src/renderer/src/lib/game/types'
 import { accordPaid, bendPrice, bendTheKnee, chronicleRecord, ultimatumView, worldWeek } from '../../src/renderer/src/lib/game/world'
 import { FOUNDED_AT, TZ, charter, chicago, ledgerWith } from './fixtures/ledgers'
 import { collector, withArmy } from './support/grand'
@@ -98,16 +97,14 @@ function ultimatum(state: CampaignState = base()): { state: CampaignState; event
 
 // ── Pacing (Ch 14) ───────────────────────────────────────────────────────────
 
-test('Ch 14 pacing: with every rival ready from day 1, none is resolved before week 12, one per 8 weeks after, and victory comes in week 36', () => {
+test('Ch 14 pacing: with every rival ready from day 1, none is resolved before week 12, one per 8 weeks after; the Orc never defects (Patch 4, C-41)', () => {
   const ready = allDefecting(realm(), '2026-10-08')
   const { state, events } = weeks(ready, 1, 40)
   const resolved = events.filter((e) => e.kind === 'rivalResolved').map((e) => e.week)
-  assert.deepEqual(resolved, [12, 20, 28, 36])
-  const won = events.filter((e) => e.kind === 'campaignEnd')
-  assert.deepEqual(won.map((e) => [e.outcome, e.week]), [['won', 36]])
-  assert.equal(state.campaign.status, 'won')
-  assert.equal(state.castleTier, 5, 'the High Throne, never bought')
-  assert.ok(RIVAL_IDS.every((r) => state.rivals[r].status === 'abdicated'))
+  assert.deepEqual(resolved, [12, 20, 28])
+  assert.ok((['goblin', 'dwarf', 'archmage'] as const).every((r) => state.rivals[r].status === 'abdicated'))
+  assert.equal(state.rivals.orc.status, 'active', 'he yields only to his last battle (D-33)')
+  assert.equal(state.campaign.status, 'active')
 })
 
 test('Ch 14 / A-168: an Accord signed in week 8 is held, and the rival is allied at week 12’s close', () => {

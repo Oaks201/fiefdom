@@ -15,6 +15,7 @@
  */
 import { weekOf } from './clock'
 import { hexIndex, isLairMarch, rulingMarch } from './map'
+import { freeWalls, pactHolds } from './personalities'
 import { RULES } from './rules'
 import { awayOn } from './state'
 import { RIVAL_IDS, type CampaignState, type Emit, type HexState, type ISODate, type MarchesState, type RivalId } from './types'
@@ -86,9 +87,12 @@ export function prepareMarches(state: CampaignState, day: ISODate, emit: Emit): 
       quietWeeks[r] = 0
     } else {
       quietWeeks[r] += 1
-      if (rise) preparation[r] = Math.min(P.max, from + 1)
+      // Patch 4 (C-35): a march the player agreed to leave alone (the Goblin's buy-off pact) doesn't prepare.
+      if (rise && !(r === 'goblin' && pactHolds(state, day))) preparation[r] = Math.min(P.max, from + 1)
     }
     if (preparation[r] !== from) emit('preparation', { march: r, from, to: preparation[r] })
   }
-  return { ...state, marches: { preparation, quietWeeks } }
+  const next: CampaignState = { ...state, marches: { preparation, quietWeeks } }
+  // Patch 4 (P4-07): the Dwarf prepares his own way too: a free wall facing the player.
+  return preparation.dwarf > before.preparation.dwarf ? freeWalls(next, day) : next
 }

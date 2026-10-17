@@ -3,10 +3,10 @@ import { sfx } from '../../audio'
 import { formatShort } from '../../lib/dates'
 import { makeDeal } from '../../lib/game/land'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
-import { accordPanel, coalitionBanners, endgameView, ultimatumBanners } from '../../lib/game/view/endgame'
+import { accordPanel, coalitionBanners, endgameView, termsBanners, ultimatumBanners } from '../../lib/game/view/endgame'
 import { amount } from '../../lib/game/view/refusals'
 import { rivalName } from '../../lib/game/view/shell'
-import { bendTheKnee, sealAccord } from '../../lib/game/world'
+import { acceptTerms, bendTheKnee, refuseTerms, sealAccord } from '../../lib/game/world'
 import { useCampaign } from '../../state/campaign'
 import { newId } from '../../state/hooks'
 import { toast } from '../../state/toasts'
@@ -178,5 +178,59 @@ export function EndgameRecord({ campaign }: { campaign: CampaignState }): React.
         )}
       </div>
     </section>
+  )
+}
+
+/**
+ * A rival's terms (Patch 4, D-33): a Goblin's buy-off or a surrender, what accepting and refusing
+ * do, and the last day it stands. Accepting is held, as it can't be undone.
+ */
+export function TermsBanners({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element | null {
+  const act = useCampaign((s) => s.act)
+  const banners = termsBanners(campaign, today)
+  if (banners.length === 0) return null
+  return (
+    <>
+      {banners.map((b) => (
+        <section key={b.rival} className="coalition-banner terms-banner" aria-label={`Terms from ${b.name}`}>
+          <GiScrollUnfurled className="coalition-banner__icon" aria-hidden="true" />
+          <div>
+            <p className="coalition-banner__text" data-text-id={b.textId}>
+              {b.text}
+            </p>
+            <p>
+              <strong>Accept:</strong> {b.accept}
+            </p>
+            <p>
+              <strong>Refuse:</strong> {b.refuse}
+            </p>
+            <p className="muted">Open until {formatShort(b.until)}.</p>
+            <div className="ultimatum__actions">
+              <HoldButton
+                className="btn"
+                onComplete={() => {
+                  if (act((s) => acceptTerms(s, b.rival, today))) {
+                    sfx('stamp')
+                    toast(`Terms with ${b.name} accepted.`, 'success')
+                  }
+                }}
+                aria-label={`Hold to accept ${b.name}’s terms`}
+              >
+                <GiShakingHands aria-hidden="true" /> Hold to accept
+              </HoldButton>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  if (act((s) => refuseTerms(s, b.rival, today))) toast(`Terms with ${b.name} refused. The war goes on.`, 'info')
+                }}
+              >
+                <GiCrossedSwords aria-hidden="true" /> Refuse
+              </button>
+            </div>
+          </div>
+        </section>
+      ))}
+    </>
   )
 }

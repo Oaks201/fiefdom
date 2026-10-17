@@ -520,6 +520,8 @@ export function eventBattleOutcome(input: CampaignState, battle: GrandBattle, ct
   const effect = battle.eventId ? entry(battle.eventId).effect : {}
   const bonus = realmEffects(state).reputationBonus.value
   if (battle.eventId === 'ugraksChallenge') {
+    // Patch 4 (C-40): the Orc's last Challenge won conquers him (world.ts's final hook), in place of the Respect.
+    if (ctx.won && battle.final) return { state, outcome: {} }
     if (ctx.won) {
       const before = state.rivals.orc.respect
       state = adjustRespect(state, 'orc', num(effect, 'winRespect'), 'challengeWon', ctx.emit)

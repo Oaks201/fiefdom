@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Audience } from '../components/diplomacy/Audience'
 import { Courtships } from '../components/diplomacy/Courtships'
-import { AccordPanel, CoalitionBanners, EndgameRecord, UltimatumBanners } from '../components/endgame/Endgame'
+import { AccordPanel, CoalitionBanners, EndgameRecord, TermsBanners, UltimatumBanners } from '../components/endgame/Endgame'
 import { DealsList } from '../components/diplomacy/DealsList'
 import { WeekCloseNote } from '../components/game/WeekClose'
 import { RivalCourt } from '../components/diplomacy/RivalCourt'
@@ -41,6 +41,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
       <EndgameRecord campaign={campaign} />
       <UltimatumBanners campaign={campaign} today={today} />
       <CoalitionBanners campaign={campaign} today={today} />
+      <TermsBanners campaign={campaign} today={today} />
       <div className="courts">
         {panels.map((p) => (
           <RivalCourt

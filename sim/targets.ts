@@ -10,9 +10,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { RULES } from '../src/renderer/src/lib/game/rules'
-import { RIVAL_IDS, type DeedKind } from '../src/renderer/src/lib/game/types'
+import { RIVAL_IDS, type DeedKind, type RivalId } from '../src/renderer/src/lib/game/types'
 import type { RunOptions, RunResult } from './campaign'
-import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, type Measures } from './measure'
+import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, SURGE_FROM_WEEK, TERMS_FROM_WEEK, type MarchMeasure, type Measures } from './measure'
 import type { PolicyId } from './policy'
 import type { ProfileId } from './profiles'
 
@@ -29,6 +29,9 @@ export function targetPlan(seeds: number, weeks: number): RunOptions[] {
   add('steadfast', 'paths:dwarf+archmage', half)
   add('steadfast', 'paths:orc+goblin+dwarf', half)
   add('steadfast', 'paths:all', seeds)
+  // Patch 4 (G-18, C-47): the smarter player, unsteered and steered along each one path.
+  add('steadfast', 'smarter', seeds)
+  for (const r of RIVAL_IDS) add('steadfast', `smarter+paths:${r}`, half)
   return runs
 }
 
@@ -173,7 +176,27 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   const fellShare = fell.posted / Math.max(1, nonRoutWins)
   const changedShare = fell.changed / Math.max(1, fell.dawns)
   rows.push(row('G-09', 'Routed enemies change choices', "Non-rout assault wins followed by a fallback; dawns after a fallback whose target differs from the one chosen without it", `${pct(fellShare)}; ${pct(changedShare)}`, fellShare >= 0.6 && changedShare >= 0.2))
-  rows.push(row('G-10', 'The rivals fight differently', 'March rules (Patch 4)', 'not yet built', null))
+  // G-10 (Patch 4, spec section 2): per march, Steadfast greedy.
+  const g10 = marchReadings(steadfast)
+  const by = (k: keyof MarchReading): Record<RivalId, number> => Object.fromEntries(RIVAL_IDS.map((r) => [r, g10[r][k]])) as Record<RivalId, number>
+  const lowest = (v: Record<RivalId, number>): RivalId => RIVAL_IDS.reduce((a, b) => (v[b] < v[a] ? b : a))
+  const highest = (v: Record<RivalId, number>): RivalId => RIVAL_IDS.reduce((a, b) => (v[b] > v[a] ? b : a))
+  const lostPer = by('lostPerHeld')
+  const daysPer = by('daysPerTaken')
+  const defPer = by('defensesPerHeld')
+  const bothPer = by('bothWaysPerHeld')
+  const goblinDeal = g10.goblin.dealShare
+  const surgeShare = steadfast.reduce((s, r) => s + r.measures.surgeWeeks.hit, 0) / Math.max(1, steadfast.reduce((s, r) => s + r.measures.surgeWeeks.weeks, 0))
+  const g10Pass = lowest(lostPer) === 'dwarf' && highest(daysPer) === 'dwarf' && highest(defPer) === 'orc' && highest(bothPer) === 'orc' && goblinDeal >= 0.4 && surgeShare >= SURGE_WEEKS_SHARE
+  rows.push(
+    row(
+      'G-10',
+      'The rivals fight differently',
+      `Per march (Steadfast; the "The marches" table below): fewest hexes lost per hex held, and most assault days per hex taken (the Dwarf's); most defenses and most hexes changing hands both ways per hex held (the Orc's); the Goblin's march first taken by deal or bribe; weeks from week ${SURGE_FROM_WEEK} with a surge on a hex the player could assault`,
+      `lost ${lowest(lostPer)}; days ${highest(daysPer)}; defenses ${highest(defPer)}; both ways ${highest(bothPer)}; Goblin by deal ${pct(goblinDeal)}; surge weeks ${pct(surgeShare)}`,
+      g10Pass
+    )
+  )
 
   // G-11
   const wonWeeks = (p: ProfileId): number[] => of(p, 'greedy').flatMap((r) => (r.wonWeek !== undefined ? [r.wonWeek] : []))
@@ -230,7 +253,98 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     return d.indexOf(Math.max(...d)) === p.indexOf(Math.max(...p))
   }).length
   rows.push(row('G-17', 'The path tells the story', 'One-path players whose path ends with both the most deeds and the most Dominion (every campaign: most-deeds path is the highest)', story.length > 0 ? `${pct(told / story.length)} (${pct(agree / Math.max(1, all.length))})` : 'not yet built', story.length > 0 ? told / story.length >= 0.9 : null))
+
+  // G-18 (Patch 4, spec section 2): the smarter one-path players resolve rivals by terms; nobody offers before week 16; the smarter refuse some.
+  const smarterOne = RIVAL_IDS.flatMap((r) => of('steadfast', `smarter+paths:${r}`))
+  const built = results.some((r) => r.measures.terms.firstBand && Object.values(r.measures.terms.firstBand).some((b) => b.some((w) => w !== null)))
+  const byTerms = smarterOne.map((r) => r.measures.terms.byTerms)
+  const refused = smarterOne.map((r) => r.measures.terms.refused)
+  const early16 = results.reduce((s, r) => s + r.measures.terms.before16, 0)
+  rows.push(
+    row(
+      'G-18',
+      'Terms do their job',
+      `Smarter one-path players: rivals resolved by terms by the horizon (median; share with 2+); offers before week ${TERMS_FROM_WEEK} (every campaign); offers refused (median)`,
+      built ? `${median(byTerms)} (${pct(byTerms.filter((v) => v >= 2).length / Math.max(1, byTerms.length))}); ${early16}; ${median(refused)}` : 'not yet built',
+      built ? median(byTerms) >= 2 && early16 === 0 && median(refused) >= 1 : null
+    )
+  )
   return rows
+}
+
+/** G-10's share of weeks with a surge on a hex the player could assault ("at least weekly"). */
+const SURGE_WEEKS_SHARE = 0.9
+
+interface MarchReading {
+  lostPerHeld: number
+  daysPerTaken: number
+  defensesPerHeld: number
+  bothWaysPerHeld: number
+  dealShare: number
+  /** Mean hexes held there at the week closes (per campaign). */
+  held: number
+}
+
+/** Each rival march's G-10 readings over `runs`: totals over the mean land held there. */
+function marchReadings(runs: readonly RunResult[]): Record<RivalId, MarchReading> {
+  const out = {} as Record<RivalId, MarchReading>
+  for (const r of RIVAL_IDS) {
+    const ms = runs.map((x) => x.measures.marches[r])
+    const sum = (f: (m: MarchMeasure) => number): number => ms.reduce((s, m) => s + f(m), 0)
+    const held = sum((m) => m.heldSum / Math.max(1, m.closes))
+    out[r] = {
+      lostPerHeld: sum((m) => m.lost) / Math.max(1, held),
+      daysPerTaken: sum((m) => m.assaultDays) / Math.max(1, sum((m) => m.assaultTaken)),
+      defensesPerHeld: sum((m) => m.defenses) / Math.max(1, held),
+      bothWaysPerHeld: sum((m) => m.bothWays) / Math.max(1, held),
+      dealShare: sum((m) => m.firstDeal) / Math.max(1, sum((m) => m.firstDeal + m.firstForce)),
+      held: held / Math.max(1, ms.length)
+    }
+  }
+  return out
+}
+
+/** G-10's per-march table (Steadfast greedy). */
+function marchLines(steadfast: readonly RunResult[]): string[] {
+  const g = marchReadings(steadfast)
+  const cell = (f: (m: MarchReading) => string): string => RIVAL_IDS.map((r) => f(g[r])).join(' | ')
+  return [
+    '## The marches',
+    '',
+    "G-10's readings for Steadfast (greedy), each rival's march (a seam counts for its first march).",
+    '',
+    `| Measure | ${RIVAL_IDS.join(' | ')} |`,
+    `| --- | ${RIVAL_IDS.map(() => '---').join(' | ')} |`,
+    `| Hexes held there (mean of the week closes) | ${cell((m) => f1(m.held))} |`,
+    `| Hexes lost per hex held | ${cell((m) => f2(m.lostPerHeld))} |`,
+    `| Assault days per hex taken by assault | ${cell((m) => f2(m.daysPerTaken))} |`,
+    `| Defenses per hex held | ${cell((m) => f2(m.defensesPerHeld))} |`,
+    `| Hexes changing hands both ways per hex held | ${cell((m) => f2(m.bothWaysPerHeld))} |`,
+    `| First taken by deal (courtship, trade, bribe) | ${cell((m) => pct(m.dealShare))} |`
+  ]
+}
+
+/** G-18's detail: when each rival first reaches each band, the first offer, and how rivals were resolved (Steadfast smarter, and the smarter one-path players). */
+function termsLines(results: readonly RunResult[]): string[] {
+  const groups: { label: string; runs: RunResult[] }[] = [
+    { label: 'Steadfast smarter', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter') },
+    { label: 'Smarter one-path', runs: results.filter((r) => r.profile === 'steadfast' && r.policy.startsWith('smarter+paths:')) },
+    { label: 'Steadfast greedy', runs: results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy') }
+  ]
+  const lines = ['## Terms', '', 'Median week each rival first reached a band (– if under half the campaigns did), the first terms offer, rivals resolved by kind a campaign (mean), and victory.', '', '| Group | Orc: Wary; Shaken; Ready | Goblin | Dwarf | Archmage | First offer | By terms | By Accord | Conquered | Defected | Won (median week) |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |']
+  for (const { label, runs } of groups) {
+    if (runs.length === 0) continue
+    const band = (r: RivalId, b: number): string => {
+      const weeks = runs.map((x) => x.measures.terms.firstBand[r][b]).filter((w): w is number => w !== null)
+      return weeks.length * 2 >= runs.length ? String(median(weeks)) : '–'
+    }
+    const rival = (r: RivalId): string => [1, 2, 3].map((b) => band(r, b)).join('; ')
+    const first = runs.flatMap((x) => (x.measures.terms.firstOffer !== undefined ? [x.measures.terms.firstOffer] : []))
+    const kind = (how: string): string => f1(mean(runs.map((x) => x.resolutions.filter((y) => y.how === how).length)))
+    const won = runs.flatMap((x) => (x.wonWeek !== undefined ? [x.wonWeek] : []))
+    lines.push(`| ${label} | ${RIVAL_IDS.map(rival).join(' | ')} | ${first.length > 0 ? median(first) : '–'} | ${f1(mean(runs.map((x) => x.measures.terms.byTerms)))} | ${kind('allied')} | ${kind('conquered')} | ${kind('abdicated')} | ${won.length > 0 ? `${median(won)} (${pct(won.length / runs.length)})` : '–'} |`)
+  }
+  return lines
 }
 
 function sumOf(runs: readonly RunResult[], f: (w: Measures['weeks'][number]) => number): number {
@@ -262,8 +376,10 @@ function siegeLines(steadfast: readonly RunResult[]): string[] {
 
 const HEX_DEEDS: readonly DeedKind[] = ['hexTaken', 'strongholdTaken']
 const BATTLE_DEEDS: readonly DeedKind[] = ['battleWon', 'heldAgainstBeasts', 'heldAgainstMythic', 'counterattackHeld', 'grandBattleWon']
+/** Patch 4's signature deeds (D-34), each to its rival's path alone. */
+const SIGNATURE_DEEDS: readonly DeedKind[] = ['battleLost', 'retaken', 'dealTaken', 'bargain', 'bribeBeaten', 'counterBidBeaten', 'wallsBroken', 'siegeEndured', 'siegeBroken', 'surgeWeathered', 'surgeSeized', 'ritualEndured', 'summonedDefeated']
 
-/** The Renown mix (P2-13; Patch 3's deeds, D-25): each deed's share of the Renown posted, for Steadfast and the one-path players. */
+/** The Renown mix (P2-13; Patch 3's deeds, D-25; Patch 4's signatures, D-34): each deed's share of the Renown posted, for Steadfast and the one-path players. */
 export function deedLines(results: readonly RunResult[]): string[] {
   const onePath = new Set<string>(RIVAL_IDS.map((r) => `paths:${r}`))
   const groups = [
@@ -288,6 +404,8 @@ export function deedLines(results: readonly RunResult[]): string[] {
     line('**Battles**', BATTLE_DEEDS),
     ...BATTLE_DEEDS.map((k) => line(k, [k])),
     line('**Resolving a rival**', ['resolved']),
+    line('**Signature deeds** (D-34)', SIGNATURE_DEEDS),
+    ...SIGNATURE_DEEDS.map((k) => line(k, [k])),
     `| Renown a campaign (mean) | ${groups.map((g) => f1(g.total / Math.max(1, g.runs))).join(' | ')} |`
   ]
 }
@@ -299,7 +417,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
   const lines = [
     `# The blueprint's targets, rules ${RULES.ruleVersion}`,
     '',
-    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each), and Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four (${meta.weeks}-week horizon; ${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path. G-01 and G-03 are counted as \`docs/redesign/patch-3-spec.md\` C-27 rules: a Breach day (a repulse that left its target within the next day's reach) is player-view meaningful, and a target is a hex that falls within ${RULES.autoplay.siegeHorizon} assault days; the strict readings are given beside them.`,
+    `Generated by \`npm run sim -- --targets\` (\`sim/targets.ts\`); do not edit by hand. ${results.length} campaigns: Perfect, Steadfast, Committed and Wavering with the greedy player (${meta.seeds} seeds each), Steadfast steered along one path (each rival), two (Orc and Goblin; Dwarf and Archmage), three, and all four, and the smarter Steadfast player, unsteered and along each one path (${meta.weeks}-week horizon; ${meta.seconds} s). The targets are \`docs/redesign/blueprint.md\` section 7; "Steadfast" is its greedy player, and the focused player follows one rival's path. G-01 and G-03 are counted as \`docs/redesign/patch-3-spec.md\` C-27 rules: a Breach day (a repulse that left its target within the next day's reach) is player-view meaningful, and a target is a hex that falls within ${RULES.autoplay.siegeHorizon} assault days; the strict readings are given beside them.`,
     '',
     '| # | Target | Measure | Value | Verdict |',
     '| --- | --- | --- | --- | --- |',
@@ -323,7 +441,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     const before = alive.map((r) => r.measures.weeks.find((w) => w.week === m * MONTH)?.held ?? r.measures.weeks[0]?.held ?? 0)
     lines.push(`| ${m + 1} | ${f1(perWeek(PLAYER_VIEW))} | ${f1(perWeek(PLAYER_VIEW_STRICT))} | ${f1(perWeek(LABEL.breach))} | ${f1(perWeek(LABEL.noTarget))} | ${f1(perWeek(LABEL.noReach))} | ${f1(perWeek(LABEL.land))} | ${f1(mean(held.map((h, i) => (h - before[i]) / MONTH)))} | ${median(held)} |`)
   }
-  lines.push('', ...siegeLines(steadfast), '', ...deedLines(results), '')
+  lines.push('', ...siegeLines(steadfast), '', ...marchLines(steadfast), '', ...termsLines(results), '', ...deedLines(results), '')
   fs.mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `targets-${RULES.ruleVersion}.md`)
   fs.writeFileSync(file, lines.join('\n'))

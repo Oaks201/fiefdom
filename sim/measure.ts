@@ -26,7 +26,7 @@ import { pathRank, pathTotals, renown } from '../src/renderer/src/lib/game/domin
 import { isClaimableKind, regionsOf } from '../src/renderer/src/lib/game/map'
 import { marchesOf } from '../src/renderer/src/lib/game/marches'
 import { valorOn } from '../src/renderer/src/lib/game/settle'
-import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type GameEvent, type HexState, type ISODate } from '../src/renderer/src/lib/game/types'
+import { BUILDING_IDS, RIVAL_IDS, STANCE_BANDS, type CampaignState, type GameEvent, type HexState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
 
 export const LABEL = { land: 1, grand: 2, build: 4, choice: 8, noReach: 16, doubt: 32, auto: 64, breach: 128, noTarget: 256 } as const
 
@@ -85,6 +85,31 @@ export interface Measures {
   fallbacks: { posted: number; dawns: number; changed: number }
   /** Patch 3 (D-24): counterattacks fought, held and lost. */
   counterattacks: { held: number; lost: number }
+  /** Patch 4 (G-10): each rival march's land, battles and sieges (a hex's own march; a seam counts for its first). */
+  marches: Record<RivalId, MarchMeasure>
+  /** Patch 4 (G-10): weeks from `SURGE_FROM_WEEK` with a surge touching a hex the player could assault that day, and the weeks counted. */
+  surgeWeeks: { hit: number; weeks: number }
+  /** Patch 4 (G-18): terms offered (and before week 16), refused or lapsed, rivals resolved by terms, and the first week each rival reached each stance band. */
+  terms: { offered: number; before16: number; refused: number; byTerms: number; firstOffer?: number; firstBand: Record<RivalId, (number | null)[]> }
+}
+
+/** Patch 4 (G-10): one rival march, over the campaign. */
+export interface MarchMeasure {
+  /** Hexes held there, summed over the week closes, and the closes counted (their mean is the march's land held). */
+  heldSum: number
+  closes: number
+  /** Hexes the player took there for the first time, by force (assault, Grand Battle) and by deal (courtship, trade, bribe). */
+  firstForce: number
+  firstDeal: number
+  /** Hexes lost there. */
+  lost: number
+  /** Defense battles fought on hexes there. */
+  defenses: number
+  /** Assault days spent on hexes taken there by daily assault, and those hexes. */
+  assaultDays: number
+  assaultTaken: number
+  /** Hexes there taken, lost and taken again. */
+  bothWays: number
 }
 
 /** The march a hex lies in, for the per-march measures (the heartland is `heartland`). */
@@ -102,6 +127,17 @@ const RANK_V = 5
  * G-11's Steadfast victory window (58 to 64), until Patch 5 sets victory.
  */
 export const G05_WEEK = 60
+/** Patch 4 (G-10): surges are counted from this week (C-37: the rules that make a march harder start then). */
+export const SURGE_FROM_WEEK = 3
+/** Patch 4 (G-18): no rival may offer terms before this week. */
+export const TERMS_FROM_WEEK = 16
+const DEAL_WAYS: ReadonlySet<string> = new Set(['influence', 'trade', 'bribe'])
+const FORCE_WAYS: ReadonlySet<string> = new Set(['conquest'])
+const SURGE_SWINGS: ReadonlySet<string> = new Set(['swell', 'ebb', 'summoning'])
+
+function emptyMarch(): MarchMeasure {
+  return { heldSum: 0, closes: 0, firstForce: 0, firstDeal: 0, lost: 0, defenses: 0, assaultDays: 0, assaultTaken: 0, bothWays: 0 }
+}
 
 /** Each march's share of its claimable hexes the player doesn't hold. */
 function unheldShares(state: CampaignState): Record<string, number> {
@@ -126,8 +162,19 @@ export class Recorder {
     assaultWins: { rout: 0, nonRout: 0 },
     siegeDays: Array.from({ length: SIEGE_DAYS_CAP + 1 }, () => 0),
     fallbacks: { posted: 0, dawns: 0, changed: 0 },
-    counterattacks: { held: 0, lost: 0 }
+    counterattacks: { held: 0, lost: 0 },
+    marches: Object.fromEntries(RIVAL_IDS.map((r) => [r, emptyMarch()])) as Record<RivalId, MarchMeasure>,
+    surgeWeeks: { hit: 0, weeks: 0 },
+    terms: { offered: 0, before16: 0, refused: 0, byTerms: 0, firstBand: Object.fromEntries(RIVAL_IDS.map((r) => [r, STANCE_BANDS.map(() => null)])) as Record<RivalId, (number | null)[]> }
   }
+  /** Each hex's rival march (a seam's first), for the per-march measures. */
+  private marchOf = new Map<string, RivalId>()
+  /** Hexes taken once, those lost after, and those taken again (G-10's both ways). */
+  private taken = new Set<string>()
+  private lostAfter = new Set<string>()
+  private both = new Set<string>()
+  /** A surge this week touched a hex the player could assault. */
+  private surgeHit = false
   /** The day whose close posted fallbacks, for G-09's next dawn. */
   private fellBackOn: ISODate | undefined
 
@@ -154,7 +201,9 @@ export class Recorder {
     // G-09: the day's target with the last close's fallbacks, and without them.
     if (this.plan && this.fellBackOn !== undefined) {
       const day = this.fellBackOn
-      const without = { ...state, fallbacks: (state.fallbacks ?? []).filter((f) => f.day !== day) }
+      // Patch 4 (C-47): an Archmage force's surge (steered beside the hex it dissolved from) counts as its fallback; without it, no surge today.
+      const surges = state.personalities?.surges
+      const without: CampaignState = { ...state, fallbacks: (state.fallbacks ?? []).filter((f) => f.day !== day), ...(surges ? { personalities: { ...state.personalities, surges: surges.filter((s) => !(s.date === today && s.steered)) } } : {}) }
       this.m.fallbacks.dawns++
       if (pickAssault(state, today, this.plan)?.hex.id !== pickAssault(without, today, this.plan)?.hex.id) this.m.fallbacks.changed++
     }
@@ -169,10 +218,14 @@ export class Recorder {
   /** After `today` has settled. */
   close(state: CampaignState, today: ISODate, week: number): void {
     const events = state.log.slice(this.logFrom).filter((e) => e.day === today)
+    if (this.marchOf.size === 0) for (const h of state.hexes) if (h.march && (RIVAL_IDS as readonly string[]).includes(h.march)) this.marchOf.set(h.id, h.march as RivalId)
     let mask = this.mask
-    for (const e of events) mask |= this.labelOf(e)
+    for (const e of events) {
+      mask |= this.labelOf(e)
+      this.track(e, week)
+    }
     if (events.some((e) => isBreach(state, e, addDays(today, 1)))) mask |= LABEL.breach
-    if (events.some((e) => e.kind === 'fallback')) this.fellBackOn = today
+    if (events.some((e) => e.kind === 'fallback' || (e.kind === 'assault' && e.dissolved))) this.fellBackOn = today
     for (const p of state.purse.events.slice(this.purseFrom)) if (p.date === today && p.kind === 'spend' && BUILD_SPENDS.test(p.source)) mask |= LABEL.build
     this.m.days.push(mask)
     this.week.valor.push(valorOn(state, today, state.campaign.weekStartsOn))
@@ -210,7 +263,14 @@ export class Recorder {
           return LABEL.doubt
         }
         this.m.assaultWins[e.outcome === 'rout' ? 'rout' : 'nonRout']++
+        // Patch 4 (C-47): an Archmage garrison that dissolved into a surge counts as fallen back (G-09).
+        if (e.dissolved) this.m.fallbacks.posted++
         this.m.siegeDays[Math.min(days, SIEGE_DAYS_CAP)]++
+        const march = this.marchOf.get(e.hexId)
+        if (march) {
+          this.m.marches[march].assaultDays += days
+          this.m.marches[march].assaultTaken++
+        }
         this.pressed.delete(e.hexId)
         return 0
       }
@@ -219,7 +279,68 @@ export class Recorder {
     }
   }
 
+  /** Patch 4's per-march, surge and terms counters (G-10, G-18). */
+  private track(e: GameEvent, week: number): void {
+    switch (e.kind) {
+      case 'hexTransfer': {
+        const march = this.marchOf.get(e.hexId)
+        if (!march) return
+        const m = this.m.marches[march]
+        if (e.to === 'player') {
+          if (!this.taken.has(e.hexId)) {
+            this.taken.add(e.hexId)
+            if (DEAL_WAYS.has(e.how)) m.firstDeal++
+            else if (FORCE_WAYS.has(e.how)) m.firstForce++
+          } else if (this.lostAfter.has(e.hexId) && !this.both.has(e.hexId)) {
+            this.both.add(e.hexId)
+            m.bothWays++
+          }
+        } else if (e.from === 'player') {
+          m.lost++
+          if (this.taken.has(e.hexId)) this.lostAfter.add(e.hexId)
+        }
+        return
+      }
+      case 'defense': {
+        const march = this.marchOf.get(e.hexId)
+        if (march) this.m.marches[march].defenses++
+        return
+      }
+      case 'surge':
+        if (e.target && SURGE_SWINGS.has(e.surge) && week >= SURGE_FROM_WEEK) this.surgeHit = true
+        return
+      case 'terms': {
+        const t = this.m.terms
+        if (e.stage === 'offered') {
+          t.offered++
+          if (week < TERMS_FROM_WEEK) t.before16++
+          if (t.firstOffer === undefined) t.firstOffer = week
+        } else if (e.stage === 'refused' || e.stage === 'lapsed') t.refused++
+        else if ((e.stage === 'accepted' && e.offer === 'surrender') || (e.stage === 'won' && (e.offer === 'finalWarhost' || e.offer === 'challenge'))) t.byTerms++
+        return
+      }
+      case 'stance': {
+        const first = this.m.terms.firstBand[e.rival]
+        const reached = STANCE_BANDS.indexOf(e.to)
+        for (let b = 1; b <= reached; b++) if (first[b] === null) first[b] = week
+        return
+      }
+      default:
+        return
+    }
+  }
+
   private closeWeek(state: CampaignState, week: number): void {
+    for (const r of RIVAL_IDS) {
+      const m = this.m.marches[r]
+      m.heldSum += state.hexes.filter((h) => h.owner === 'player' && this.marchOf.get(h.id) === r).length
+      m.closes++
+    }
+    if (week >= SURGE_FROM_WEEK) {
+      this.m.surgeWeeks.weeks++
+      if (this.surgeHit) this.m.surgeWeeks.hit++
+    }
+    this.surgeHit = false
     const totals = pathTotals(state)
     const claimable = state.hexes.filter((h) => isClaimableKind(h) && h.kind !== 'lairMouth')
     const valors = this.week.valor

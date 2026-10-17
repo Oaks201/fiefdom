@@ -223,6 +223,14 @@
     "template": "{rival} makes one hex deal every 4 weeks.",
     "final": null
   },
+  "herald.deal.refused.useBribe": {
+    "template": "{rival} sells his hexes only by a bribe to their garrison, from the hex.",
+    "final": null
+  },
+  "herald.deal.refused.offeredOnly": {
+    "template": "{rival} offers a buy-off himself; it cannot be asked for.",
+    "final": null
+  },
   "herald.deal.refused.grandBattleWarning": {
     "template": "No Truce while a Grand Battle is announced.",
     "final": null
@@ -313,6 +321,186 @@
   },
   "herald.deed.counterattackHeld": {
     "template": "{hex} held against a counterattack: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.threat.surge": {
+    "template": "A surge of wild magic strikes {hex} today. Strength: {strength}.",
+    "final": null
+  },
+  "herald.surge.swell": {
+    "template": "Wild magic swells the garrison of {hex} today: ×{mult}.",
+    "final": null
+  },
+  "herald.surge.ebb": {
+    "template": "Wild magic ebbs at {hex} today: its garrison ×{mult}.",
+    "final": null
+  },
+  "herald.surge.summoning": {
+    "template": "Wild magic summons a mythic at {hex} for {days} days.",
+    "final": null
+  },
+  "herald.surge.blessing": {
+    "template": "Wild magic blesses {company} today: +{share}% power.",
+    "final": null
+  },
+  "herald.surge.curse": {
+    "template": "Wild magic curses {company} today: −{share}% power.",
+    "final": null
+  },
+  "herald.surge.strike": {
+    "template": "Wild magic gathers against {hex}.",
+    "final": null
+  },
+  "herald.surge.tomorrow": {
+    "template": "Tomorrow’s surge, foreseen: {what} on {target}.",
+    "final": null
+  },
+  "herald.bribe": {
+    "template": "{hex}: its garrison took {price} to leave. It is yours.",
+    "final": null
+  },
+  "herald.goblinBid.placed": {
+    "template": "{rival} bids for {hex}. Hold it before the week closes, or it may go to him.",
+    "final": null
+  },
+  "herald.goblinBid.held": {
+    "template": "{hex} held against {rival}’s bid.",
+    "final": null
+  },
+  "herald.goblinBid.lost": {
+    "template": "{hex} went to {rival} on his bid.",
+    "final": null
+  },
+  "herald.goblinBid.void": {
+    "template": "{rival}’s bid for {hex} came to nothing.",
+    "final": null
+  },
+  "herald.orcTrack": {
+    "template": "The war with {rival} now stands at {track}.",
+    "final": null
+  },
+  "herald.terms.stance": {
+    "template": "{rival} now stands: {band}.",
+    "final": null
+  },
+  "herald.terms.offered.buyOff": {
+    "template": "{rival} offers to buy his way out: {gift}, for a pact to leave his march alone.",
+    "final": null
+  },
+  "herald.terms.offered.surrender": {
+    "template": "{rival} offers to surrender.",
+    "final": null
+  },
+  "herald.terms.offered.finalWarhost": {
+    "template": "{rival} comes with his whole army against {hex}.",
+    "final": null
+  },
+  "herald.terms.offered.challenge": {
+    "template": "{rival} calls a challenge at {hex}: two companies a side.",
+    "final": null
+  },
+  "herald.terms.accepted": {
+    "template": "Terms with {rival} accepted.",
+    "final": null
+  },
+  "herald.terms.refused": {
+    "template": "Terms with {rival} refused.",
+    "final": null
+  },
+  "herald.terms.lapsed": {
+    "template": "{rival}’s offer lapsed.",
+    "final": null
+  },
+  "herald.terms.won": {
+    "template": "{rival} is conquered.",
+    "final": null
+  },
+  "herald.terms.lost": {
+    "template": "{rival} held the field. He will come again.",
+    "final": null
+  },
+  "herald.terms.rumor.reputation": {
+    "template": "Rumor: {rival} watches the reputation you have earned.",
+    "final": null
+  },
+  "herald.terms.rumor.army": {
+    "template": "Rumor: {rival} watches the strength of your army.",
+    "final": null
+  },
+  "herald.terms.rumor.land": {
+    "template": "Rumor: {rival} watches how much land you hold.",
+    "final": null
+  },
+  "herald.terms.rumor.victories": {
+    "template": "Rumor: {rival} watches the Grand Battles you win.",
+    "final": null
+  },
+  "herald.terms.rumor.dominion": {
+    "template": "Rumor: {rival} watches your Dominion.",
+    "final": null
+  },
+  "herald.terms.rumor.constancy": {
+    "template": "Rumor: {rival} watches how steadily you keep your habits.",
+    "final": null
+  },
+  "herald.restless.uprising": {
+    "template": "{hex}, given up by the Dwarf, is restless: settle it, or it may turn neutral.",
+    "final": null
+  },
+  "herald.buyBack": {
+    "template": "{rival} offers to buy back {hex} for {price}.",
+    "final": null
+  },
+  "herald.deed.battleLost": {
+    "template": "A battle with {rival} at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.retaken": {
+    "template": "{hex} retaken: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.dealTaken": {
+    "template": "{hex} won by a deal: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.bargain": {
+    "template": "A bargain at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.bribeBeaten": {
+    "template": "{hex} held against a bid: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.counterBidBeaten": {
+    "template": "{hex} won over a bid: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.wallsBroken": {
+    "template": "Walls broken at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.siegeEndured": {
+    "template": "A long siege of {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.siegeBroken": {
+    "template": "{hex} held against an attempt: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.surgeWeathered": {
+    "template": "{hex} weathered a surge: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.surgeSeized": {
+    "template": "{hex} taken on its ebb: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.ritualEndured": {
+    "template": "A Ritual endured: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.summonedDefeated": {
+    "template": "A summoned mythic beaten at {hex}: {value} Renown on {rival}’s path.",
     "final": null
   }
 }

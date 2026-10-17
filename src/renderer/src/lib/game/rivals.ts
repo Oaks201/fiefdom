@@ -39,6 +39,9 @@ import { bandOf, borderHexesOf, fronts as rimFronts, hexIndex, hexWorth, isClaim
 import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle } from './rng'
 import { refreshRoster, roster } from './roster'
+import { placeGoblinBid } from './goblin'
+import { marchesOf } from './marches'
+import { extraConquests, wildWalls } from './personalities'
 import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
 import type { HostUnitEntry } from './codex'
 import {
@@ -507,14 +510,21 @@ function oneTurn(input: CampaignState, rival: RivalId, w: RivalWeek, effects: Ef
   state = step.state
   spent.army = step.spent
 
-  // 4. Expand.
-  step = expand(state, rival, budget * split.expand, w)
+  // 4. Expand. Patch 4 (D-29, P4-03): the Goblin first bids for one of the player's villages in his march.
+  let expandShare = budget * split.expand
+  if (rival === 'goblin') {
+    const bid = placeGoblinBid(state, w.day, expandShare, w.emit)
+    state = bid.state
+    expandShare -= bid.spent
+    spent.expand += bid.spent
+  }
+  step = expand(state, rival, expandShare, w)
   state = step.state
-  spent.expand = step.spent
+  spent.expand += step.spent
 
   // 5. Fortify; the Dwarf's special share is the Deep Halls, spent on more walls at its discount (A-150).
   const deepHalls = rival === 'dwarf' ? split.special : 0
-  step = fortifyBorder(state, rival, budget * (split.fortify + deepHalls))
+  step = fortifyBorder(state, rival, budget * (split.fortify + deepHalls), w.day)
   state = step.state
   spent.fortify = step.spent
 
@@ -629,18 +639,23 @@ function rivalFortificationCost(level: number, band: number, mult: number): numb
 /**
  * Step 5: one level at a time on its border hexes (those touching land it doesn't hold), the
  * ones facing the player first, then the least fortified, then the innermost. The Dwarf reaches
- * level 4, and its Deep Halls make every level 25% cheaper.
+ * level 4, and its Deep Halls make every level 25% cheaper. Patch 4 (D-30, P4-06): from week 3 the
+ * Dwarf also builds walls on the wilds of his march that face the player's land.
  */
-function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number): Spending {
+function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number, day: ISODate): Spending {
   let state = input
   let left = allowance
   let spent = 0
   const mult = rival === 'dwarf' ? 1 - RULES.rivals.special.dwarfFortifyDiscount : 1
   const cap = fortificationCap(rival)
   const order = new Map(state.hexes.map((h, i) => [h.id, i]))
+  // Patch 4 (D-30): the wilds of the Dwarf's march take a few levels a week, each to a low cap.
+  const W = RULES.personalities.dwarf
+  let wildRaised = 0
   for (;;) {
     const byId = hexIndex(state.hexes)
-    const candidates = borderHexesOf(state.hexes, rival)
+    const wilds = wildRaised < W.wildWallsPerWeek ? wildWalls(state, rival, day).filter((h) => h.fortification < W.wildWallMax) : []
+    const candidates = [...borderHexesOf(state.hexes, rival), ...wilds]
       .filter((h) => isClaimableKind(h) && h.fortification < cap)
       .map((h) => ({ hex: h, facing: touches(byId, h.id, 'player'), cost: rivalFortificationCost(h.fortification + 1, bandOf(h), mult) }))
       .filter((c) => c.cost <= left)
@@ -653,6 +668,7 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number):
       )
     const pickHex = candidates[0]
     if (!pickHex) break
+    if (pickHex.hex.owner === 'neutral') wildRaised++
     state = replaceHex(state, { ...pickHex.hex, fortification: (pickHex.hex.fortification + 1) as HexState['fortification'] })
     left -= pickHex.cost
     spent += pickHex.cost
@@ -673,6 +689,11 @@ function nearestBorderHex(state: CampaignState, rival: RivalId, day: ISODate, la
   return nearest.length > 0 ? pick(state.campaign.seed, day, label, nearest.map((h) => h.id)) : undefined
 }
 
+/** What the Orc's Warhost waits for (A-151): 600 saved, less a share for each level his march has prepared (P4-07). */
+export function warhostFundNeeded(state: CampaignState): number {
+  return RULES.rivals.special.orcWarhostFund * (1 - RULES.personalities.orc.warhostFundPerLevel * marchesOf(state).preparation.orc)
+}
+
 /**
  * The Orc's Warhost fund (step 6): at 600 saved it launches an Incursion-style host at the player's
  * border hex nearest its land, for T12 to announce, and the fund resets. It waits while the Orc is
@@ -680,7 +701,7 @@ function nearestBorderHex(state: CampaignState, rival: RivalId, day: ISODate, la
  */
 function warhostFund(state: CampaignState, w: RivalWeek): { state: CampaignState; warhost?: WarhostRequest } {
   const r = state.rivals.orc
-  if (r.specialFund < RULES.rivals.special.orcWarhostFund || !hostileNow(state, 'orc', w.day)) return { state }
+  if (r.specialFund < warhostFundNeeded(state) || !hostileNow(state, 'orc', w.day)) return { state }
   const hexId = nearestBorderHex(state, 'orc', w.day, 'warhost:target')
   if (!hexId) return { state }
   w.emit('rivalNews', { rival: 'orc', news: 'warhost', hexId })
@@ -865,7 +886,7 @@ function planConquests(input: CampaignState, rival: RivalId, w: RivalWeek, effec
   const rules = RULES.rivals.conquestAttempt
   const byId = hexIndex(state.hexes)
   const targeted = new Set<string>()
-  for (let i = 0; i < ai.conquestPlansPerWeek; i++) {
+  for (let i = 0; i < ai.conquestPlansPerWeek + extraConquests(state, rival); i++) {
     const offset = int(state.campaign.seed, w.day, `conquest:${rival}:day:${i}`, ai.conquestDays.min, ai.conquestDays.max)
     const date = addDays(w.day, offset)
     const av = armyValue(state, rival, date)

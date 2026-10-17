@@ -31,6 +31,7 @@ import { addDays, diffDays } from './clock'
 import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
+import { pactBars } from './personalities'
 import { RULES, byTier } from './rules'
 import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
 import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
@@ -57,6 +58,8 @@ export type LandRefusalCode =
   | 'notLost'
   | 'tooLate'
   | 'notTouching'
+  /** Patch 4 (C-35): a buy-off pact with the Goblin holds; his march is left alone. */
+  | 'pact'
 
 export interface LandRefusal {
   code: LandRefusalCode
@@ -130,6 +133,8 @@ export function bidCheck(state: CampaignState, hexId: string, bid: number): { ok
   if (!hexOf(state, hexId)) return no({ code: 'unknownHex' })
   if (!claimableBy(state.hexes, hexId, 'player', 'court')) return no({ code: 'notCourtable' })
   if (state.courtships.some((c) => c.hexId === hexId)) return no({ code: 'alreadyCourting' })
+  // Patch 4 (C-35): a buy-off pact leaves the Goblin's march alone.
+  if (pactBars(state, hexOf(state, hexId) as HexState, openDayOf(state))) return no({ code: 'pact' })
   if (open >= slots) return no({ code: 'noSlot', needed: open + 1, have: slots })
   if (!Number.isFinite(bid) || roundPosting(bid) <= 0) return no({ code: 'badBid' })
   const short = reputationShort(state, bid)
@@ -239,7 +244,9 @@ export function resolveCourtships(state: CampaignState, week: CourtshipWeek): Ca
       next = replaceHex(next, toPlayer(hex, day, false))
       emit('hexTransfer', { hexId: hex.id, from: owner, to: 'player', how: 'influence', fortification: hex.fortification })
       if (isRival(owner)) next = adjustRespect(next, owner, RULES.respect.change.villageCourted, 'villageCourted', emit)
-      emit('courtship', { hexId: hex.id, outcome: 'defected', bid: c.bid, winner: 'player' })
+      // Patch 4 (D-34): the rivals whose bids the player beat (the owner's counter-bid, rival suitors).
+      const rivals = RIVAL_IDS.filter((r) => (c.rivalBids[r] ?? 0) > 0)
+      emit('courtship', { hexId: hex.id, outcome: 'defected', bid: c.bid, winner: 'player', ...(rivals.length > 0 ? { rivals } : {}) })
     } else if (winner !== undefined && isRival(winner)) {
       next = replaceHex(next, toRival(hex, winner))
       emit('hexTransfer', { hexId: hex.id, from: owner, to: winner, how: 'influence' })
@@ -344,6 +351,10 @@ export type DealRefusalCode =
   | 'targetAllied'
   /** A buy-out needs the rival in a coalition standing against the player (T12). */
   | 'noCoalition'
+  /** Patch 4 (C-43): the Goblin's hexes are bought by bribing their garrison, from the hex. */
+  | 'useBribe'
+  /** Patch 4 (D-33): a buy-off pact is the Goblin's to offer, never the player's to ask. */
+  | 'offeredOnly'
   | 'reputation'
 
 export interface DealRefusal {
@@ -387,7 +398,8 @@ function accordOn(state: CampaignState, rival: RivalId, day: ISODate): boolean {
 
 /** A Truce (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no raids from it. */
 export function blocksRaids(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  return inForce(state, rival, 'truce', day) || accordOn(state, rival, day)
+  // Patch 4 (C-35): a Goblin buy-off pact holds his raids too.
+  return inForce(state, rival, 'truce', day) || accordOn(state, rival, day) || inForce(state, rival, 'buyOff', day)
 }
 
 /** A Truce, a non-aggression pact (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no conquest attempts from it. */
@@ -490,12 +502,14 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
   switch (request.kind) {
     case 'buyHex': {
       if (!hex) return judged(state, offer(0), [dealRefusal('noHex')])
+      // Patch 4 (C-43, X-12): the Goblin's hexes have a bribe price instead (goblin.ts).
+      if (rival === 'goblin') return judged(state, offer(0), [dealRefusal('useBribe')])
       return judged(state, offer(buyPrice(state, rival, hex)), [
         hex.kind === 'gate' ? dealRefusal('gate') : null,
         hex.owner !== rival ? dealRefusal('notRivalHex') : null,
         !claimableBy(state.hexes, hex.id, 'player', 'buy') ? dealRefusal('notClaimable') : null,
         r.disposition.player === 'war' ? dealRefusal('atWar') : null,
-        respectBelow(state, rival, rival === 'goblin' ? th.goblinBuysHex : th.buyHex),
+        respectBelow(state, rival, th.buyHex),
         onCooldown(state, rival, today) ? dealRefusal('cooldown') : null
       ])
     }
@@ -506,8 +520,9 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
         bandOf(hex) < t.sellMinRing ? dealRefusal('innerRing') : null,
         hex.kind === 'gate' ? dealRefusal('gate') : null,
         !isClaimableKind(hex) || hex.kind === 'lairMouth' || !touchesOwner(state.hexes, hex.id, rival) ? dealRefusal('notClaimable') : null,
-        respectBelow(state, rival, th.sellHex),
-        onCooldown(state, rival, today) ? dealRefusal('cooldown') : null
+        // Patch 4 (C-43): the Goblin buys any time, whatever his Respect.
+        rival === 'goblin' ? null : respectBelow(state, rival, th.sellHex),
+        rival !== 'goblin' && onCooldown(state, rival, today) ? dealRefusal('cooldown') : null
       ])
     }
     case 'truce':
@@ -535,6 +550,8 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
       const buyout = RULES.world.coalitions.buyout
       return judged(state, offer(buyout.cost), [!inCoalition(state, rival, today) ? dealRefusal('noCoalition') : null, respectBelow(state, rival, buyout.minRespect)])
     }
+    case 'buyOff':
+      return judged(state, offer(0), [dealRefusal('offeredOnly')])
   }
 }
 
@@ -549,7 +566,8 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
   const hexDeals = (kind: 'buyHex' | 'sellHex', hexes: HexState[]): DealOffer[] =>
     hexes.length > 0 ? hexes.map((h) => offerDeal(state, rival, { kind, hexId: h.id }, today)) : [offerDeal(state, rival, { kind }, today)]
   return [
-    ...hexDeals('buyHex', buyable),
+    // Patch 4 (C-43): the Goblin's hexes are bribed from the hex, not bought here.
+    ...(rival === 'goblin' ? [] : hexDeals('buyHex', buyable)),
     ...hexDeals('sellHex', sellable),
     offerDeal(state, rival, { kind: 'truce' }, today),
     offerDeal(state, rival, { kind: 'pact' }, today),
@@ -635,6 +653,8 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
       }
       break
     }
+    case 'buyOff':
+      break
   }
   emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}) })
   next = events.flush({ ...next, deals: [...next.deals, deal] })

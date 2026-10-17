@@ -223,6 +223,7 @@
 }
 
 .court__rumors,
+.court__march,
 .court__fronts {
   margin: 0;
   padding: 0;
@@ -238,6 +239,17 @@
 }
 
 .front--war {
+  color: var(--crimson);
+}
+
+/* Patch 4 (D-33): a rival’s stance, Defiant to Ready to yield. */
+.court__stance {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.court__stance--shaken,
+.court__stance--ready {
   color: var(--crimson);
 }
 

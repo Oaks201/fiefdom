@@ -146,31 +146,32 @@ test('D-01: from Respect 75 or more the Accord adds 60 × f(Q), judged by the Re
   assert.equal(after.rivals.dwarf.respect, 70 + 30)
 })
 
-test('Ch 14: an Accord needs Respect 60, Castle III, the rival active and in no coalition, and the contract slot free', () => {
-  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 60)
+test('Ch 14: an Accord needs Respect 60, Castle III, the rival active and in no coalition, and the contract slot free (Patch 4, R-13: never the Orc)', () => {
+  assert.equal(accordGate(withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 60), 'orc', closeOf(14)).reason, 'orcNeverSigns')
+  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 60)
   const today = closeOf(14)
-  assert.deepEqual(accordGate(ready, 'orc', today), { ok: true, threshold: 60, respect: 60 })
-  assert.equal(accordGate(withRespect(ready, 'orc', 59), 'orc', today).reason, 'respect')
-  assert.equal(accordGate(withCastle(ready, 2), 'orc', today).reason, 'castle')
-  const coalition: Coalition = { members: ['orc', 'goblin'], trigger: 'risingCrown', warChest: 0, formedOn: closeOf(13), until: closeOf(19) }
-  assert.equal(accordGate({ ...ready, coalitions: [coalition] }, 'orc', today).reason, 'coalition')
-  assert.equal(accordGate(withStatus(ready, 'orc', 'conquered', today), 'orc', today).reason, 'rivalResolved')
+  assert.deepEqual(accordGate(ready, 'archmage', today), { ok: true, threshold: 60, respect: 60 })
+  assert.equal(accordGate(withRespect(ready, 'archmage', 59), 'archmage', today).reason, 'respect')
+  assert.equal(accordGate(withCastle(ready, 2), 'archmage', today).reason, 'castle')
+  const coalition: Coalition = { members: ['archmage', 'dwarf'], trigger: 'risingCrown', warChest: 0, formedOn: closeOf(13), until: closeOf(19) }
+  assert.equal(accordGate({ ...ready, coalitions: [coalition] }, 'archmage', today).reason, 'coalition')
+  assert.equal(accordGate(withStatus(ready, 'archmage', 'conquered', today), 'archmage', today).reason, 'rivalResolved')
   const fallen = { ...ready, campaign: { ...ready.campaign, status: 'fallen' as const } }
-  assert.equal(accordGate(fallen, 'orc', today).reason, 'campaignOver')
-  const sealed = sealAccord(ready, 'orc', { id: 'a' }, today)
+  assert.equal(accordGate(fallen, 'archmage', today).reason, 'campaignOver')
+  const sealed = sealAccord(ready, 'archmage', { id: 'a' }, today)
   assert.ok(sealed.ok)
   assert.equal(accordGate(withRespect(sealed.state, 'dwarf', 90), 'dwarf', today).reason, 'contractRunning', 'the Accord holds the contract slot')
-  assert.equal(sealAccord(withRespect(ready, 'orc', 59), 'orc', { id: 'b' }, today).ok, false)
+  assert.equal(sealAccord(withRespect(ready, 'archmage', 59), 'archmage', { id: 'b' }, today).ok, false)
 })
 
 test('Ch 14: while an Accord runs, that rival makes no raids', () => {
-  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 60)
+  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 60)
   const today = closeOf(14)
-  const sealed = sealAccord(ready, 'orc', { id: 'a' }, today).state
+  const sealed = sealAccord(ready, 'archmage', { id: 'a' }, today).state
   const during = addDays(today, 5)
-  assert.equal(canRaid(ready, 'orc', during), true)
-  assert.equal(canRaid(sealed, 'orc', during), false)
-  assert.ok(!raiderWeights(sealed, during).some((w) => w.rival === 'orc'))
+  assert.equal(canRaid(ready, 'archmage', during), true)
+  assert.equal(canRaid(sealed, 'archmage', during), false)
+  assert.ok(!raiderWeights(sealed, during).some((w) => w.rival === 'archmage'))
 })
 
 test('D-01 / gap 2: the Accord’s Respect is added even when the settle call that pays it ends before the week closes', () => {

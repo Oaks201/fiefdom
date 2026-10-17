@@ -5,13 +5,14 @@
  * a hex at Respect 25, and a courted village defects at the week close.
  */
 import { test } from 'node:test'
+import { bribe, bribeOffer } from '../../src/renderer/src/lib/game/goblin'
 import assert from 'node:assert/strict'
 import { buyTier, tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { addDays, isWeekCloseDay } from '../../src/renderer/src/lib/game/clock'
 import { setOrders } from '../../src/renderer/src/lib/game/combat'
 import { DEV_SCENARIOS, applyScenario } from '../../src/renderer/src/lib/game/dev/scenarios'
 import { balance } from '../../src/renderer/src/lib/game/economy'
-import { makeDeal, placeBid } from '../../src/renderer/src/lib/game/land'
+import { placeBid } from '../../src/renderer/src/lib/game/land'
 import { pathTotals } from '../../src/renderer/src/lib/game/dominion'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { hexOf, openDayOf } from '../../src/renderer/src/lib/game/state'
@@ -86,16 +87,16 @@ test('T15 manual 3: the scorched overlay lasts 3 days; the contested hex is stru
   assert.equal(hexOf(later, scorched.id)?.status, 'held')
 })
 
-test('T15 manual 4: at Respect 25 the Goblin sells a hex touching your land', () => {
+test('T15 manual 4 (Patch 4, C-43): land touching the Goblin’s march: one of its hexes is bribed from the hex', () => {
   const state = fresh()
   const today = openDayOf(state)
   const ready = applyScenario(state, 'goblinTrade', today) as CampaignState
-  const offer = dealsView(ready, 'goblin', today).find((d) => d.kind === 'buyHex' && d.available)
-  assert.ok(offer, 'a hex is on offer')
-  const done = makeDeal(ready, 'goblin', { kind: 'buyHex', hexId: offer.hexId }, today)
+  assert.equal(dealsView(ready, 'goblin', today).some((d) => d.kind === 'buyHex'), false, 'no hex to buy from his court')
+  const hexId = ready.hexes.map((h) => h.id).find((id) => bribeOffer(ready, id, 0.5, today).ok)
+  assert.ok(hexId, 'a hex of his march can be bribed')
+  const done = bribe(ready, hexId, 0.5, today)
   assert.ok(done.ok)
-  assert.equal(hexOf(done.state, offer.hexId as string)?.owner, 'player')
-  assert.equal(done.state.rivals.goblin.respect, ready.rivals.goblin.respect + 2)
+  assert.equal(hexOf(done.state, hexId)?.owner, 'player')
 })
 
 test('T15 manual 5: a courted neutral village defects at the week close', () => {

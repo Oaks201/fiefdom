@@ -27,7 +27,8 @@ import { roster } from '../../../src/renderer/src/lib/game/roster'
 import { settle } from '../../../src/renderer/src/lib/game/settle'
 import { inCoalition } from '../../../src/renderer/src/lib/game/state'
 import { RIVAL_IDS, BUILDING_IDS, type CampaignState, type GameEvent, type HexState, type ISODate, type RivalId } from '../../../src/renderer/src/lib/game/types'
-import { accordGate, bendTheKnee, sealAccord, ultimatumView } from '../../../src/renderer/src/lib/game/world'
+import { accordGate, acceptTerms, bendTheKnee, sealAccord, ultimatumView } from '../../../src/renderer/src/lib/game/world'
+import { openTerms } from '../../../src/renderer/src/lib/game/terms'
 import type { DayLog, Ledger } from '../../../src/renderer/src/lib/types'
 import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, goodDay } from '../fixtures/ledgers'
 
@@ -172,6 +173,8 @@ function act(input: CampaignState, today: ISODate, o: DriveOptions): CampaignSta
     state = sealLongest(state, today)
     state = court(state, today)
   }
+  // Patch 4 (D-33): the diplomat takes every rival's terms; the others leave them.
+  if (o.policy === 'diplomat') for (const t of openTerms(state, today)) state = acceptTerms(state, t.rival, today).state
   return orders(state, today, o.habits === 'steady' ? 0.9 : 0.4)
 }
 

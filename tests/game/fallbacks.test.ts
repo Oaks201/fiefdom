@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { assaultGarrison, combatOf, dawn, setOrders, tidings } from '../../src/renderer/src/lib/game/combat'
-import { depthOf, isClaimableKind, neighbors, wildGarrison } from '../../src/renderer/src/lib/game/map'
+import { depthOf, isClaimableKind, isLairMarch, neighbors, wildGarrison } from '../../src/renderer/src/lib/game/map'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { chance, roll } from '../../src/renderer/src/lib/game/rng'
 import { fallbackOn } from '../../src/renderer/src/lib/game/sieges'
@@ -17,7 +17,7 @@ import { hexPanel, mapView } from '../../src/renderer/src/lib/game/view/realm'
 import { heraldView, resultLine } from '../../src/renderer/src/lib/game/view/shell'
 import { near } from './support/assert'
 import { allBuildings, realm } from './support/realm'
-import { START, WEEK6, den, fight, hex, quiet, withDisposition, withHex, withOwner } from './support/war'
+import { START, WEEK6, fight, hex, quiet, reachable, withDisposition, withHex, withOwner } from './support/war'
 
 const F = RULES.sieges.fallback
 const C = RULES.sieges.counterattack
@@ -29,13 +29,17 @@ function send(state: CampaignState, target: string, day = START): CampaignState 
 
 /** A den the Champions take at garrison 50 (no rout below 81), with neutral dens beside it no shallower (T-02). */
 function setup(): { state: CampaignState; target: string; refuges: string[] } {
-  const { state: s0, target } = den(allBuildings(realm(), 5))
-  const t = hex(s0, target)
-  const refuges = neighbors(target).filter((n) => {
-    const h = s0.hexes.find((x) => x.id === n)
-    return h !== undefined && h.owner === 'neutral' && !h.village && !h.mythic && isClaimableKind(h) && h.kind !== 'lairMouth' && depthOf(h) >= depthOf(t) && (h.march === t.march || h.seam === t.march || h.march === t.seam)
-  })
-  return { state: withHex(s0, target, { garrison: 50, garrisonDamage: 0 }), target, refuges }
+  // A den in a lair's wedge, where D-24 reads plain (Patch 4: no rival's march rules), with two or more refuges.
+  const all = allBuildings(realm(), 5)
+  const refugesOf = (s0: CampaignState, target: string): string[] => {
+    const t = hex(s0, target)
+    return neighbors(target).filter((n) => {
+      const h = s0.hexes.find((x) => x.id === n)
+      return h !== undefined && h.owner === 'neutral' && !h.village && !h.mythic && isClaimableKind(h) && h.kind !== 'lairMouth' && depthOf(h) >= depthOf(t) && (h.march === t.march || h.seam === t.march || h.march === t.seam)
+    })
+  }
+  const { state: s0, target } = reachable(all, 4, (h) => !h.village && isLairMarch(h.march) && h.seam === undefined && refugesOf(all, h.id).length > 1)
+  return { state: withHex(s0, target, { garrison: 50, garrisonDamage: 0 }), target, refuges: refugesOf(s0, target) }
 }
 
 /** The player launched the app on `day`, so they are not away (A-10). */
@@ -88,7 +92,8 @@ test('C-23: fallbacks on one hex add at most its own garrison, and a force whose
   // Taken itself, the refuge's garrison and the force in it are beaten together: half of that falls back again.
   const first = fight(quiet(send(state, target)), START, 1)
   const to = first.of('fallback')[0].to
-  const next = addDays(START, 1)
+  // A day in its window when the refuge reveals no rare creature (its band may be 4 in a lair's wedge, Ch 11).
+  const next = [1, 2].map((d) => addDays(START, d)).find((d) => !chance(state.campaign.seed, d, `reveal:${to}`, RULES.grandBattles.mythicReveal.chance)) as string
   const beaten = assaultGarrison(first.state, hex(first.state, to), next)
   const again = fight(quiet(send(withHex(first.state, to, { garrisonDamage: beaten - 50 }), to, next), next), next, 1)
   assert.equal(again.of('assault')[0].outcome, 'taken')

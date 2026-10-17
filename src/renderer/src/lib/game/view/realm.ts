@@ -7,18 +7,22 @@
  */
 import { castleOffer, crossingOffer, tierOffer, type Offer } from '../buildings'
 import { CODEX } from '../codex'
-import { diffDays } from '../clock'
+import { addDays, diffDays } from '../clock'
 import { assaultGarrison, combatOf, ordersFor, ordersValidity, siegeIsLive, tidings, type Band } from '../combat'
 import { holdingSources, hexWorth, pathRank, pathShares, pathTotals, rankThresholds, renown } from '../dominion'
 import { numeral, realmEffects, sourceLabel } from '../effects'
+import { balance } from '../economy'
+import { bidSways, bribeOffer, goblinBidsOf } from '../goblin'
 import { challenge, pendingBattles } from '../grand'
 import { bidCheck, fortifyOffer, lostOn, offerDeal, reclaimOffer, resistance, trust } from '../land'
 import { bandOf, clockwisePair, claimableBy, depthOf, fronts, hexDistance, hexId, hexIndex, hexName, isClaimableKind, isStronghold, marchesBorder, onMap, parseHexId, regionsOf, rulingMarch, strongholdBarring } from '../map'
 import { preparationOf } from '../marches'
+import { greedBand, marchRule, personalitiesOf, surgeOn, type GreedBand } from '../personalities'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
 import { fallbackOn, flankingMult, standingSiegeOf } from '../sieges'
-import { openDayOf } from '../state'
+import { openDayOf, worldOf } from '../state'
+import { bendSurge, foreseesSurges } from '../surges'
 import { t } from '../text'
 import {
   BUILDING_IDS,
@@ -34,10 +38,11 @@ import {
   type MarchId,
   type Owner,
   type RivalId,
+  type SurgeKind,
   type ThreatKind
 } from '../types'
 import { wornShare } from './orders'
-import { amount, buyRefusalLabel, factor, grandRefusalLabel, landRefusalLabel, orderProblemLabel, requirementLines } from './refusals'
+import { amount, bendRefusalLabel, bribeRefusalLabel, buyRefusalLabel, factor, grandRefusalLabel, landRefusalLabel, orderProblemLabel, requirementLines } from './refusals'
 import { realmConsistencyNow, rivalName } from './shell'
 
 const SQRT3 = Math.sqrt(3) // rules-ok: geometry, the width of a pointy-top hex
@@ -388,13 +393,13 @@ export function mapDecor(state: CampaignState): MapHex[] {
 
 // ── The hex panel ────────────────────────────────────────────────────────────
 
-export type HexActionKind = 'assault' | 'challenge' | 'court' | 'buy' | 'fortify' | 'reclaim'
+export type HexActionKind = 'assault' | 'challenge' | 'court' | 'buy' | 'fortify' | 'reclaim' | 'bribe' | 'hold' | 'sellBack' | 'keep' | 'bend'
 
 export interface HexAction {
   kind: HexActionKind
   /** Exactly what the engine's own check says. */
   available: boolean
-  /** Its price, when it has one (a bid suggested to meet the resistance, a deal's price, a level's cost). */
+  /** Its price, when it has one (a bid suggested to meet the resistance, a deal's price, a level's cost, a bribe); for a sale, what it pays. */
   cost?: number
   /** The engine's refusal: a code, its plain facts and its words. A deal's refusal also names its text id. */
   reason?: { code: string; label: string; textId?: string; facts?: Record<string, unknown> }
@@ -416,6 +421,20 @@ export interface HexPanel {
   ruling?: MarchId
   /** Its march's preparation level today, on a hex the player doesn't hold (D-19). */
   preparation?: number
+  /** The rival whose rules it plays by today (D-27): his march, or a seam he rules today. None in the heartland or a lair's wedge. */
+  rule?: RivalId
+  /** The Archmage's surge on it today, and tomorrow's when foreseen (D-31). */
+  surge?: { today?: SurgeKind; tomorrow?: SurgeKind }
+  /** The Goblin's greed as a band, on a hex of his march he could be paid for (C-49). */
+  greed?: GreedBand
+  /** His bid for this village of the player's (D-29): whether it would sway the village at today's close, and the player's hold so far. Never his offer. */
+  goblinBid?: { sways: boolean; hold: number }
+  /** His offer to buy back this hex (C-44): his price and its last day. */
+  buyBack?: { price: number; until: ISODate }
+  /** Restless after the Dwarf's surrender (R-12), until this day. */
+  restless?: ISODate
+  /** A rising village (the Village Uprising, or a restless one): its price to keep and the last day. */
+  uprising?: { price: number; until: ISODate }
   /** What holding the hex adds to each rival's path in Holdings (D-18). */
   paths: Partial<Record<RivalId, number>>
   /** The exact garrison an assault must beat today: wear, fortification and preparation counted (claimable hexes only). */
@@ -521,6 +540,41 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     const offer = reclaimOffer(state, hexId, today)
     actions.push({ kind: 'reclaim', available: offer.ok, cost: offer.cost, ...(offer.ok || !offer.reason ? {} : { reason: { code: offer.reason.code, label: landRefusalLabel(offer.reason), facts: { ...offer.reason } } }) })
   }
+  const rule = marchRule(state, hex, today)
+  const rc = realmConsistencyNow(state)
+  // Patch 4 (D-29): a bribe in the Goblin's march, his bid on a village of the player's, his buy-back.
+  if (hex.owner !== 'player' && rule === 'goblin') {
+    const offer = bribeOffer(state, hexId, rc, today)
+    if (offer.reason !== 'notHisMarch' && offer.reason !== 'unknownHex' && offer.reason !== 'gate') {
+      const price = offer.ok || offer.reason === 'reputation' ? offer.price : undefined
+      actions.push({ kind: 'bribe', available: offer.ok, ...(price !== undefined ? { cost: price } : {}), ...(offer.ok || !offer.reason ? {} : { reason: { code: offer.reason, label: bribeRefusalLabel(offer.reason, price) } }) })
+    }
+  }
+  const bid = goblinBidsOf(state).find((b) => b.hexId === hexId)
+  if (bid && hex.owner === 'player') {
+    const open = balance(state.purse) > 0
+    actions.push({ kind: 'hold', available: open, ...(open ? {} : { reason: { code: 'reputation', label: 'The purse is empty.' } }) })
+  }
+  const offers = worldOf(state).offers
+  const buyBack = offers.find((o) => o.kind === 'buyBack' && o.hexId === hexId && today <= o.until)
+  if (buyBack?.kind === 'buyBack' && hex.owner === 'player') actions.push({ kind: 'sellBack', available: state.rivals.goblin.status === 'active', cost: buyBack.price })
+  const uprising = offers.find((o) => o.kind === 'uprising' && o.hexId === hexId && today <= o.until)
+  if (uprising?.kind === 'uprising' && hex.owner === 'player') {
+    const ok = balance(state.purse) >= uprising.price
+    actions.push({ kind: 'keep', available: ok, cost: uprising.price, ...(ok ? {} : { reason: { code: 'reputation', label: `It costs ${amount(uprising.price)}; the purse cannot pay it.` } }) })
+  }
+  // The Archmage's path at rank V (C-36): bend tomorrow's foreseen swell here into an ebb.
+  const foreseen = foreseesSurges(state) ? surgeOn(state, addDays(today, 1)) : undefined
+  if (foreseen?.hexId === hexId && foreseen.surge === 'swell' && pathRank(state, 'archmage') >= RULES.dominion.rankPerks.archmage.bendRank) {
+    const done = bendSurge(state, today)
+    actions.push({ kind: 'bend', available: done.ok, ...(done.ok || !done.reason ? {} : { reason: { code: done.reason, label: bendRefusalLabel(done.reason) } }) })
+  }
+  const surgeToday = surgeOn(state, today)
+  const surge = {
+    ...(surgeToday?.hexId === hexId ? { today: surgeToday.surge } : {}),
+    ...(foreseen?.hexId === hexId ? { tomorrow: foreseen.surge } : {})
+  }
+  const restless = (personalitiesOf(state).restless ?? []).find((r) => r.hexId === hexId && today <= r.until && hex.owner === 'player')
   const orders = ordersFor(state, today, effects)
   const contest = combatOf(state).contested.find((c) => c.hexId === hexId)
   const courtship = state.courtships.find((c) => c.hexId === hexId)
@@ -540,6 +594,13 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     ...(hex.march ? { march: hex.march, depth: depthOf(hex) } : {}),
     ...(hex.seam ? { seam: hex.seam, ruling: rulingMarch(state.campaign.seed, hex, today) as MarchId } : {}),
     ...(preparationOf(state, hex, today) > 0 ? { preparation: preparationOf(state, hex, today) } : {}),
+    ...(rule ? { rule } : {}),
+    ...(surge.today || surge.tomorrow ? { surge } : {}),
+    ...(rule === 'goblin' && hex.owner !== 'player' && actions.some((a) => a.kind === 'bribe') ? { greed: greedBand(state) } : {}),
+    ...(bid && hex.owner === 'player' ? { goblinBid: { sways: bidSways(state, bid, rc, effects), hold: bid.hold ?? 0 } } : {}),
+    ...(buyBack?.kind === 'buyBack' && hex.owner === 'player' ? { buyBack: { price: buyBack.price, until: buyBack.until } } : {}),
+    ...(restless ? { restless: restless.until } : {}),
+    ...(uprising?.kind === 'uprising' && hex.owner === 'player' ? { uprising: { price: uprising.price, until: uprising.until } } : {}),
     paths: Object.fromEntries(Object.entries(pathShares(hex)).map(([r, s]) => [r, hexWorth(hex) * (s ?? 0)])),
     ...(isClaimableKind(hex) ? { garrison: assaultGarrison(state, hex, today) } : {}),
     ...(siege ? { siege } : {}),

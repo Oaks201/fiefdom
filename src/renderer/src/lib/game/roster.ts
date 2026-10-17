@@ -16,7 +16,9 @@
  * to date after anything that changes the army.
  */
 import { CODEX } from './codex'
+import { pathRank } from './dominion'
 import { realmEffects } from './effects'
+import { surgeCompanyMult } from './personalities'
 import { RULES, byTier } from './rules'
 import { openDayOf } from './state'
 import {
@@ -122,7 +124,8 @@ function bases(state: CampaignState, options: RosterOptions): Base[] {
   // A conquered or abdicated rival's company serves as a vassal; an allied rival's joins free (Ch 14).
   for (const r of CODEX.rivals) {
     const status = state.rivals[r.id]?.status
-    if (status === 'conquered' || status === 'abdicated') out.push(levy(r.id, 'vassal'))
+    // Patch 4 (R-12): the Dwarf as a grudging vassal sends no company.
+    if ((status === 'conquered' || status === 'abdicated') && !state.rivals[r.id]?.grudging) out.push(levy(r.id, 'vassal'))
     else if (status === 'allied') out.push(levy(r.id, 'ally'))
   }
 
@@ -136,6 +139,14 @@ function bases(state: CampaignState, options: RosterOptions): Base[] {
     const power = entry?.effect.companyPower
     if (typeof power !== 'number' || !held?.from || !held.until || day < held.from || day > held.until) continue
     out.push({ id: ev.id, name: entry?.name ?? ev.id, source: 'ally', power, tags: entry?.effect.companyTags as Tag[], reach: 'melee' })
+  }
+
+  // Patch 4 (C-35): the Goblin's hired companies from a buy-off, while they serve (A-19's power, Coin, melee; no fee).
+  const hires = state.terms?.hires
+  if (hires && day <= hires.until) {
+    const mh = buildingCompany('merchantHall', state.buildings.merchantHall)
+    const people = CODEX.rivals.find((r) => r.id === 'goblin')?.people ?? 'goblin'
+    for (let i = 1; i <= hires.count; i++) out.push({ id: `goblinHire:${i}`, name: `${people} hirelings`, source: 'ally', power: mh.power, tags: [RULES.rivals.hired.tag], reach: RULES.rivals.hired.reach })
   }
 
   const hired = options.hired ?? 0
@@ -188,7 +199,13 @@ function detail(state: CampaignState, options: RosterOptions, effects: Effects, 
     }
 
     const weary = applyWeary && !ignoreWeary && isWeary(prior?.wearyUntil, options.day)
-    if (weary && prior?.wearyUntil) cuts.push({ from: { kind: 'weary', until: prior.wearyUntil }, value: 1 - RULES.land.weary.powerPenalty })
+    // Patch 4 (C-36): the Orc's path eases Weary a little a rank.
+    const penalty = Math.max(0, RULES.land.weary.powerPenalty - RULES.dominion.rankPerks.orc.wearyEase * pathRank(state, 'orc'))
+    if (weary && prior?.wearyUntil) cuts.push({ from: { kind: 'weary', until: prior.wearyUntil }, value: 1 - penalty })
+    // Patch 4 (D-31): the Archmage's surge blesses or curses one company for its day.
+    const surged = options.day ? surgeCompanyMult(state, b.id, options.day) : 1
+    if (surged > 1) shares.push({ from: { kind: 'surge', date: options.day as ISODate }, value: surged - 1 })
+    if (surged < 1) cuts.push({ from: { kind: 'surge', date: options.day as ISODate }, value: surged })
 
     const total = (list: Contribution[]): number => list.reduce((t, c) => t + c.value, 0)
     const power = (b.power + total(adds)) * (1 + total(shares)) * cuts.reduce((t, c) => t * c.value, 1)
