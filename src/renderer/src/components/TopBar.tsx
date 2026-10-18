@@ -1,6 +1,7 @@
 import type { IconType } from 'react-icons'
 import { GiAnvilImpact, GiBookshelf, GiCandleFlame, GiCog, GiCrossedSwords, GiCycle, GiHelp, GiLaurelCrown, GiMusicalNotes, GiQuillInk, GiScrollUnfurled, GiShakingHands, GiTreasureMap } from 'react-icons/gi'
 import { battleNotices } from '../lib/game/view/battle'
+import { nextContractDue } from '../lib/game/view/contract'
 import { pagesFor, topBarView } from '../lib/game/view/shell'
 import { useCampaign } from '../state/campaign'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
@@ -49,7 +50,9 @@ export function TopBar(): React.JSX.Element {
   const contractBadge = campaign
     ? !campaign.contracts.active && !campaign.contracts.queued
       ? { text: '!', title: 'No contract is in force' }
-      : null
+      : campaignToday && nextContractDue(campaign, campaignToday)
+        ? { text: '!', title: 'The contract ends today: the next can be sealed to begin at dawn' }
+        : null
     : !open
       ? { text: '!', title: 'No contract is in force' }
       : status === 'awaiting' || (status === 'active' && open.endDate === today)

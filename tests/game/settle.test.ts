@@ -80,7 +80,8 @@ test('Test 9: a clock set back to a day already settled changes nothing, the las
 
 test('Test 9: 30 days settled one call per day equal one catch-up call over the same 30 days', () => {
   let start = sealOn(found(LEDGER), '2026-10-07', 3, 'c1', 20)
-  start = sealOn(start, '2026-10-07', 3, 'c2')
+  // c2 follows c1, sealed on its last day (D-45), before either run settles a day.
+  start = sealOn(start, '2026-10-10', 3, 'c2')
   let daily = start
   let events = 0
   for (let i = 1; i <= 30; i++) {
@@ -242,12 +243,12 @@ test('Daily: duties, the perfect day and the streak are paid at each close', () 
   assert.deepEqual(state.settlement.snapshots.filter((s) => s.date >= START).map((s) => s.streak), [1, 2, 3])
 })
 
-test('Contracts: the running contract is scored each day, paid on its last day, and the queued one starts at the next dawn', () => {
-  let state = sealOn(found(LEDGER), '2026-10-07', 3, 'c1', 20)
-  state = sealOn(state, '2026-10-07', 3, 'c2')
-  const mid = settle(state, LEDGER, chicago('2026-10-10')).state
+test('Contracts: the running contract is scored each day, paid on its last day, and the next, sealed that day, starts at the next dawn (D-45)', () => {
+  const state = sealOn(found(LEDGER), '2026-10-07', 3, 'c1', 20)
+  let mid = settle(state, LEDGER, chicago('2026-10-10')).state
   assert.ok((mid.contracts.active?.score ?? 0) > 0.9)
   assert.equal(mid.contracts.active?.id, 'c1')
+  mid = sealOn(mid, '2026-10-10', 3, 'c2')
   const end = settle(mid, LEDGER, chicago('2026-10-11'))
   assert.deepEqual(end.events.filter((e) => !COMBAT_EVENTS.includes(e.kind)).map((e) => e.kind), ['contract'])
   assert.equal(end.state.contracts.active?.id, 'c2')

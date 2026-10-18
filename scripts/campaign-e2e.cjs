@@ -264,14 +264,15 @@ async function main() {
       act('set orders', sent > 0, `${sent} companies sent`)
       await sleep(300)
       await shot(`${String(month + 3).padStart(2, '0')}-month-${month}-realm`)
-      // Seal the longest contract the realm allows.
+      // Seal the longest contract the realm allows; while one runs (before its last day), the page shows its progress instead (D-45).
       await run(`window.__e2e.tab('Contract')`)
       await waitFor(`!!document.querySelector('.campaign-contract')`)
+      const inForce = await run(`!!document.querySelector('.contract-progress')`)
       const picked = await run(`window.__e2e.click([...document.querySelectorAll('.length-picker .length')].filter((l) => !l.classList.contains('is-locked')).pop() ?? null)`)
       const contractsBefore = (await campaign()).contracts
       if (picked) await hold('.deed--campaign .seal-button', 1500)
       const contractsAfter = (await campaign()).contracts
-      act('seal a contract', contractsAfter > contractsBefore, picked ? '' : 'no contract could be drafted (one is queued)')
+      act('seal a contract', picked ? contractsAfter > contractsBefore : inForce, picked ? '' : 'one is in force: the page shows its progress')
       await run(`window.__e2e.tab('Chronicle')`)
       await sleep(300)
     }

@@ -285,7 +285,11 @@ export function HowToPlay(): React.JSX.Element | null {
                   <b>Length:</b> {lengthUnlocks()}. Longer contracts pay more per day.
                 </li>
                 <li>
-                  <b>Start day:</b> any of the {c.startChoiceDays} days from the next dawn (or from the day after the running contract ends). One runs and one can wait behind it.
+                  <b>Start day:</b> any of the {c.startChoiceDays} days from the next dawn.
+                </li>
+                <li>
+                  <b>One at a time:</b> while a contract runs, the Contract tab shows its progress day by day. On its last day the next can be sealed, to begin at the next dawn so no day
+                  goes uncovered.
                 </li>
                 <li>
                   <b>Pledge</b> (optional): up to {c.pledge.capPerDay} × the days in reputation. It comes back doubled at a perfect score, whole at about{' '}

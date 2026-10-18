@@ -10,6 +10,7 @@ import {
   pledgeCap,
   pledgeReturn,
   seal,
+  sealRefusal,
   settleContract,
   spendRespite,
   startDays,
@@ -135,9 +136,14 @@ test('Withdrawal on day 4 of a 7-day contract at Q = 0.9 pays 33.3 and returns h
   assert.equal(out.contracts.history[0].status, 'withdrawn')
 })
 
-test('Withdrawing lets the queued contract start at the next dawn (Ch 2 rule 1)', () => {
+/** c1 running 2026-10-05 to 10-11 with c2 waiting behind it, as a campaign saved before D-45 can hold (sealed here on c1's last day, the only day it can be now). */
+function oldQueue(req: Partial<SealRequest> = {}) {
   const first = sealOne()
-  const second = sealOne({ id: 'c2', termDays: 3 }, {}, first.purse, first.contracts)
+  return sealOne({ id: 'c2', termDays: 3, ...req }, { today: '2026-10-11' }, first.purse, first.contracts)
+}
+
+test('A contract queued before D-45 still moves up to the next dawn when the running one is withdrawn (Ch 2 rule 1)', () => {
+  const second = oldQueue()
   assert.equal(second.contract.status, 'queued')
   assert.equal(second.contract.startDate, '2026-10-12')
   const out = withdraw(second.contracts, second.purse, 0.9, { ...PAY, date: '2026-10-08' })
@@ -156,16 +162,16 @@ test('D-06: a contract starts on a day the player picks, from the next dawn thro
   assert.equal(later.contract.status, 'active', 'it holds the slot, waiting for its day')
   assert.throws(() => sealOne({ startDate: SUNDAY }), /starts between 2026-10-05 and 2026-10-11/)
   assert.throws(() => sealOne({ startDate: '2026-10-12' }), CampaignError)
-  // Queued: the choice runs from the day after the running one ends.
-  assert.deepEqual(startDays(later.contracts, SUNDAY)[0], '2026-10-15')
-  const queued = sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-17' }, {}, later.purse, later.contracts)
-  assert.equal(queued.contract.startDate, '2026-10-17')
-  assert.throws(() => sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-14' }, {}, later.purse, later.contracts), CampaignError)
+  // On the running one's last day (D-45), the choice runs from the next dawn, the day after it ends.
+  const lastDay = { today: '2026-10-14' }
+  assert.deepEqual(startDays(later.contracts, lastDay.today)[0], '2026-10-15')
+  const next = sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-17' }, lastDay, later.purse, later.contracts)
+  assert.equal(next.contract.startDate, '2026-10-17')
+  assert.throws(() => sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-14' }, lastDay, later.purse, later.contracts), CampaignError)
 })
 
-test('D-06: withdrawing keeps a later start the player chose for the queued contract', () => {
-  const first = sealOne()
-  const second = sealOne({ id: 'c2', termDays: 3, startDate: '2026-10-15' }, {}, first.purse, first.contracts)
+test('D-06: withdrawing keeps a later start the player chose for a contract queued before D-45', () => {
+  const second = oldQueue({ startDate: '2026-10-15' })
   const out = withdraw(second.contracts, second.purse, 0.9, { ...PAY, date: '2026-10-08' })
   assert.equal(out.contracts.active?.id, 'c2')
   assert.equal(out.contracts.active?.startDate, '2026-10-15')
@@ -174,16 +180,19 @@ test('D-06: withdrawing keeps a later start the player chose for the queued cont
 
 // ── Sealing and pledges ──────────────────────────────────────────────────────
 
-test('Sealing copies the Charter, and one contract runs while at most one waits (Ch 4 rule 1)', () => {
+test('Sealing copies the Charter; while one runs, the next is sealed only on its last day, and one at most (Ch 4 rule 1, D-45)', () => {
   const charter = { ...CHARTER, duties: [...CHARTER.duties] }
   const first = sealOne({ charter })
   charter.duties.push('Changed later')
   assert.deepEqual(first.contract.charter.duties, CHARTER.duties)
   assert.equal(first.contract.charter.calorieFloor, 1_550)
-  const second = sealOne({ id: 'c2' }, {}, first.purse, first.contracts)
+  assert.throws(() => sealOne({ id: 'c2' }, {}, first.purse, first.contracts), /in force through 2026-10-11\. The next can be sealed on its last day/)
+  assert.throws(() => sealOne({ id: 'c2' }, { today: '2026-10-10' }, first.purse, first.contracts), CampaignError)
+  const second = sealOne({ id: 'c2' }, { today: '2026-10-11' }, first.purse, first.contracts)
   assert.equal(second.contracts.active?.id, 'c1')
   assert.equal(second.contracts.queued?.id, 'c2')
-  assert.throws(() => sealOne({ id: 'c3' }, {}, second.purse, second.contracts), /already queued/)
+  assert.equal(second.contract.startDate, '2026-10-12', 'it follows at the next dawn: no day is lost')
+  assert.throws(() => sealOne({ id: 'c3' }, { today: '2026-10-11' }, second.purse, second.contracts), /already sealed/)
   // Paying the first lets the queued one run.
   const paid = settleContract(second.contracts, second.purse, 1, { ...PAY, date: '2026-10-11' })
   assert.equal(paid.contracts.active?.id, 'c2')
@@ -268,13 +277,20 @@ test('Respite on the day before yesterday, without a bank, or outside the contra
   assert.throws(() => spendRespite(once, '2026-10-08', '2026-10-08'), /already/)
 })
 
-test('Respite moves a queued contract back with the running one', () => {
-  const first = sealOne()
-  const second = sealOne({ id: 'c2', termDays: 3 }, {}, first.purse, first.contracts)
-  const after = spendRespite({ ...second.contracts, respiteBank: 1 }, '2026-10-08', '2026-10-08')
+test('Respite on the last day moves the next contract back with the running one (D-45)', () => {
+  const second = oldQueue()
+  const after = spendRespite({ ...second.contracts, respiteBank: 1 }, '2026-10-11', '2026-10-11')
   assert.equal(after.active?.endDate, '2026-10-12')
   assert.equal(after.queued?.startDate, '2026-10-13')
   assert.equal(after.queued?.endDate, '2026-10-15')
+})
+
+test('D-45: a contract waiting for its chosen day holds the slot too; the slot opens on its last day', () => {
+  assert.equal(sealRefusal(EMPTY, SUNDAY), null)
+  const waiting = sealOne({ startDate: '2026-10-08' })
+  assert.match(sealRefusal(waiting.contracts, SUNDAY) ?? '', /in force through 2026-10-14/)
+  assert.match(sealRefusal(waiting.contracts, '2026-10-13') ?? '', /on its last day/)
+  assert.equal(sealRefusal(waiting.contracts, '2026-10-14'), null)
 })
 
 test('Respite is earned once per 7 days played and the bank never exceeds its cap (Ch 4 rule 4)', () => {

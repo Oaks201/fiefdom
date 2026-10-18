@@ -482,6 +482,199 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* -- The running contract's progress (D-45) -------------------------------- */
+.campaign-contract__main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.campaign-contract__next-title {
+  margin: 0;
+  font: 700 20px var(--font-caps);
+}
+
+.campaign-contract__next p {
+  margin: 2px 0 0;
+}
+
+.contract-progress {
+  gap: 14px;
+}
+
+.contract-progress__days p {
+  margin: 6px 0 0;
+}
+
+.contract-progress__track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  background: rgba(92, 58, 24, 0.12);
+  border-radius: 5px;
+}
+
+.contract-progress__track::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  background: linear-gradient(90deg, var(--crimson), var(--crimson-hi));
+}
+
+.pillars__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pillars__name svg {
+  color: var(--crimson);
+}
+
+.pillars--facts li {
+  row-gap: 0;
+}
+
+.pillars__fact {
+  grid-column: 2 / -1;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+.running-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.running-pay p {
+  margin: 0;
+}
+
+.contract-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contract-cal__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) 48px;
+  gap: 6px;
+}
+
+.contract-cal__weekday {
+  font: 700 10.5px var(--font-caps);
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.contract-cal__weekday:last-child {
+  text-align: right;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 52px;
+  padding: 5px 6px 6px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: rgba(255, 249, 232, 0.55);
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cal-day:hover:not(:disabled) {
+  background: rgba(255, 250, 236, 0.9);
+  border-color: var(--rule);
+}
+
+.cal-day.is-outside {
+  background: none;
+  border-color: transparent;
+  cursor: default;
+}
+
+.cal-day.is-upcoming {
+  background: repeating-linear-gradient(-45deg, rgba(92, 58, 24, 0.06) 0 4px, transparent 4px 8px);
+  border-style: dashed;
+  cursor: default;
+}
+
+.cal-day.is-today {
+  outline: 2px solid rgba(139, 30, 26, 0.45);
+  outline-offset: 1px;
+}
+
+.cal-day.is-respite {
+  background: rgba(45, 87, 166, 0.08);
+}
+
+.cal-day__num {
+  font: 700 14px var(--font-caps);
+  line-height: 1;
+  color: var(--ink-2);
+}
+
+.cal-day.is-today .cal-day__num {
+  color: var(--crimson);
+}
+
+.cal-day__marks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: auto;
+}
+
+.cal-day__bar {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  background: rgba(92, 58, 24, 0.13);
+  border-radius: 3px;
+}
+
+.cal-day__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  background: rgba(122, 82, 16, 0.55);
+}
+
+.cal-day__bar.is-met::after {
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+}
+
+.cal-day__rest {
+  margin-top: auto;
+  font: 700 11px var(--font-caps);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--royal);
+}
+
+.contract-cal__score {
+  align-self: center;
+  text-align: right;
+  font: 700 15px var(--font-caps);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.contract-cal__legend {
+  margin: 0;
+  font-size: 13.5px;
+}
+
 /* -- The Chronicle's realm panels ----------------------------------------- */
 .campaign-week {
   display: grid;

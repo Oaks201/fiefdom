@@ -129,8 +129,9 @@ export interface SealContext extends Progress, CharterLimits {
 
 /**
  * The days a contract sealed on `today` may start (D-06): its earliest dawn (the next dawn, or the
- * day after the running contract ends) and the days after it, `startChoiceDays` in all. Never
- * today: a contract never begins partway through a day (Ch 4 rule 2).
+ * day after the running contract ends, which is the next dawn on its last day, D-45) and the days
+ * after it, `startChoiceDays` in all. Never today: a contract never begins partway through a day
+ * (Ch 4 rule 2).
  */
 export function startDays(contracts: ContractsState, today: ISODate): ISODate[] {
   const nextDawn = addDays(today, 1)
@@ -140,10 +141,22 @@ export function startDays(contracts: ContractsState, today: ISODate): ISODate[] 
 }
 
 /**
- * Seals a contract. It copies the Charter, starts on the chosen day (by default the next dawn, or
- * the day after the running contract ends, when it is queued) and posts the pledge. One contract
- * runs and at most one waits. The Accord (D-01) is a 30-day contract with a rival, sealed exactly
- * like one.
+ * Why no contract can be sealed on `today`, or null when one can (D-45): the slot is free, or
+ * today is the running contract's last day and nothing is sealed to follow it yet.
+ */
+export function sealRefusal(contracts: ContractsState, today: ISODate): string | null {
+  const active = contracts.active
+  if (!active) return null
+  if (contracts.queued) return 'The next contract is already sealed.'
+  if (today < active.endDate) return `A contract is in force through ${active.endDate}. The next can be sealed on its last day.`
+  return null
+}
+
+/**
+ * Seals a contract. It copies the Charter, starts on the chosen day (by default the next dawn) and
+ * posts the pledge. One contract runs; on its last day the next can be sealed to follow it, so no
+ * day is lost between them (D-45). The Accord (D-01) is a 30-day contract with a rival, sealed
+ * exactly like one.
  */
 export function seal(
   contracts: ContractsState,
@@ -158,7 +171,8 @@ export function seal(
   }
   if (!RULES.contracts.lengths.some((l) => l.days === req.termDays)) throw new CampaignError(`There is no ${req.termDays}-day contract.`)
   if (!availableLengths(ctx).includes(req.termDays as ContractTerm)) throw new CampaignError(`The ${req.termDays}-day contract is not unlocked yet.`)
-  if (contracts.active && contracts.queued) throw new CampaignError('A contract is already queued.')
+  const refusal = sealRefusal(contracts, ctx.today)
+  if (refusal) throw new CampaignError(refusal)
   const charterErrors = validateCharter(req.charter, ctx)
   if (charterErrors.length > 0) throw new CampaignError(charterErrors.join(' '))
 

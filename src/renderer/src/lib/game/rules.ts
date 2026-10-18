@@ -81,7 +81,7 @@ const RULES_TABLE = {
     table: { zeroAtShareOver: 0.15 },
     /** Ch 4: the Steward's Counsel after 4 weeks averaging below 75% or above 95%. */
     stewardCounsel: { weeks: 4, gentlerBelow: 0.75, firmerAbove: 0.95 },
-    /** One contract runs; the next can be queued. */
+    /** One contract runs; on its last day the next can be sealed to follow it (D-45). */
     maxQueued: 1,
     /** D-06: a contract may start on any of this many days from its earliest dawn. */
     startChoiceDays: 7,

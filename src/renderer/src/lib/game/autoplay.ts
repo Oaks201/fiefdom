@@ -32,7 +32,7 @@ import { addDays, campaignWeek, diffDays, isWeekCloseDay, weekOf } from './clock
 import { CODEX } from './codex'
 import { effectiveGarrison, liftSiege, ordersEstimate, setOrders } from './combat'
 import { sealContract, takeRespite } from './contractActions'
-import { availableLengths } from './contracts'
+import { availableLengths, sealRefusal } from './contracts'
 import { hexWorth, pathRank, pathShares, pathTotals } from './dominion'
 import { balance } from './economy'
 import { realmEffects } from './effects'
@@ -165,9 +165,9 @@ function buyHexes(input: CampaignState, today: ISODate, plan: AutoplayPlan): Cam
   return state
 }
 
-/** Seals the longest contract the realm unlocks when the slot (or the queue behind it) is free. */
+/** Seals the longest contract the realm unlocks when the slot is free, or on the running contract's last day to follow it (D-45). */
 function sealLongest(state: CampaignState, today: ISODate, day: AutoplayDay): CampaignState {
-  if (state.contracts.queued || (state.contracts.active && state.contracts.active.endDate > addDays(today, WEEK))) return state
+  if (sealRefusal(state.contracts, today)) return state
   const termDays = Math.max(...availableLengths({ buildings: state.buildings, castleTier: state.castleTier }))
   const sealed = sealContract(state, { id: day.nextId(), termDays }, today)
   return sealed.ok ? sealed.state : state

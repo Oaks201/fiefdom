@@ -11,6 +11,7 @@ import { Tally } from '../components/chronicle/Tally'
 import { WeekStrip } from '../components/chronicle/WeekStrip'
 import { calorieMetricFor, contractStatus } from '../lib/contracts'
 import { addDays, diffDays, formatLong, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../lib/dates'
+import { nextContractDue } from '../lib/game/view/contract'
 import { contractOn, dutiesSwornUnder, openContract } from '../lib/ledger'
 import { useToday } from '../state/clock'
 import { useLedgerData } from '../state/hooks'
@@ -80,6 +81,16 @@ export function ChroniclePage(): React.JSX.Element {
           <span>No contract is in force. Duties, steps and calories still earn their daily and weekly reputation; a contract adds its payout.</span>
           <button type="button" className="btn btn--small" onClick={() => go('contract')}>
             Seal a contract
+          </button>
+        </div>
+      )
+    } else if (campaignToday && nextContractDue(campaign, campaignToday)) {
+      banner = (
+        <div className="banner">
+          <GiScrollUnfurled className="banner__icon" aria-hidden="true" />
+          <span>Today is the contract’s last day. The next can be sealed now to begin at dawn, so no day goes uncovered.</span>
+          <button type="button" className="btn btn--small" onClick={() => go('contract')}>
+            Seal the next
           </button>
         </div>
       )

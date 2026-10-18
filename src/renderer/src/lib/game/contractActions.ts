@@ -64,8 +64,8 @@ export interface SealOrder {
 }
 
 /**
- * Seals a contract on `today` (Ch 4): it starts on the chosen day, by default the next dawn or,
- * queued, the day after the running one ends (D-06). An Accord records its rival's Respect now, for D-01's 60 × f(Q) at Respect 75.
+ * Seals a contract on `today` (Ch 4): it starts on the chosen day, by default the next dawn (D-06).
+ * While one runs, only its last day can seal the next (D-45). An Accord records its rival's Respect now, for D-01's 60 × f(Q) at Respect 75.
  */
 export function sealContract(state: CampaignState, order: SealOrder, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
@@ -123,7 +123,7 @@ export function withdrawalPreview(state: CampaignState, today: ISODate = openDay
   }
 }
 
-/** Withdraws the running contract on `today` (Ch 4): it pays what `withdrawalPreview` shows; a queued one starts at the next dawn. */
+/** Withdraws the running contract on `today` (Ch 4): it pays what `withdrawalPreview` shows; one sealed to follow it starts at the next dawn. */
 export function withdrawContract(state: CampaignState, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
     const active = state.contracts.active

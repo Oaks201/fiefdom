@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GiHourglass, GiReceiveMoney, GiScrollUnfurled, GiShakingHands } from 'react-icons/gi'
+import { GiHourglass, GiReceiveMoney, GiScrollUnfurled } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { addDays, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep, parseInteger } from '../../lib/format'
@@ -7,19 +7,25 @@ import { reviseCharter, sealContract, takeRespite, withdrawContract } from '../.
 import type { CampaignState, ContractTerm, ISODate } from '../../lib/game/types'
 import { contractPageView, payoutPreview, type ContractPageView, type RunningView } from '../../lib/game/view/contract'
 import { percent, rivalName } from '../../lib/game/view/shell'
+import type { Ledger } from '../../lib/types'
 import { useCampaign } from '../../state/campaign'
 import { newId } from '../../state/hooks'
 import { toast } from '../../state/toasts'
 import { HoldButton } from '../HoldButton'
 import { WaxSeal } from '../WaxSeal'
+import { ContractProgress } from './ContractProgress'
 
 function day(d: ISODate): string {
   return `${WEEKDAYS[weekday(d)]}, ${formatShort(d)}`
 }
 
-/** The Contract page once a campaign exists (Ch 4, D-01): any length, an optional pledge, the running contract. */
-export function CampaignContract({ campaign, today }: { campaign: CampaignState; today: ISODate }): React.JSX.Element {
-  const view = contractPageView(campaign, today)
+/**
+ * The Contract page once a campaign exists (Ch 4, D-01, D-45): with no contract running, the draft
+ * (any length, an optional pledge); while one runs, its progress, and on its last day the draft
+ * for the next below it.
+ */
+export function CampaignContract({ campaign, today, ledger }: { campaign: CampaignState; today: ISODate; ledger: Ledger }): React.JSX.Element {
+  const view = contractPageView(campaign, today, ledger)
   return (
     <div className="campaign-contract">
       {view.steward && (
@@ -32,14 +38,21 @@ export function CampaignContract({ campaign, today }: { campaign: CampaignState;
       )}
       <div className="campaign-contract__cols">
         <div className="campaign-contract__main">
-          {view.canSeal ? <DraftContract view={view} campaign={campaign} today={today} /> : <p className="muted">A contract is queued behind the one in force. A third can be sealed once the first ends.</p>}
+          {view.running && <ContractProgress running={view.running} today={today} />}
+          {view.canSeal && view.running && (
+            <header className="campaign-contract__next">
+              <h2 className="campaign-contract__next-title">The next contract</h2>
+              <p className="muted">Sealed today, it begins at dawn tomorrow at the earliest, so no day goes uncovered between them.</p>
+            </header>
+          )}
+          {view.canSeal && <DraftContract view={view} campaign={campaign} today={today} />}
         </div>
         <aside className="campaign-contract__side">
           {view.running && <Running running={view.running} today={today} />}
           {view.queued && (
             <section className="panel">
               <header className="panel__head">
-                <h3 className="panel__title">Queued</h3>
+                <h3 className="panel__title">Next</h3>
               </header>
               <p>
                 A {view.queued.termDays}-day {view.queued.kind === 'accord' ? 'Accord' : 'contract'} begins {day(view.queued.startDate)}
@@ -280,35 +293,28 @@ function CharterTerms({
   )
 }
 
+/** What the running contract pays at its end, its Respite and its withdrawal; its progress is in `ContractProgress`. */
 function Running({ running, today }: { running: RunningView; today: ISODate }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const c = running.contract
-  const status = running.started ? `In force · Day ${running.dayNumber} of ${running.totalDays}` : `Begins ${day(c.startDate)}`
   const w = running.withdrawal
   return (
-    <section className="panel running">
-      <div className={`status-ribbon status-ribbon--${running.started ? 'active' : 'upcoming'}`}>{status}</div>
+    <section className="panel running-pay">
       <header className="panel__head">
-        <h3 className="panel__title">{c.kind === 'accord' ? <><GiShakingHands aria-hidden="true" /> Accord with {c.rival ? rivalName(c.rival) : ""}</> : `A ${c.termDays}-day contract`}</h3>
-        <span className="panel__aside">ends {day(c.endDate)}</span>
+        <h3 className="panel__title">
+          <GiReceiveMoney aria-hidden="true" /> At its end
+        </h3>
+        <span className="panel__aside">{day(c.endDate)}</span>
       </header>
-      <div className="running__score">
-        <strong className="running__q">{running.settledDays > 0 ? `${percent(running.score)}%` : '—'}</strong>
-        <span className="muted">score so far, over {running.settledDays} settled {running.settledDays === 1 ? 'day' : 'days'}</span>
-      </div>
-      <ul className="pillars">
-        {(['steps', 'table', 'duties'] as const).map((p) => (
-          <li key={p}>
-            <span className="pillars__name">{p === 'table' ? 'Calories' : p === 'steps' ? 'Steps' : 'Duties'}</span>
-            <span className="pillars__bar" style={{ ['--fill' as string]: running.pillars[p] }} />
-            <span className="pillars__value">{percent(running.pillars[p])}%</span>
-          </li>
-        ))}
-      </ul>
-      <p>
-        At this score it pays <strong>{formatRep(running.projected.payoutWithBonus)}</strong>
-        {c.pledge > 0 ? <>, and returns {formatNumber(running.projected.pledgeReturn)} of the {formatNumber(c.pledge)} pledged</> : null}.
-      </p>
+      {running.settledDays > 0 ? (
+        <p>
+          At {percent(running.score)}% it pays <strong>{formatRep(running.projected.payoutWithBonus)}</strong>
+          {c.pledge > 0 ? <>, and returns {formatNumber(running.projected.pledgeReturn)} of the {formatNumber(c.pledge)} pledged</> : null}.
+        </p>
+      ) : (
+        <p>It pays by its score once its days settle{c.pledge > 0 ? <>, with {formatNumber(c.pledge)} pledged</> : null}.</p>
+      )}
+      {(running.settledDays === 0 || running.score < 1) && <p className="muted">At 100% it would pay {formatRep(running.projected.fullWithBonus)}.</p>}
       {running.accord && (
         <p>
           It would add <strong>{running.accord.projectedGain.toFixed(1)}</strong> Respect with {rivalName(running.accord.rival)} (it was at {running.accord.respectAtStart} when sealed). At 100 the Accord is signed.

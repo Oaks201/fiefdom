@@ -701,6 +701,7 @@ Built on 2026-10-17 on branch `patch-5`, stages 1 to 4, at Rich's go-ahead ("cut
 | S-52 | 2 | Screenshots of the bent map | Not taken: the map was rendered as an SVG and opened in the preview pane, which can't be captured | Left for Rich to look at in the app |
 | S-53 | 3 | Herald placeholders `herald.standing.<…>` and `herald.respect.mark` | Not built: no Herald line told a disposition or Respect change before either; the court's standing note and marks carry it | A follow-up with the text catalog (A3) |
 | S-54 | 3 | — | The Dragon's test reads "the player's hex nearest the Wyrmfells' mouth" rather than "a western hex"; five scenario tests move their weeks to 16 and 12 | The bend turns the mouth toward the north, so the Barracks can be nearest; the rule is unchanged |
+| S-55 | after 4 | — (Ch 4 rule 1: the next contract can be queued at any time) | D-45: the next contract is sealed only on the running one's last day; while one runs, the Contract page shows its progress (each day, each week's score, the pillars and their facts) | Rich, 2026-10-17: queueing served no purpose, and progress was what the page should show; sealing on the last day keeps every day covered |
 
 ### 11.2 Targets by stage
 

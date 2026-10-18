@@ -1,21 +1,22 @@
 /**
  * View models for the Contract page and the Archive's campaign cards (T14, Ch 4, D-01): the
  * lengths with their exact unlock requirements, the pledge cap, payout previews, the running
- * contract's live score and projection, withdrawal, the Respite bank and the Steward's Counsel.
- * Pure; components only render these.
+ * contract's live score, progress and projection (D-45), withdrawal, the Respite bank and the
+ * Steward's Counsel. Pure; components only render these.
  */
-import { addDays, diffDays } from '../clock'
+import { addDays, diffDays, weekOf } from '../clock'
 import { charterLocked, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
-import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, startDays, stewardSuggestion, accordRespectGain } from '../contracts'
+import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, sealRefusal, startDays, stewardSuggestion, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
 import { numeral, realmEffects } from '../effects'
-import { snapshotsBetween, toDayRecord } from '../ledgerDays'
+import { snapshotDay, snapshotsBetween, toDayRecord } from '../ledgerDays'
 import { RULES } from '../rules'
-import { termsOf, weekPillars, weekScores } from '../score'
-import { contractScore } from '../settle'
+import { budgetScore, poolShare, tableIntake, termsOf, weekScores, type ScoreTerms } from '../score'
+import { charterOn, contractScore } from '../settle'
 import { openDayOf } from '../state'
 import { t } from '../text'
-import type { CampaignState, Charter, ContractTerm, ISODate, LandContract, Pillars, RivalId } from '../types'
+import type { CampaignState, Charter, ContractTerm, DayRecord, ISODate, LandContract, Pillars, RivalId } from '../types'
+import type { Ledger } from '../../types'
 
 
 // ── Lengths and pledges ──────────────────────────────────────────────────────
@@ -136,19 +137,139 @@ export interface RespiteDay {
   reason?: string
 }
 
+// ── Progress (D-45) ──────────────────────────────────────────────────────────
+
+export interface ProgressDay {
+  date: ISODate
+  /**
+   * `settled`: closed and in the score. `today`: the open day, its figures so far, which enter the
+   * score at its close. `upcoming`: not begun. `respite`: a Respite day, left out of the score.
+   */
+  state: 'settled' | 'today' | 'upcoming' | 'respite'
+  steps?: number
+  eaten?: number
+  dutiesKept: number
+  dutiesSworn: number
+  /** Steps against the pool's share for one day (pool ÷ 7), capped at 1. */
+  stepsShare: number
+  /** The day's food against the limit: within it, over it, logged well under the Healer's floor (A-41), or not logged. */
+  calories: 'within' | 'over' | 'underFloor' | 'unlogged'
+  /** The day's own budget score, 0 to 1: 1 within the limit, falling to 0 at 15% over (A-41's under-floor rule included), 0 unlogged. */
+  tableShare: number
+}
+
+export interface ProgressWeek {
+  weekStart: ISODate
+  /** The calendar week's seven days in order; null for a day outside the contract. */
+  days: (ProgressDay | null)[]
+  /** q_w over the week's settled days of the contract so far, or null before one has settled. */
+  score: number | null
+}
+
+export interface ContractProgress {
+  weeks: ProgressWeek[]
+  /** The step pool's share for one day, rounded: what a day's steps are set against. */
+  dailySteps: number
+  calorieLimit: number
+  /** Each pillar over the settled days, weeks weighted by their days as the score weighs them, so the three average to it (Ch 4). */
+  pillars: Pillars
+  /** What lies behind each pillar, over the settled days. */
+  steps: { walked: number; share: number }
+  table: { logged: number; days: number; average: number | null }
+  duties: { kept: number; sworn: number }
+}
+
+function progressDay(day: DayRecord, state: ProgressDay['state'], terms: ScoreTerms): ProgressDay {
+  const floor = terms.floor ?? RULES.healer.minFloor
+  const eaten = day.eaten
+  const calories = eaten === undefined ? 'unlogged' : eaten < RULES.healer.underFloorShare * floor ? 'underFloor' : eaten <= terms.calorieLimit ? 'within' : 'over'
+  return {
+    date: day.date,
+    state,
+    ...(day.steps !== undefined ? { steps: day.steps } : {}),
+    ...(eaten !== undefined ? { eaten } : {}),
+    dutiesKept: day.dutiesKept,
+    dutiesSworn: day.dutiesSworn,
+    stepsShare: Math.min(1, Math.max(0, day.steps ?? 0) / poolShare(terms.stepPool, 1)),
+    calories,
+    tableShare: eaten === undefined ? 0 : budgetScore(tableIntake(eaten, terms), terms.calorieLimit)
+  }
+}
+
+/** Today is the running contract's last day and nothing follows it yet: the next can be sealed to begin at dawn (D-45). */
+export function nextContractDue(state: CampaignState, today: ISODate = openDayOf(state)): boolean {
+  return state.contracts.active?.endDate === today && sealRefusal(state.contracts, today) === null
+}
+
+/**
+ * The running contract's days by calendar week (D-45): each settled day's steps, calories and
+ * duties, today's so far when `ledger` is given, each week's q_w and the pillars behind the score.
+ * Only settled days count, as they do in the score and the payout.
+ */
+export function contractProgress(state: CampaignState, contract: LandContract, today: ISODate, ledger?: Ledger): ContractProgress {
+  const ws = state.campaign.weekStartsOn
+  const terms = termsOf(contract.charter)
+  const last = state.settledThrough.day < contract.endDate ? state.settledThrough.day : contract.endDate
+  const records = contract.startDate <= last ? snapshotsBetween(state.settlement.snapshots, contract.startDate, last).map(toDayRecord) : []
+  const byDate = new Map(records.map((d) => [d.date, d]))
+  const respite = new Set(contract.respiteDates)
+  const scored = records.filter((d) => !respite.has(d.date))
+  const weekly = weekScores(scored, terms, ws)
+
+  const dayOf = (date: ISODate): ProgressDay | null => {
+    if (date < contract.startDate || date > contract.endDate) return null
+    const blank: DayRecord = { date, dutiesKept: 0, dutiesSworn: contract.charter.duties.length }
+    const settled = byDate.get(date)
+    if (respite.has(date)) return progressDay(settled ?? blank, 'respite', terms)
+    if (settled) return progressDay(settled, 'settled', terms)
+    if (date === today) return progressDay(ledger ? toDayRecord(snapshotDay(ledger, date, charterOn(state, date))) : blank, 'today', terms)
+    return progressDay(blank, 'upcoming', terms)
+  }
+  const weeks: ProgressWeek[] = []
+  for (let start = weekOf(contract.startDate, ws); start <= contract.endDate; start = addDays(start, RULES.clock.daysPerWeek)) {
+    const week = weekly.find((w) => w.weekStart === start)
+    weeks.push({ weekStart: start, days: Array.from({ length: RULES.clock.daysPerWeek }, (_, i) => dayOf(addDays(start, i))), score: week ? week.score : null })
+  }
+
+  const n = weekly.reduce((sum, w) => sum + w.days, 0)
+  const withDuties = weekly.filter((w) => !w.pillars.noDuties)
+  const nDuties = withDuties.reduce((sum, w) => sum + w.days, 0)
+  const weighted = (list: typeof weekly, total: number, pick: (p: Pillars) => number): number => (total > 0 ? list.reduce((sum, w) => sum + w.days * pick(w.pillars), 0) / total : 0)
+  const pillars: Pillars = {
+    steps: weighted(weekly, n, (p) => p.steps),
+    table: weighted(weekly, n, (p) => p.table),
+    duties: weighted(withDuties, nDuties, (p) => p.duties),
+    ...(n > 0 && nDuties === 0 ? { noDuties: true as const } : {})
+  }
+  const logged = scored.filter((d) => d.eaten !== undefined)
+  return {
+    weeks,
+    dailySteps: Math.round(poolShare(terms.stepPool, 1)),
+    calorieLimit: terms.calorieLimit,
+    pillars,
+    steps: { walked: scored.reduce((sum, d) => sum + Math.max(0, d.steps ?? 0), 0), share: Math.round(poolShare(terms.stepPool, scored.length)) },
+    table: { logged: logged.length, days: scored.length, average: logged.length > 0 ? Math.round(logged.reduce((sum, d) => sum + (d.eaten as number), 0) / logged.length) : null },
+    duties: { kept: scored.reduce((sum, d) => sum + Math.min(d.dutiesKept, d.dutiesSworn), 0), sworn: scored.reduce((sum, d) => sum + d.dutiesSworn, 0) }
+  }
+}
+
 export interface RunningView {
   contract: ContractSummary
   /** It has begun (its first dawn has come). */
   started: boolean
-  /** Today's day of the contract, 1-based (0 before it starts), and how many it has, Respite included. */
+  /** Today's day of the contract, 1-based (0 before it starts), how many it has, Respite included, and how many come after today. */
   dayNumber: number
   totalDays: number
+  daysLeft: number
+  /** Today is its last day: the next contract can be sealed to follow it (D-45). */
+  lastDay: boolean
   /** Q over its settled days so far, its three pillars, and how many days that is. */
   score: number
   pillars: Pillars
   settledDays: number
-  /** What it pays at today's Q: the payout before and with the reputation bonus, and the pledge's return. */
-  projected: { payout: number; payoutWithBonus: number; pledgeReturn: number }
+  progress: ContractProgress
+  /** What it pays at today's Q: the payout before and with the reputation bonus, and the pledge's return; and the payout, with the bonus, at Q = 100%. */
+  projected: { payout: number; payoutWithBonus: number; pledgeReturn: number; fullWithBonus: number }
   withdrawal: WithdrawalPreview
   respite: { bank: number; days: RespiteDay[] }
   /** An Accord: its rival, the Respect at its seal, and the Respect it would add at today's Q (D-01). */
@@ -160,35 +281,40 @@ export function projectedPayout(termDays: number, q: number): number {
   return roundPosting(contractPayout(termDays, q))
 }
 
-/** The running contract as the Contract page shows it, or null with none. */
-export function runningView(state: CampaignState, today: ISODate = openDayOf(state)): RunningView | null {
+/** The running contract as the Contract page shows it, or null with none. `ledger` adds today's figures so far to its progress. */
+export function runningView(state: CampaignState, today: ISODate = openDayOf(state), ledger?: Ledger): RunningView | null {
   const c = state.contracts.active
   if (!c) return null
   const ws = state.campaign.weekStartsOn
   const effects = realmEffects(state)
-  const last = state.settledThrough.day < c.endDate ? state.settledThrough.day : c.endDate
-  const settled = c.startDate <= last ? snapshotsBetween(state.settlement.snapshots, c.startDate, last).map(toDayRecord).filter((d) => !c.respiteDates.includes(d.date)) : []
-  const score = settled.length > 0 ? contractScore(state, c, today, ws) : 0
-  const pillars = settled.length > 0 ? weekPillars(settled, termsOf(c.charter)) : { steps: 0, table: 0, duties: 0 }
+  const progress = contractProgress(state, c, today, ledger)
+  const settledDays = progress.table.days
+  const score = settledDays > 0 ? contractScore(state, c, today, ws) : 0
   const started = c.startDate <= today
+  const dayNumber = started ? Math.min(diffDays(c.startDate, today) + 1, c.termDays + c.respiteDays) : 0
   const respiteDay = (day: ISODate): RespiteDay => {
     if (state.contracts.respiteBank < 1) return { day, allowed: false, reason: 'No Respite days are banked.' }
     if (day < c.startDate || day > c.endDate) return { day, allowed: false, reason: 'The contract does not cover this day.' }
     if (c.respiteDates.includes(day)) return { day, allowed: false, reason: 'Already a Respite day.' }
     return { day, allowed: true }
   }
+  const totalDays = c.termDays + c.respiteDays
   return {
     contract: summary(c),
     started,
-    dayNumber: started ? Math.min(diffDays(c.startDate, today) + 1, c.termDays + c.respiteDays) : 0,
-    totalDays: c.termDays + c.respiteDays,
+    dayNumber,
+    totalDays,
+    daysLeft: totalDays - dayNumber,
+    lastDay: c.endDate === today,
     score,
-    pillars,
-    settledDays: settled.length,
+    pillars: progress.pillars,
+    settledDays,
+    progress,
     projected: {
       payout: projectedPayout(c.termDays, score),
       payoutWithBonus: roundPosting(withBonus(contractPayout(c.termDays, score), effects.reputationBonus.value)),
-      pledgeReturn: roundPosting(pledgeReturn(c.pledge, score, effects.minPledgeReturn.value))
+      pledgeReturn: roundPosting(pledgeReturn(c.pledge, score, effects.minPledgeReturn.value)),
+      fullWithBonus: roundPosting(withBonus(contractPayout(c.termDays, 1), effects.reputationBonus.value))
     },
     withdrawal: withdrawalPreview(state, today) as WithdrawalPreview,
     respite: { bank: state.contracts.respiteBank, days: [respiteDay(addDays(today, -1)), respiteDay(today)] },
@@ -203,11 +329,12 @@ export function runningView(state: CampaignState, today: ISODate = openDayOf(sta
 export interface ContractPageView {
   lengths: LengthOption[]
   charter: Charter & { floor: number; locked: boolean; medicalSupervision: boolean }
-  /** The days a contract sealed today may start, earliest first (D-06): from the next dawn, or the day after the running one ends. */
+  /** The days a contract sealed today may start, earliest first (D-06): from the next dawn. */
   sealStartDays: ISODate[]
-  /** Another can be sealed: none is queued behind a running one. */
+  /** A contract can be sealed today: none runs, or today is the running one's last day and none follows it yet (D-45). */
   canSeal: boolean
   running: RunningView | null
+  /** The contract sealed to follow the running one. */
   queued?: ContractSummary
   respiteBank: number
   /** The Steward's Counsel, when 4 weeks call for it (Ch 4). */
@@ -225,8 +352,9 @@ export function closedWeekScores(state: CampaignState): number[] {
     .map((w) => w.score)
 }
 
-export function contractPageView(state: CampaignState, today: ISODate = openDayOf(state)): ContractPageView {
-  const { active, queued } = state.contracts
+/** The Contract page; `ledger` adds today's figures so far to the running contract's progress. */
+export function contractPageView(state: CampaignState, today: ISODate = openDayOf(state), ledger?: Ledger): ContractPageView {
+  const { queued } = state.contracts
   const counsel = stewardSuggestion(closedWeekScores(state))
   return {
     lengths: lengthOptions(state),
@@ -238,8 +366,8 @@ export function contractPageView(state: CampaignState, today: ISODate = openDayO
       medicalSupervision: state.campaign.medicalSupervision === true
     },
     sealStartDays: startDays(state.contracts, today),
-    canSeal: !(active && queued),
-    running: runningView(state, today),
+    canSeal: sealRefusal(state.contracts, today) === null,
+    running: runningView(state, today, ledger),
     ...(queued ? { queued: summary(queued) } : {}),
     respiteBank: state.contracts.respiteBank,
     ...(counsel ? { steward: { direction: counsel.direction, text: t(counsel.textId, counsel.facts) } } : {})

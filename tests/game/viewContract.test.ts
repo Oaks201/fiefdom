@@ -11,8 +11,8 @@ import { balance } from '../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, DaySnapshot } from '../../src/renderer/src/lib/game/types'
-import { archiveCards, contractPageView, lengthOptions, payoutPreview, runningView } from '../../src/renderer/src/lib/game/view/contract'
-import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, ledgerWith, openLegacyContract } from './fixtures/ledgers'
+import { archiveCards, contractPageView, lengthOptions, nextContractDue, payoutPreview, runningView } from '../../src/renderer/src/lib/game/view/contract'
+import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, goodDay, ledgerWith, openLegacyContract } from './fixtures/ledgers'
 import { realm, withBuildings, withCastle, withPurse } from './support/realm'
 
 function input(over: Partial<FoundingInput> = {}): FoundingInput {
@@ -35,12 +35,14 @@ test('Gap 1: sealing builds its context from the state, starts at the next dawn,
   assert.equal(sealed.contract?.startDate, addDays(START, 1))
   assert.equal(balance(sealed.state.purse), 180)
   assert.deepEqual(sealed.state.log.at(-1), { id: `ev-${sealed.state.log.length}`, day: START, kind: 'contractSealed', contractId: 'c1', contractKind: 'standard', termDays: 3, pledge: 20, startDate: addDays(START, 1), endDate: addDays(START, 3) })
-  // A second one queues behind it; a third is refused, with its reason worded for the player.
-  const queued = sealContract(sealed.state, { id: 'c2', termDays: 1 }, START)
+  // While it runs, the next waits for its last day (D-45); a third is refused, with its reason worded for the player.
+  const early = sealContract(sealed.state, { id: 'c2', termDays: 1 }, START)
+  assert.deepEqual([early.ok, early.reason], [false, `A contract is in force through ${addDays(START, 3)}. The next can be sealed on its last day.`])
+  const queued = sealContract(sealed.state, { id: 'c2', termDays: 1 }, addDays(START, 3))
   assert.equal(queued.contract?.status, 'queued')
   assert.equal(queued.contract?.startDate, addDays(START, 4))
-  const third = sealContract(queued.state, { id: 'c3', termDays: 1 }, START)
-  assert.deepEqual([third.ok, third.reason], [false, 'A contract is already queued.'])
+  const third = sealContract(queued.state, { id: 'c3', termDays: 1 }, addDays(START, 3))
+  assert.deepEqual([third.ok, third.reason], [false, 'The next contract is already sealed.'])
   assert.equal(sealContract(state, { id: 'x', termDays: 7 }, START).reason, 'The 7-day contract is not unlocked yet.')
 })
 
@@ -172,17 +174,90 @@ test('Ch 4: a 7-day contract on its 4th day at Q 0.9 projects 10 × 7 × 1.4 × 
   assert.deepEqual(view.respite.days.map((d) => d.allowed), [false, false], 'nothing banked yet')
 })
 
-test('T14: the page view: Charter locked while a contract runs, seals queue after it, and the Archive card shows the pledge result', () => {
+/** A 7-day contract from Thursday START (2026-10-08) through Wednesday 10-14, its first five days settled: four at 5,000 steps, 1,900 kcal and every duty, then Monday at 10,000 steps, 2,100 kcal (5% over) and one duty of three. */
+function fiveDaysIn(): CampaignState {
+  const state = sealContract(withPurse(withBuildings(realm(), { barracks: 2 }), 200), { id: 'c7', termDays: 7 }, addDays(START, -1)).state
+  const day = (i: number, steps: number, eaten: number, dutiesKept: number): DaySnapshot => ({ date: addDays(START, i), steps, eaten, dutiesKept, dutiesSworn: 3, streak: 0 })
+  const snaps = [0, 1, 2, 3].map((i) => day(i, 5_000, 1_900, 3)).concat(day(4, 10_000, 2_100, 1))
+  return { ...state, settlement: { ...state.settlement, snapshots: [...state.settlement.snapshots, ...snaps] }, settledThrough: { day: addDays(START, 4), week: 2 } }
+}
+
+const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9
+
+test('D-45: the progress lays the contract out by calendar week with each q_w so far, and its pillars average to the score', () => {
+  const today = addDays(START, 5)
+  const view = runningView(fiveDaysIn(), today)
+  assert.ok(view)
+  const p = view.progress
+  assert.deepEqual(p.weeks.map((w) => w.weekStart), ['2026-10-05', '2026-10-12'])
+  assert.deepEqual(
+    p.weeks.map((w) => w.days.map((d) => d?.state ?? null)),
+    [
+      [null, null, null, 'settled', 'settled', 'settled', 'settled'],
+      ['settled', 'today', 'upcoming', null, null, null, null]
+    ]
+  )
+  // Week 1: (0.7 + 1 + 1) ÷ 3. Week 2: steps capped at 1, 5% over the limit is 2/3 of the Table, one duty in three.
+  assert.ok(near(p.weeks[0].score as number, 0.9))
+  assert.ok(near(p.weeks[1].score as number, (1 + 2 / 3 + 1 / 3) / 3))
+  assert.ok(near(view.score, (4 * 0.9 + (1 + 2 / 3 + 1 / 3) / 3) / 5), 'weeks weighted by their days')
+  assert.ok(near(p.pillars.steps, (4 * 0.7 + 1) / 5) && near(p.pillars.table, (4 + 2 / 3) / 5) && near(p.pillars.duties, (4 + 1 / 3) / 5))
+  assert.ok(near((p.pillars.steps + p.pillars.table + p.pillars.duties) / 3, view.score))
+  assert.deepEqual(p.steps, { walked: 30_000, share: 35_714 })
+  assert.deepEqual(p.table, { logged: 5, days: 5, average: 1_940 })
+  assert.deepEqual(p.duties, { kept: 13, sworn: 15 })
+  assert.equal(p.dailySteps, 7_143)
+  const [thu, mon] = [p.weeks[0].days[3], p.weeks[1].days[0]]
+  assert.ok(thu && near(thu.stepsShare, 0.7) && thu.calories === 'within' && thu.tableShare === 1 && thu.dutiesKept === 3)
+  assert.ok(mon && mon.stepsShare === 1 && mon.calories === 'over' && near(mon.tableShare, 2 / 3) && mon.dutiesKept === 1)
+  assert.deepEqual([view.dayNumber, view.totalDays, view.daysLeft, view.lastDay], [6, 7, 1, false])
+  assert.equal(view.projected.fullWithBonus, Math.round(98 * (1 + realmEffects(fiveDaysIn()).reputationBonus.value) * 10) / 10)
+})
+
+test('D-45: today’s figures so far come from the ledger and stay out of the score; a Respite day is marked and left out', () => {
+  const today = addDays(START, 5)
+  const banked = fiveDaysIn()
+  const rested = takeRespite({ ...banked, contracts: { ...banked.contracts, respiteBank: 1 } }, addDays(START, 4), today)
+  assert.ok(rested.ok, rested.reason)
+  const ledger = ledgerWith(today, 1, () => goodDay({ steps: 3_000, eaten: 900 }))
+  const view = runningView(rested.state, today, ledger)
+  assert.ok(view)
+  const week2 = view.progress.weeks[1]
+  assert.deepEqual(week2.days.map((d) => d?.state ?? null), ['respite', 'today', 'upcoming', 'upcoming', null, null, null], 'the Respite day moved the end a day later')
+  const live = week2.days[1]
+  assert.ok(live && live.steps === 3_000 && live.eaten === 900 && live.dutiesKept === 3)
+  assert.equal(live.calories, 'underFloor', 'logged well under the floor, shown gently')
+  assert.equal(live.tableShare, 0, 'and it scores as fully over budget (A-41)')
+  assert.equal(week2.score, null, 'nothing of week 2 is settled and scored')
+  assert.ok(near(view.score, 0.9))
+  assert.equal(view.settledDays, 4)
+  assert.equal(view.totalDays, 8)
+  const without = runningView(rested.state, today)
+  assert.ok(without && without.progress.weeks[1].days[1]?.steps === undefined, 'without the ledger, today shows no figures')
+})
+
+test('T14: the page view: Charter locked while a contract runs, the next sealed on its last day (D-45), and the Archive card shows the pledge result', () => {
   let state = withPurse(realm(), 200)
   const page0 = contractPageView(state, START)
   assert.equal(page0.charter.locked, false)
   assert.deepEqual(page0.sealStartDays, [1, 2, 3, 4, 5, 6, 7].map((n) => addDays(START, n)), 'D-06: from the next dawn, 7 days to choose from')
   assert.equal(page0.running, null)
+  assert.equal(page0.canSeal, true)
   state = sealContract(state, { id: 'c1', termDays: 3, pledge: 20 }, addDays(START, -1)).state
   const page1 = contractPageView(state, START)
   assert.equal(page1.charter.locked, true)
-  assert.equal(page1.sealStartDays[0], addDays(START, 3), 'queued: from the day after the running one ends')
-  assert.equal(page1.canSeal, true)
+  assert.equal(page1.canSeal, false, 'no draft while it runs: its progress takes the page')
+  assert.equal(page1.running?.lastDay, false)
+  assert.equal(nextContractDue(state, START), false)
+  const last = contractPageView(state, addDays(START, 2))
+  assert.equal(last.running?.lastDay, true)
+  assert.equal(last.canSeal, true)
+  assert.equal(nextContractDue(state, addDays(START, 2)), true)
+  assert.equal(last.sealStartDays[0], addDays(START, 3), 'the next dawn: no day is lost between them')
+  const sealedNext = sealContract(state, { id: 'c2', termDays: 1 }, addDays(START, 2)).state
+  assert.equal(contractPageView(sealedNext, addDays(START, 2)).canSeal, false)
+  assert.equal(contractPageView(sealedNext, addDays(START, 2)).queued?.id, 'c2')
+  assert.equal(nextContractDue(sealedNext, addDays(START, 2)), false)
   // Settle the 3 days through settlement itself: the contract pays, and the Archive card says so.
   const ledger = ledgerWith('2026-09-10', 60)
   const paid = settle(state, ledger, chicago(addDays(START, 4))).state

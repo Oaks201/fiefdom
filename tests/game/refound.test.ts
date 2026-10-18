@@ -188,11 +188,12 @@ test('C-16: the wizard starts from the old campaign’s answers and the founding
 
 test('C-14: a contract still queued at the re-founding waits in the slot, its pledge posted today', () => {
   const old = OLD
+  // Sealed on c1's last day, the only day it can be now (D-45); an old save may hold one sealed earlier.
   const queued = seal(
     old.contracts,
     old.purse,
     { id: 'c2', termDays: 3, charter: old.charter, pledge: 5 },
-    { today: '2026-10-07', buildings: old.buildings, castleTier: old.castleTier, pledgeCapMult: realmEffects(old).pledgeCap.value, floor: old.weight.healerFloor ?? 0 }
+    { today: '2026-10-10', buildings: old.buildings, castleTier: old.castleTier, pledgeCapMult: realmEffects(old).pledgeCap.value, floor: old.weight.healerFloor ?? 0 }
   )
   const withQueue: CampaignState = { ...old, contracts: queued.contracts, purse: queued.purse }
   assert.equal(withQueue.contracts.queued?.id, 'c2')
