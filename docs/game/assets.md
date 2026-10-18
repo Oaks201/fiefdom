@@ -244,14 +244,14 @@ Slots: 317. With a file: 317.
 | `company.wolves.token` | Wolves: token | `company.wolves.token-skirmish-v2.png` | 128 × 128 | Army, battles | ok |
 | `company.giantSpiders.token` | Giant spiders: token | `company.giantSpiders.token-skirmish-v2.png` | 128 × 128 | Army, battles | ok |
 | `company.villageMilitia.token` | Village militia: token | `company.villageMilitia.token-skirmish-v2.png` | 128 × 128 | Army, battles | ok |
-| `portrait.wyvern` | Wyvern: portrait | `portrait.wyvern-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.matriarch` | the Matriarch: portrait | `portrait.matriarch-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.basilisk` | The Basilisk: portrait | `portrait.basilisk-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.dragon` | The Dragon: portrait | `portrait.dragon-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.griffin` | Griffin: portrait | `portrait.griffin-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.manticore` | The Manticore: portrait | `portrait.manticore-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.wyvern` | Wyvern: portrait | `portrait.wyvern-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.matriarch` | the Matriarch: portrait | `portrait.matriarch-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.basilisk` | The Basilisk: portrait | `portrait.basilisk-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.dragon` | The Dragon: portrait | `portrait.dragon-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.griffin` | Griffin: portrait | `portrait.griffin-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.manticore` | The Manticore: portrait | `portrait.manticore-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
 | `portrait.huntLord` | The Hunt Lord: portrait | `portrait.huntLord-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `portrait.hound` | Hound: portrait | `portrait.hound-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
+| `portrait.hound` | Hound: portrait | `portrait.hound-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
 | `item.whetstones` | Whetstones: icon | `item.whetstones.png` | 128 × 128 | Armory | ok |
 | `item.towerShields` | Tower Shields: icon | `item.towerShields-rank-i-v2.png` | 128 × 128 | Armory | ok |
 | `item.coldIronEdges` | Cold Iron Edges: icon | `item.coldIronEdges-rank-i-v1.png` | 128 × 128 | Armory | ok |

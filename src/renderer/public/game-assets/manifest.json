@@ -1408,7 +1408,7 @@
     ]
   },
   "portrait.wyvern": {
-    "file": "portrait.wyvern-completion-v1.png",
+    "file": "portrait.wyvern-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1416,7 +1416,7 @@
     ]
   },
   "portrait.matriarch": {
-    "file": "portrait.matriarch-completion-v1.png",
+    "file": "portrait.matriarch-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1424,7 +1424,7 @@
     ]
   },
   "portrait.basilisk": {
-    "file": "portrait.basilisk-completion-v1.png",
+    "file": "portrait.basilisk-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1432,7 +1432,7 @@
     ]
   },
   "portrait.dragon": {
-    "file": "portrait.dragon-completion-v1.png",
+    "file": "portrait.dragon-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1440,7 +1440,7 @@
     ]
   },
   "portrait.griffin": {
-    "file": "portrait.griffin-completion-v1.png",
+    "file": "portrait.griffin-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1448,7 +1448,7 @@
     ]
   },
   "portrait.manticore": {
-    "file": "portrait.manticore-completion-v1.png",
+    "file": "portrait.manticore-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1464,7 +1464,7 @@
     ]
   },
   "portrait.hound": {
-    "file": "portrait.hound-completion-v1.png",
+    "file": "portrait.hound-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
