@@ -33,8 +33,8 @@ const MIXES: readonly { label: string; policies: readonly PolicyId[] }[] = [
 const G11 = { perfect: [50, 56], steadfast: [58, 64], committed: [64, 72], by: 76, share: 0.6 } as const
 /** Patch 5 (C-71, R-18): G-19's ceiling on Steadfast falls by week 76. */
 const G19_FALLS = 0.05
-/** Patch 5 (G-21): behavior income over the benchmark's, weeks 1 to 60, by profile; and behavior's least share of reputation earned. */
-const G21 = { weeks: 60, steadfast: [1, 1.2], committed: [0.8, 1], waveringBelow: 0.75, behaviorShare: 0.5 } as const
+/** Patch 5 (G-21): behavior income over the benchmark's, weeks 1 to 60, by profile; and behavior's least share of reputation earned (a third, T-08 and D-44: the spec's half counted tithes and spoils as unearned). */
+const G21 = { weeks: 60, steadfast: [1, 1.2], committed: [0.8, 1], waveringBelow: 0.75, behaviorShare: 1 / 3 } as const
 
 /** The campaigns the targets need. */
 export function targetPlan(seeds: number, weeks: number): RunOptions[] {

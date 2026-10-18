@@ -597,7 +597,7 @@ Each stage leaves `npm run typecheck`, `npm test` and `npm run check:game` passi
 | G-18 | Terms do their job | As D-35 | 16/12: 2 (88%); 0; 1 |
 | G-19 (new) | Defeat stays rare (R-18, C-71) | Steadfast (greedy and smarter) falls by week 76 under 5%; no fall before week 36; Committed and Wavering falls and Ultimatums reported | 0 of 496 fell |
 | G-20 (new) | Respect moves both ways | In the median Steadfast smarter campaign, at least 2 of the Goblin, the Dwarf and the Archmage reach Peace before they are resolved, and the Orc never; in Steadfast greedy, at least 2 rivals reach War; each active rival's standing changes at least once a campaign | Today: 1 of 3 reaches Peace (the Dwarf) |
-| G-21 (new) | Behavior leads income (Pillar 1, X-11) | Behavior income over the benchmark's, weeks 1 to 60: Steadfast 1.0 to 1.2, Committed 0.8 to 1.0, Wavering under 0.75; behavior income at least half of all reputation earned (Steadfast) | 1.06; 0.87; 0.63; the share measured in stage 1 |
+| G-21 (new) | Behavior leads income (Pillar 1, X-11) | Behavior income over the benchmark's, weeks 1 to 60: Steadfast 1.0 to 1.2, Committed 0.8 to 1.0, Wavering under 0.75; behavior income at least half of all reputation earned (Steadfast; **a third** from D-44, T-08) | 1.06; 0.87; 0.63; the share measured in stage 1 |
 
 **Keep as in `targets-3.2.0.md`:** G-01 to G-06, G-08 (judged on 100 seeds, C-72), G-10, G-16 and G-17. G-09's first half is kept; its second half is retired and reported (P5-05). G-14 is checked by Rich in play.
 
@@ -713,7 +713,7 @@ Each stage's `npm run sim -- --targets` (720 campaigns: the greedy profiles at 7
 | G-05 | 16% | 19% | 19% | 18% | 18% | kept |
 | G-06 | 2.26×; 100% | 2.45×; 100% | 2.36×; 100% | 2.36×; 100% | 2.36×; 100% | kept |
 | G-07 in full (median weeks: one path, two, three, four) | 57 / 65 / 61.5 / 60.5 | 57 / 65.5 / 61 / 71 | 52 / 57.5 / 65 / 66 | **60 / 61 / 61 / 60**, all 100% | **59 / 60 / 60.5 / 60**, all 100% | **met** |
-| G-08 (100 seeds; 40) | 1.99×; 2.10× | 1.98×; 1.95× | **2.05×**; 2.08× | **1.94×; 1.88×** | 1.94×; 1.88× | **missed** (11.3) |
+| G-08 (100 seeds; 40) | 1.99×; 2.10× | 1.98×; 1.95× | **2.05×**; 2.08× | **1.94×; 1.88×** | 1.94×; 1.88× | **missed**, accepted for Patch 5 (T-06, D-44) |
 | G-10 | met | met | met (the Goblin 46% by deal) | met (48%) | met (48%) | kept |
 | G-11 (Perfect; Steadfast; Committed, by week 76) | 43; 53; 64 (93%) | 43; 52.5; 65 (98%) | 43; 50; 63.5 (95%) | **55; 59.5**; 74.5 (63%) | **55; 59; 71 (80%)** | **met** (T-07) |
 | G-13 | 1.4 | 1.5 | 1.5 | 1.5 | 1.5 | met |
@@ -722,7 +722,7 @@ Each stage's `npm run sim -- --targets` (720 campaigns: the greedy profiles at 7
 | G-18 | 2 (75%); 0; 1 | 2 (83%); 0; 1 | 2 (100%); 0; 1 | 2 (100%); 0; 1 | 2 (98%); 0; 1 | met |
 | G-19 (Steadfast falls by 76; Committed; Wavering) | 0%; 0%; 3% | 0%; 0%; 6% | 0%; 0%; 3% | 0%; 0%; 3% | 0%; 0%; 3% | met |
 | G-20 (Peace of 3; the Orc at Peace; War; changes) | 1; 4; 4; 2 | 1; 3; 4; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | **met** |
-| G-21 (Steadfast; Committed; Wavering; behavior share) | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | **missed** on the share (11.3) |
+| G-21 (Steadfast; Committed; Wavering; behavior share) | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | **met** on a third (T-08, D-44); missed on the spec's half |
 
 G-02, G-03, G-09's first half, G-12 and G-13 held at every stage. With Respect both ways, the Dwarf and the Archmage come to Peace (Steadfast smarter: weeks 8 and 15) and the Goblin rarely; the Orc never, and in 100 greedy campaigns he is never at War either, since beating his raids raises his Respect to 100 by week 40.
 
@@ -732,9 +732,9 @@ Nothing below is changed: each is a proposal for Rich (D-02).
 
 | # | Target | Reading | Options | Recommendation |
 | --- | --- | --- | --- | --- |
-| T-06 | G-08 | 1.94× on 100 seeds (2.05× before the pacing changed; 1.98× before Respect). The cause of stage 4's drop is not isolated: the 16/12 pacing keeps rivals active longer, and the Orc no longer reaches War, so his conquest attempts (the land a bad week loses most, D-15) are gone | (a) a probe on the 100 seeds of the War line (−25 to −15), of D-15's overrun (`wildsReclaim.routedAt` 1.25 to 1.15) and of the two together; (b) accept 1.94× and report it | (a): measure before changing a number |
+| T-06 | G-08 | 1.94× on 100 seeds (2.05× before the pacing changed; 1.98× before Respect). The cause of stage 4's drop is not isolated: the 16/12 pacing keeps rivals active longer, and the Orc no longer reaches War, so his conquest attempts (the land a bad week loses most, D-15) are gone | (a) a probe on the 100 seeds of the War line (−25 to −15), of D-15's overrun (`wildsReclaim.routedAt` 1.25 to 1.15) and of the two together; (b) accept 1.94× and report it | (a): measure before changing a number; probed, then (b) taken (D-44, below) |
 | T-07 | G-11, Committed | Median 74.5 against 64 to 72, though 63% win by week 76 (the clause's share is met). Committed's first resolution comes in week 37.5 (Steadfast 23), and victory follows about 36 weeks later | (a) keep it missed and look for the lever that brings Committed's first Accord sooner; (b) an 11-week interval (Steadfast would fall to about 56, under 58); (c) read Committed's clause as its share by week 76 alone | (a); probed and taken: Accord talks at 55 (D-43, below) |
-| T-08 | G-21, behavior's share | Behavior is 36% of the reputation a Steadfast campaign earns, tithes 42%, spoils 22%, already so on 3.2.0; against the benchmark behavior holds (1.05, 0.87, 0.64) | (a) re-read the target as behavior at least a third of reputation earned, since tithes and spoils come from land held and battles fought, both earned by play; (b) a probe of tithes at 1.5 a band (2.5 today, D-17), which reshapes the economy and every land target | Rich's call: (a) keeps every number; (b) if behavior must lead |
+| T-08 | G-21, behavior's share | Behavior is 36% of the reputation a Steadfast campaign earns, tithes 42%, spoils 22%, already so on 3.2.0; against the benchmark behavior holds (1.05, 0.87, 0.64) | (a) re-read the target as behavior at least a third of reputation earned, since tithes and spoils come from land held and battles fought, both earned by play; (b) a probe of tithes at 1.5 a band (2.5 today, D-17), which reshapes the economy and every land target | Rich's call: (a) keeps every number; (b) if behavior must lead. (a) taken (D-44, below) |
 
 Also measured: Ultimatums come in 75% of Steadfast campaigns (greedy and smarter together) and 99% of Committed ones, and every Siege is won or the knee bent (no fall before week 76). R-18 asks only that the risk stay under 5%, and it does.
 
@@ -794,4 +794,10 @@ What the runs show:
 
 **Recommendation: the Accord at Respect 55** (Ch 12's 60, an N-item for Rich). It is the narrowest change that meets G-11. It moves only the smarter player's Accord, keeps every greedy baseline and the Lost Heir's head start, and the court and the guide read it from `RULES` (only two comments in `world.ts` and a development scenario's title name 60). If Rich would rather settle G-08 (T-06) with the same change, the alternative is the Dwarf's wall at 0, which meets both and costs the Dwarf his wall driver. Either is his call (D-02); nothing is changed.
 
-**Approved and built (2026-10-17).** Rich took the Accord at Respect 55 (N-15, D-43). It is set in `rules.ts`. How to play now lists Accord talks at their own mark, ahead of calls to arms at 60, where it had shown them both at the call to arms's number. The dev scenario's title reads the number from `RULES`, and the two comments in `world.ts` say 55. `targets-3.3.0.md` is regenerated: G-11 is met (55; 59; 71, 80% by week 76), and every other target keeps its verdict (section 11.2). T-06 and T-08 still wait for Rich.
+**Approved and built (2026-10-17).** Rich took the Accord at Respect 55 (N-15, D-43). It is set in `rules.ts`. How to play now lists Accord talks at their own mark, ahead of calls to arms at 60, where it had shown them both at the call to arms's number. The dev scenario's title reads the number from `RULES`, and the two comments in `world.ts` say 55. `targets-3.3.0.md` is regenerated: G-11 is met (55; 59; 71, 80% by week 76), and every other target keeps its verdict (section 11.2).
+
+**T-06 and T-08 settled (2026-10-17, D-44).** Rich took both recommendations, and no game number changes.
+- **T-06:** G-08 is accepted at 1.94× and reported missed for Patch 5, as T-06's probe advised. The Dwarf's wall at 0, the one lever T-07's probe found past the noise, is left unused.
+- **T-08:** G-21's behavior share is read as at least a third of the reputation a Steadfast campaign earns, not half (`sim/targets.ts`), since tithes and spoils come from land held and battles fought. At 36% it is met.
+
+`targets-3.3.0.md` is regenerated with that line.
