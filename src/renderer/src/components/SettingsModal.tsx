@@ -11,6 +11,7 @@ import { useUI } from '../state/ui'
 import { FitbitSettings } from './FitbitSettings'
 import { Modal } from './Modal'
 import { useCampaign } from '../state/campaign'
+import { useDawnTidings } from '../state/dawnTidings'
 import { Switch } from './Switch'
 
 interface SoundRowProps {
@@ -64,6 +65,8 @@ export function SettingsModal(): React.JSX.Element {
   const outdated = useCampaign((s) => s.outdated)
   const campaignReady = useCampaign((s) => s.status === 'ready')
   const setFoundingOpen = useUI((s) => s.setFoundingOpen)
+  const dawnOn = useDawnTidings((s) => s.on)
+  const setDawnOn = useDawnTidings((s) => s.setOn)
   const [dataDir, setDataDir] = useState<string | null>(null)
 
   useEffect(() => {
@@ -151,6 +154,17 @@ export function SettingsModal(): React.JSX.Element {
         </div>
         <p className="settings__note">A contract keeps the unit it was sealed with.</p>
       </section>
+
+      {campaignReady && campaign && (
+        <section className="settings__section">
+          <h3 className="settings__heading">The campaign</h3>
+          <div className="settings__row">
+            <span className="settings__label">Show the Herald’s tidings each morning</span>
+            <Switch on={dawnOn} label="Show the Herald’s tidings each morning" onChange={setDawnOn} />
+          </div>
+          <p className="settings__note">Once a day, the first time the app opens after 4 AM. The Herald stays on the Chronicle and the Realm either way.</p>
+        </section>
+      )}
 
       {campaignReady && outdated && (
         <section className="settings__section">

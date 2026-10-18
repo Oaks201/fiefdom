@@ -71,7 +71,7 @@ const WHERE = {
 /** Every art slot, in a stable order. */
 function inventory() {
   const slots = []
-  const add = (id, kind, name) => slots.push({ id, kind, name, size: SIZES[kind], where: WHERE[kind] })
+  const add = (id, kind, name, where = WHERE[kind]) => slots.push({ id, kind, name, size: SIZES[kind], where })
 
   for (const t of ['castle', 'building', 'wild', 'den', 'village', 'road', 'gate', 'lairMouth', 'capital', 'realm', 'lair', 'battlefield', 'ruins']) add(`hex.${t}`, 'hex', `Hex terrain: ${t}`)
   for (const o of ['contested', 'scorched']) add(`hex.overlay.${o}`, 'overlay', `Hex overlay: ${o}`)
@@ -134,6 +134,8 @@ function inventory() {
   for (const e of read('events.json')) add(`event.${e.id}`, 'event', `Event card: ${e.name}`)
   for (let n = 1; n <= 10; n++) add(`milestone.${n}`, 'milestone', `Milestone ${n} scene`)
   for (const m of ['grandBattleWon', 'grandBattleLost', 'coalition', 'ultimatum', 'victory', 'fall']) add(`moment.${m}`, 'moment', `Big moment: ${m}`)
+  // Patch 6 (D-47, C-81): the Herald reading the morning's news, a band across the top of the Dawn tidings card.
+  add('moment.dawnTidings', 'moment', 'Dawn tidings: the Herald reading the morning news', 'Dawn tidings card')
 
   add('ui.frame', 'frame', 'Interface: carved frame')
   add('ui.button', 'button', 'Interface: button')

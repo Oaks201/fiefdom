@@ -119,7 +119,7 @@ Under each bar of the Chronicle's "This week" panel (`CampaignWeek` in `componen
 | Situation | Line |
 | --- | --- |
 | Limit 2,250. Four days logged, 9,900 in all (an average of 2,475). Three days left, today included, 600 logged so far today | "About 1,950 a day for the 3 days left brings the week's average back to 2,250 (600 so far today)." |
-| Floor 1,700, limit 2,250. Five days logged, 13,500 in all. Two days left | "Even at the Healer's floor, 1,700, for the 2 days left, the week averages 2,414." |
+| Floor 1,700, limit 2,250. Five days logged, 13,500 in all. Two days left | "Even at the Healer's floor (1,700) for the 2 days left, the week averages 2,414." |
 | Logged average at or under the limit | "On pace." |
 | Pool 70,000. 46,000 walked before today. Three days left, 2,800 walked so far today | "About 8,000 steps a day for the 3 days left fills the week's pool (5,200 more today)." |
 | The pool already met | "The week's pool is met." |
@@ -447,3 +447,25 @@ New or changed tests, named after the rule they check:
 ## 12. What the build changed
 
 Filled in during the build: each change from this spec (S-56 onward), the targets by stage, and the tuning report (T-09 onward).
+
+### 12.1 Stage 1: the screens (2026-10-18, rules 3.3.0)
+
+Built on branch `patch-6` at Rich's go-ahead ("Commit the spec on a patch-6 branch and start stage 1"). No rule changed; `ruleVersion` stays 3.3.0, so this stage can be installed on its own.
+
+| # | Spec said | Built | Why |
+| --- | --- | --- | --- |
+| S-56 | C-77: Respite days leave both figures "as they leave the score" | As said, but the score that leaves them out is the **contract's** (Ch 4 rule 4). The week's income at the close still counts a Respite day | The contract's payout is the larger stake, and a rest day shouldn't ask to be made up |
+| S-57 | Section 2.1's floor line: "Even at the Healer's floor, 1,700, for the 2 days left, …" | "Even at the Healer's floor (1,700) for the 2 days left, the week averages 2,414." | With one day left the commas read "1,700, today," |
+| S-58 | Section 3.4: the band shows the picture's middle third (3:1) | A 4:1 band from the middle of the picture | At 3:1 the card's buttons fell below a 1280 × 800 window. The prompt still keeps the herald in the middle third, which the 4:1 band holds |
+| S-59 | Section 2.2 | Two cases the spec left open: nothing logged this week (and none today) gives no line; a small log so far today, under the floor, is today's food so far, never a finished day | "On pace" over an empty week would say nothing true |
+| S-60 | — | `contractsOf` in `settle.ts` is exported for the Respite days, rather than a second copy (Conventions 12); `Herald` gains a `bare` form for the card | Reuse |
+| S-61 | Section 3.4: "the slot's placeholder" | The Herald's horn (`GiHornInternal`) on the band until the picture exists | The generic placeholder is a lettered card |
+
+**Verification:** `npm run typecheck`, `npm test` (837 tests, 16 of them new in `viewCatchUp.test.ts` and `dawnTidings.test.ts`) and `npm run check:game` pass; `npm run assets:check` lists `moment.dawnTidings` as the one slot without art. The manifest gains only that entry.
+
+**Screenshots** (`docs/game/screens/p6/`, a scratch copy of the five-week campaign from `scripts/screens-data.ts`, run on Sunday 2026-10-18, the week's last day):
+- `dawn-tidings-behind`: the card at launch, the horn on the band, today's two figures above the Herald;
+- `chronicle-week-behind`: "About 4,800 more steps today fills the week's pool." and "About 1,820 today brings the week's average back to 2,000 (600 so far today).";
+- `chronicle-week-on-pace`: "On pace.";
+- `chronicle-week-at-floor`: "Even at the Healer's floor (1,700) today, the week averages 2,214.";
+- `settings-dawn-switch`: the switch under "The campaign".

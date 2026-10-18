@@ -116,7 +116,8 @@ function payContext(state: CampaignState, date: ISODate): PayContext {
   return { date, minPledgeReturn: effects.minPledgeReturn.value, bonus: effects.reputationBonus.value }
 }
 
-function contractsOf(state: CampaignState): LandContract[] {
+/** Every contract that has run or is running, oldest first. */
+export function contractsOf(state: CampaignState): LandContract[] {
   const { active, history } = state.contracts
   return active ? [...history, active] : history
 }

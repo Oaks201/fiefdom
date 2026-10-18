@@ -1943,6 +1943,14 @@
       1080
     ]
   },
+  "moment.dawnTidings": {
+    "file": null,
+    "kind": "moment",
+    "size": [
+      1920,
+      1080
+    ]
+  },
   "ui.frame": {
     "file": "ui.frame.png",
     "kind": "frame",

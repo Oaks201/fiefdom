@@ -5,7 +5,18 @@ import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
 import type { CampaignState, ISODate } from '../../lib/game/types'
 import { weighInDay } from '../../lib/game/clock'
-import { calorieWeek, dayEarned, dayProjection, daySpoils, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
+import {
+  calorieWeek,
+  catchUp,
+  dayEarned,
+  dayProjection,
+  daySpoils,
+  healerCards,
+  liveWeek,
+  stepPace,
+  valorParts,
+  weighInPrompt
+} from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
@@ -13,13 +24,21 @@ import { useCampaignToday } from '../../state/campaignHooks'
 import { WaxSeal } from '../WaxSeal'
 import { StartBattles } from '../battle/StartBattles'
 import { WeightField } from '../chronicle/DayLedger'
+import { calorieCatchUpLine, stepCatchUpLine } from './catchUpLines'
 
-/** The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4). */
+/**
+ * The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4), and on
+ * the open day what the rest of the week needs to get back on pace (Patch 6, D-46).
+ */
 export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignState; ledger: Ledger; date: ISODate }): React.JSX.Element {
+  const openDay = useCampaignToday()
   const charter = charterOn(campaign, date)
   const days = liveWeek(campaign, ledger, date)
   const pace = stepPace(days, charter.stepPool, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
   const cal = calorieWeek(days, charter.calorieLimit, campaign.weight.healerFloor ?? 0, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
+  const figures = date === openDay ? catchUp(campaign, ledger, date) : null
+  const stepLine = figures ? stepCatchUpLine(figures.steps) : null
+  const calorieLine = figures ? calorieCatchUpLine(figures.calories) : null
   const fill = Math.min(1, pace.walked / pace.pool)
   const mark = Math.min(1, pace.expected / pace.pool)
   const span = Math.max(cal.limit * 1.2, cal.average ?? 0)
@@ -36,6 +55,7 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
           <strong>{formatNumber(pace.walked)}</strong> of {formatNumber(pace.expected)} expected by today ({formatNumber(pace.pool)} for the week) ·{' '}
           <span className={`pace pace--${pace.status}`}>{pace.status === 'ahead' ? 'ahead' : 'behind'}</span>
         </p>
+        {stepLine && <p className="weekbar__catchup">{stepLine}</p>}
       </div>
       <div className="weekbar">
         <h4 className="weekbar__title">
@@ -55,6 +75,7 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
           )}
           {cal.underFloor.length > 0 && <span className="gentle"> {cal.underFloor.length === 1 ? 'One day was' : `${cal.underFloor.length} days were`} well under the floor; eating enough counts too.</span>}
         </p>
+        {calorieLine && <p className="weekbar__catchup">{calorieLine}</p>}
       </div>
     </section>
   )

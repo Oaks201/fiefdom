@@ -13,8 +13,8 @@ import { realmEffects } from '../effects'
 import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
 import { hexName } from '../map'
 import { RULES } from '../rules'
-import { dutiesPillar, poolShare, stepsPillar, termsOf, valor, weekScores } from '../score'
-import { charterOn, snapshotOf } from '../settle'
+import { dutiesPillar, poolShare, stepsPillar, tableIntake, termsOf, valor, weekScores } from '../score'
+import { charterOn, contractsOf, snapshotOf } from '../settle'
 import { openDayOf, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
 import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
@@ -86,6 +86,159 @@ export function calorieWeek(days: readonly { date: ISODate; eaten?: number }[], 
     days: diffDays(from, today) + 1,
     underFloor: logged.filter((d) => (d.eaten as number) < RULES.healer.underFloorShare * floor).map((d) => d.date),
     overLimit: average !== null && average > limit
+  }
+}
+
+// ── Catch-up figures (Patch 6, D-46) ─────────────────────────────────────────
+
+const KCAL_ROUNDING = 10 // rules-ok: display rounding (C-75), down to the nearest 10 kcal
+const STEP_ROUNDING = 100 // rules-ok: display rounding (C-75), up to the nearest 100 steps
+
+/**
+ * The days of `today`'s week the catch-up reads, as the score reads them: from the week's first day
+ * (never before the campaign's, A-04) to its close, Respite days left out (Ch 4 rule 4, C-77). `before`
+ * are the days already closed; `left` are today and the days after it.
+ */
+function catchUpWeek(today: ISODate, weekStartsOn: WeekStartsOn, campaignStart: ISODate | undefined, respite: readonly ISODate[]): { before: ISODate[]; left: ISODate[] } {
+  const skip = new Set(respite)
+  const before: ISODate[] = []
+  const left: ISODate[] = []
+  for (let d = weekFrom(today, weekStartsOn, campaignStart); d <= weekCloseDay(today, weekStartsOn); d = addDays(d, 1)) {
+    if (skip.has(d)) continue
+    if (d < today) before.push(d)
+    else left.push(d)
+  }
+  return { before, left }
+}
+
+/**
+ * What the week's food needs to bring its logged average back to the limit (C-74):
+ * - `none`: nothing logged yet this week, or no day left to count;
+ * - `onPace`: keeping the limit each day left keeps the average at or under it;
+ * - `figure`: about `perDay` a day for `days` days brings it back to `limit`; `today` is the food
+ *   logged so far today. `afterToday`: the days after today, today's food counted as logged;
+ * - `floor`: even at the Healer's floor each day left, the week averages `average`;
+ * - `ends`: today is the week's last day and its food has passed what the average needed.
+ */
+export type CalorieCatchUp =
+  | { kind: 'none' }
+  | { kind: 'onPace' }
+  | { kind: 'figure'; perDay: number; days: number; limit: number; afterToday: boolean; today?: number }
+  | { kind: 'floor'; floor: number; days: number; average: number; afterToday: boolean }
+  | { kind: 'ends'; average: number }
+
+/**
+ * The calorie catch-up (Patch 6, D-46; Ch 4, Ch 16). Closed days count as the Table counts them
+ * (`tableIntake`: a day under 90% of the floor enters as 1.15 × the limit). The gap is spread over the
+ * days left, today included, each assumed logged; the figure rounds down to 10 kcal and is never
+ * under the Healer's floor (`floor`, itself never under `RULES.healer.minFloor`). A figure while the
+ * week is on pace would invite eating up to it, so there is none (C-74, C-75).
+ */
+export function calorieCatchUp(
+  days: readonly { date: ISODate; eaten?: number }[],
+  limit: number,
+  floor: number,
+  today: ISODate,
+  weekStartsOn: WeekStartsOn,
+  campaignStart?: ISODate,
+  respite: readonly ISODate[] = []
+): CalorieCatchUp {
+  const { before, left } = catchUpWeek(today, weekStartsOn, campaignStart, respite)
+  const least = Math.max(RULES.healer.minFloor, floor)
+  const terms = { stepPool: 0, calorieLimit: limit, floor: least }
+  const eatenOn = new Map(days.map((d) => [d.date, d.eaten]))
+  const logged = before.flatMap((d) => {
+    const eaten = eatenOn.get(d)
+    return eaten === undefined ? [] : [tableIntake(eaten, terms)]
+  })
+  const eatenToday = left[0] === today ? eatenOn.get(today) : undefined
+  if (left.length === 0 || (logged.length === 0 && eatenToday === undefined)) return { kind: 'none' }
+  let n = logged.length
+  let sum = logged.reduce((s, e) => s + e, 0)
+  let k = left.length
+  let afterToday = left[0] !== today
+  let need = (limit * (n + k) - sum) / k
+  // Today has already passed its share of a real day's eating: count it, and figure the days after it.
+  if (eatenToday !== undefined && eatenToday > need && eatenToday >= least) {
+    if (k === 1) return { kind: 'ends', average: Math.round((sum + eatenToday) / (n + 1)) }
+    n += 1
+    sum += eatenToday
+    k -= 1
+    afterToday = true
+    need = (limit * (n + k) - sum) / k
+  }
+  if (need >= limit) return { kind: 'onPace' }
+  if (need < least) return { kind: 'floor', floor: least, days: k, average: Math.round((sum + least * k) / (n + k)), afterToday }
+  const perDay = Math.max(least, Math.floor(need / KCAL_ROUNDING) * KCAL_ROUNDING)
+  return { kind: 'figure', perDay, days: k, limit, afterToday, ...(!afterToday && eatenToday !== undefined ? { today: eatenToday } : {}) }
+}
+
+/**
+ * What the week's steps need to fill its pool (its share for the days counted, `poolShare`):
+ * - `none`: no day left to count;
+ * - `met`: the week's share is walked;
+ * - `figure`: about `perDay` a day for `days` days fills it; `more` is what today still needs of its
+ *   share. `afterToday`: today's share is walked, and the figure is for the days after it.
+ */
+export type StepCatchUp =
+  | { kind: 'none' }
+  | { kind: 'met' }
+  | { kind: 'figure'; perDay: number; days: number; target: number; afterToday: boolean; more?: number }
+
+/**
+ * The step catch-up (Patch 6, D-46; Ch 2, Ch 16): the rest of the week's pool spread over the days
+ * left, today included, rounded up to 100, so it never asks for the whole gap in one day.
+ */
+export function stepCatchUp(
+  days: readonly { date: ISODate; steps?: number }[],
+  pool: number,
+  today: ISODate,
+  weekStartsOn: WeekStartsOn,
+  campaignStart?: ISODate,
+  respite: readonly ISODate[] = []
+): StepCatchUp {
+  const { before, left } = catchUpWeek(today, weekStartsOn, campaignStart, respite)
+  const stepsOn = new Map(days.map((d) => [d.date, Math.max(0, d.steps ?? 0)]))
+  const target = poolShare(pool, before.length + left.length)
+  const walked = before.reduce((s, d) => s + (stepsOn.get(d) ?? 0), 0)
+  const todayCounts = left[0] === today
+  const stepsToday = todayCounts ? (stepsOn.get(today) ?? 0) : 0
+  if (walked + stepsToday >= target) return { kind: 'met' }
+  if (left.length === 0) return { kind: 'none' }
+  const roundUp = (x: number): number => Math.ceil(x / STEP_ROUNDING) * STEP_ROUNDING
+  const k = left.length
+  const share = (target - walked) / k
+  if (todayCounts && k > 1 && stepsToday >= share) {
+    return { kind: 'figure', perDay: roundUp((target - walked - stepsToday) / (k - 1)), days: k - 1, target: Math.round(target), afterToday: true }
+  }
+  return {
+    kind: 'figure',
+    perDay: roundUp(share),
+    days: k,
+    target: Math.round(target),
+    afterToday: !todayCounts,
+    ...(todayCounts ? { more: roundUp(share - stepsToday) } : {})
+  }
+}
+
+export interface CatchUp {
+  calories: CalorieCatchUp
+  steps: StepCatchUp
+}
+
+/**
+ * Today's catch-up figures (Patch 6, D-46) from the ledger as it stands: today's week as the score
+ * reads it, against today's Charter and the floor the score uses. Shown for the open day only (C-76).
+ */
+export function catchUp(state: CampaignState, ledger: Ledger, today: ISODate): CatchUp {
+  const charter = charterOn(state, today)
+  const days = liveWeek(state, ledger, today)
+  const { weekStartsOn, startDate } = state.campaign
+  const respite = contractsOf(state).flatMap((c) => c.respiteDates)
+  const floor = termsOf(charter, state.weight.healerFloor).floor ?? RULES.healer.minFloor
+  return {
+    calories: calorieCatchUp(days, charter.calorieLimit, floor, today, weekStartsOn, startDate, respite),
+    steps: stepCatchUp(days, charter.stepPool, today, weekStartsOn, startDate, respite)
   }
 }
 

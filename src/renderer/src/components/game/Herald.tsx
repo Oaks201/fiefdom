@@ -19,22 +19,25 @@ const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
  * The Herald's dawn tidings (Ch 2): today's threats with their targets and bands, Grand Battle
  * warnings, yesterday's results (a battle the player led marked, with a link to its result and
  * replay, D-12), the world's news and rumors. In-app only (D-04): no
- * notification ever leaves the window.
+ * notification ever leaves the window. `bare` leaves out the panel's own heading, for the Dawn
+ * tidings card that carries its own (D-47).
  */
-export function Herald({ today, compact = false }: { today: ISODate; compact?: boolean }): React.JSX.Element | null {
+export function Herald({ today, compact = false, bare = false }: { today: ISODate; compact?: boolean; bare?: boolean }): React.JSX.Element | null {
   const campaign = useCampaignState()
   if (!campaign) return null
   const view = heraldView(campaign, today)
   const notices = battleNotices(campaign, today)
   const led = ledYesterday(campaign, today)
   return (
-    <section className={`panel herald ${compact ? 'herald--compact' : ''}`} aria-label="The Herald">
-      <header className="panel__head">
-        <h3 className="panel__title">
-          <GiHornInternal aria-hidden="true" /> The Herald
-        </h3>
-        <span className="panel__aside">Dawn tidings</span>
-      </header>
+    <section className={`panel herald ${compact ? 'herald--compact' : ''} ${bare ? 'herald--bare' : ''}`} aria-label="The Herald">
+      {!bare && (
+        <header className="panel__head">
+          <h3 className="panel__title">
+            <GiHornInternal aria-hidden="true" /> The Herald
+          </h3>
+          <span className="panel__aside">Dawn tidings</span>
+        </header>
+      )}
       {notices.length > 0 && (
         <ul className="herald__battles" aria-label="Grand Battles">
           {notices.map((n) => (

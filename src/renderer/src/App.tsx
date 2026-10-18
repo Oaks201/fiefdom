@@ -12,6 +12,7 @@ import { RefoundOffer } from './components/game/RefoundOffer'
 import { GameArt } from './components/game/GameArt'
 import { HowToPlay } from './components/HowToPlay'
 import { Homecoming } from './components/game/Homecoming'
+import { DawnTidings } from './components/game/DawnTidings'
 import { pagesFor } from './lib/game/view/shell'
 import { ArchivePage } from './pages/ArchivePage'
 import { ArmoryPage } from './pages/ArmoryPage'
@@ -163,6 +164,7 @@ export default function App(): React.JSX.Element {
           <HowToPlay />
           <Homecoming />
           <BigMomentCard />
+          <DawnTidings />
           {DevTimeTravel && (
             <Suspense fallback={null}>
               <DevTimeTravel />

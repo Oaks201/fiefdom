@@ -119,6 +119,68 @@
   width: min(720px, 100%);
 }
 
+/* The Dawn tidings (Patch 6, D-47): the art band, today's figures, then the Herald's sections. */
+.modal--dawn {
+  width: min(760px, 100%);
+}
+
+.dawn {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dawn__art {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* A band across the picture's middle; the prompt keeps the herald in its middle third. */
+  aspect-ratio: 4 / 1;
+  object-fit: cover;
+  object-position: center;
+  border: 2px solid var(--gold-deep);
+  border-radius: 10px;
+}
+
+.dawn__art--placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(201, 150, 46, 0.28), rgba(92, 58, 24, 0.12));
+  color: var(--gold-deep);
+  font-size: 64px;
+}
+
+.dawn__today {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: rgba(255, 249, 232, 0.4);
+  font-size: 16px;
+}
+
+.dawn__today li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dawn__today svg {
+  flex: none;
+  color: var(--forest);
+}
+
+.herald--bare {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
 .homecoming {
   display: flex;
   flex-direction: column;
@@ -739,6 +801,13 @@
   margin-top: 6px;
   font-size: 15px;
   color: var(--ink-2);
+}
+
+.weekbar__catchup {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--ink-2);
+  font-style: italic;
 }
 
 .pace--ahead {
