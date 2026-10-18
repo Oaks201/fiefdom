@@ -6,7 +6,7 @@
  *
  * - **The `world` week phase** (`worldWeek`): held resolutions and defections; coalitions' war
  *   chests, ends and triggers; the event deck; Ascendancy and Ultimatums.
- * - **Accords** (`accordGate`, `sealAccord`): Respect 60 (50 after the Lost Heir), Castle III, the
+ * - **Accords** (`accordGate`, `sealAccord`): Respect 55 (D-43; 50 after the Lost Heir), Castle III, the
  *   rival active and in no coalition, the contract slot free. `accordPaid` adds D-01's Respect on
  *   the day the Accord is paid (settlement's `contractEnd`), from the Respect recorded when it was
  *   sealed; at 100 it is signed and the rival is allied.
@@ -202,7 +202,7 @@ export interface AccordGate {
   respect: number
 }
 
-/** The Respect an Accord with `rival` opens at (Ch 12: 60; the Lost Heir: 50). */
+/** The Respect an Accord with `rival` opens at (Ch 12's 60, 55 by D-43; the Lost Heir: 50). */
 export function accordThreshold(state: CampaignState, rival: RivalId, day: ISODate): number {
   const heir = eventInForce(state, 'lostHeir', day)
   const opens = CODEX.events.find((e) => e.id === 'lostHeir')?.effect.accordOpensAtRespect

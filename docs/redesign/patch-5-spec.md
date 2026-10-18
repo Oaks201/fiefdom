@@ -107,6 +107,7 @@ Each changes a number or rule of an earlier decision, and is reported with simul
 | N-12 | The layout (D-16) | The straight X | **Bent**: 260 hexes move (section 3.1) | Rich, P5-06 |
 | N-13 | The automatic player's terms habit (S-35) | Refuses its own paths' terms until rank V | Until rank V, III or II on 1, 2, or 3 to 4 paths | C-69 |
 | N-14 | Village spacing (D-16, E-06) | Holds for every map | Holds at founding; a migrated save keeps its villages | C-56 |
+| N-15 | Accord talks (Ch 12, Ch 14) | Respect 60 | **Respect 55** (`RULES.respect.thresholds.accordTalks`); the Lost Heir's 50 and calls to arms' 60 unchanged | Rich, T-07 (2026-10-17, after the tuning report) |
 
 ---
 
@@ -532,7 +533,8 @@ Rich's campaign (founded 2026-10-15 on rules 3.1.0, running on 3.2.0 since 2026-
 - D-39: Respect both ways, its drivers and marks (P5-07, P5-09, C-61 to C-66);
 - D-40: the standing (P5-08, C-60);
 - D-41: the length: pacing, the terms kept and the Dragon (P5-02 to P5-04, C-67, C-68);
-- D-42: how the targets count Patch 5 (P5-01, P5-05, C-69 to C-73).
+- D-42: how the targets count Patch 5 (P5-01, P5-05, C-69 to C-73);
+- D-43, after the tuning report: Accord talks at Respect 55 (T-07, N-15).
 
 **Marked changed:**
 - A-18 (the starting disposition is the standing read from 20);
@@ -561,6 +563,7 @@ Rich's campaign (founded 2026-10-15 on rules 3.1.0, running on 3.2.0 since 2026-
 | `events.json` `dragonWakes` | `week: 40` (N-07) |
 | `respect` | `min: −100`; `standing: { war: −25, peace: 50, neverAtPeace: ['orc'] }`; `raidsStrongerAt: −50, raidsStrongerMult: 1.1`; the drivers of section 4.3 (`orc: { hexConquered: −2, truce: 0, grandBattleWon: 5, grandBattleLost: −5 }`, `goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: −5, bidHeld: −2 }`, `dwarf: { pactKept: 5, wallBroken: −1 }`, `archmage: { constantWeek: 1, constantWeekAt: 0.85, surgeHeld: 2, ritualEndured: 2 }`); each rival's own marks at ±75 (`orc: { freeEnvoyAt: 75, extraConquestAt: −75 }`, `goblin: { noBidsAt: 75, gougingAt: −75, gougingSteps: 2, gougingOfferMult: 1.5 }`, `dwarf: { noWildWallsAt: 75, highWallsAt: −75, highWallMax: 2 }`, `archmage: { foresightAt: 75, strongSurgesAt: −75, strongSurgesMult: 1.1 }`) |
 | `rivals.disposition` | retired (N-09) |
+| `respect.thresholds.accordTalks` | `55` (N-15, T-07; was 60) |
 | `autoplay.refuseOwnPathUntilRank` | by number of paths: `[5, 3, 2, 2]` (N-13) |
 
 ---
@@ -701,25 +704,25 @@ Built on 2026-10-17 on branch `patch-5`, stages 1 to 4, at Rich's go-ahead ("cut
 
 ### 11.2 Targets by stage
 
-Each stage's `npm run sim -- --targets` (720 campaigns: the greedy profiles at 70 weeks, the smarter players at 90, G-08 on 100 Steadfast seeds). The last column is [targets-3.3.0](../game/sim/targets-3.3.0.md).
+Each stage's `npm run sim -- --targets` (720 campaigns: the greedy profiles at 70 weeks, the smarter players at 90, G-08 on 100 Steadfast seeds). The column after stage 4 is T-07's change, approved after the tuning report (D-43); it is what [targets-3.3.0](../game/sim/targets-3.3.0.md) now reads. The last column is the verdict.
 
-| Target | 3.2.0 (stage 1) | The bend (stage 2) | Respect (stage 3) | Length (stage 4) | |
-| --- | --- | --- | --- | --- | --- |
-| G-01 | 5.9; 84% | 5.8; 83% | 5.9; 84% | 5.9; 85% | kept |
-| G-04 | 3.26; 4.1 | 3.37; 4.1 | 3.31; 4.1 | 3.34; 4.2 | kept |
-| G-05 | 16% | 19% | 19% | 18% | kept |
-| G-06 | 2.26×; 100% | 2.45×; 100% | 2.36×; 100% | 2.36×; 100% | kept |
-| G-07 in full (median weeks: one path, two, three, four) | 57 / 65 / 61.5 / 60.5 | 57 / 65.5 / 61 / 71 | 52 / 57.5 / 65 / 66 | **60 / 61 / 61 / 60**, all 100% | **met** |
-| G-08 (100 seeds; 40) | 1.99×; 2.10× | 1.98×; 1.95× | **2.05×**; 2.08× | **1.94×; 1.88×** | **missed** (11.3) |
-| G-10 | met | met | met (the Goblin 46% by deal) | met (48%) | kept |
-| G-11 (Perfect; Steadfast; Committed, by week 76) | 43; 53; 64 (93%) | 43; 52.5; 65 (98%) | 43; 50; 63.5 (95%) | **55; 59.5**; 74.5 (63%) | **missed** on Committed's median (11.3) |
-| G-13 | 1.4 | 1.5 | 1.5 | 1.5 | met |
-| G-15 | 1.70 MB | 1.75 MB | 1.77 MB | 1.76 MB; the 365-day catch-up 0.93 s and re-founding 1.88 s; the migration 7 ms | met |
-| G-16; G-17 | 1.29×; 100% | 1.32×; 100% | 1.28×; 100% | 1.28×; 100% | kept |
-| G-18 | 2 (75%); 0; 1 | 2 (83%); 0; 1 | 2 (100%); 0; 1 | 2 (100%); 0; 1 | met |
-| G-19 (Steadfast falls by 76; Committed; Wavering) | 0%; 0%; 3% | 0%; 0%; 6% | 0%; 0%; 3% | 0%; 0%; 3% | met |
-| G-20 (Peace of 3; the Orc at Peace; War; changes) | 1; 4; 4; 2 | 1; 3; 4; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | **met** |
-| G-21 (Steadfast; Committed; Wavering; behavior share) | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | **missed** on the share (11.3) |
+| Target | 3.2.0 (stage 1) | The bend (stage 2) | Respect (stage 3) | Length (stage 4) | Accord talks at 55 (T-07) | |
+| --- | --- | --- | --- | --- | --- | --- |
+| G-01 | 5.9; 84% | 5.8; 83% | 5.9; 84% | 5.9; 85% | 5.9; 85% | kept |
+| G-04 | 3.26; 4.1 | 3.37; 4.1 | 3.31; 4.1 | 3.34; 4.2 | 3.34; 4.2 | kept |
+| G-05 | 16% | 19% | 19% | 18% | 18% | kept |
+| G-06 | 2.26×; 100% | 2.45×; 100% | 2.36×; 100% | 2.36×; 100% | 2.36×; 100% | kept |
+| G-07 in full (median weeks: one path, two, three, four) | 57 / 65 / 61.5 / 60.5 | 57 / 65.5 / 61 / 71 | 52 / 57.5 / 65 / 66 | **60 / 61 / 61 / 60**, all 100% | **59 / 60 / 60.5 / 60**, all 100% | **met** |
+| G-08 (100 seeds; 40) | 1.99×; 2.10× | 1.98×; 1.95× | **2.05×**; 2.08× | **1.94×; 1.88×** | 1.94×; 1.88× | **missed** (11.3) |
+| G-10 | met | met | met (the Goblin 46% by deal) | met (48%) | met (48%) | kept |
+| G-11 (Perfect; Steadfast; Committed, by week 76) | 43; 53; 64 (93%) | 43; 52.5; 65 (98%) | 43; 50; 63.5 (95%) | **55; 59.5**; 74.5 (63%) | **55; 59; 71 (80%)** | **met** (T-07) |
+| G-13 | 1.4 | 1.5 | 1.5 | 1.5 | 1.5 | met |
+| G-15 | 1.70 MB | 1.75 MB | 1.77 MB | 1.76 MB; the 365-day catch-up 0.93 s and re-founding 1.88 s; the migration 7 ms | 1.76 MB | met |
+| G-16; G-17 | 1.29×; 100% | 1.32×; 100% | 1.28×; 100% | 1.28×; 100% | 1.28×; 100% | kept |
+| G-18 | 2 (75%); 0; 1 | 2 (83%); 0; 1 | 2 (100%); 0; 1 | 2 (100%); 0; 1 | 2 (98%); 0; 1 | met |
+| G-19 (Steadfast falls by 76; Committed; Wavering) | 0%; 0%; 3% | 0%; 0%; 6% | 0%; 0%; 3% | 0%; 0%; 3% | 0%; 0%; 3% | met |
+| G-20 (Peace of 3; the Orc at Peace; War; changes) | 1; 4; 4; 2 | 1; 3; 4; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | 2; 0; 2; 2 | **met** |
+| G-21 (Steadfast; Committed; Wavering; behavior share) | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 35% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | 1.05; 0.87; 0.64; 36% | **missed** on the share (11.3) |
 
 G-02, G-03, G-09's first half, G-12 and G-13 held at every stage. With Respect both ways, the Dwarf and the Archmage come to Peace (Steadfast smarter: weeks 8 and 15) and the Goblin rarely; the Orc never, and in 100 greedy campaigns he is never at War either, since beating his raids raises his Respect to 100 by week 40.
 
@@ -730,7 +733,7 @@ Nothing below is changed: each is a proposal for Rich (D-02).
 | # | Target | Reading | Options | Recommendation |
 | --- | --- | --- | --- | --- |
 | T-06 | G-08 | 1.94× on 100 seeds (2.05× before the pacing changed; 1.98× before Respect). The cause of stage 4's drop is not isolated: the 16/12 pacing keeps rivals active longer, and the Orc no longer reaches War, so his conquest attempts (the land a bad week loses most, D-15) are gone | (a) a probe on the 100 seeds of the War line (−25 to −15), of D-15's overrun (`wildsReclaim.routedAt` 1.25 to 1.15) and of the two together; (b) accept 1.94× and report it | (a): measure before changing a number |
-| T-07 | G-11, Committed | Median 74.5 against 64 to 72, though 63% win by week 76 (the clause's share is met). Committed's first resolution comes in week 37.5 (Steadfast 23), and victory follows about 36 weeks later | (a) keep it missed and look for the lever that brings Committed's first Accord sooner; (b) an 11-week interval (Steadfast would fall to about 56, under 58); (c) read Committed's clause as its share by week 76 alone | (a) |
+| T-07 | G-11, Committed | Median 74.5 against 64 to 72, though 63% win by week 76 (the clause's share is met). Committed's first resolution comes in week 37.5 (Steadfast 23), and victory follows about 36 weeks later | (a) keep it missed and look for the lever that brings Committed's first Accord sooner; (b) an 11-week interval (Steadfast would fall to about 56, under 58); (c) read Committed's clause as its share by week 76 alone | (a); probed and taken: Accord talks at 55 (D-43, below) |
 | T-08 | G-21, behavior's share | Behavior is 36% of the reputation a Steadfast campaign earns, tithes 42%, spoils 22%, already so on 3.2.0; against the benchmark behavior holds (1.05, 0.87, 0.64) | (a) re-read the target as behavior at least a third of reputation earned, since tithes and spoils come from land held and battles fought, both earned by play; (b) a probe of tithes at 1.5 a band (2.5 today, D-17), which reshapes the economy and every land target | Rich's call: (a) keeps every number; (b) if behavior must lead |
 
 Also measured: Ultimatums come in 75% of Steadfast campaigns (greedy and smarter together) and 99% of Committed ones, and every Siege is won or the knee bent (no fall before week 76). R-18 asks only that the risk stay under 5%, and it does.
@@ -790,3 +793,5 @@ What the runs show:
 - **The Dwarf's wall at 0 is the only lever, here or in T-06's probe, that moves G-08 past the noise.** Its cause isn't isolated: with his Respect no longer falling for the 53 wall levels a greedy campaign breaks, the greedy Dwarf is at Peace 84% of his active weeks against 79%. Its cost: the Dwarf loses one of the two drivers that are his alone (P5-07), and the court and How to play would show a change of 0 for it until that line is taken out. At −0.5 G-11 is still met, but G-08 doesn't move.
 
 **Recommendation: the Accord at Respect 55** (Ch 12's 60, an N-item for Rich). It is the narrowest change that meets G-11. It moves only the smarter player's Accord, keeps every greedy baseline and the Lost Heir's head start, and the court and the guide read it from `RULES` (only two comments in `world.ts` and a development scenario's title name 60). If Rich would rather settle G-08 (T-06) with the same change, the alternative is the Dwarf's wall at 0, which meets both and costs the Dwarf his wall driver. Either is his call (D-02); nothing is changed.
+
+**Approved and built (2026-10-17).** Rich took the Accord at Respect 55 (N-15, D-43). It is set in `rules.ts`. How to play now lists Accord talks at their own mark, ahead of calls to arms at 60, where it had shown them both at the call to arms's number. The dev scenario's title reads the number from `RULES`, and the two comments in `world.ts` say 55. `targets-3.3.0.md` is regenerated: G-11 is met (55; 59; 71, 80% by week 76), and every other target keeps its verdict (section 11.2). T-06 and T-08 still wait for Rich.

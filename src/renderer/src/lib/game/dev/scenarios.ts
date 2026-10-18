@@ -217,7 +217,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
   },
   {
     id: 'accordReady',
-    title: 'Castle III and the Orc at Respect 60',
+    title: `Castle III and the Orc at Respect ${RULES.respect.thresholds.accordTalks}`,
     detail: 'Accord talks are open: propose one with a contract running (refused, D-01), then with the slot free (sealed).',
     apply: (input) => patchRival({ ...input, castleTier: Math.max(input.castleTier, RULES.contracts.accord.castleTier) as CampaignState['castleTier'] }, 'orc', { respect: Math.max(input.rivals.orc.respect, RULES.respect.thresholds.accordTalks), disposition: { ...input.rivals.orc.disposition, player: 'tension' } })
   },

@@ -574,7 +574,7 @@ const RULES_TABLE = {
       pact: 40,
       envoy: 50,
       buyHex: 50,
-      accordTalks: 60,
+      accordTalks: 55, // TUNE (Patch 5, T-07, D-43, N-15): Ch 12's 60; the Lost Heir still opens talks at 50
       callToArms: 60,
       accordEasier: 75
     },

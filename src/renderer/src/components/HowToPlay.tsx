@@ -757,7 +757,8 @@ export function HowToPlay(): React.JSX.Element | null {
               </li>
               <li>
                 <b>Its marks</b> open more as it rises: weaker raids ({RULES.respect.thresholds.raidsWeaker}), pacts ({RULES.respect.thresholds.pact}), envoys and Peace (
-                {RULES.respect.standing.peace}), calls to arms and Accord talks ({RULES.respect.thresholds.callToArms}), an easier Accord ({RULES.respect.thresholds.accordEasier}),
+                {RULES.respect.standing.peace}), Accord talks ({RULES.respect.thresholds.accordTalks}), calls to arms ({RULES.respect.thresholds.callToArms}), an easier Accord (
+                {RULES.respect.thresholds.accordEasier}),
                 and each ruler’s own perk at +{RULES.respect.own.up}. As it falls they bring worse: War ({RULES.respect.standing.war}), stronger raids (
                 {RULES.respect.raidsStrongerAt}) and each ruler’s own threat at {RULES.respect.own.down}. Each court lists its marks and what they bring.
               </li>

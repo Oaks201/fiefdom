@@ -146,12 +146,12 @@ test('D-01: from Respect 75 or more the Accord adds 60 × f(Q), judged by the Re
   assert.equal(after.rivals.dwarf.respect, 70 + 30)
 })
 
-test('Ch 14: an Accord needs Respect 60, Castle III, the rival active and in no coalition, and the contract slot free (Patch 4, R-13: never the Orc)', () => {
-  assert.equal(accordGate(withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 60), 'orc', closeOf(14)).reason, 'orcNeverSigns')
-  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 60)
+test('Ch 14 and D-43: an Accord needs Respect 55, Castle III, the rival active and in no coalition, and the contract slot free (Patch 4, R-13: never the Orc)', () => {
+  assert.equal(accordGate(withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 55), 'orc', closeOf(14)).reason, 'orcNeverSigns')
+  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 55)
   const today = closeOf(14)
-  assert.deepEqual(accordGate(ready, 'archmage', today), { ok: true, threshold: 60, respect: 60 })
-  assert.equal(accordGate(withRespect(ready, 'archmage', 59), 'archmage', today).reason, 'respect')
+  assert.deepEqual(accordGate(ready, 'archmage', today), { ok: true, threshold: 55, respect: 55 })
+  assert.equal(accordGate(withRespect(ready, 'archmage', 54), 'archmage', today).reason, 'respect')
   assert.equal(accordGate(withCastle(ready, 2), 'archmage', today).reason, 'castle')
   const coalition: Coalition = { members: ['archmage', 'dwarf'], trigger: 'risingCrown', warChest: 0, formedOn: closeOf(13), until: closeOf(19) }
   assert.equal(accordGate({ ...ready, coalitions: [coalition] }, 'archmage', today).reason, 'coalition')
@@ -161,7 +161,7 @@ test('Ch 14: an Accord needs Respect 60, Castle III, the rival active and in no 
   const sealed = sealAccord(ready, 'archmage', { id: 'a' }, today)
   assert.ok(sealed.ok)
   assert.equal(accordGate(withRespect(sealed.state, 'dwarf', 90), 'dwarf', today).reason, 'contractRunning', 'the Accord holds the contract slot')
-  assert.equal(sealAccord(withRespect(ready, 'archmage', 59), 'archmage', { id: 'b' }, today).ok, false)
+  assert.equal(sealAccord(withRespect(ready, 'archmage', 54), 'archmage', { id: 'b' }, today).ok, false)
 })
 
 test('Ch 14: while an Accord runs, that rival makes no raids', () => {

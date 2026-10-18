@@ -110,10 +110,11 @@ test('Ch 17: a deal struck gets the rival’s one-line reaction, its placeholder
 
 test('D-39: the Respect marks on both sides, each rival his own (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord and never makes peace)', () => {
   const goblin = respectMarks('goblin', 30)
-  assert.deepEqual(goblin.map((m) => m.at), [-75, -50, -25, 25, 40, 50, 60, 75, 100])
+  assert.deepEqual(goblin.map((m) => m.at), [-75, -50, -25, 25, 40, 50, 55, 60, 75, 100])
   assert.ok(goblin.find((m) => m.at === 25)?.opens.includes('raidsWeaker'))
+  assert.ok(goblin.find((m) => m.at === 55)?.opens.includes('accordTalks'), 'Accord talks open at 55 (D-43), before calls to arms at 60')
   assert.ok(!goblin.some((m) => m.opens.includes('sellsHex') || m.opens.includes('buysHex')), 'his hexes are bribed, and he buys at any Respect')
-  assert.deepEqual(goblin.map((m) => m.reached), [false, false, false, true, false, false, false, false, false])
+  assert.deepEqual(goblin.map((m) => m.reached), [false, false, false, true, false, false, false, false, false, false])
   assert.deepEqual(respectMarks('goblin', -60).filter((m) => m.reached).map((m) => m.at), [-50, -25], 'below 0 a mark is reached at or under it')
   assert.ok(goblin.find((m) => m.at === 75)?.opens.includes('own.goblin.up'))
   assert.ok(goblin.find((m) => m.at === -75)?.opens.includes('own.goblin.down'))
