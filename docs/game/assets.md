@@ -295,8 +295,8 @@ Slots: 318. With a file: 318.
 | `event.merchantCaravan` | Event card: The Merchant Caravan | `event.merchantCaravan-pixel-v2.png` | 768 × 512 | World events | ok |
 | `event.lostHeir` | Event card: The Lost Heir | `event.lostHeir-completion-v1.png` | 768 × 512 | World events | ok |
 | `event.envoys` | Event card: Envoys | `event.envoys-completion-v1.png` | 768 × 512 | World events | ok |
-| `milestone.1` | Milestone 1 scene | `milestone.1-armory-repaired-v3.png` | 1920 × 1080 | Milestone moments | ok |
-| `milestone.2` | Milestone 2 scene | `milestone.2-completion-v1.png` | 1920 × 1080 | Milestone moments | ok |
+| `milestone.1` | Milestone 1 scene | `milestone.1-armory-crest-v4.png` | 1920 × 1080 | Milestone moments | ok |
+| `milestone.2` | Milestone 2 scene | `milestone.2-crest-v2.png` | 1920 × 1080 | Milestone moments | ok |
 | `milestone.3` | Milestone 3 scene | `milestone.3-early-v4.png` | 1920 × 1080 | Milestone moments | ok |
 | `milestone.4` | Milestone 4 scene | `milestone.4-completion-v1.png` | 1920 × 1080 | Milestone moments | ok |
 | `milestone.5` | Milestone 5 scene | `milestone.5-completion-v1.png` | 1920 × 1080 | Milestone moments | ok |
@@ -314,7 +314,7 @@ Slots: 318. With a file: 318.
 | `ui.frame` | Interface: carved frame | `ui.frame.png` | 512 × 512 | Everywhere | ok |
 | `ui.button` | Interface: button | `ui.button.png` | 256 × 64 | Everywhere | ok |
 | `ui.parchment` | Interface: parchment panel | `ui.parchment.png` | 1024 × 1024 | Everywhere | ok |
-| `ui.armoryClosed` | Interface: closed armory | `ui.armoryClosed-approved-v1.png` | 1920 × 1080 | Armory before Milestone I | ok |
+| `ui.armoryClosed` | Interface: closed armory | `ui.armoryClosed-crest-v2.png` | 1920 × 1080 | Armory before Milestone I | ok |
 | `ui.seal` | Interface: wax seal | `ui.seal.png` | 128 × 128 | Everywhere | ok |
 | `ui.icon.purse` | Interface icon: purse | `ui.icon.purse.png` | 64 × 64 | Everywhere | ok |
 | `ui.icon.respect` | Interface icon: respect | `ui.icon.respect-completion-v1.png` | 64 × 64 | Everywhere | ok |

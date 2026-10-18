@@ -1816,7 +1816,7 @@
     ]
   },
   "milestone.1": {
-    "file": "milestone.1-armory-repaired-v3.png",
+    "file": "milestone.1-armory-crest-v4.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1824,7 +1824,7 @@
     ]
   },
   "milestone.2": {
-    "file": "milestone.2-completion-v1.png",
+    "file": "milestone.2-crest-v2.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1968,7 +1968,7 @@
     ]
   },
   "ui.armoryClosed": {
-    "file": "ui.armoryClosed-approved-v1.png",
+    "file": "ui.armoryClosed-crest-v2.png",
     "kind": "armoryScene",
     "size": [
       1920,
