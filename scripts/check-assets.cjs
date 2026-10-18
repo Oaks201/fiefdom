@@ -39,6 +39,7 @@ const SIZES = {
   event: [768, 512],
   milestone: [1920, 1080],
   moment: [1920, 1080],
+  armoryScene: [1920, 1080],
   frame: [512, 512],
   button: [256, 64],
   parchment: [1024, 1024],
@@ -59,6 +60,7 @@ const WHERE = {
   event: 'World events',
   milestone: 'Milestone moments',
   moment: 'Big-moment cards',
+  armoryScene: 'Armory before Milestone I',
   frame: 'Everywhere',
   button: 'Everywhere',
   parchment: 'Everywhere',
@@ -136,6 +138,7 @@ function inventory() {
   add('ui.frame', 'frame', 'Interface: carved frame')
   add('ui.button', 'button', 'Interface: button')
   add('ui.parchment', 'parchment', 'Interface: parchment panel')
+  add('ui.armoryClosed', 'armoryScene', 'Interface: closed armory')
   add('ui.seal', 'seal', 'Interface: wax seal')
   for (const i of ['purse', 'respect', 'valor', 'grace', 'steps', 'calories', 'duties', 'weight']) add(`ui.icon.${i}`, 'icon', `Interface icon: ${i}`)
   return slots

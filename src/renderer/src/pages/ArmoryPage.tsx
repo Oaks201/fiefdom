@@ -22,7 +22,7 @@ export function ArmoryPage(): React.JSX.Element | null {
       </header>
       {!view.open ? (
         <div className="armory-closed">
-          <GameArt slot="ui.parchment" owner="player" width={260} label="Armory" />
+          <GameArt slot="ui.armoryClosed" owner="player" width={560} label="Armory" title="The armory before its repair" />
           <p>The Armory’s doors open with Milestone {view.opensAt}.</p>
         </div>
       ) : (

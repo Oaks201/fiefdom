@@ -36,6 +36,11 @@
   font: italic 20px var(--font-fell);
 }
 
+.armory-closed .game-art {
+  max-width: 100%;
+  height: auto;
+}
+
 .armory-rank + .armory-rank {
   margin-top: 12px;
   padding-top: 10px;
