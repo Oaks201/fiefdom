@@ -753,3 +753,40 @@ Every variant keeps G-04 (3 to 4), G-10 (the Orc's march churns most, on 40 seed
 - **G-08 sits inside the 100 seeds' noise.** Resampling the base's seeds puts it at 1.81× to 2.08× (90%), and 23% of resamples read 2× or more.
 
 **Recommendation: change none of the three numbers.** Take T-06's (b): accept 1.94× for Patch 5 and report G-08 as missed. If Rich wants the stage-4 cause named before deciding, one more 100-seed run with the Dragon back at week 30 would name it. That run needs the probe to patch `events.json` as it patches `rules.ts`. Whether the Dragon then moves is a length question (P5-04), not a G-08 one.
+
+**T-07's probe (2026-10-17).** A scratch probe outside the repo played the whole targets run (`targetPlan`, 720 campaigns) on the committed 3.3.0 build (a9ed8a8), once for each variant. Each variant was patched into `rules.ts` in memory, as `sim/overrides.ts` does, and no number was changed. The base reproduces `targets-3.3.0.md` in every target row. A second scratch player read what stands before the smarter player's first Accord. It plays the same campaigns without the measures and reproduces their victory weeks.
+
+What holds Committed back is Respect, not the castle (medians, 40 seeds each):
+
+| Smarter player | Castle III bought | A rival other than the Orc at Respect 60 | First Accord sealed | First resolution | Victory |
+| --- | --- | --- | --- | --- | --- |
+| Perfect | 13 | 6 | 15 | 19 | 55 |
+| Steadfast | 17.5 | 12 | 19 | 23 | 59.5 |
+| Committed | 20 | 28 | 31.5 | 37.5 | 74.5 |
+
+- **Perfect and Steadfast wait on Castle III; Committed waits on Respect.** Committed holds Castle III 8 weeks before any court reaches 60. It then waits a median 4 more weeks for the contract slot: a running 30-day contract, often with the next one queued, and an Accord can't be queued. Perfect and Steadfast seal a week or two after Castle III.
+- **The Dwarf prizes the step pool.** He is the usual first ally (the first resolution is his Accord in 22 Committed campaigns, the Archmage's in 6 and the Goblin's defection in 12). In weeks 1 to 28 Committed, at 97% of the pool, earns his prized week 7.5 times (+30). Steadfast earns it 16.3 times (+65) and Perfect 21.8. His broken walls cost every player about 12 Respect by then.
+- **After the first resolution the pacing sets the rest.** 102 of Committed's 120 gaps between resolutions are exactly 12 weeks, so victory comes about 37 weeks after the first. G-11's 64 to 72 needs Committed's first resolution by about week 35.
+- So a lever on Respect moves Committed alone. A lever on the castle or the pacing moves Steadfast as much, and Steadfast sits 1.5 weeks above its floor of 58.
+
+| Variant (full run) | G-11: Perfect; Steadfast; Committed [quartiles], by week 76 | Committed: first Accord; first resolution | G-07 in full (one; two; three; four) | G-08 on 100 seeds (change from base, 90%) | G-18 | G-19 | G-20 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Base | 55; 59.5; 74.5 [71–79], 63% | 31.5; 37.5 | 60 / 61 / 61 / 60 | 1.94× | 2 (100%); 0; 1 | 0%; 0%; 3% | 2; 0; 2; 2 |
+| The Accord at Respect 55 (`respect.thresholds.accordTalks`, 60) | 55; 59; **71** [67–76], 80% | 26; 34 | 59 / 60 / 60.5 / 60 | 1.94× (none: the greedy player seals no Accord) | 2 (98%); 0; 1 | 0%; 0%; 3% | 2; 0; 2; 2 |
+| The Accord at Respect 50 | 55; 59; **67** [66–71], 90% | 22; 31 | 59 / 60 / 60 / 60 | 1.94× (none) | 2 (91%); 0; 1 | 0%; 0%; 3% | 2; 0; 2; 2 |
+| The prized week +5 (`respect.change.prizedWeek`, 4) | 55; 59; **71** [67–76], 80% | 26; 34 | 60 / 60.5 / 60.5 / 60 | 2.01× (−0.05 to +0.19) | 2 (99%); 0; 1 | 0%; 0%; 3% | 2; 0; 2; 2 |
+| The Dwarf's wall −0.5 (`respect.byRival.dwarf.wallBroken`, −1) | 55; 59.5; **71** [69–76], 83% | 28.5; 34 | 60 / 61 / 61 / 60 | 1.96× (−0.06 to +0.09) | 2 (100%); 0; 1 | 0%; 0%; 4% | 2; 0; 2; 2 |
+| The Dwarf's wall 0 | 55; 59.5; **68** [67–72], 88% | 25; 30.5 | 60 / 61 / 61 / 60 | **2.05×** (+0.02 to +0.20) | 2 (99%); 0; 1 | 0%; 0%; 3% | 2; 0; 2; 1.5 |
+
+Every variant keeps G-01 to G-06 (G-04 3.31 to 3.34), G-10 and G-13, and leaves G-21 as it was (1.05; 0.87; 0.64; 36%). Two more were screened on the smarter players alone (40 seeds each) and set aside:
+- **Pacing every 11 weeks** (`world.resolution.oncePerWeeks`): 52; 56.5; 71. Steadfast falls under 58, as section 11.3 expected.
+- **A habit rather than a rule.** With Castle III held and a court other than the Orc's within 10 of the Accord's Respect, the smarter player seals and queues the shortest contract instead of the longest, so the slot empties sooner. Its first Accord comes in week 29, and Committed's median stays over the window: 72.5 [67–79], 68% by week 76.
+
+What the runs show:
+- **All five numbers run in full meet G-11, and none moves Perfect or Steadfast by more than half a week**, since both wait on the castle.
+- **The Accord at 55 changes only the smarter player.** The greedy players play every campaign exactly as before, so G-01 to G-10 are the base's to the digit. Committed seals sooner from lower Respect, so more campaigns need a second Accord (16 of 40 before the first resolution, against 3). Its median lands a week inside the window.
+- **The Accord at 50 lands mid-window but empties the Lost Heir.** That event, which fires in every Steadfast smarter campaign (week 27.5), works by opening an Accord at 50; at 50 it would do nothing. G-18's share also falls to 91%.
+- **The prized week at +5 works through every rival and every player.** The Dwarf and the Archmage come to Peace a week or two sooner. G-08's 2.01× is inside the 100 seeds' noise.
+- **The Dwarf's wall at 0 is the only lever, here or in T-06's probe, that moves G-08 past the noise.** Its cause isn't isolated: with his Respect no longer falling for the 53 wall levels a greedy campaign breaks, the greedy Dwarf is at Peace 84% of his active weeks against 79%. Its cost: the Dwarf loses one of the two drivers that are his alone (P5-07), and the court and How to play would show a change of 0 for it until that line is taken out. At −0.5 G-11 is still met, but G-08 doesn't move.
+
+**Recommendation: the Accord at Respect 55** (Ch 12's 60, an N-item for Rich). It is the narrowest change that meets G-11. It moves only the smarter player's Accord, keeps every greedy baseline and the Lost Heir's head start, and the court and the guide read it from `RULES` (only two comments in `world.ts` and a development scenario's title name 60). If Rich would rather settle G-08 (T-06) with the same change, the alternative is the Dwarf's wall at 0, which meets both and costs the Dwarf his wall driver. Either is his call (D-02); nothing is changed.
