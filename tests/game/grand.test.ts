@@ -37,7 +37,7 @@ import { bandOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/g
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import type { CampaignState, Effect, GrandBattle } from '../../src/renderer/src/lib/game/types'
 import { near } from './support/assert'
-import { SEVEN_FULL, announced, collector, fieldOf, mine, theirs, withArmy } from './support/grand'
+import { SEVEN_FULL, announced, collector, fieldOf, incursionSetup, mine, theirs, withArmy } from './support/grand'
 import { allBuildings, realm, withArmory, withCastle, withCrossings, withMilestones, withPurse } from './support/realm'
 import { START, hex } from './support/war'
 
@@ -327,15 +327,6 @@ test('Ch 11 rule 2: routed companies are Weary for 3 days and the roster keeps i
 })
 
 // ── Outcomes (Ch 11 table) ───────────────────────────────────────────────────
-
-/** The orc's Gate, and a hex beside it the player has just taken (D-16: the Orc's own, in the outer third of its march). */
-function incursionSetup(playerTiers: number, orcPowers: number[]): { state: CampaignState; hexId: string } {
-  let state = withArmy(withCastle(allBuildings(realm(), playerTiers), 3), 'orc', orcPowers)
-  const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
-  const beside = neighbors(gate.id).map((id) => hex(state, id)).find((h) => isClaimableKind(h) && h.kind !== 'gate' && h.ring < gate.ring)!
-  state = { ...state, hexes: state.hexes.map((h) => (h.id === beside.id ? { ...h, owner: 'player' as const } : h)) }
-  return { state, hexId: beside.id }
-}
 
 test('Ch 11 outcomes, D-17: an Incursion won cuts the rival’s AV by 40% of the host sent, adds 5 Respect and pays 30 × band', () => {
   const { state, hexId } = incursionSetup(4, [20, 20])

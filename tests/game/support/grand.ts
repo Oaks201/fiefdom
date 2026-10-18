@@ -6,7 +6,10 @@ import assert from 'node:assert/strict'
 import { announceGrandBattle, playRound, type GrandRequest } from '../../../src/renderer/src/lib/game/grand'
 import { fieldView } from '../../../src/renderer/src/lib/game/view/battle'
 import { startField } from '../../../src/renderer/src/lib/game/grand/field'
+import { isClaimableKind, neighbors } from '../../../src/renderer/src/lib/game/map'
 import type { BattleSetup, CampaignState, Company, Emit, FieldUnit, GameEventKind, GameEventMap, GrandBattle, RivalId } from '../../../src/renderer/src/lib/game/types'
+import { allBuildings, realm, withCastle } from './realm'
+import { hex } from './war'
 
 export type Posted = { kind: GameEventKind } & Record<string, unknown>
 
@@ -43,6 +46,15 @@ export function theirs(foe: RivalId | 'mythic', unit: string, power: number, slo
 export function withArmy(state: CampaignState, rival: RivalId, powers: number[]): CampaignState {
   const companies: Company[] = powers.map((power, i) => ({ id: `${rival}:levy:${i + 1}`, name: 'levy', source: 'host', power, tags: [], reach: 'melee', items: [] }))
   return { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], companies } } }
+}
+
+/** The orc's Gate, and a hex beside it the player has just taken (D-16: the Orc's own, in the outer third of its march). */
+export function incursionSetup(playerTiers: number, orcPowers: number[]): { state: CampaignState; hexId: string } {
+  let state = withArmy(withCastle(allBuildings(realm(), playerTiers), 3), 'orc', orcPowers)
+  const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
+  const beside = neighbors(gate.id).map((id) => hex(state, id)).find((h) => isClaimableKind(h) && h.kind !== 'gate' && h.ring < gate.ring)!
+  state = { ...state, hexes: state.hexes.map((h) => (h.id === beside.id ? { ...h, owner: 'player' as const } : h)) }
+  return { state, hexId: beside.id }
 }
 
 /** Announces a battle and returns it, failing the test when refused. */

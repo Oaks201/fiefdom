@@ -12,6 +12,7 @@
  */
 import { addDays, campaignWeek } from '../clock'
 import { effectiveGarrison, settleCombat, skirmishDayOf, tidings } from '../combat'
+import { roundPosting } from '../economy'
 import { hexName } from '../map'
 import { RULES } from '../rules'
 import { startVeiled, todaysFights, undoStartRefusal } from '../skirmish'
@@ -188,6 +189,24 @@ export function fightResult(state: CampaignState, day: ISODate, fightId: string)
     marshal: f.marshal === true,
     weary: repulsed ? f.companies.map((id) => names.get(id) ?? id) : []
   }
+}
+
+/**
+ * What the close will post for the battles the player led and finished on the open `day` (D-12), as
+ * their result cards name it: their spoils, and a hunt's reputation (the Royal Hunt, A-134). 0 once
+ * the day is settled, when the purse holds them.
+ */
+export function ledSpoilsDue(state: CampaignState, day: ISODate): number {
+  const sd = skirmishDayOf(state, day)
+  const done = sd?.fights.filter((f) => f.result !== undefined) ?? []
+  if (!sd || done.length === 0 || day <= state.settledThrough.day) return 0
+  const events = closePreview(state, day, sd.valor)
+  const due = done.reduce((sum, f) => {
+    const e = events.find((x) => sameFight(x, f))
+    if (e?.kind === 'defense') return sum + (e.spoils ?? 0) + (e.hunt ?? 0)
+    return e?.kind === 'assault' ? sum + (e.spoils ?? 0) : sum
+  }, 0)
+  return roundPosting(due)
 }
 
 /** Yesterday's battles the player led, for the Herald's link to their results and replays; null when none were finished. */

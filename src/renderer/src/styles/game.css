@@ -477,6 +477,12 @@
   width: calc(var(--fill) * 100%);
 }
 
+.valor__spoils {
+  margin: 4px 0 0;
+  text-align: right;
+  font-size: 14px;
+}
+
 .pillars__value {
   text-align: right;
   font-variant-numeric: tabular-nums;

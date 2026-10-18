@@ -5,7 +5,7 @@ import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
 import type { CampaignState, ISODate } from '../../lib/game/types'
 import { weighInDay } from '../../lib/game/clock'
-import { calorieWeek, dayEarned, dayProjection, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
+import { calorieWeek, dayEarned, dayProjection, daySpoils, healerCards, liveWeek, stepPace, valorParts, weighInPrompt } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
@@ -71,6 +71,7 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
   const parts = valorParts(day, days, charterOn(campaign, date).stepPool)
   const settled = date <= campaign.settledThrough.day
   const earned = settled ? dayEarned(campaign, date) : dayProjection(campaign, day)
+  const spoils = daySpoils(campaign, date)
   return (
     <section className="panel valor" aria-label="Valor">
       <header className="panel__head">
@@ -103,6 +104,7 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
         <WaxSeal color="gold" icon={GiLaurelCrown} size={30} seed={9} />
         <strong>{formatRep(earned)}</strong>
       </div>
+      {spoils > 0 && <p className="muted valor__spoils">Including {formatNumber(spoils)} from battle spoils.</p>}
     </section>
   )
 }

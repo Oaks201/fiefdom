@@ -20,6 +20,7 @@ import { t, type HealerCheckIn } from '../text'
 import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
 import type { CampaignState, DayRecord, GraceLevel, ISODate, WeekStartsOn, WeighIn } from '../types'
 import type { Ledger } from '../../types'
+import { ledSpoilsDue } from './skirmish'
 
 /** The first day of `today`'s week, never before the campaign's first day (a partial week 1, A-04). */
 function weekFrom(today: ISODate, weekStartsOn: WeekStartsOn, campaignStart?: ISODate): ISODate {
@@ -140,7 +141,20 @@ export function dayEarned(state: CampaignState, day: ISODate): number {
   return roundPosting(gains.reduce((sum, e) => sum + e.amount, 0))
 }
 
-/** What an unsettled day would earn at its close as it stands: duties, the perfect day and the streak (Ch 5). */
+/**
+ * The spoils `day` has won (Ch 10, Ch 11): what the purse holds for it (a Grand Battle's, posted when
+ * it is won, and on a settled day its daily battles'), and on the open day what the battles the player
+ * led and finished will post at its close (D-12).
+ */
+export function daySpoils(state: CampaignState, day: ISODate): number {
+  const posted = state.purse.events.filter((e) => e.date === day && e.kind === 'spoils').reduce((sum, e) => sum + e.amount, 0)
+  return roundPosting(posted + ledSpoilsDue(state, day))
+}
+
+/**
+ * What an unsettled day would earn at its close as it stands: duties, the perfect day and the streak
+ * (Ch 5), and the spoils it has won so far (`daySpoils`). A battle the close still fights adds nothing yet.
+ */
 export function dayProjection(state: CampaignState, day: DayRecord): number {
   const prior = snapshotOf(state, addDays(day.date, -1))
   const income = dailyIncome(
@@ -152,7 +166,7 @@ export function dayProjection(state: CampaignState, day: DayRecord): number {
     },
     realmEffects(state).reputationBonus.value
   )
-  return roundPosting(income.lines.reduce((sum, l) => sum + l.amount, 0))
+  return roundPosting(income.lines.reduce((sum, l) => sum + l.amount, 0) + daySpoils(state, day.date))
 }
 
 // ── The Milestones and Grace panel (Ch 9) ────────────────────────────────────
