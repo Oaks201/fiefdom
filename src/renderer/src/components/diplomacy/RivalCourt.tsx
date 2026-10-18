@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { GiCoins, GiCrossedSwords, GiSpeaker } from 'react-icons/gi'
 import { formatShort } from '../../lib/dates'
-import type { RivalPanel } from '../../lib/game/view/diplomacy'
+import { meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
 
@@ -18,9 +18,9 @@ export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Elemen
       <div className="respect__head">
         <span>Respect</span> <strong>{panel.respect > 0 ? `+${panel.respect}` : panel.respect < 0 ? `−${-panel.respect}` : '0'}</strong>
       </div>
-      <div className="respect__bar" style={{ ['--fill' as string]: (Math.min(100, Math.max(-100, panel.respect)) + 100) / 200 }} role="meter" aria-valuemin={-100} aria-valuemax={100} aria-valuenow={panel.respect} aria-label="Respect">
+      <div className="respect__bar" style={{ ['--fill' as string]: meterAt(panel.marks, panel.respect) }} role="meter" aria-valuemin={-100} aria-valuemax={100} aria-valuenow={panel.respect} aria-label="Respect">
         {panel.marks.map((m) => (
-          <span key={m.at} className={`respect__mark ${m.reached ? 'is-reached' : ''}`} style={{ left: `${(m.at + 100) / 2}%` }} title={`${m.at}: ${m.labels.join('; ')}`}>
+          <span key={m.at} className={`respect__mark ${m.reached ? 'is-reached' : ''}`} style={{ left: `${meterAt(panel.marks, m.at) * 100}%` }} title={`${m.at}: ${m.labels.join('; ')}`}>
             <span className="respect__at">{m.at}</span>
           </span>
         ))}

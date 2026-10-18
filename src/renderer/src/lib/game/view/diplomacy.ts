@@ -204,6 +204,18 @@ export function respectMarks(rival: RivalId, respect: number): RespectMark[] {
   return marksOf(rival).map((m) => ({ at: m.at, opens: m.opens, labels: m.opens.map((k) => OPENS[k](rival)), reached: m.at >= 0 ? respect >= m.at : respect <= m.at }))
 }
 
+/**
+ * Where `respect` sits along the meter, 0 to 1. The marks, 0 and both ends are evenly spaced stops
+ * so close marks (50, 55, 60) don't crowd; a value between two stops falls in line between them.
+ */
+export function meterAt(marks: readonly { at: number }[], respect: number): number {
+  const { min, max } = RULES.respect
+  const stops = [...new Set([min, 0, max, ...marks.map((m) => m.at)])].sort((a, b) => a - b)
+  const v = Math.min(max, Math.max(min, respect))
+  const i = Math.max(1, stops.findIndex((s) => s >= v))
+  return (i - 1 + (v - stops[i - 1]) / (stops[i] - stops[i - 1])) / (stops.length - 1)
+}
+
 export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effects = realmEffects(state), today: ISODate = openDayOf(state)): RivalPanel {
   const r = state.rivals[rival]
   const stance = stanceLine(state, rival, today)

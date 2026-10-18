@@ -13,7 +13,7 @@ import { settle } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { hasText, t } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { courtableVillages, courtshipsView, dealReaction, dealsView, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealReaction, dealsView, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -124,6 +124,21 @@ test('D-39: the Respect marks on both sides, each rival his own (the Goblin’s 
   assert.ok(orc.find((m) => m.at === 50)?.opens.includes('challenge'))
   assert.ok(!orc.some((m) => m.opens.includes('peace') || m.opens.includes('accordTalks') || m.opens.includes('accordSigned')))
   for (const m of [...goblin, ...orc]) for (const l of m.labels) assert.doesNotMatch(l, /undefined|NaN/)
+})
+
+test('the Respect meter spaces its marks evenly, with 0 and both ends as stops, and puts a value in line between two', () => {
+  const marks = respectMarks('goblin', 0)
+  const near = (a: number, b: number, what: string): void => assert.ok(Math.abs(a - b) < 1e-9, `${what}: ${a} vs ${b}`)
+  // −100 −75 −50 −25 0 25 40 50 55 60 75 100: eleven even steps, so 50, 55 and 60 sit as far apart as −75 and −50.
+  const steps = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
+  marks.forEach((m, i) => near(meterAt(marks, m.at), steps[i] / 11, `mark ${m.at}`))
+  near(meterAt(marks, 0), 4 / 11, 'zero')
+  near(meterAt(marks, 27), (5 + 2 / 15) / 11, '27, just past 25')
+  near(meterAt(marks, -100), 0, 'the low end')
+  near(meterAt(marks, 100), 1, 'the high end')
+  near(meterAt(marks, 140), 1, 'held to the high end')
+  const orc = respectMarks('orc', 0)
+  near(meterAt(orc, 60), 8 / 10, 'the Orc has no 55 or 100 mark, so his steps are wider')
 })
 
 test('Ch 17: the portrait’s mood follows disposition: calm at Peace, angry at War, humbled when resolved', () => {
