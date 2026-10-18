@@ -736,7 +736,7 @@
     ]
   },
   "company.crownguard.token": {
-    "file": "company.crownguard.token-completion-v1.png",
+    "file": "company.crownguard.token-approved-v2.png",
     "kind": "token",
     "size": [
       128,
@@ -744,7 +744,7 @@
     ]
   },
   "company.crownguard.portrait": {
-    "file": "company.crownguard.portrait-completion-v1.png",
+    "file": "company.crownguard.portrait-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,
@@ -1360,7 +1360,7 @@
     ]
   },
   "company.sworn.token": {
-    "file": "company.sworn.token-completion-v1.png",
+    "file": "company.sworn.token-approved-v2.png",
     "kind": "token",
     "size": [
       128,
@@ -1368,7 +1368,7 @@
     ]
   },
   "company.sworn.portrait": {
-    "file": "company.sworn.portrait-completion-v1.png",
+    "file": "company.sworn.portrait-approved-v2.png",
     "kind": "portrait",
     "size": [
       512,

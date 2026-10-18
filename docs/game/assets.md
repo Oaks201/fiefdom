@@ -154,8 +154,8 @@ Slots: 317. With a file: 317.
 | `company.trebuchetBattery.portrait` | Trebuchet Battery: portrait | `company.trebuchetBattery.portrait-green-silver-v1.png` | 512 × 512 | Army, Grand Battles | ok |
 | `company.ironColossus.token` | Iron Colossus: token | `company.ironColossus.token-green-silver-v1.png` | 128 × 128 | Army, battles | ok |
 | `company.ironColossus.portrait` | Iron Colossus: portrait | `company.ironColossus.portrait-green-silver-v1.png` | 512 × 512 | Army, Grand Battles | ok |
-| `company.crownguard.token` | The Crownguard: token | `company.crownguard.token-completion-v1.png` | 128 × 128 | Army, battles | ok |
-| `company.crownguard.portrait` | The Crownguard: portrait | `company.crownguard.portrait-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
+| `company.crownguard.token` | The Crownguard: token | `company.crownguard.token-approved-v2.png` | 128 × 128 | Army, battles | ok |
+| `company.crownguard.portrait` | The Crownguard: portrait | `company.crownguard.portrait-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
 | `company.ironclads.token` | Ironclads: token | `company.ironclads.token-crossing-v3.png` | 128 × 128 | Army, battles | ok |
 | `company.ironclads.portrait` | Ironclads: portrait | `company.ironclads.portrait-crossing-v3.png` | 512 × 512 | Army, Grand Battles | ok |
 | `company.cataphracts.token` | Cataphracts: token | `company.cataphracts.token-crossing-v3.png` | 128 × 128 | Army, battles | ok |
@@ -234,8 +234,8 @@ Slots: 317. With a file: 317.
 | `company.stoneSentinels.portrait` | Stone Sentinels: portrait | `company.stoneSentinels.portrait-mage-host-v4.png` | 512 × 512 | Army, Grand Battles | ok |
 | `company.wanderingOrder.token` | The Wandering Order: token | `company.wanderingOrder.token-navy-v2.png` | 128 × 128 | Army, battles | ok |
 | `company.wanderingOrder.portrait` | The Wandering Order: portrait | `company.wanderingOrder.portrait-navy-v2.png` | 512 × 512 | Army, Grand Battles | ok |
-| `company.sworn.token` | The Sworn: token | `company.sworn.token-completion-v1.png` | 128 × 128 | Army, battles | ok |
-| `company.sworn.portrait` | The Sworn: portrait | `company.sworn.portrait-completion-v1.png` | 512 × 512 | Army, Grand Battles | ok |
+| `company.sworn.token` | The Sworn: token | `company.sworn.token-approved-v2.png` | 128 × 128 | Army, battles | ok |
+| `company.sworn.portrait` | The Sworn: portrait | `company.sworn.portrait-approved-v2.png` | 512 × 512 | Army, Grand Battles | ok |
 | `portrait.oathsworn` | The Oathsworn: portrait | `portrait.oathsworn-early-v3.png` | 512 × 512 | Army, Grand Battles | ok |
 | `portrait.goldCloaks` | The Gold Cloaks: portrait | `portrait.goldCloaks-early-v3.png` | 512 × 512 | Army, Grand Battles | ok |
 | `portrait.starwardens` | The Starwardens: portrait | `portrait.starwardens-early-v3.png` | 512 × 512 | Army, Grand Battles | ok |
