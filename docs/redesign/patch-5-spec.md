@@ -734,3 +734,22 @@ Nothing below is changed: each is a proposal for Rich (D-02).
 | T-08 | G-21, behavior's share | Behavior is 36% of the reputation a Steadfast campaign earns, tithes 42%, spoils 22%, already so on 3.2.0; against the benchmark behavior holds (1.05, 0.87, 0.64) | (a) re-read the target as behavior at least a third of reputation earned, since tithes and spoils come from land held and battles fought, both earned by play; (b) a probe of tithes at 1.5 a band (2.5 today, D-17), which reshapes the economy and every land target | Rich's call: (a) keeps every number; (b) if behavior must lead |
 
 Also measured: Ultimatums come in 75% of Steadfast campaigns (greedy and smarter together) and 99% of Committed ones, and every Siege is won or the knee bent (no fall before week 76). R-18 asks only that the risk stay under 5%, and it does.
+
+**T-06's probe (2026-10-17).** A scratch probe outside the repo played Steadfast greedy seeds 1 to 100 for 70 weeks on the committed 3.3.0 build (fec32b7). Each variant was patched into `rules.ts` in memory, as `sim/overrides.ts` does, and no number was changed. The base reproduces `targets-3.3.0.md`. G-08 is read on the 100 seeds; its change from base is a seed-paired bootstrap's 90% range. G-04 and G-10 are read on the run's own 40 seeds, as the report reads them.
+
+| Variant | G-08: lost a week, bad vs good | Change from base (90%) | G-08 on 40 seeds | Lost ÷ gained | G-04 | G-10, both ways per hex held: Orc; Goblin | The Orc at War: weeks a campaign (campaigns) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Base | 1.13 vs 0.58 = **1.94×** | – | 1.88× | 14% | 3.34 | 0.32; 0.28 | 0 (0 of 100) |
+| War line −15 (`respect.standing.war`) | 1.14 vs 0.58 = 1.95× | −0.01 to +0.04 | 1.91× | 14% | 3.28 | 0.32; 0.29 | 0.1 (3) |
+| Overrun at 1.15 (`combat.wildsReclaim.routedAt`) | 1.39 vs 0.74 = 1.89× | −0.16 to +0.05 | 1.82× | 17% | 3.32 | 0.35; 0.32 | 0 (0) |
+| Both | 1.42 vs 0.74 = 1.92× | −0.13 to +0.08 | 1.85× | 17% | 3.34 | 0.36; 0.33 | 0.2 (2) |
+| Pacing 12/8 (`world.resolution`) | 1.13 vs 0.58 = 1.95× | 0.00 to +0.01 | 1.89× | 14% | 3.34 | 0.32; 0.28 | 0 (0) |
+
+Every variant keeps G-04 (3 to 4), G-10 (the Orc's march churns most, on 40 seeds and on 100), G-08's mid-game defenses (4.5 to 4.6) and its lost ÷ gained (under 25%). None brings G-08 to 2×.
+
+- **The pacing is not the cause.** At 12/8 G-08 reads 1.95×, because every greedy campaign resolves exactly one rival by week 70 under either pacing. Of stage 4's other changes, the terms habit (C-69) steers only the smarter path players. That leaves the Dragon from week 40 (N-07). It lives in `events.json`, which the `rules.ts` hook can't reach, so it is not measured.
+- **The War line doesn't reach the Orc.** His Respect climbs to 100 by week 40 because he loses about 38 raids a campaign, at +3 each. At −15 he is at War in 3 campaigns of 100, for 9 weeks in all (weeks 15 to 30). The line moves the Goblin instead (at War 27 weeks a campaign, 32 at −15), and G-08 doesn't move. Nor did the Orc's missing conquest attempts cause stage 4's drop: stage 3 took them away and G-08 rose to 2.05×.
+- **The overrun cuts the wrong way.** At 1.15 the frontier loses more land in good weeks as well as bad (+0.16 against +0.26 a week, about 1.6 to 1), so the ratio falls to 1.89×.
+- **G-08 sits inside the 100 seeds' noise.** Resampling the base's seeds puts it at 1.81× to 2.08× (90%), and 23% of resamples read 2× or more.
+
+**Recommendation: change none of the three numbers.** Take T-06's (b): accept 1.94× for Patch 5 and report G-08 as missed. If Rich wants the stage-4 cause named before deciding, one more 100-seed run with the Dragon back at week 30 would name it. That run needs the probe to patch `events.json` as it patches `rules.ts`. Whether the Dragon then moves is a length question (P5-04), not a G-08 one.
