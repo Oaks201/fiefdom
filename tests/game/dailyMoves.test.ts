@@ -2,7 +2,7 @@
  * Patch 6 (docs/redesign/patch-6-spec.md section 6; D-50): the rivals' moves that land day by day. The
  * wars between rivals settle a skirmish a day (C-89), the stances are read each day (C-90), a land grab is
  * chosen at the week close and taken on its day (C-91), and the walls away from the player rise over the
- * week (C-92). Daily conquest planning (C-93) is built, and off.
+ * week (C-92). A rival who goes to War plans his conquest attempts that day (C-93, on from D-51).
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -206,12 +206,15 @@ function warCase(): { state: CampaignState; day: string } {
   return { state: { ...state, settledThrough: { day: addDays(day, -1), week: 6 } }, day }
 }
 
-test('C-93: off (as built), a rival going to War mid-week plans nothing before the close', () => {
-  assert.equal(RULES.rivalAi.planConquestOnWar, false)
+test('C-93, D-51: on (as the rules have it), a rival going to War mid-week plans at once; switched off, nothing before the close', () => {
+  assert.equal(RULES.rivalAi.planConquestOnWar, true)
   const { state, day } = warCase()
-  const next = dailyStandings(state, day, () => undefined, () => week(day, 6))
-  assert.equal(next.rivals.orc.disposition.player, 'war')
-  assert.equal(combatOf(next).conquests.filter((c) => c.rival === 'orc').length, 0)
+  const on = dailyStandings(state, day, () => undefined, () => week(day, 6))
+  assert.equal(on.rivals.orc.disposition.player, 'war')
+  assert.equal(combatOf(on).conquests.filter((c) => c.rival === 'orc').length, RULES.rivalAi.conquestPlansPerWeek)
+  const off = dailyStandings(state, day, () => undefined, () => week(day, 6), false)
+  assert.equal(off.rivals.orc.disposition.player, 'war')
+  assert.equal(combatOf(off).conquests.filter((c) => c.rival === 'orc').length, 0)
 })
 
 test('C-93: on, he plans his attempt at once, striking 2 to 7 days later, and never a second while one is coming', () => {

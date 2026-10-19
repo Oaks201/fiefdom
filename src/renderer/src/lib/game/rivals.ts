@@ -931,10 +931,10 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
  * lines (D-48), so a battle that moves him past a line shows the next morning. The week close reads it
  * again in step 7 (`setDisposition`), after the prized week and the weekly drivers; Threat stays weekly.
  *
- * C-93 (T-09): with `RULES.rivalAi.planConquestOnWar` on, a rival who goes to War here plans his conquest
- * attempts at once (`planConquests`, striking 2 to 7 days later) unless one of his is already coming, so
- * never more a week than the close would plan. `week` is the day's week as the rival turn sees it; it is
- * needed only then. Off, nothing is planned before the next close.
+ * C-93 (T-09, D-51): with `RULES.rivalAi.planConquestOnWar` on (as it is), a rival who goes to War here plans
+ * his conquest attempts at once (`planConquests`, striking 2 to 7 days later) unless one of his is already
+ * coming, so never more a week than the close would plan. `week` is the day's week as the rival turn sees
+ * it; it is needed only then. Off, nothing is planned before the next close.
  */
 export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit, week?: () => RivalWeek, planOnWar: boolean = RULES.rivalAi.planConquestOnWar): CampaignState {
   let state = input

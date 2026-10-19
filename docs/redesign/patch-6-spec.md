@@ -1,6 +1,6 @@
 # Patch 6 spec: catch-up figures, Dawn tidings, Respect by rival, a realm that moves by the day
 
-Written 2026-10-18. **Status: approved as drafted by Rich on 2026-10-18, with the Orc's +75 perk as P6-07 (a)** ("Approved as drafted, with the Orc's +75 perk as (a): his beaten forces no longer strike back at their first dawn."). Rich's decisions of 2026-10-18 are in [section 1.1](#11-what-rich-decided-2026-10-18), with his words. What is still his to answer is in [section 1.2](#12-open-questions): only P6-08, after the simulator run. Every further rule Claude settled is a call, C-74 onward ([section 1.3](#13-claudes-calls)); Rich may overturn any of them. Every earlier number or rule this patch changes is an N-item ([section 1.4](#14-earlier-numbers-and-rules-this-patch-changes-d-02)). The build's own changes go in [section 12](#12-what-the-build-changed), and number changes from the tuning stage still come to him (D-02).
+Written 2026-10-18. **Status: approved as drafted by Rich on 2026-10-18, with the Orc's +75 perk as P6-07 (a)** ("Approved as drafted, with the Orc's +75 perk as (a): his beaten forces no longer strike back at their first dawn."). Rich's decisions of 2026-10-18 are in [section 1.1](#11-what-rich-decided-2026-10-18), with his words. What was still his to answer is in [section 1.2](#12-open-questions): P6-08, answered after the simulator run (T-09 (a), D-51). Every further rule Claude settled is a call, C-74 onward ([section 1.3](#13-claudes-calls)); Rich may overturn any of them. Every earlier number or rule this patch changes is an N-item ([section 1.4](#14-earlier-numbers-and-rules-this-patch-changes-d-02)). The build's own changes go in [section 12](#12-what-the-build-changed), and number changes from the tuning stage still come to him (D-02).
 
 This spec carries out Rich's three requests of 2026-10-18 and what followed from talking them through:
 1. a figure for what the rest of the week needs to get back on pace, for steps and for calories;
@@ -38,7 +38,7 @@ The Ch 16 guardrails stay. No hidden value is shown as a number.
   - stances are read every day;
   - a rival's land grab is chosen at the week close and taken on a set day that week;
   - the walls facing the player go up at the close, the rest a few levels a day.
-- **Measured, not switched on: conquest attempts planned on the day a rival goes to War (P6-08, T-09).** Built behind a rule switch that stays off; the simulator run measures it, and Rich decides.
+- **Conquest attempts planned on the day a rival goes to War (P6-08, T-09).** Built behind a rule switch, measured off against on, and switched on at Rich's decision after the run (D-51).
 - **Rules 3.4.0, carried forward in place.** No migration. The new state is optional (section 7).
 - **Build order:** the two screens first, which change no rule and can be installed on their own; then the marks and daily standings; then the daily moves; then the simulator run and its tuning report (section 8).
 
@@ -62,7 +62,7 @@ The Ch 16 guardrails stay. No hidden value is shown as a number.
 | # | Question | Options | Recommendation |
 | --- | --- | --- | --- |
 | P6-07 | **The Orc's own perk at +75.** His perk was his envoy fighting for the player at no fee (P5-07); P6-04 takes his envoys away | (a) **Beaten fairly, they yield.** In his march, a force the player routed no longer strikes back at its first dawn for certain (`personalities.orc.firstDawnChance` 1). It strikes at the common chance, 30% a day (`sieges.counterattack.chancePerDay`). (b) **His raids 20% weaker** from +75, on top of nothing else (his 10% at 25 becomes 20%) | **(a).** It turns his own march rule (D-28, N-02), and it fits a warlord who respects strength: once he respects the player, a beaten band of his doesn't rush back. (b) is simpler but says nothing about him. **Decided (Rich, 2026-10-18): (a).** |
-| P6-08 | **Conquest attempts on the day a rival goes to War** | Decided after the simulator run (T-09, section 6.5); the run is in [section 12.4](#124-stage-4-the-run-and-the-report-2026-10-18) | See T-09 |
+| P6-08 | **Conquest attempts on the day a rival goes to War** | Decided after the simulator run (T-09, section 6.5); the run is in [section 12.4](#124-stage-4-the-run-and-the-report-2026-10-18) | T-09 (a). **Decided (Rich, 2026-10-18): (a), switched on (D-51).** |
 
 ### 1.3 Claude's calls
 
@@ -354,7 +354,7 @@ The proof is synthetic: the 3.1.0, 3.2.0 and 3.3.0 fixtures load under 3.4.0 wit
 | `respect.marks` | section 4.1's table (`orc: { war: −15, raidsStrongerAt: −40, ownDown: −60, raidsWeaker: 25, buysHex: 25, pact: 50, peace: null, envoy: null, sellsHex: null, callToArms: 45, ownUp: 75 }`, and so on for each rival) |
 | `respect.standing`, `respect.raidsStrongerAt`, `respect.own.up`, `respect.own.down`, `respect.thresholds.{raidsWeaker, sellHex, goblinBuysHex, pact, envoy, buyHex, callToArms}` | retired into `respect.marks` |
 | `respect.own` | keeps its effects (`orcConquests`, `goblinGreedSteps`, `goblinOfferMult`, `dwarfWildWallMax`, `archmageSurgeMult`) and gains the Orc's +75 perk per P6-07 |
-| `rivalAi.planConquestOnWar` | `false` (C-93) |
+| `rivalAi.planConquestOnWar` | `false` (C-93) as built; `true` from D-51 (T-09) |
 | `rivalAi.grabDays` | `{ min: 1, max: 7 }` (C-91) |
 | `rivalAi.wallDays` | `6` (C-92) |
 
@@ -582,7 +582,7 @@ The same 720 campaigns, once as built and once with `planConquestOnWar` on (666 
 
 | # | Target | Reading | Options | Recommendation |
 | --- | --- | --- | --- | --- |
-| T-09 | P6-08 | The switch moves no target past the noise; conquest attempts stay about one a campaign | (a) switch it on: War means conquest attempts from the day it starts, as the court says; (b) leave it off: the weekly rhythm, as built | (a): it costs nothing the targets can see, and it matches daily standings. Either is Rich's call (D-02) |
+| T-09 | P6-08 | The switch moves no target past the noise; conquest attempts stay about one a campaign | (a) switch it on: War means conquest attempts from the day it starts, as the court says; (b) leave it off: the weekly rhythm, as built | (a): it costs nothing the targets can see, and it matches daily standings. Either is Rich's call (D-02). **Decided (Rich, 2026-10-18): (a)** ("Switch daily conquest planning on (T-09 option a)."); `planConquestOnWar` is `true`, D-51 |
 
 #### T-10: the Goblin's standing churns in some campaigns (C-87)
 

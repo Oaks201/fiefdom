@@ -850,11 +850,11 @@ const RULES_TABLE = {
     /** Patch 6 (D-50, C-92, N-24): wall levels not facing the player rise over this many day closes after the week close, the same number each day. TUNE. */
     wallDays: 6,
     /**
-     * Patch 6 (C-93, P6-08, T-09): a rival who goes to War at a day's close plans his conquest attempts at once
-     * (A-146's rule, within the week's allowance) rather than at the next week close. Off until Rich decides on
-     * the simulator's comparison.
+     * Patch 6 (C-93, P6-08, T-09, D-51): a rival who goes to War at a day's close plans his conquest attempts at
+     * once (A-146's rule, within the week's allowance) rather than at the next week close. On: Rich took T-09's
+     * option (a) on 2026-10-18, the simulator showing no target moved by it.
      */
-    planConquestOnWar: false
+    planConquestOnWar: true
   },
 
   /**
