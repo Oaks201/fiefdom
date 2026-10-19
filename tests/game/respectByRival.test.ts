@@ -161,6 +161,22 @@ test('D-49: the standing follows Respect at each day’s close, posting each cha
   assert.equal(dailyStandings(resolved, START, () => undefined).rivals.goblin.disposition.player, 'tension', 'a resolved rival is left as he is')
 })
 
+test('T-10: the standing’s buffer is 0 as built, and at 0 the lines read the same whatever standing he holds', () => {
+  assert.equal(R.standingBuffer, 0)
+  for (const r of RIVAL_IDS) {
+    for (let respect = R.min; respect <= R.max; respect++) {
+      for (const coalition of [false, true]) {
+        const lines = standingFor(r, respect, coalition)
+        for (const from of ['peace', 'tension', 'war'] as const) assert.equal(standingFor(r, respect, coalition, from), lines, `${r} at ${respect} from ${from}`)
+      }
+    }
+  }
+  const base = at(at(realm(), 'goblin', marksFor('goblin').war + 1, 'war'), 'archmage', (marksFor('archmage').peace as number) - 1, 'peace')
+  const next = dailyStandings(base, START, () => undefined)
+  assert.equal(next.rivals.goblin.disposition.player, 'tension', 'War left a point over his line')
+  assert.equal(next.rivals.archmage.disposition.player, 'tension', 'Peace left a point under his line')
+})
+
 test('D-49: settlement reads the standing at a mid-week day’s close, and Peace stops his raids from the next dawn (A-132)', () => {
   // Founded Thursday 2026-10-08; Friday 10-09 is mid-week.
   const ledger = steadyLedger('2026-09-10', 40)

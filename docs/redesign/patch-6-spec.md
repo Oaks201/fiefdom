@@ -357,6 +357,7 @@ The proof is synthetic: the 3.1.0, 3.2.0 and 3.3.0 fixtures load under 3.4.0 wit
 | `rivalAi.planConquestOnWar` | `false` (C-93) as built; `true` from D-51 (T-09) |
 | `rivalAi.grabDays` | `{ min: 1, max: 7 }` (C-91) |
 | `rivalAi.wallDays` | `6` (C-92) |
+| `respect.standingBuffer` | `0` (T-10's probe, section 12.4): 0 reads the lines both ways, as built; the simulator measured 5. Rich decides any other number |
 
 ---
 
@@ -603,4 +604,53 @@ With the smarter player the Goblin's runs 2 to 22 (62 of 200 back within a week)
 | # | Target | Reading | Options | Recommendation |
 | --- | --- | --- | --- | --- |
 | T-10 | C-87 | The Goblin's standing changes a median 5 times a greedy campaign but up to 35, and 40% of his changes followed by another within a week; the others don't churn | (a) accept: most campaigns see a handful of changes; (b) a buffer: once his standing changes, it changes back only when Respect is a few points past the line the other way (5, TUNE), for every rival; (c) hold any new standing at least 7 days | (b), probed first: run the targets with a 5-point buffer and report the Goblin's flips and G-20 before any number is set (D-02). Nothing is changed |
+
+#### T-10 probed: a 5-point buffer on the standings (2026-10-19)
+
+The probe T-10's recommendation asked for: the targets run at a buffer of 5 beside the build at 0. Nothing in play changes: `RULES.respect.standingBuffer` stays 0 until Rich decides (D-02).
+
+| # | Spec said | Built | Why |
+| --- | --- | --- | --- |
+| S-78 | T-10 (b): once a standing changes, it changes back only when Respect is a few points past the line the other way, for every rival | `RULES.respect.standingBuffer` (TUNE, 0). `standingFor` takes the standing he holds: at Peace he goes back to Tension only below his Peace line less the buffer, at War only above his War line plus the buffer; coming to Peace or War reads the lines themselves. The day's close (`dailyStandings`) and the week close (`setDisposition`) both read it through `dispositionFor` from the standing he holds, so one rule serves both. A coalition is War whatever his Respect; the Orc is never at Peace | At 0 every reading is as before: a test reads every Respect from −100 to 100, each standing held and both coalition states, for each rival. One edge at 5: a rival whose coalition ends while his Respect is within 5 of his War line stays at War until it is past that |
+| S-79 | T-10: probe before any number is set | `npm run sim -- --targets --variant standingBuffer` (`STANDING_BUFFER`, with `BUFFER_PROBE` 5, in `sim/overrides.ts`) plays the targets at 5; its report went to a scratch folder and its numbers are here. A scratch probe outside the repo played the Steadfast campaigns again (100 greedy, 40 smarter) at 0 and 5 and dated each change from the log; its counts match the report's flips section campaign for campaign | The base report stays `targets-3.4.0.md`. Run again beside the variant (1,079 s on 6 workers), it reads as committed: every target and flip the same, the timing aside, and one mean on a rounding edge (the Orc's greedy `hexConquered` count, 2.1 against 2.0, summed in the order the workers finish) |
+
+Standing changes a campaign, Steadfast (median; most), from the report's "Standing flips and conquest attempts":
+
+| Rival | Smarter, 0 | Smarter, 5 | Greedy, 0 | Greedy, 5 |
+| --- | --- | --- | --- | --- |
+| Orc | 2; 4 | 2; 4 | 0; 4 | 0; 2 |
+| Goblin | 4; 22 | 4; 8 | 5; 35 | 3; 13 |
+| Dwarf | 1; 3 | 1; 1 | 4; 10 | 3; 7 |
+| Archmage | 1; 1 | 1; 1 | 3; 11 | 2; 5 |
+
+Changes followed by another within 7 days, of all changes (the probe):
+
+| Rival | Smarter, 0 | Smarter, 5 | Greedy, 0 | Greedy, 5 |
+| --- | --- | --- | --- | --- |
+| Orc | 19 of 86 | 22 of 82 | 2 of 8 | 0 of 6 |
+| Goblin | 62 of 200 | 28 of 149 | 246 of 654 | 27 of 369 |
+| Dwarf | 9 of 52 | 0 of 40 | 58 of 385 | 7 of 330 |
+| Archmage | 0 of 40 | 0 of 40 | 82 of 317 | 15 of 229 |
+
+Greedy campaigns with 19 Goblin changes or more: 9 of 100 at 0, none at 5.
+
+| Target | Buffer 0 (as built) | Buffer 5 |
+| --- | --- | --- |
+| G-08 (100 seeds; 40) | 1.21 vs 0.59 = 2.04×; 2.10× | 1.20 vs 0.59 = 2.04×; 2.01× |
+| G-10 | lost dwarf; days dwarf; defenses orc; both ways orc; Goblin by deal 45%; surge weeks 100% | the same |
+| G-19 (falls; Ultimatums) | 0%; 0%; 4%; 78%, 98%, 100% | 0%; 0%; 3%; 84%, 98%, 100% |
+| G-20 | 3; 0; 2; 2 | 3; 0; 2; 1 |
+| Conquest attempts a campaign (smarter; greedy) | 0.6; 1.1 | 0.4; 1.2 |
+| Every other target | met | met, within a point or two (G-04 3.33 against 3.30; G-06 2.41× against 2.39×; G-11 Steadfast week 59 against 58, Committed by week 76 80% against 83%) |
+
+- **It does what T-10 asked.** The Goblin's worst greedy campaign falls from 35 changes to 13 and his worst smarter one from 22 to 8, and the share of his greedy changes followed by another within a week from 38% (246 of 654) to 7% (27 of 369). The Dwarf's and the Archmage's quick reversals mostly go too. No median moves by more than 2.
+- **The standings still move.** G-20's rivals reaching Peace (3) and War (2) are unchanged. Its last reading, each active rival's changes of standing sampled at the week closes (Steadfast smarter, median), falls from 2 to 1: met, at its floor.
+- **He holds each end a little longer.** The Goblin's active weeks at Peace / Tension / War: smarter 12% / 79% / 8% against 18% / 75% / 7%; greedy 7% / 55% / 38% against 10% / 51% / 39%. The other rivals move a point or two.
+- **The Orc barely notices.** His Respect climbs 3 for each raid of his beaten, so 5 points is two raids; with the smarter player he has 22 quick returns at 5 against 19 at 0.
+- **G-19's Ultimatums move most.** Steadfast smarter campaigns with one: 25 of 40 at 0, 30 at 5 (Steadfast greedy 91% both). An Ultimatum comes from a rival's Ascendancy (A-177), not from his standing, and any change re-draws a campaign's later days, so some of this may be noise; the run can't tell which. No Steadfast campaign falls.
+- **What taking it would cost:** a rules version step (play changes); the court's standing note and How to play's Diplomacy and Respect section saying the hold, from `RULES`. The live campaign carries forward with no migration: the buffer reads only the standing his save already holds.
+
+| # | Target | Reading | Options | Recommendation |
+| --- | --- | --- | --- | --- |
+| T-10 | C-87 | At 5, the Goblin's most changes a campaign fall from 35 to 13 (greedy) and 22 to 8 (smarter), and his changes followed by another within a week from 38% to 7%; every target stays met; G-20's last reading falls to its floor (2 to 1); Steadfast smarter campaigns with an Ultimatum 25 to 30 of 40 | (a) accept the churn, the buffer left at 0; (b) the buffer at 5 for every rival; (c) hold any new standing at least 7 days (not measured) | (b) at 5: it removes the churn T-10 found and leaves the real moves to Peace and War as they were. With it, the court's standing note and How to play say the hold, and the rules version steps. Rich decides (D-02); `standingBuffer` stays 0 until he does |
 

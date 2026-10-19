@@ -36,11 +36,18 @@ export function respectChange(rival: RivalId, reason: string, common: number): n
   return (R.byRival[rival] as Readonly<Record<string, number>>)[reason] ?? common
 }
 
-/** The standing Respect gives `rival` (D-40, D-48): War at his War line or below, or in a coalition; Peace at his Peace line or above (never the Orc); Tension between. */
-export function standingFor(rival: RivalId, respect: number, inCoalition: boolean): Disposition {
+/**
+ * The standing Respect gives `rival` (D-40, D-48): War at his War line or below, or in a coalition; Peace at
+ * his Peace line or above (never the Orc); Tension between. Given the standing he holds (`from`), the buffer
+ * (T-10, `RULES.respect.standingBuffer`) holds it: Peace until Respect is below his Peace line less `buffer`,
+ * War until it is above his War line plus `buffer`. At 0 the lines read the same both ways.
+ */
+export function standingFor(rival: RivalId, respect: number, inCoalition: boolean, from?: Disposition, buffer: number = R.standingBuffer): Disposition {
   const m = marksFor(rival)
-  if (inCoalition || respect <= m.war) return 'war'
-  if (m.peace !== null && respect >= m.peace) return 'peace'
+  const war = from === 'war' ? m.war + buffer : m.war
+  const peace = m.peace === null ? null : from === 'peace' ? m.peace - buffer : m.peace
+  if (inCoalition || respect <= war) return 'war'
+  if (peace !== null && respect >= peace) return 'peace'
   return 'tension'
 }
 

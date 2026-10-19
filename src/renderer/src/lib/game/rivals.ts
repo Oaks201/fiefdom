@@ -288,14 +288,17 @@ export interface DispositionInput {
   respect: number
   /** It is in a coalition against the player. */
   inCoalition: boolean
+  /** The standing he holds, which the buffer holds (T-10, `RULES.respect.standingBuffer`); without it the lines alone decide. */
+  from?: Disposition
 }
 
 /**
  * Patch 5 (D-40, N-09): his standing toward the player, from Respect alone (`standingFor`): War at −25 or a
  * coalition, Peace at +50 (never the Orc), otherwise Tension. Threat, land taken and quiet weeks no longer decide it.
+ * The day's close and the week close both read it here, from the standing he holds, so one buffer holds both (T-10).
  */
 export function dispositionFor(i: DispositionInput): Disposition {
-  return standingFor(i.rival, i.respect, i.inCoalition)
+  return standingFor(i.rival, i.respect, i.inCoalition, i.from)
 }
 
 /** The `days` days ending `end` (inclusive): a test for an event's day. */
@@ -920,8 +923,8 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
   const r = state.rivals[rival]
   // Threat is still kept (the Last Alliance's order, A-174); it no longer sets the standing (D-40).
   const threat = threatOf(state, rival, w.day, effects)
-  const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, w.day) })
   const from = r.disposition.player
+  const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, w.day), from })
   if (from !== to) w.emit('disposition', { rival, from, to })
   return patchRival(state, rival, { threat, disposition: { ...r.disposition, player: to } })
 }
@@ -930,6 +933,7 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
  * Patch 6 (D-49, C-85): each active rival's standing read from his Respect at a day's close, by his own
  * lines (D-48), so a battle that moves him past a line shows the next morning. The week close reads it
  * again in step 7 (`setDisposition`), after the prized week and the weekly drivers; Threat stays weekly.
+ * Both read it from the standing he holds, through the same buffer (T-10, `RULES.respect.standingBuffer`, 0).
  *
  * C-93 (T-09, D-51): with `RULES.rivalAi.planConquestOnWar` on (as it is), a rival who goes to War here plans
  * his conquest attempts at once (`planConquests`, striking 2 to 7 days later) unless one of his is already
@@ -941,7 +945,7 @@ export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit, w
   for (const rival of RIVAL_IDS) {
     const r = state.rivals[rival]
     if (r.status !== 'active') continue
-    const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, day) })
+    const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, day), from: r.disposition.player })
     if (to === r.disposition.player) continue
     emit('disposition', { rival, from: r.disposition.player, to })
     state = patchRival(state, rival, { disposition: { ...r.disposition, player: to } })

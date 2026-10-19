@@ -10,8 +10,8 @@
  * then confirms the loaded `RULES` really carries the variant, so a hook that missed fails loudly.
  *
  * A variant is `base`, `income` (the Ch 15 income check's conditions), `conquestOnWar` (Patch 6, C-93: daily
- * conquest planning switched on, for T-09's comparison) or `<lever>:<percent>`, such as `hostShare:+10`. A
- * lever scales its values by 1 + percent / 100.
+ * conquest planning switched on, for T-09's comparison), `standingBuffer` (Patch 6, T-10: a 5-point buffer on
+ * the standings) or `<lever>:<percent>`, such as `hostShare:+10`. A lever scales its values by 1 + percent / 100.
  */
 import Module from 'node:module'
 
@@ -141,15 +141,19 @@ export const BASE = 'base'
 export const INCOME = 'income'
 /** Patch 6 (C-93, T-09): a rival who goes to War at a day's close plans his conquest attempts at once. */
 export const CONQUEST_ON_WAR = 'conquestOnWar'
+/** Patch 6 (T-10, C-87): a standing changes back only when Respect is `BUFFER_PROBE` points past the line the other way. */
+export const STANDING_BUFFER = 'standingBuffer'
+/** The buffer T-10 proposes probing (patch-6-spec section 12.4). */
+export const BUFFER_PROBE = 5
 
 /** The variants that are switches rather than a lever's step. */
-const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR])
+const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR, STANDING_BUFFER])
 
 export function variantOf(lever: string, delta: number): string {
   return `${lever}:${delta > 0 ? '+' : ''}${delta}`
 }
 
-/** A variant's lever and step, or null for `base`, `income` and `conquestOnWar`. */
+/** A variant's lever and step, or null for `base`, `income`, `conquestOnWar` and `standingBuffer`. */
 export function parseVariant(variant: string): { lever: Lever; delta: number } | null {
   if (SWITCHES.has(variant)) return null
   const [id, step] = variant.split(':')
@@ -164,6 +168,7 @@ export function patchOf(variant: string): (table: Table) => Table {
   if (variant === BASE) return (t) => t
   if (variant === INCOME) return (t) => (incomeCheck(t), t)
   if (variant === CONQUEST_ON_WAR) return (t) => ((t.rivalAi.planConquestOnWar = true), t)
+  if (variant === STANDING_BUFFER) return (t) => ((t.respect.standingBuffer = BUFFER_PROBE), t)
   const { lever, delta } = parseVariant(variant) as { lever: Lever; delta: number }
   return (t) => (lever.apply(t, 1 + delta / 100), t)
 }
@@ -212,6 +217,10 @@ export function checkOverride(variant: string, rules: Table): number[] {
   if (variant === CONQUEST_ON_WAR) {
     if (rules.rivalAi.planConquestOnWar !== true) throw new Error('The conquestOnWar switch did not reach RULES')
     return []
+  }
+  if (variant === STANDING_BUFFER) {
+    if (rules.respect.standingBuffer !== BUFFER_PROBE) throw new Error('The standingBuffer variant did not reach RULES')
+    return [rules.respect.standingBuffer]
   }
   const lever = (parseVariant(variant) as { lever: Lever }).lever
   const loaded = lever.read(rules)

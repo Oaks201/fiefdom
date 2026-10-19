@@ -10,7 +10,7 @@ import path from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { runCampaign, type RunOptions, type RunResult } from '../../sim/campaign'
-import { BASE, CONQUEST_ON_WAR, LEVERS, parseVariant, patchOf, variantOf } from '../../sim/overrides'
+import { BASE, BUFFER_PROBE, CONQUEST_ON_WAR, LEVERS, STANDING_BUFFER, parseVariant, patchOf, variantOf } from '../../sim/overrides'
 import { writeReport, type RunMeta } from '../../sim/report'
 import type { WorkerMessage } from '../../sim/worker'
 
@@ -68,6 +68,25 @@ test('Patch 6 (C-93, T-09): the conquestOnWar variant switches daily conquest pl
   })
   assert.ok(messages.some((m) => m.type === 'done'), 'checkOverride found the switch on')
   assert.equal(RULES.rivalAi.planConquestOnWar, true)
+})
+
+test('Patch 6 (T-10, C-87): the standingBuffer variant sets a 5-point buffer on the standings in a worker, while this thread keeps 0', async () => {
+  assert.equal(patchOf(STANDING_BUFFER)({ respect: { standingBuffer: 0 } }).respect.standingBuffer, BUFFER_PROBE)
+  assert.equal(BUFFER_PROBE, 5)
+  assert.equal(parseVariant(STANDING_BUFFER), null)
+  const variant = STANDING_BUFFER
+  const messages: WorkerMessage[] = await new Promise((resolve, reject) => {
+    const got: WorkerMessage[] = []
+    const worker = new Worker(path.join(__dirname, '../../sim/worker.cjs'), { workerData: { variant, runs: [{ ...RUNS[0], weeks: 1, variant }] } })
+    worker.on('message', (m: WorkerMessage) => got.push(m))
+    worker.once('error', reject)
+    worker.once('exit', (code) => (code === 0 ? resolve(got) : reject(new Error(`worker exited with ${code}`))))
+  })
+  const done = messages.find((m) => m.type === 'done')
+  assert.ok(done && done.type === 'done')
+  assert.deepEqual(done.lever, [BUFFER_PROBE], 'checkOverride found the buffer at 5')
+  assert.ok(messages.some((m) => m.type === 'result' && m.result.variant === variant))
+  assert.equal(RULES.respect.standingBuffer, 0)
 })
 
 test('T13: the report and its CSVs build from a handful of runs, byte for byte the same each time', () => {

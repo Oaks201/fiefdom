@@ -584,6 +584,13 @@ const RULES_TABLE = {
       dwarf: { war: -40, raidsStrongerAt: -60, ownDown: -75, raidsWeaker: 35, buysHex: 25, pact: 30, peace: 60, envoy: 50, sellsHex: null, callToArms: 60, ownUp: 75 },
       archmage: { war: -25, raidsStrongerAt: -50, ownDown: -75, raidsWeaker: 15, buysHex: 25, pact: 40, peace: 40, envoy: 65, sellsHex: 50, callToArms: 75, ownUp: 60 }
     } as PerRival<RivalMarks>,
+    /**
+     * Patch 6 (T-10, C-87): the standing's buffer. A rival at Peace goes back to Tension only below his `peace`
+     * line less this; at War, back to Tension only above his `war` line plus this. Coming to Peace or War reads
+     * the lines themselves, and a coalition is War whatever his Respect. 0 reads the lines both ways (as built);
+     * the simulator's `standingBuffer` variant measures 5. Rich decides any other number (D-02). TUNE.
+     */
+    standingBuffer: 0,
     /** Patch 5 (D-39): raids 10% stronger at a rival's `raidsStrongerAt`, the mirror of 10% weaker at `raidsWeaker`. TUNE. */
     raidsStrongerMult: 1.1,
     /**
