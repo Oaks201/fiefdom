@@ -1,12 +1,13 @@
 /**
  * A headless rival world for the T10 tests: a founded campaign whose weeks run only the rival
- * week phases (courtship bids, the rival turn, the fronts and Border Campaigns) with a passive
- * player keeping every habit. Daily combat is skipped, so many long runs stay fast.
+ * week phases (courtship bids, the rival turn, the fronts and Border Campaigns), and each day's
+ * land grabs and walls (Patch 6, D-50), with a passive player keeping every habit. Daily combat is
+ * skipped, so many long runs stay fast.
  */
 import { addDays, isWeekCloseDay } from '../../../src/renderer/src/lib/game/clock'
 import { resolveCourtships, resolveRivalCourtships } from '../../../src/renderer/src/lib/game/land'
 import { isClaimableKind } from '../../../src/renderer/src/lib/game/map'
-import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek } from '../../../src/renderer/src/lib/game/rivals'
+import { borderCampaigns, rivalBidsAtClose, rivalMovesDay, rivalTurn, settleFronts, type RivalWeek } from '../../../src/renderer/src/lib/game/rivals'
 import { shuffle } from '../../../src/renderer/src/lib/game/rng'
 import type { CampaignState, Coalition, DayRecord, GameEvent, GameEventKind, GameEventMap } from '../../../src/renderer/src/lib/game/types'
 
@@ -61,6 +62,7 @@ export function simulateRivals(start: CampaignState, weeks: number, options: Sim
     const w: RivalWeek = { day, week, weekStartsOn: 1, days: days.length, valor: 1, habits: { days, pillars: { steps: 1, table: 1, duties: 1 } }, emit }
     const courtWeek = { day, realmConsistency: 1, emit }
     state = { ...state, settledThrough: { day: addDays(day, -1), week } }
+    for (let d = first; d <= day; d = addDays(d, 1)) state = rivalMovesDay(state, d, emit)
     state = resolveRivalCourtships(resolveCourtships(rivalBidsAtClose(state, day), courtWeek), courtWeek)
     state = rivalTurn(state, w).state
     state = settleFronts(state, w)

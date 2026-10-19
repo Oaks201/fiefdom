@@ -26,7 +26,8 @@ import './surges'
 import { prepareMarches } from './marches'
 import { marchRulesDay } from './personalities'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
-import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
+import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WarhostRequest } from './rivals'
+import { dailyStances } from './terms'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
 import { EventBuffer, isPlayable } from './state'
@@ -49,8 +50,12 @@ export const DAY_PHASE_NAMES = [
   'chronicle',
   /** Patch 4 (D-28): the day's battles with the Orc move his war track; his beaten attacks cost him army. */
   'marchRules',
-  /** Patch 6 (D-49): each rival's standing read from his Respect after the day's battles moved it. */
-  'standings'
+  /** Patch 6 (D-49, D-50): each rival's standing and stance read after the day's battles moved them. */
+  'standings',
+  /** Patch 6 (D-50): the day's skirmish on each Rim front at War. */
+  'fronts',
+  /** Patch 6 (D-50): the rivals' land grabs and walls due today. */
+  'rivalMoves'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -429,8 +434,20 @@ const chroniclePhase: Phase = (state, ctx) => chronicle(state, ctx.emit)
 /** Patch 4 (D-28): the march rules that read the day once it has closed: the Orc's war track and his attrition. */
 const marchRulesPhase: Phase = (state, ctx) => marchRulesDay(state, ctx.day, ctx.emit)
 
-/** Patch 6 (D-49): Peace, Tension and War follow Respect each day, not only at the week close. */
-const standingsPhase: Phase = (state, ctx) => dailyStandings(state, ctx.day, ctx.emit)
+/** Patch 6 (D-49, D-50): Peace, Tension and War follow Respect each day, and so do the stances. */
+const standingsPhase: Phase = (state, ctx) =>
+  dailyStances(
+    dailyStandings(state, ctx.day, ctx.emit, () => rivalWeek(state, ctx)),
+    ctx.day,
+    ctx.week,
+    ctx.emit
+  )
+
+/** Patch 6 (D-50): the wars between rivals settle a skirmish a day. */
+const frontsDayPhase: Phase = (state, ctx) => skirmishFronts(state, ctx.day, ctx.weekStartsOn, ctx.emit)
+
+/** Patch 6 (D-50): a rival's land grab and walls land on their days, after the day's battles. */
+const rivalMovesPhase: Phase = (state, ctx) => rivalMovesDay(state, ctx.day, ctx.emit)
 
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
@@ -443,7 +460,9 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   contractEnd,
   chronicle: chroniclePhase, // Patch 2 (D-18)
   marchRules: marchRulesPhase, // Patch 4 (D-28)
-  standings: standingsPhase // Patch 6 (D-49)
+  standings: standingsPhase, // Patch 6 (D-49, D-50)
+  fronts: frontsDayPhase, // Patch 6 (D-50)
+  rivalMoves: rivalMovesPhase // Patch 6 (D-50)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */

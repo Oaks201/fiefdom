@@ -259,6 +259,24 @@ export interface RivalMemory {
   veilUntil?: ISODate
   /** The Goblin: the campaign week of its last Market purchase. */
   marketWeek?: number
+  /** Patch 6 (D-50, C-91): beast dens chosen at the week close, each taken (or called off) at its day's close. */
+  grabs?: RivalGrab[]
+  /** Patch 6 (D-50, C-92): wall levels bought at the week close and not yet raised, each at its day's close. */
+  walls?: RivalWall[]
+}
+
+/** Patch 6 (C-91): a beast den a rival chose at the week close, to take at `day`'s close; `i` keys its roll. */
+export interface RivalGrab {
+  hexId: string
+  day: ISODate
+  i: number
+}
+
+/** Patch 6 (C-92): a wall level a rival bought at the week close, raised at `day`'s close if he still holds the hex. */
+export interface RivalWall {
+  hexId: string
+  level: number
+  day: ISODate
 }
 
 export interface Coalition {
@@ -763,7 +781,8 @@ export interface GameEventMap {
   /** A rival's disposition toward the player changed. */
   disposition: { rival: RivalId; from: Disposition; to: Disposition }
   /** A Rim front changed state, or a rival became Emboldened or Humbled. */
-  front: { front: FrontId; state: Disposition; track: number }
+  /** `turned` (Patch 6, C-89): a day's skirmish took the track to its end, Emboldened one rival and Humbled the other. */
+  front: { front: FrontId; state: Disposition; track: number; turned?: true }
   /** A Border Campaign between two rivals (Ch 12). */
   borderCampaign: { attacker: RivalId; defender: RivalId; hexId: string; taken: boolean }
   /** A weight Milestone broke (Ch 9). */
@@ -857,6 +876,8 @@ export interface FrontState {
   state: Disposition
   /** −3..+3; positive favors the first rival in `rivals`. */
   track: number
+  /** Patch 6 (D-50, C-89): the last day whose skirmish is settled; absent in an older save, which settled a week's at its close. */
+  skirmishedThrough?: ISODate
 }
 
 export interface Deal {

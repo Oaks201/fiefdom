@@ -399,6 +399,10 @@
     "template": "{rival} now stands at War with you.",
     "final": null
   },
+  "herald.rival.grab": {
+    "template": "{rival} took {hex}.",
+    "final": null
+  },
   "herald.terms.offered.buyOff": {
     "template": "{rival} offers to buy his way out: {gift}, for a pact to leave his march alone.",
     "final": null

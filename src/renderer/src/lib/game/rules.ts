@@ -844,7 +844,17 @@ const RULES_TABLE = {
     /** The Goblin's Market buys at most one hex from another rival every this many weeks. */
     marketEveryWeeks: 4, // TUNE (A-147)
     /** The Archmage's first Ritual comes no earlier than this week. */
-    firstRitualWeek: 6 // TUNE (A-148)
+    firstRitualWeek: 6, // TUNE (A-148)
+    /** Patch 6 (D-50, C-91, N-23): a beast den chosen at the week close is taken at the close of a seeded day this many days later. TUNE. */
+    grabDays: { min: 1, max: 7 },
+    /** Patch 6 (D-50, C-92, N-24): wall levels not facing the player rise over this many day closes after the week close, the same number each day. TUNE. */
+    wallDays: 6,
+    /**
+     * Patch 6 (C-93, P6-08, T-09): a rival who goes to War at a day's close plans his conquest attempts at once
+     * (A-146's rule, within the week's allowance) rather than at the next week close. Off until Rich decides on
+     * the simulator's comparison.
+     */
+    planConquestOnWar: false
   },
 
   /**

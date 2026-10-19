@@ -30,7 +30,7 @@
  */
 import { CODEX } from './codex'
 import { addDays, diffDays, weekOf } from './clock'
-import { COMBAT_HOOKS, armyValue, band, baseArmyValue, defenseFor, effectiveGarrison, planConquest, withinReach, type Band } from './combat'
+import { COMBAT_HOOKS, armyValue, band, baseArmyValue, combatOf, defenseFor, effectiveGarrison, planConquest, withinReach, type Band } from './combat'
 import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
@@ -62,8 +62,10 @@ import {
   type Owner,
   type Pillars,
   type RivalId,
+  type RivalGrab,
   type RivalMemory,
   type RivalSpend,
+  type RivalWall,
   type RivalState,
   type WeekStartsOn
 } from './types'
@@ -589,7 +591,9 @@ function expansionCandidates(state: CampaignState, rival: RivalId): HexState[] {
  * Step 4 (A-25): up to one target (the Goblin two). The best affordable village by
  * (2 × ring) ÷ bid, bidding 1.1 × its loyalty (the Goblin 1.3 ×); the bid leaves the treasury now
  * and resolves at the next week close. With no village affordable, the most valuable beast den
- * that 0.5 × AV beats at an average roll, taken if 0.5 × AV × roll(0.85–1.15) ≥ its garrison.
+ * that 0.5 × AV beats at an average roll. Patch 6 (D-50, C-91, N-23): the den is not taken at the close
+ * but chosen, with a seeded day 1 to 7 days later (`RULES.rivalAi.grabDays`), and taken at that day's
+ * close if 0.5 × his AV that day × roll(0.85–1.15) ≥ its garrison then (`rivalMovesDay`).
  */
 function expand(input: CampaignState, rival: RivalId, allowance: number, w: RivalWeek): Spending {
   const ex = RULES.rivals.expansion
@@ -597,7 +601,8 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
   let state = input
   let left = allowance
   let spent = 0
-  const tried = new Set<string>()
+  const planned = new Set(RIVAL_IDS.flatMap((r) => (input.rivals[r].ai?.grabs ?? []).map((g) => g.hexId)))
+  const tried = new Set<string>(planned)
   const worth = (v: { hex: HexState; bid: number }): number => dominionValue(v.hex) / v.bid
   for (let i = 0; i < ex.targets[rival]; i++) {
     const candidates = expansionCandidates(state, rival).filter((h) => !tried.has(h.id))
@@ -623,13 +628,52 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
     if (dens.length === 0) break
     const den = dens.reduce((a, b) => (b.ring > a.ring || (b.ring === a.ring && effectiveGarrison(b) < effectiveGarrison(a)) ? b : a))
     tried.add(den.id)
-    const rolled = roll(seed, w.day, `rival:${rival}:den:${i}`, -ex.roll, ex.roll)
-    if (ex.denArmyShare * av * (1 + rolled) >= effectiveGarrison(den)) {
-      state = replaceHex(state, toRival(den, rival))
-      w.emit('hexTransfer', { hexId: den.id, from: 'neutral', to: rival, how: 'conquest' })
-    }
+    const gd = RULES.rivalAi.grabDays
+    const grab: RivalGrab = { hexId: den.id, day: addDays(w.day, int(seed, w.day, `rival:${rival}:grabDay:${i}`, gd.min, gd.max)), i }
+    state = patchMemory(state, rival, { grabs: [...(state.rivals[rival].ai?.grabs ?? []), grab] })
   }
   return { state, spent }
+}
+
+/**
+ * Patch 6 (D-50, C-91, C-92): the rivals' moves that land day by day, at each day's close after its battles
+ * (the `rivalMoves` day phase). Each den a rival chose at the week close is taken on its day if it is still
+ * neutral, still touches his land and is no mythic lair, and 0.5 × his AV that day × the roll beats its
+ * garrison then; otherwise the grab is called off. Each wall level he bought for that day rises if he still
+ * holds the hex. A move whose day has passed (none in play) is dropped.
+ */
+export function rivalMovesDay(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let state = input
+  const ex = RULES.rivals.expansion
+  for (const rival of RIVAL_IDS) {
+    const ai = state.rivals[rival].ai
+    if (!ai?.grabs?.length && !ai?.walls?.length) continue
+    const active = isActive(state, rival)
+    for (const g of ai.grabs ?? []) {
+      if (g.day !== day || !active) continue
+      const hex = state.hexes.find((h) => h.id === g.hexId)
+      if (!hex || hex.village || hex.mythic || !expansionCandidates(state, rival).some((h) => h.id === g.hexId)) continue
+      const rolled = roll(state.campaign.seed, day, `rival:${rival}:grab:${g.i}`, -ex.roll, ex.roll)
+      if (ex.denArmyShare * armyValue(state, rival, day) * (1 + rolled) < effectiveGarrison(hex)) continue
+      state = replaceHex(state, toRival(hex, rival))
+      emit('hexTransfer', { hexId: hex.id, from: 'neutral', to: rival, how: 'conquest' })
+    }
+    for (const wall of ai.walls ?? []) {
+      if (wall.day !== day || !active) continue
+      const hex = state.hexes.find((h) => h.id === wall.hexId)
+      if (!hex || hex.owner !== rival || hex.fortification >= wall.level) continue
+      state = replaceHex(state, { ...hex, fortification: wall.level as HexState['fortification'] })
+    }
+    const next: RivalMemory = { ...state.rivals[rival].ai }
+    const grabs = (next.grabs ?? []).filter((g) => g.day > day)
+    const walls = (next.walls ?? []).filter((x) => x.day > day)
+    if (grabs.length > 0) next.grabs = grabs
+    else delete next.grabs
+    if (walls.length > 0) next.walls = walls
+    else delete next.walls
+    state = patchRival(state, rival, { ai: next })
+  }
+  return state
 }
 
 /** What raising a rival hex to `level` costs: 15 / 35 / 70 × band, the Dwarf's level 4 at 120 × band (A-145, D-17), × `mult`. */
@@ -642,12 +686,17 @@ function rivalFortificationCost(level: number, band: number, mult: number): numb
  * Step 5: one level at a time on its border hexes (those touching land it doesn't hold), the
  * ones facing the player first, then the least fortified, then the innermost. The Dwarf reaches
  * level 4, and its Deep Halls make every level 25% cheaper. Patch 4 (D-30, P4-06): from week 3 the
- * Dwarf also builds walls on the wilds of his march that face the player's land.
+ * Dwarf also builds walls on the wilds of his march that face the player's land. Patch 6 (D-50, C-92,
+ * N-24): every level is bought now, from the same budget in the same order, but only those facing the
+ * player (and the Dwarf's wild walls) go up at once; the rest rise over the next `wallDays` day closes,
+ * the same number each day (`rivalMovesDay`).
  */
 function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number, day: ISODate): Spending {
   let state = input
   let left = allowance
   let spent = 0
+  const before = new Map(state.hexes.map((h) => [h.id, h.fortification]))
+  const later: { hexId: string; level: number }[] = []
   const mult = rival === 'dwarf' ? 1 - RULES.rivals.special.dwarfFortifyDiscount : 1
   const cap = fortificationCap(rival)
   const order = new Map(state.hexes.map((h, i) => [h.id, i]))
@@ -671,11 +720,20 @@ function fortifyBorder(input: CampaignState, rival: RivalId, allowance: number, 
     const pickHex = candidates[0]
     if (!pickHex) break
     if (pickHex.hex.owner === 'neutral') wildRaised++
+    else if (!pickHex.facing) later.push({ hexId: pickHex.hex.id, level: pickHex.hex.fortification + 1 })
     state = replaceHex(state, { ...pickHex.hex, fortification: (pickHex.hex.fortification + 1) as HexState['fortification'] })
     left -= pickHex.cost
     spent += pickHex.cost
   }
   if (spent === 0) return { state, spent }
+  if (later.length > 0) {
+    // The levels away from the player wait for their day: the hex keeps its wall until then.
+    const perDay = Math.ceil(later.length / RULES.rivalAi.wallDays)
+    const walls: RivalWall[] = later.map((w, k) => ({ ...w, day: addDays(day, 1 + Math.floor(k / perDay)) }))
+    const waiting = new Set(later.map((w) => w.hexId))
+    state = { ...state, hexes: state.hexes.map((h) => (waiting.has(h.id) ? { ...h, fortification: before.get(h.id) as HexState['fortification'] } : h)) }
+    state = patchMemory(state, rival, { walls: [...(state.rivals[rival].ai?.walls ?? []), ...walls] })
+  }
   return { state: patchRival(state, rival, { treasury: state.rivals[rival].treasury - spent }), spent }
 }
 
@@ -872,8 +930,13 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
  * Patch 6 (D-49, C-85): each active rival's standing read from his Respect at a day's close, by his own
  * lines (D-48), so a battle that moves him past a line shows the next morning. The week close reads it
  * again in step 7 (`setDisposition`), after the prized week and the weekly drivers; Threat stays weekly.
+ *
+ * C-93 (T-09): with `RULES.rivalAi.planConquestOnWar` on, a rival who goes to War here plans his conquest
+ * attempts at once (`planConquests`, striking 2 to 7 days later) unless one of his is already coming, so
+ * never more a week than the close would plan. `week` is the day's week as the rival turn sees it; it is
+ * needed only then. Off, nothing is planned before the next close.
  */
-export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit, week?: () => RivalWeek, planOnWar: boolean = RULES.rivalAi.planConquestOnWar): CampaignState {
   let state = input
   for (const rival of RIVAL_IDS) {
     const r = state.rivals[rival]
@@ -882,6 +945,8 @@ export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit): 
     if (to === r.disposition.player) continue
     emit('disposition', { rival, from: r.disposition.player, to })
     state = patchRival(state, rival, { disposition: { ...r.disposition, player: to } })
+    const coming = combatOf(state).conquests.some((c) => c.rival === rival && c.date > day)
+    if (to === 'war' && planOnWar && week && !coming) state = planConquests(state, rival, week(), realmEffects(state))
   }
   return state
 }
@@ -985,33 +1050,56 @@ function clampTrack(track: number): number {
 }
 
 /**
- * The `fronts` week phase (A-153): for each front at War this week, one skirmish for each day of
- * the week (each drawn on its own day, won with a chance of the rival's share of the two AVs)
- * moves the track a step toward the winner, from −3 to +3, then the war costs both sides 5% of
- * their AV. A front at Peace moves its track a step toward 0 (A-37). The Herald hears when a
- * rival becomes Emboldened (+3) or Humbled (−3); both act on next week's raids.
+ * Patch 6 (D-50, C-89, N-21): each front at War settles its skirmishes through `day`, one a day (A-153),
+ * each drawn on its own day and won at the rival's share of the two AVs, moving the track a step toward the
+ * winner, from −3 to +3. The `fronts` day phase calls it at each day's close, so the wars between rivals
+ * move day by day. A day already settled is never settled again (`skirmishedThrough`); a save from before
+ * Patch 6, which settled a week's skirmishes at its close, catches up the week's earlier days at its first
+ * close. The day a track reaches its end posts `front` with `turned` (one rival Emboldened, the other
+ * Humbled), which acts on raids from the next dawn.
  */
-export function settleFronts(input: CampaignState, w: RivalWeek): CampaignState {
+export function skirmishFronts(input: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn, emit: Emit): CampaignState {
   let state = input
   const fr = RULES.rivals.fronts
-  const start = weekOf(w.day, w.weekStartsOn) > state.campaign.startDate ? weekOf(w.day, w.weekStartsOn) : state.campaign.startDate
+  const weekStart = weekOf(day, weekStartsOn)
+  const from = weekStart > state.campaign.startDate ? weekStart : state.campaign.startDate
   for (const id of FRONT_IDS) {
     const front = state.fronts[id]
     const [a, b] = front.rivals
+    if (front.state !== 'war' || !isActive(state, a) || !isActive(state, b)) continue
+    const next = front.skirmishedThrough !== undefined && front.skirmishedThrough >= from ? addDays(front.skirmishedThrough, 1) : from
+    if (next > day) continue
     let track = front.track
-    if (front.state === 'war' && isActive(state, a) && isActive(state, b)) {
-      for (let d = start; d <= w.day; d = addDays(d, 1)) {
-        const avA = armyValue(state, a, d)
-        const avB = armyValue(state, b, d)
-        const share = avA + avB > 0 ? avA / (avA + avB) : 1 / 2
-        track = clampTrack(track + (chance(state.campaign.seed, d, `skirmish:${id}`, share) ? fr.skirmishesPerDay : -fr.skirmishesPerDay))
-      }
-      state = loseArmy(loseArmy(state, a, fr.warArmyLoss), b, fr.warArmyLoss)
-    } else if (front.state === 'peace' && track !== 0) {
-      track = track > 0 ? Math.max(0, track - fr.peaceStep) : Math.min(0, track + fr.peaceStep)
+    for (let d = next; d <= day; d = addDays(d, 1)) {
+      const avA = armyValue(state, a, d)
+      const avB = armyValue(state, b, d)
+      const share = avA + avB > 0 ? avA / (avA + avB) : 1 / 2
+      const was = track
+      track = clampTrack(track + (chance(state.campaign.seed, d, `skirmish:${id}`, share) ? fr.skirmishesPerDay : -fr.skirmishesPerDay))
+      if (track !== was && Math.abs(track) === fr.track.max) emit('front', { front: id, state: front.state, track, turned: true })
     }
-    if (track !== front.track && Math.abs(track) === fr.track.max) w.emit('front', { front: id, state: front.state, track })
-    state = withTrack(state, state.fronts[id], track)
+    state = withTrack(state, { ...front, skirmishedThrough: day }, track)
+  }
+  return state
+}
+
+/**
+ * The `fronts` week phase (A-153): the week's skirmishes are settled day by day (`skirmishFronts`, Patch 6;
+ * any not yet settled are settled here first), then the war costs both sides of each front at War 5% of
+ * their AV. A front at Peace moves its track a step toward 0 (A-37).
+ */
+export function settleFronts(input: CampaignState, w: RivalWeek): CampaignState {
+  let state = skirmishFronts(input, w.day, w.weekStartsOn, w.emit)
+  const fr = RULES.rivals.fronts
+  for (const id of FRONT_IDS) {
+    const front = state.fronts[id]
+    const [a, b] = front.rivals
+    if (front.state === 'war' && isActive(state, a) && isActive(state, b)) {
+      state = loseArmy(loseArmy(state, a, fr.warArmyLoss), b, fr.warArmyLoss)
+    } else if (front.state === 'peace' && front.track !== 0) {
+      const track = front.track > 0 ? Math.max(0, front.track - fr.peaceStep) : Math.min(0, front.track + fr.peaceStep)
+      state = withTrack(state, front, track)
+    }
   }
   return state
 }

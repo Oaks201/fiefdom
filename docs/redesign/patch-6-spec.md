@@ -506,3 +506,34 @@ The stage-4 report adds the dedicated flip row (C-87) and the daily-conquest com
 - `diplomacy-courts-by-rival`: the Orc's marks (War −15, calls to arms 45, pacts and his Challenge at 50, his new perk at 75; no Peace, envoy or hex sale) beside the Goblin's, at Peace from 40;
 - `court-marks-dwarf`: the Dwarf (Peace 60, War −40, no hex sale) beside the Archmage (raids weaker from 15, foresight at 60, envoys at 65, calls to arms at 75);
 - `guide-marks-table`: How to play's table, one column per ruler.
+
+### 12.3 Stage 3: the realm by the day (2026-10-18, rules 3.4.0)
+
+Built on `patch-6` at Rich's go-ahead ("Go ahead with stage 3: fronts, stances, land grabs and walls by the day, with the daily conquest switch off").
+
+| # | Spec said | Built | Why |
+| --- | --- | --- | --- |
+| S-68 | Section 7.1: day phases `standings`, `fronts`, `rivalMoves` | So; the stances (C-90) are read inside `standings`, after the standing | Both are readings of the day's state; no fourth phase |
+| S-69 | Section 7.1: no new front state | `FrontState.skirmishedThrough?`, the last day whose skirmish is settled. A day is settled once, and a save from before Patch 6 that takes 3.4 mid-week settles that week's earlier days at its first close; the week phase runs the same catch-up first, so settling a week only at its close gives the old result | Without it the live campaign's first 3.4 week would lose the skirmishes of its days before the install |
+| S-70 | Section 7.1: "New events: none" | The `front` event gains an optional `turned`, set on the day a skirmish takes the track to its end; the Herald tells only that, not the weekly draw's news of a front | The weekly draw posts `front` too, with whatever track it has |
+| S-71 | C-91 | The grab's day is drawn at the close (`rival:<id>:grabDay:<i>`) and its roll on its day (`rival:<id>:grab:<i>`); his AV is read on that day (the old close read the next day's) | Each draw on its own day, as A-153's skirmishes |
+| S-72 | — | The four stances of a day share one reading of the measures that don't depend on the rival (`sharedMeasures` in `terms.ts`) | The first timing with daily stances put the re-founding's 365 days at 2,051 ms against G-15's 2 s; shared, 1,922 ms (1,863 without daily stances), and the 365-day catch-up 1,005 ms |
+| S-73 | C-93: "within the week's allowance" | A rival who goes to War plans nothing while an attempt of his is still coming; otherwise A-146's `conquestPlansPerWeek` and his extra. `dailyStandings` takes the switch as a parameter that defaults to `RULES`, so a test can turn it on without changing the rules | Never more at a time than the close would plan |
+| S-74 | — | The rival-only test world (`tests/game/support/rival-sim.ts`) runs each day's `rivalMovesDay`, so its 52-week safety runs take the grabs and raise the walls | The checks that no rival enters rings 0 to 2 cover the new moves |
+
+**Targets** (`npm run sim -- --targets`, 720 campaigns, 518 s; [targets-3.4.0](../game/sim/targets-3.4.0.md) regenerated, stage 2's reading beside it). Every target stays met; the daily moves shift each by a point or two at most, as section 6 expected:
+
+| Target | Stage 2 | Stage 3 | |
+| --- | --- | --- | --- |
+| G-01 | 5.8; 83% | 5.9; 84% | kept |
+| G-04 | 3.32; 4.1 | 3.32; 4.1 | kept |
+| G-07 in full | 59 / 60 / 59.5 / 59 | 59 / 60 / 60 / 59 | kept |
+| G-08 (100 seeds) | 1.19 vs 0.57 = 2.09× | 1.21 vs 0.59 = **2.05×** (2.09× on 40); lost ÷ gained 15% | met |
+| G-10 | the Goblin by deal 44% | 45% | kept |
+| G-11 | 53.5; 59; 69 (83%) | 54; 59; 69 (80%) | kept |
+| G-15 | 1.79 MB | 1.73 MB | kept |
+| G-19 (Ultimatums Steadfast; Committed; Wavering) | 84%; 100%; 100% | 79%; 98%; 100% | kept, no falls |
+| G-20 | 3; 0; 2; 2 | 3; 0; 2; 2 | kept |
+| The rest | | within a point of stage 2 | kept |
+
+**Verification:** `npm run typecheck`, `npm test` (862 tests: `dailyMoves.test.ts` new, ten tests of the four moves and the switch) and `npm run check:game` (373 text slots) pass; `scripts/campaign-perf.ts`: the 365-day catch-up 1,005 ms, the re-founding 1,922 ms, `campaign.json` 1.31 MB after 70 weeks.

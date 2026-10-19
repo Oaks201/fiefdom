@@ -79,8 +79,17 @@ export function marchShareHeld(state: CampaignState, rival: RivalId): number {
   return all > 0 ? held / all : 0
 }
 
-/** Each measure's value as `rival` reads it on `day`. Hidden. */
-export function measures(state: CampaignState, rival: RivalId, day: ISODate): Record<Measure, number> {
+/** What every rival's measures share on a day: read once when all four read their stance (Patch 6, `dailyStances`). */
+interface SharedMeasures {
+  reputation: number
+  playerArmy: number
+  share: number
+  victories: number
+  dominion: number
+  constancy: number
+}
+
+function sharedMeasures(state: CampaignState): SharedMeasures {
   const claimable = state.hexes.filter((h) => isClaimableKind(h) && h.kind !== 'lairMouth')
   const share = claimable.filter((h) => h.owner === 'player').length / Math.max(1, claimable.length)
   const won = state.grandBattles.filter((b) => b.result !== undefined && b.result !== 'defeat').length
@@ -88,11 +97,23 @@ export function measures(state: CampaignState, rival: RivalId, day: ISODate): Re
   const weeks = state.weight.weeks.slice(-T.constancyWeeks)
   return {
     reputation: reputationEarned(state),
-    army: playerArmyValue(state) / Math.max(1, armyValue(state, rival, day)),
-    land: rival === 'dwarf' ? Math.max(share, marchShareHeld(state, rival)) : share,
+    playerArmy: playerArmyValue(state),
+    share,
     victories: won + T.resolvedVictories * resolved,
     dominion: totalDominion(state),
     constancy: weeks.length > 0 ? weeks.reduce((s, w) => s + w.realmConsistency, 0) / weeks.length : 0
+  }
+}
+
+/** Each measure's value as `rival` reads it on `day`. Hidden. */
+export function measures(state: CampaignState, rival: RivalId, day: ISODate, shared: SharedMeasures = sharedMeasures(state)): Record<Measure, number> {
+  return {
+    reputation: shared.reputation,
+    army: shared.playerArmy / Math.max(1, armyValue(state, rival, day)),
+    land: rival === 'dwarf' ? Math.max(shared.share, marchShareHeld(state, rival)) : shared.share,
+    victories: shared.victories,
+    dominion: shared.dominion,
+    constancy: shared.constancy
   }
 }
 
@@ -102,8 +123,8 @@ function reading(m: Record<Measure, number>, weights: Readonly<Partial<Record<Me
 }
 
 /** `rival`'s stance score on `day` (C-38). Hidden: screens read the band. */
-export function stanceScore(state: CampaignState, rival: RivalId, day: ISODate): number {
-  return reading(measures(state, rival, day), T.weights[rival])
+export function stanceScore(state: CampaignState, rival: RivalId, day: ISODate, shared?: SharedMeasures): number {
+  return reading(measures(state, rival, day, shared), T.weights[rival])
 }
 
 /** A score's band: Defiant, Wary, Shaken or Ready to yield (R-08). */
@@ -184,9 +205,32 @@ function sellsNow(state: CampaignState, id: string): boolean {
   return o.ok || o.reason?.code === 'reputation'
 }
 
+/** `rival`'s stance band read at `day`'s close (Defiant before week 16), posting `stance` when it changes. */
+function readStance(input: CampaignState, rival: RivalId, day: ISODate, week: number, emit: Emit, shared?: SharedMeasures): CampaignState {
+  const before = stanceOf(input, rival)
+  const band = week >= T.fromWeek ? bandOfScore(stanceScore(input, rival, addDays(day, 1), shared)) : 'defiant'
+  if (band === before) return input
+  emit('stance', { rival, from: before, to: band })
+  return patchRivalTerms(input, rival, { band })
+}
+
+/**
+ * Patch 6 (D-50, C-90, N-22): every active rival's stance band read at each day's close, so the court and the
+ * Herald show it the next morning. Offers, lapses and the pacing stay at the week close (`termsWeek`).
+ */
+export function dailyStances(input: CampaignState, day: ISODate, week: number, emit: Emit): CampaignState {
+  if (week < T.fromWeek && RIVAL_IDS.every((r) => stanceOf(input, r) === 'defiant')) return input
+  // A stance changes only the terms record, never a measure, so the four read one day's shared measures.
+  const shared = week >= T.fromWeek ? sharedMeasures(input) : undefined
+  let state = input
+  for (const rival of RIVAL_IDS) if (state.rivals[rival].status === 'active') state = readStance(state, rival, day, week, emit, shared)
+  return state
+}
+
 /**
  * Terms at a week close (D-33): lapsed offers first (a lapsed buy-off counts as refused), then every
- * rival's stance band, then the offers the bands, the land and the pacing allow.
+ * rival's stance band (read each day too from Patch 6, `dailyStances`), then the offers the bands, the
+ * land and the pacing allow.
  */
 export function termsWeek(input: CampaignState, w: { day: ISODate; week: number; emit: Emit }): CampaignState {
   let state = input
@@ -201,12 +245,8 @@ export function termsWeek(input: CampaignState, w: { day: ISODate; week: number;
   const tomorrow = addDays(day, 1)
   for (const rival of RIVAL_IDS) {
     if (state.rivals[rival].status !== 'active') continue
-    const before = stanceOf(state, rival)
-    const band = week >= T.fromWeek ? bandOfScore(stanceScore(state, rival, tomorrow)) : 'defiant'
-    if (band !== before) {
-      emit('stance', { rival, from: before, to: band })
-      state = patchRivalTerms(state, rival, { band })
-    }
+    state = readStance(state, rival, day, week, emit)
+    const band = stanceOf(state, rival)
     if (!mayOffer(state, rival, day, week) || openTerms(state, tomorrow).some((o) => o.rival === rival)) continue
     const pacing = resolutionAllowed(state, tomorrow)
     switch (rival) {
