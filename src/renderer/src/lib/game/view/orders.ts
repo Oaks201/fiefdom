@@ -9,7 +9,7 @@
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, assaultGarrison, defenseBanners, envoyAvailable, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
+import { assaultBanners, assaultGarrison, defenseBanners, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
 import { realmEffects } from '../effects'
 import { fortificationValue } from '../land'
 import { claimableBy, hexIndex, hexName } from '../map'
@@ -17,7 +17,7 @@ import { RULES } from '../rules'
 import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
 import { openDayOf } from '../state'
-import { RIVAL_IDS, type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
+import { type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
 const MS_PER_SECOND = 1_000 // rules-ok: unit conversion
 
@@ -215,7 +215,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
     override: override ? [...override] : null,
     canRepeat: state.orders.some((o) => o.date === addDays(date, -1)),
     hired: { available: effects.hiredBlades.on, count: orders?.hired ?? 0, costEach: RULES.buildings.merchantHall.hiredBlades.costPerBattle },
-    envoys: RIVAL_IDS.map((r) => ({ rival: r, available: envoyAvailable(state, r), chosen: orders?.envoys?.includes(r) ?? false, costEach: RULES.respect.envoyCostPerBattle })),
+    envoys: envoyRivals().map((r) => ({ rival: r, available: envoyAvailable(state, r), chosen: orders?.envoys?.includes(r) ?? false, costEach: RULES.respect.envoyCostPerBattle })),
     estimate: { ...estimate, valor }
   }
 }

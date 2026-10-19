@@ -153,8 +153,8 @@ test('Ch 12 Threat: player Power 1,500 against an average of 1,000, none resolve
   near(threatScore({ playerPower: 3000, averageRivalPower: 1000, resolved: 0, borderHexes: 0, tookLand: false }), 80)
 })
 
-test('D-40: the standing comes from Respect: War at −25 or a coalition, Peace at +50 (never the Orc), Tension between', () => {
-  const S = RULES.respect.standing
+test('D-40, D-48: the standing comes from Respect at his own lines: War at his War line or a coalition, Peace at his Peace line (never the Orc), Tension between', () => {
+  const S = RULES.respect.marks.dwarf as { war: number; peace: number }
   assert.equal(dispositionFor({ rival: 'dwarf', respect: S.peace, inCoalition: false }), 'peace')
   assert.equal(dispositionFor({ rival: 'dwarf', respect: S.peace - 1, inCoalition: false }), 'tension')
   assert.equal(dispositionFor({ rival: 'dwarf', respect: S.war + 1, inCoalition: false }), 'tension')
@@ -171,7 +171,7 @@ test('D-40: the standing is read at the week close from Respect alone: no quiet 
   const taken: GameEvent = { id: 'ev-take', day: '2026-11-10', kind: 'hexTransfer', hexId: '0,-5', from: 'orc', to: 'player', how: 'conquest' }
   const events: GameEvent[] = []
   assert.equal(rivalTurn({ ...realm(), log: [taken] }, week(day, 6, events)).state.rivals.orc.disposition.player, 'tension', 'land taken no longer means War: it lowers Respect')
-  const hostile = withRival(realm(), 'orc', { respect: RULES.respect.standing.war - 20 })
+  const hostile = withRival(realm(), 'orc', { respect: RULES.respect.marks.orc.war - 20 })
   const next = rivalTurn(hostile, week(day, 6, events)).state
   assert.equal(next.rivals.orc.disposition.player, 'war')
   assert.deepEqual(eventsOf(events, 'disposition').filter((e) => e.rival === 'orc').map((e) => [e.from, e.to]), [['tension', 'war']])
@@ -217,11 +217,26 @@ test('Ch 12, D-39 Respect: changes clamp to −100 to +100 and are posted; the t
   )
   assert.equal(respectEffects('orc', 24).raidsWeaker, false)
   assert.equal(respectEffects('orc', 25).raidsWeaker, true)
-  assert.equal(respectEffects('goblin', 25).sellsHex, true)
-  assert.equal(respectEffects('orc', 49).sellsHex, false)
+  // D-48: each at his own marks. The Dwarf warms slowly (raids weaker from 35); the Archmage early (15).
+  assert.equal(respectEffects('dwarf', 34).raidsWeaker, false)
+  assert.equal(respectEffects('archmage', 15).raidsWeaker, true)
+  // P6-04: only the Archmage sells by deal; the Goblin's hexes are bribed (C-43) and he buys at any Respect.
+  assert.equal(respectEffects('goblin', 100).sellsHex, false)
+  assert.equal(respectEffects('goblin', RULES.respect.min).buysHex, true)
+  assert.equal(respectEffects('archmage', 50).sellsHex, true)
+  assert.deepEqual(respectEffects('orc', 100), {
+    raidsWeaker: true,
+    sellsHex: false,
+    buysHex: true,
+    pact: true,
+    envoy: false,
+    accordTalks: true,
+    callToArms: true,
+    accordEasier: true
+  })
   assert.deepEqual(respectEffects('dwarf', 75), {
     raidsWeaker: true,
-    sellsHex: true,
+    sellsHex: false,
     buysHex: true,
     pact: true,
     envoy: true,
@@ -380,7 +395,7 @@ test('Ch 12 step 7: at War from week 6 a rival announces a conquest attempt for 
   state = withOwner(state, [target.id], 'player')
   const strong = { ...state.rivals.orc.companies[0], power: 400 }
   // D-40: at War by his Respect (land taken now lowers it rather than declaring war).
-  state = withRival(state, 'orc', { companies: [strong], respect: RULES.respect.standing.war - 20 })
+  state = withRival(state, 'orc', { companies: [strong], respect: RULES.respect.marks.orc.war - 20 })
   const taken: GameEvent = { id: 'ev-take', day: '2026-11-14', kind: 'hexTransfer', hexId: target.id, from: 'orc', to: 'player', how: 'conquest' }
   state = { ...state, log: [taken], settledThrough: { day: '2026-11-14', week: 6 } }
 

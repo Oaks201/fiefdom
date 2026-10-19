@@ -5,50 +5,63 @@
  * - **What moves it**, each rival his own way (P5-07): the common changes (`RULES.respect.change`), some
  *   weighed his own way, and what he alone values (`RULES.respect.byRival`). Those read from a week's log
  *   are posted at the week close by `weeklyRespect`, once (settle once).
- * - **The standing** (P5-08): Peace, Tension or War, read from Respect at each week close
- *   (`standingFor`), a coalition against the player always War, and the Orc never at Peace.
- * - **The marks** both sides (`respectMarks`): today's positive marks with their numbers, War at −25,
- *   raids stronger at −50, and each rival's own mark at +75 and −75 (`ownMark`).
+ * - **The standing** (P5-08): Peace, Tension or War, read from Respect at each day's close (Patch 6,
+ *   D-49; `standingFor`), a coalition against the player always War, and the Orc never at Peace.
+ * - **The marks** both sides (`respectMarks`), each rival's own (Patch 6, D-48; `marksFor`): War, raids
+ *   stronger and his own detriment below; raids weaker, deals, Peace and his own perk above (`ownMark`).
+ *   Only the Accord's marks are shared (C-82).
  *
  * Respect is not a hidden value: screens show it as a number.
  */
 import { weekOf } from './clock'
-import { RULES } from './rules'
+import { RULES, type DeepReadonly, type RivalMarks } from './rules'
 import { adjustRespect } from './state'
 import type { CampaignState, Company, Disposition, Emit, ISODate, RivalId } from './types'
 
 const R = RULES.respect
+
+/** `rival`'s own marks (Patch 6, D-48): every gate on his Respect reads them, never a shared number. */
+export function marksFor(rival: RivalId): DeepReadonly<RivalMarks> {
+  return R.marks[rival]
+}
+
+/** Whether `respect` reaches `mark`: at or above it from 0 up, at or below it under 0; never a mark that is `null`. */
+export function reaches(respect: number, mark: number | null): boolean {
+  if (mark === null) return false
+  return mark >= 0 ? respect >= mark : respect <= mark
+}
 
 /** A change of Respect for `reason` with `rival`: his own weight when he has one (N-10), else the common one. */
 export function respectChange(rival: RivalId, reason: string, common: number): number {
   return (R.byRival[rival] as Readonly<Record<string, number>>)[reason] ?? common
 }
 
-/** The standing Respect gives `rival` (D-40): War at −25 or below, or in a coalition; Peace at +50 or above, never the Orc; Tension between. */
+/** The standing Respect gives `rival` (D-40, D-48): War at his War line or below, or in a coalition; Peace at his Peace line or above (never the Orc); Tension between. */
 export function standingFor(rival: RivalId, respect: number, inCoalition: boolean): Disposition {
-  if (inCoalition || respect <= R.standing.war) return 'war'
-  if (respect >= R.standing.peace && !R.standing.neverAtPeace.includes(rival)) return 'peace'
+  const m = marksFor(rival)
+  if (inCoalition || respect <= m.war) return 'war'
+  if (m.peace !== null && respect >= m.peace) return 'peace'
   return 'tension'
 }
 
-/** Whether `rival`'s own mark on one side holds (P5-07): at +75 or more (`up`), or −75 or less (`down`). */
+/** Whether `rival`'s own mark on one side holds (P5-07): at his `ownUp` or more (`up`), or his `ownDown` or less (`down`). */
 export function ownMark(state: CampaignState, rival: RivalId, side: 'up' | 'down'): boolean {
   const r = state.rivals[rival]
   if (r.status !== 'active') return false
-  return side === 'up' ? r.respect >= R.own.up : r.respect <= R.own.down
+  const m = marksFor(rival)
+  return side === 'up' ? r.respect >= m.ownUp : r.respect <= m.ownDown
 }
 
-/** What an envoy costs a battle (A-20): its rival's fee, nothing for the Orc's at his own mark (P5-07). */
-export function envoyFee(state: CampaignState, company: Pick<Company, 'id' | 'source'>): number {
-  if (company.source !== 'envoy') return 0
-  const rival = company.id.split(':')[1] as RivalId | undefined
-  return rival === 'orc' && ownMark(state, 'orc', 'up') ? 0 : R.envoyCostPerBattle
+/** What an envoy costs a battle (A-20): its rival's fee (the Orc sends none, P6-04). */
+export function envoyFee(_state: CampaignState, company: Pick<Company, 'id' | 'source'>): number {
+  return company.source === 'envoy' ? R.envoyCostPerBattle : 0
 }
 
-/** His raids' multiple from Respect: 10% weaker from 25, 10% stronger at −50 or below. */
-export function raidRespectMult(respect: number): number {
-  if (respect >= R.thresholds.raidsWeaker) return R.raidsWeakerMult
-  if (respect <= R.raidsStrongerAt) return R.raidsStrongerMult
+/** His raids' multiple from Respect (D-39, D-48): 10% weaker from his `raidsWeaker`, 10% stronger at his `raidsStrongerAt` or below. */
+export function raidRespectMult(rival: RivalId, respect: number): number {
+  const m = marksFor(rival)
+  if (respect >= m.raidsWeaker) return R.raidsWeakerMult
+  if (respect <= m.raidsStrongerAt) return R.raidsStrongerMult
   return 1
 }
 
@@ -59,26 +72,30 @@ export interface MarkSpec {
 }
 
 /**
- * Every mark on `rival`'s track, low to high (P5-07): War at −25, stronger raids at −50, his own at ±75,
- * and the positive marks of Ch 12 that open something with him (the Orc signs no Accord, C-41; the
- * Goblin's hexes are bribed and he buys at any Respect, C-43), Peace at +50 but for the Orc.
+ * Every mark on `rival`'s track, low to high (P5-07, D-48): his War line, stronger raids and his own
+ * detriment below; above, the marks of Ch 12 that open something with him at his own numbers (a mark
+ * that is `null` for him is left out: the Orc's Peace, envoys and hexes, the Dwarf's hexes, the Goblin's
+ * bribed hexes; the Goblin buys at any Respect, C-43), the Accord's shared marks (never the Orc, C-41)
+ * and his own perk.
  */
 export function marksOf(rival: RivalId): MarkSpec[] {
   const th = R.thresholds
+  const m = marksFor(rival)
+  const own = (at: number | null, key: string): { at: number; key: string }[] => (at === null || at <= R.min ? [] : [{ at, key }])
   const marks: { at: number; key: string }[] = [
-    { at: R.own.down, key: `own.${rival}.down` },
-    { at: R.raidsStrongerAt, key: 'raidsStronger' },
-    { at: R.standing.war, key: 'war' },
-    { at: th.raidsWeaker, key: 'raidsWeaker' },
-    ...(rival === 'goblin' ? [] : [{ at: th.sellHex, key: 'buysHex' }]),
-    { at: th.pact, key: 'pact' },
-    ...(R.standing.neverAtPeace.includes(rival) ? [] : [{ at: R.standing.peace, key: 'peace' }]),
-    { at: th.envoy, key: 'envoy' },
-    ...(rival === 'goblin' ? [] : [{ at: th.buyHex, key: 'sellsHex' }]),
+    { at: m.ownDown, key: `own.${rival}.down` },
+    { at: m.raidsStrongerAt, key: 'raidsStronger' },
+    { at: m.war, key: 'war' },
+    { at: m.raidsWeaker, key: 'raidsWeaker' },
+    ...own(m.buysHex, 'buysHex'),
+    { at: m.pact, key: 'pact' },
+    ...own(m.peace, 'peace'),
+    ...own(m.envoy, 'envoy'),
+    ...own(m.sellsHex, 'sellsHex'),
     ...(rival === 'orc' ? [{ at: RULES.terms.orc.respectBar, key: 'challenge' }] : [{ at: th.accordTalks, key: 'accordTalks' }]),
-    { at: th.callToArms, key: 'callToArms' },
+    { at: m.callToArms, key: 'callToArms' },
     ...(rival === 'orc' ? [] : [{ at: th.accordEasier, key: 'accordEasier' }]),
-    { at: R.own.up, key: `own.${rival}.up` },
+    { at: m.ownUp, key: `own.${rival}.up` },
     ...(rival === 'orc' ? [] : [{ at: RULES.contracts.accord.signedAtRespect, key: 'accordSigned' }])
   ]
   const byAt = new Map<number, string[]>()

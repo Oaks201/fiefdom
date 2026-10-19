@@ -469,3 +469,40 @@ Built on branch `patch-6` at Rich's go-ahead ("Commit the spec on a patch-6 bran
 - `chronicle-week-on-pace`: "On pace.";
 - `chronicle-week-at-floor`: "Even at the Healer's floor (1,700) today, the week averages 2,214.";
 - `settings-dawn-switch`: the switch under "The campaign".
+
+### 12.2 Stage 2: marks by rival and daily standings (2026-10-18, rules 3.4.0)
+
+Built on `patch-6` at Rich's go-ahead ("Go ahead with stage 2: the Respect marks by rival and daily standings"). Before any rule changed, `scripts/fixture-3.3.0.ts` wrote the 3.3.0 save the carry-forward test plays (`tests/game/fixtures/campaign-3.3.0.json`: 30 weeks of the smarter Steadfast player; the Orc at Respect 100 in Tension, the Goblin at 11, the Dwarf allied, the Archmage at 100 at Peace).
+
+| # | Spec said | Built | Why |
+| --- | --- | --- | --- |
+| S-62 | Section 4.1: the Goblin buys your hexes at "any" Respect | `buysHex: −100`, the track's floor, so every gate reads one number; the court and How to play show it as "any" | No special value to carry through the gates |
+| S-63 | Section 7.4: `respect.standing` retired into `respect.marks` | So; "never at Peace" is the Orc's `peace: null`, and `neverAtPeace` is gone | One source for each line |
+| S-64 | C-88: the catalog's `herald.front.*` lines are shown | A front's turn (its track at ±3) tells the winner, `herald.front.emboldened`, naming the loser as a fact for the line Rich writes; `.humbled` stays unused, and `.war` and `.peace` stay with the weekly front draw as before | One line a turn; the loser's Humbled is the same news |
+| S-65 | C-84 | The orders panel lists only the rivals who ever lend an envoy (`envoyRivals`), and the day's skirmishes leave out an envoy no longer lent, as the close always did | The skirmish roster had not filtered envoys |
+| S-66 | — | `reaches(respect, mark)` in `respect.ts` (at or above from 0 up, at or below under 0, never a `null` mark) serves the court's marks and `respectEffects` | Reuse |
+| S-67 | Section 4.3: How to play's marks as one table | The table lists each ruler's own marks, top to bottom from his perk to his threat, with the Accord's shared marks in the line above it | — |
+
+**Targets** (`npm run sim -- --targets`, 720 campaigns, 674 s on 12 workers; [targets-3.4.0](../game/sim/targets-3.4.0.md) against [targets-3.3.0](../game/sim/targets-3.3.0.md)). Every target that was met stays met, and **G-08 is met again**:
+
+| Target | 3.3.0 | 3.4.0 (stage 2) | |
+| --- | --- | --- | --- |
+| G-04 (net hexes a week; days land changes hands) | 3.31; 4.1 | 3.32; 4.1 | kept: the Orc and the Dwarf selling no hex didn't slow the land |
+| G-05 | 20%; week 65 | 20%; week 66 | kept |
+| G-07 in full (one; two; three; four paths) | 59 / 60 / 60 / 60 | 59 / 60 / 59.5 / 59 | kept |
+| **G-08** (land lost a week, bad vs good; 100 seeds) | 1.14 vs 0.59 = **1.92×**, missed (accepted, D-44) | 1.19 vs 0.57 = **2.09×** (2.12× on 40); lost ÷ gained 14% | **met** |
+| G-10 | the Dwarf's and the Orc's rows; the Goblin by deal 46% | the same rows; 44% | kept |
+| G-11 (Perfect; Steadfast; Committed, by week 76) | 54; 59; 70.5 (88%) | 53.5; 59; 69 (83%) | kept |
+| G-18 | 2 (98%); 0; 1 | 2 (100%); 0; 1 | kept |
+| G-19 (falls; Ultimatums Steadfast, Committed, Wavering) | 0%; 0%; 8%; 74%, 99%, 100% | 0%; 0%; 4%; 84%, 100%, 100% | kept; more Steadfast campaigns see an Ultimatum, and none falls |
+| G-20 (Peace of 3; the Orc at Peace; War; changes) | 2; 0; 2; 2 | **3**; 0; 2; 2 | kept: all three can come to Peace now, and the median rival still changes standing twice a campaign, so daily reading shows no churn on this measure |
+| G-01 to G-03, G-06, G-09, G-12, G-13, G-15 to G-17, G-21 | | within a point or two of 3.3.0 | kept |
+
+The stage-4 report adds the dedicated flip row (C-87) and the daily-conquest comparison (T-09).
+
+**Verification:** `npm run typecheck`, `npm test` (852 tests: `respectByRival.test.ts` new, the 3.3.0 carry-forward tests added, and every test that read a shared mark moved to the rival's own) and `npm run check:game` (372 text slots) pass.
+
+**Screenshots** (`docs/game/screens/p6/`, a five-week campaign founded on 3.4.0 by `scripts/screens-data.ts`):
+- `diplomacy-courts-by-rival`: the Orc's marks (War −15, calls to arms 45, pacts and his Challenge at 50, his new perk at 75; no Peace, envoy or hex sale) beside the Goblin's, at Peace from 40;
+- `court-marks-dwarf`: the Dwarf (Peace 60, War −40, no hex sale) beside the Archmage (raids weaker from 15, foresight at 60, envoys at 65, calls to arms at 75);
+- `guide-marks-table`: How to play's table, one column per ruler.

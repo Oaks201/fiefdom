@@ -108,37 +108,43 @@ test('Ch 17: a deal struck gets the rival’s one-line reaction, its placeholder
   assert.match(line.text, /135/)
 })
 
-test('D-39: the Respect marks on both sides, each rival his own (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord and never makes peace)', () => {
+test('D-39, D-48: the Respect marks on both sides, each rival his own at his own numbers (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord, never makes peace, sends no envoy and sells no hex)', () => {
   const goblin = respectMarks('goblin', 30)
-  assert.deepEqual(goblin.map((m) => m.at), [-75, -50, -25, 25, 40, 50, 55, 60, 75, 100])
+  assert.deepEqual(goblin.map((m) => m.at), [-60, -50, -25, 25, 30, 35, 40, 55, 60, 75, 100])
   assert.ok(goblin.find((m) => m.at === 25)?.opens.includes('raidsWeaker'))
-  assert.ok(goblin.find((m) => m.at === 55)?.opens.includes('accordTalks'), 'Accord talks open at 55 (D-43), before calls to arms at 60')
+  assert.ok(goblin.find((m) => m.at === 30)?.opens.includes('pact'), 'his pacts come cheap and early')
+  assert.ok(goblin.find((m) => m.at === 35)?.opens.includes('envoy'))
+  assert.ok(goblin.find((m) => m.at === 55)?.opens.includes('accordTalks'), 'Accord talks open at 55 (D-43), shared by every rival (C-82)')
+  assert.deepEqual(goblin.find((m) => m.at === 60)?.opens, ['callToArms', 'own.goblin.up'])
   assert.ok(!goblin.some((m) => m.opens.includes('sellsHex') || m.opens.includes('buysHex')), 'his hexes are bribed, and he buys at any Respect')
-  assert.deepEqual(goblin.map((m) => m.reached), [false, false, false, true, false, false, false, false, false, false])
-  assert.deepEqual(respectMarks('goblin', -60).filter((m) => m.reached).map((m) => m.at), [-50, -25], 'below 0 a mark is reached at or under it')
-  assert.ok(goblin.find((m) => m.at === 75)?.opens.includes('own.goblin.up'))
-  assert.ok(goblin.find((m) => m.at === -75)?.opens.includes('own.goblin.down'))
-  assert.ok(goblin.find((m) => m.at === 50)?.opens.includes('peace'))
+  assert.deepEqual(goblin.map((m) => m.reached), [false, false, false, true, true, false, false, false, false, false, false])
+  assert.deepEqual(respectMarks('goblin', -60).filter((m) => m.reached).map((m) => m.at), [-60, -50, -25], 'below 0 a mark is reached at or under it')
+  assert.ok(goblin.find((m) => m.at === -60)?.opens.includes('own.goblin.down'))
+  assert.ok(goblin.find((m) => m.at === 40)?.opens.includes('peace'))
   const orc = respectMarks('orc', 0)
-  assert.ok(orc.find((m) => m.at === 50)?.opens.includes('sellsHex'))
+  assert.deepEqual(orc.map((m) => m.at), [-60, -40, -15, 25, 45, 50, 75])
   assert.ok(orc.find((m) => m.at === 50)?.opens.includes('challenge'))
-  assert.ok(!orc.some((m) => m.opens.includes('peace') || m.opens.includes('accordTalks') || m.opens.includes('accordSigned')))
-  for (const m of [...goblin, ...orc]) for (const l of m.labels) assert.doesNotMatch(l, /undefined|NaN/)
+  assert.ok(orc.find((m) => m.at === 45)?.opens.includes('callToArms'), 'he fights beside you early')
+  assert.ok(!orc.some((m) => ['peace', 'accordTalks', 'accordSigned', 'envoy', 'sellsHex'].some((k) => m.opens.includes(k))))
+  assert.deepEqual(respectMarks('dwarf', 0).find((m) => m.at === 60)?.opens, ['peace', 'callToArms'])
+  assert.ok(!respectMarks('dwarf', 0).some((m) => m.opens.includes('sellsHex')), 'he never sells his people')
+  for (const r of ['orc', 'goblin', 'dwarf', 'archmage'] as RivalId[]) for (const m of respectMarks(r, 0)) for (const l of m.labels) assert.doesNotMatch(l, /undefined|NaN/)
 })
 
 test('the Respect meter spaces its marks evenly, with 0 and both ends as stops, and puts a value in line between two', () => {
   const marks = respectMarks('goblin', 0)
   const near = (a: number, b: number, what: string): void => assert.ok(Math.abs(a - b) < 1e-9, `${what}: ${a} vs ${b}`)
-  // −100 −75 −50 −25 0 25 40 50 55 60 75 100: eleven even steps, so 50, 55 and 60 sit as far apart as −75 and −50.
-  const steps = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
-  marks.forEach((m, i) => near(meterAt(marks, m.at), steps[i] / 11, `mark ${m.at}`))
-  near(meterAt(marks, 0), 4 / 11, 'zero')
-  near(meterAt(marks, 27), (5 + 2 / 15) / 11, '27, just past 25')
+  // −100 −60 −50 −25 0 25 30 35 40 55 60 75 100: twelve even steps, so 30, 35 and 40 sit as far apart as −60 and −50.
+  const steps = [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12]
+  marks.forEach((m, i) => near(meterAt(marks, m.at), steps[i] / 12, `mark ${m.at}`))
+  near(meterAt(marks, 0), 4 / 12, 'zero')
+  near(meterAt(marks, 27), (5 + 2 / 5) / 12, '27, just past 25')
   near(meterAt(marks, -100), 0, 'the low end')
   near(meterAt(marks, 100), 1, 'the high end')
   near(meterAt(marks, 140), 1, 'held to the high end')
+  // −100 −60 −40 −15 0 25 45 50 75 100: the Orc has fewer marks, so his steps are wider.
   const orc = respectMarks('orc', 0)
-  near(meterAt(orc, 60), 8 / 10, 'the Orc has no 55 or 100 mark, so his steps are wider')
+  near(meterAt(orc, 60), (7 + 10 / 25) / 9, 'the Orc at 60, between his 50 and 75')
 })
 
 test('Ch 17: the portrait’s mood follows disposition: calm at Peace, angry at War, humbled when resolved', () => {
@@ -187,7 +193,8 @@ test('D-40, C-65: each court says what its standing means, the marks that change
   const at = (d: 'peace' | 'tension' | 'war', r: RivalId = 'orc'): CampaignState => ({ ...state, rivals: { ...state.rivals, [r]: { ...state.rivals[r], disposition: { ...state.rivals[r].disposition, player: d } } } })
   assert.match(standingNote(at('tension'), 'orc'), /^Tension: he raids your border but sends no conquest attempts\./)
   assert.match(standingNote(at('tension'), 'orc'), /He never makes peace/)
-  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), new RegExp(`Peace comes at Respect \\+${RULES.respect.standing.peace}`))
+  // D-48: his own lines, Peace at +60 and War at −40 for the Dwarf.
+  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), new RegExp(`Peace comes at Respect \\+${RULES.respect.marks.dwarf.peace}; War at −${-RULES.respect.marks.dwarf.war}`))
   assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), /a pact kept to its end \(\+5\)/)
   assert.match(standingNote(at('war'), 'orc'), /^War: he sends conquest attempts/)
   assert.match(standingNote(at('peace', 'goblin'), 'goblin'), /^Peace: no raids/)

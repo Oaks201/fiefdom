@@ -7,12 +7,58 @@ import { trust } from '../lib/game/land'
 import { RULES } from '../lib/game/rules'
 import { RIVAL_IDS } from '../lib/game/types'
 import { amount } from '../lib/game/view/refusals'
-import { weekCloseView } from '../lib/game/view/shell'
+import { rivalName, weekCloseView } from '../lib/game/view/shell'
+import { marksFor } from '../lib/game/respect'
+import type { RivalId } from '../lib/game/types'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
 import { weekCloseAt, weekCloseLeft } from './game/WeekClose'
 import { Modal } from './Modal'
+
+/** Respect shown signed: +25, −40, 0. */
+const signedMark = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
+
+/** Each ruler's marks (Patch 6, D-48), one row each, every number from `RULES`: "never" where he has none, "any" where any Respect will do. */
+const MARK_ROWS: { label: string; at: (r: RivalId) => number | null; any?: boolean }[] = [
+  { label: 'His own perk', at: (r) => marksFor(r).ownUp },
+  { label: 'Calls to arms', at: (r) => marksFor(r).callToArms },
+  { label: 'He sells you hexes', at: (r) => marksFor(r).sellsHex },
+  { label: 'Envoys fight for you', at: (r) => marksFor(r).envoy },
+  { label: 'Peace', at: (r) => marksFor(r).peace },
+  { label: 'Pacts', at: (r) => marksFor(r).pact },
+  { label: 'Raids 10% weaker', at: (r) => marksFor(r).raidsWeaker },
+  { label: 'He buys your hexes', at: (r) => marksFor(r).buysHex, any: true },
+  { label: 'War', at: (r) => marksFor(r).war },
+  { label: 'Raids 10% stronger', at: (r) => marksFor(r).raidsStrongerAt },
+  { label: 'His own threat', at: (r) => marksFor(r).ownDown }
+]
+
+function MarksTable(): React.JSX.Element {
+  return (
+    <table className="guide__marks">
+      <thead>
+        <tr>
+          <th>Respect for</th>
+          {RIVAL_IDS.map((r) => (
+            <th key={r}>{rivalName(r)}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {MARK_ROWS.map((row) => (
+          <tr key={row.label}>
+            <td>{row.label}</td>
+            {RIVAL_IDS.map((r) => {
+              const at = row.at(r)
+              return <td key={r}>{at === null ? 'never' : row.any && at <= RULES.respect.min ? 'any' : signedMark(at)}</td>
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
 
 /** A share as a whole percent, e.g. 0.4 → "40%". */
 const pct = (share: number): string => `${Math.round(share * 100)}%`
@@ -760,19 +806,21 @@ export function HowToPlay(): React.JSX.Element | null {
                 {RULES.respect.byRival.archmage.ritualEndured} for a Ritual endured. Weight never counts.
               </li>
               <li>
-                <b>Its marks</b> open more as it rises: weaker raids ({RULES.respect.thresholds.raidsWeaker}), pacts ({RULES.respect.thresholds.pact}), envoys and Peace (
-                {RULES.respect.standing.peace}), Accord talks ({RULES.respect.thresholds.accordTalks}), calls to arms ({RULES.respect.thresholds.callToArms}), an easier Accord (
-                {RULES.respect.thresholds.accordEasier}),
-                and each ruler’s own perk at +{RULES.respect.own.up}. As it falls they bring worse: War ({RULES.respect.standing.war}), stronger raids (
-                {RULES.respect.raidsStrongerAt}) and each ruler’s own threat at {RULES.respect.own.down}. Each court lists its marks and what they bring.
+                <b>Its marks</b> open more as it rises and bring worse as it falls, each ruler at his own numbers (the table below). Only the Accord’s are shared: talks at{' '}
+                {RULES.respect.thresholds.accordTalks}, an easier Accord at {RULES.respect.thresholds.accordEasier}, signed at {RULES.contracts.accord.signedAtRespect}. Each
+                court lists its marks and what they bring.
               </li>
               <li>
-                <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each week close. <b>War</b> at {RULES.respect.standing.war} or below, or while
-                he stands in a coalition against you: raids and conquest attempts. <b>Peace</b> at {RULES.respect.standing.peace} or above: no raids and no conquest attempts. The
-                Orc never makes peace. <b>Tension</b> between: raids only. A Truce, which stops his raids for a while, is open at any Respect.
+                <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each day’s close. <b>War</b> at his War line or below, or while he stands in a
+                coalition against you: raids and conquest attempts. <b>Peace</b> at his Peace line or above: no raids and no conquest attempts. The Orc never makes peace.{' '}
+                <b>Tension</b> between: raids only. Who raids is drawn each week, so a ruler who comes to Peace stops raiding the next day, and one who leaves it raids again from the
+                next week. A Truce, which stops his raids for a while, is open at any Respect.
               </li>
               <li>
                 <b>Deals</b> (choose a court): Truces, pacts, buying and selling hexes. Each shows what it costs and needs.
+              </li>
+              <li className="guide__table-item">
+                <MarksTable />
               </li>
               <li>
                 <b>Stance:</b> from week {RULES.terms.fromWeek} each court shows how near its ruler is to yielding: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what

@@ -273,6 +273,16 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       return line('world', 'herald.orcTrack', { rival: rivalName('orc'), track: e.to > 0 ? `+${e.to}` : String(e.to) }, { rival: 'orc' })
     case 'stance':
       return line('world', 'herald.terms.stance', { rival: rivalName(e.rival), band: STANCE_WORDS[e.to] }, { rival: e.rival })
+    case 'disposition':
+      // Patch 6 (C-88): a standing that changes, read each day (D-49), is told the next morning.
+      return line('world', `herald.standing.${e.to}`, { rival: rivalName(e.rival) }, { rival: e.rival })
+    case 'front': {
+      // Patch 6 (C-88): a front's track at its end, the first rival's way (+) or the second's (−); the other is Humbled.
+      const pair = CODEX.fronts.find((f) => f.id === e.front)?.rivals
+      if (!pair || Math.abs(e.track) < RULES.rivals.fronts.track.max) return null
+      const [winner, loser] = e.track > 0 ? pair : [pair[1], pair[0]]
+      return line('world', 'herald.front.emboldened', { rival: rivalName(winner), other: rivalName(loser), front: e.front }, { rival: winner })
+    }
     case 'terms': {
       const facts: TextFacts = { rival: rivalName(e.rival), ...(e.hexId ? { hex: hexName(e.hexId) } : {}), ...(e.gift ? { gift: giftWords(e.gift) } : {}) }
       const extra = { rival: e.rival, ...(e.hexId ? { hexId: e.hexId } : {}) }

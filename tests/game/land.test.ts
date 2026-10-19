@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { canConquer, canRaid, raiderWeights } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import {
   availableDeals,
   bidCheck,
@@ -245,22 +246,22 @@ test('Test 9 (part): settlement resolves a courtship once, at the week close; se
 
 // ── Deals ────────────────────────────────────────────────────────────────────
 
-test('Ch 6 buy a hex: a ring-4 village from the Dwarf costs 50 × 4 × 2.0 × 1.5 = 600; refused at Respect 49; the Goblin’s are bribed instead (Patch 4, C-43)', () => {
-  const { state: s0, id } = rivalVillage(withPurse(realm(), 2_000), 'dwarf', 4)
-  const low = offerDeal(withRespect(s0, 'dwarf', 49), 'dwarf', { kind: 'buyHex', hexId: id }, TODAY)
-  assert.equal(low.price, 600)
+test('Ch 6 buy a hex: a ring-4 village from the Archmage costs 50 × 4 × 1.4 × 1.5 = 420; refused at Respect 49; the Goblin’s are bribed instead (Patch 4, C-43)', () => {
+  const { state: s0, id } = rivalVillage(withPurse(realm(), 2_000), 'archmage', 4)
+  const low = offerDeal(withRespect(s0, 'archmage', 49), 'archmage', { kind: 'buyHex', hexId: id }, TODAY)
+  assert.equal(low.price, 420)
   assert.equal(low.allowed, false)
   assert.deepEqual(low.reason, { code: 'respect', textId: 'herald.deal.refused.respect', needed: 50, have: 49 })
 
-  const state = withRespect(s0, 'dwarf', 50)
-  const deal = makeDeal(state, 'dwarf', { kind: 'buyHex', hexId: id }, TODAY)
+  const state = withRespect(s0, 'archmage', 50)
+  const deal = makeDeal(state, 'archmage', { kind: 'buyHex', hexId: id }, TODAY)
   assert.ok(deal.ok)
-  assert.equal(deal.cost, 600)
-  assert.equal(balance(deal.state.purse), 1_400)
+  assert.equal(deal.cost, 420)
+  assert.equal(balance(deal.state.purse), 1_580)
   assert.equal(hex(deal.state, id).owner, 'player')
   assert.deepEqual(hex(deal.state, id).village, { loyalty: 60 }) // A-22: 15 × ring after a purchase
-  assert.equal(deal.state.rivals.dwarf.respect, 52)
-  assert.deepEqual(deal.deal, { id: 'deal-1', rival: 'dwarf', kind: 'buyHex', madeOn: TODAY, price: 600, hexId: id })
+  assert.equal(deal.state.rivals.archmage.respect, 52)
+  assert.deepEqual(deal.deal, { id: 'deal-1', rival: 'archmage', kind: 'buyHex', madeOn: TODAY, price: 420, hexId: id })
   const logged = deal.state.log.slice(state.log.length).map((e) => e.kind)
   assert.deepEqual(logged, ['hexTransfer', 'respect', 'deal'])
   assert.ok(deal.state.log.some((e) => e.kind === 'hexTransfer' && e.how === 'trade' && e.hexId === id))
@@ -271,26 +272,38 @@ test('Ch 6 buy a hex: a ring-4 village from the Dwarf costs 50 × 4 × 2.0 × 1.
   assert.equal(goblin.reason?.code, 'useBribe')
 })
 
-test('Ch 6 buy a hex: refused for any Gate, while at war, and for a second hex deal with the same rival within 4 weeks', () => {
-  let state = withRespect(withPurse(realm(), 5_000), 'dwarf', 100)
-  const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'dwarf') as HexState
-  state = reach(state, gate.id)
-  assert.equal(offerDeal(state, 'dwarf', { kind: 'buyHex', hexId: gate.id }, TODAY).reason?.code, 'gate')
+test('P6-04: the Orc never gives ground and the Dwarf never sells his people, at any Respect; both still buy yours at 25', () => {
+  for (const rival of ['orc', 'dwarf'] as const) {
+    const { state, id } = rivalVillage(withRespect(withPurse(realm(), 5_000), rival, 100), rival, 4)
+    const offer = offerDeal(state, rival, { kind: 'buyHex', hexId: id }, TODAY)
+    assert.equal(offer.allowed, false)
+    assert.deepEqual(offer.reason, { code: 'neverSells', textId: 'herald.deal.refused.neverSells' })
+    assert.equal(makeDeal(state, rival, { kind: 'buyHex', hexId: id }, TODAY).ok, false)
+    assert.equal(availableDeals(state, rival, TODAY).some((d) => d.kind === 'buyHex'), false, 'his court lists no hex to buy')
+    assert.equal(RULES.respect.marks[rival].buysHex, 25)
+  }
+})
 
-  const first = rivalVillage(state, 'dwarf', 4)
-  assert.equal(offerDeal(withDisposition(first.state, 'dwarf', 'war'), 'dwarf', { kind: 'buyHex', hexId: first.id }, TODAY).reason?.code, 'atWar')
-  const bought = makeDeal(first.state, 'dwarf', { kind: 'buyHex', hexId: first.id }, TODAY).state
+test('Ch 6 buy a hex: refused for any Gate, while at war, and for a second hex deal with the same rival within 4 weeks', () => {
+  let state = withRespect(withPurse(realm(), 5_000), 'archmage', 100)
+  const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'archmage') as HexState
+  state = reach(state, gate.id)
+  assert.equal(offerDeal(state, 'archmage', { kind: 'buyHex', hexId: gate.id }, TODAY).reason?.code, 'gate')
+
+  const first = rivalVillage(state, 'archmage', 4)
+  assert.equal(offerDeal(withDisposition(first.state, 'archmage', 'war'), 'archmage', { kind: 'buyHex', hexId: first.id }, TODAY).reason?.code, 'atWar')
+  const bought = makeDeal(first.state, 'archmage', { kind: 'buyHex', hexId: first.id }, TODAY).state
   const second = plainHex(bought, 4, (h) => h.owner === 'neutral')
-  const withSecond = reach(withOwner(bought, [second.id], 'dwarf'), second.id)
-  const again = offerDeal(withSecond, 'dwarf', { kind: 'buyHex', hexId: second.id }, addDays(TODAY, 27))
+  const withSecond = reach(withOwner(bought, [second.id], 'archmage'), second.id)
+  const again = offerDeal(withSecond, 'archmage', { kind: 'buyHex', hexId: second.id }, addDays(TODAY, 27))
   assert.equal(again.reason?.code, 'cooldown')
   assert.equal(again.reason?.textId, 'herald.deal.refused.cooldown')
-  assert.equal(offerDeal(withSecond, 'dwarf', { kind: 'buyHex', hexId: second.id }, addDays(TODAY, 28)).allowed, true)
+  assert.equal(offerDeal(withSecond, 'archmage', { kind: 'buyHex', hexId: second.id }, addDays(TODAY, 28)).allowed, true)
 })
 
 test('Ch 6 / Exchange Wing: hexes cost 20% less to buy', () => {
-  const { state, id } = rivalVillage(withRespect(withPurse(realm(), 2_000), 'dwarf', 50), 'dwarf', 4)
-  assert.equal(offerDeal(withArmory(state, { wings: ['exchange'] }), 'dwarf', { kind: 'buyHex', hexId: id }, TODAY).price, 480)
+  const { state, id } = rivalVillage(withRespect(withPurse(realm(), 2_000), 'archmage', 50), 'archmage', 4)
+  assert.equal(offerDeal(withArmory(state, { wings: ['exchange'] }), 'archmage', { kind: 'buyHex', hexId: id }, TODAY).price, 336)
 })
 
 test('Ch 6, D-17: selling a band-2 hex is refused; a non-village band-4 hex sold to the Orc pays 0.7 × 50 × 4 × 1.5 = 210 and +5 Respect', () => {
@@ -344,10 +357,12 @@ test('Ch 6, D-17: a Truce bordering band 5 costs 150; for 7 days blocksRaids and
   assert.equal(offerDeal(warned, 'dwarf', { kind: 'truce' }, addDays(TODAY, 3)).allowed, true, 'the battle date has passed')
 })
 
-test('Ch 6 non-aggression pact: Respect 40 and 250; no conquest attempts for 28 days and raids at half rate', () => {
+test('Ch 6 non-aggression pact: at his own mark (the Orc 50, D-48) and 250; no conquest attempts for 28 days and raids at half rate', () => {
   const state = withPurse(realm(), 1_000)
-  assert.equal(offerDeal(withRespect(state, 'orc', 39), 'orc', { kind: 'pact' }, TODAY).reason?.code, 'respect')
-  const pact = makeDeal(withRespect(state, 'orc', 40), 'orc', { kind: 'pact' }, TODAY)
+  const at = RULES.respect.marks.orc.pact
+  assert.equal(at, 50)
+  assert.equal(offerDeal(withRespect(state, 'orc', at - 1), 'orc', { kind: 'pact' }, TODAY).reason?.code, 'respect')
+  const pact = makeDeal(withRespect(state, 'orc', at), 'orc', { kind: 'pact' }, TODAY)
   assert.ok(pact.ok)
   assert.equal(pact.cost, 250)
   assert.equal(pact.deal?.until, addDays(TODAY, 27))
@@ -360,7 +375,7 @@ test('Ch 6 non-aggression pact: Respect 40 and 250; no conquest attempts for 28 
   near(after, before / 2)
 })
 
-test('Ch 6 call to arms: Respect 60 and 200; the rival goes to war with a rival on its front for 14 days', () => {
+test('Ch 6 call to arms: at his own mark (the Orc 45, D-48) and 200; the rival goes to war with a rival on its front for 14 days', () => {
   const state = withRespect(withPurse(realm(), 1_000), 'orc', 60)
   const call = makeDeal(state, 'orc', { kind: 'callToArms', target: 'goblin' }, TODAY)
   assert.ok(call.ok)
@@ -373,28 +388,33 @@ test('Ch 6 call to arms: Respect 60 and 200; the rival goes to war with a rival 
   assert.ok(call.state.log.some((e) => e.kind === 'front' && e.front === 'north' && e.state === 'war'))
 
   assert.equal(offerDeal(state, 'orc', { kind: 'callToArms', target: 'dwarf' }, TODAY).reason?.code, 'noFront')
-  assert.equal(offerDeal(withRespect(state, 'orc', 59), 'orc', { kind: 'callToArms', target: 'goblin' }, TODAY).reason?.code, 'respect')
+  const call45 = RULES.respect.marks.orc.callToArms
+  assert.equal(offerDeal(withRespect(state, 'orc', call45 - 1), 'orc', { kind: 'callToArms', target: 'goblin' }, TODAY).reason?.code, 'respect')
+  assert.equal(offerDeal(withRespect(state, 'orc', call45), 'orc', { kind: 'callToArms', target: 'goblin' }, TODAY).allowed, true)
   const coalition: CampaignState = { ...state, coalitions: [{ members: ['orc', 'goblin'], trigger: 'risingCrown', warChest: 0 }] }
   assert.equal(offerDeal(coalition, 'orc', { kind: 'callToArms', target: 'goblin' }, TODAY).reason?.code, 'targetAllied')
 })
 
 test('Ch 6: availableDeals lists every deal a rival will discuss, each priced, with a text id for each refusal', () => {
-  const { state, id } = rivalVillage(withPurse(realm(), 100), 'dwarf', 4)
-  const deals = availableDeals(state, 'dwarf', TODAY)
+  const { state, id } = rivalVillage(withPurse(realm(), 100), 'archmage', 4)
+  const deals = availableDeals(state, 'archmage', TODAY)
   assert.deepEqual([...new Set(deals.map((d) => d.kind))], ['buyHex', 'sellHex', 'truce', 'pact', 'callToArms'])
   const buy = deals.find((d) => d.kind === 'buyHex' && d.hexId === id) as (typeof deals)[number]
-  assert.equal(buy.price, 600)
+  assert.equal(buy.price, 420)
   assert.equal(buy.allowed, false)
   assert.equal(buy.reason?.code, 'respect')
   assert.deepEqual(
     deals.filter((d) => d.kind === 'callToArms').map((d) => d.target),
-    ['orc', 'goblin', 'archmage']
+    ['orc', 'goblin', 'dwarf']
   )
+  // P6-04: the Dwarf's court lists no hex to buy.
+  const dwarf = availableDeals(rivalVillage(withPurse(realm(), 100), 'dwarf', 4).state, 'dwarf', TODAY)
+  assert.deepEqual([...new Set(dwarf.map((d) => d.kind))], ['sellHex', 'truce', 'pact', 'callToArms'])
   for (const d of deals) if (!d.allowed) assert.equal(d.reason?.textId, `herald.deal.refused.${d.reason?.code}`)
   assert.ok(deals.some((d) => d.kind === 'truce'))
   assert.ok(deals.some((d) => d.kind === 'pact'))
   // A rival with nothing to trade still gets one line saying so.
-  const none = availableDeals(realm(), 'orc', TODAY)
+  const none = availableDeals(realm(), 'archmage', TODAY)
   assert.deepEqual(none.find((d) => d.kind === 'buyHex')?.reason?.code, 'noHex')
 })
 
@@ -452,17 +472,18 @@ test('Ch 9 Grace I: a hex lost 10 days ago is reclaimed for half its garrison, n
 // ── The defection tally ──────────────────────────────────────────────────────
 
 test('Ch 14 defection tally: per rival, its original villages the player won by influence, trade or conquest, and whether it still holds any', () => {
-  const original = originalVillages(7).dwarf
+  // The Archmage, who still sells by deal (P6-04).
+  const original = originalVillages(7).archmage
   assert.equal(original.length, 5, 'D-16: its Gate and four more in its outer third')
-  let state = withRespect(withPurse(realm(), 2_000), 'dwarf', 60)
+  let state = withRespect(withPurse(realm(), 2_000), 'archmage', 60)
   const [march1, march2] = original.filter((id) => hex(state, id).kind !== 'gate')
-  assert.deepEqual(defectionTally(state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 0, trade: 0, conquest: 0 }, holds: 5 })
+  assert.deepEqual(defectionTally(state, 'archmage'), { rival: 'archmage', original, won: { influence: 0, trade: 0, conquest: 0 }, holds: 5 })
 
   state = reach(state, march1)
   state = resolve(placeBid(state, march1, 400, TODAY).state, 1).state // Offer 480 against 150
   assert.equal(hex(state, march1).owner, 'player')
-  state = reach(withRespect(state, 'dwarf', 60), march2)
-  const bought = makeDeal(state, 'dwarf', { kind: 'buyHex', hexId: march2 }, TODAY)
+  state = reach(withRespect(state, 'archmage', 60), march2)
+  const bought = makeDeal(state, 'archmage', { kind: 'buyHex', hexId: march2 }, TODAY)
   assert.ok(bought.ok, JSON.stringify(bought.refusal))
-  assert.deepEqual(defectionTally(bought.state, 'dwarf'), { rival: 'dwarf', original, won: { influence: 1, trade: 1, conquest: 0 }, holds: 3 })
+  assert.deepEqual(defectionTally(bought.state, 'archmage'), { rival: 'archmage', original, won: { influence: 1, trade: 1, conquest: 0 }, holds: 3 })
 })

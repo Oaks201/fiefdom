@@ -42,7 +42,7 @@ import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
 import { extraConquests, wildWallCap, wildWalls } from './personalities'
-import { standingFor, weeklyRespect } from './respect'
+import { marksFor, reaches, standingFor, weeklyRespect } from './respect'
 import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
 import type { HostUnitEntry } from './codex'
 import {
@@ -367,11 +367,11 @@ export function threatOf(state: CampaignState, rival: RivalId, day: ISODate, eff
 
 // ── Respect (Ch 12; `adjustRespect` in state.ts changes it) ──────────────────
 
-/** What a rival's Respect opens (Ch 12 thresholds): for T08 (weaker raids), T09 (deals) and T13 (Accords). */
+/** What a rival's Respect opens (Ch 12 thresholds, each rival's own from Patch 6, D-48): for T08 (weaker raids), T09 (deals) and T13 (Accords). */
 export interface RespectEffects {
   /** Its raids strike 10% weaker. */
   raidsWeaker: boolean
-  /** It sells the player a hex (the Goblin from 25, the others from 50). */
+  /** It sells the player a hex by deal: only the Archmage (P6-04; the Goblin's are bribed, C-43). */
   sellsHex: boolean
   /** It buys a hex from the player. */
   buysHex: boolean
@@ -384,14 +384,15 @@ export interface RespectEffects {
 
 export function respectEffects(rival: RivalId, respect: number): RespectEffects {
   const th = RULES.respect.thresholds
+  const m = marksFor(rival)
   return {
-    raidsWeaker: respect >= th.raidsWeaker,
-    sellsHex: respect >= (rival === 'goblin' ? th.goblinBuysHex : th.buyHex),
-    buysHex: respect >= th.sellHex,
-    pact: respect >= th.pact,
-    envoy: respect >= th.envoy,
+    raidsWeaker: respect >= m.raidsWeaker,
+    sellsHex: reaches(respect, m.sellsHex),
+    buysHex: respect >= m.buysHex,
+    pact: respect >= m.pact,
+    envoy: reaches(respect, m.envoy),
     accordTalks: respect >= th.accordTalks,
-    callToArms: respect >= th.callToArms,
+    callToArms: respect >= m.callToArms,
     accordEasier: respect >= th.accordEasier
   }
 }
@@ -865,6 +866,24 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
   const from = r.disposition.player
   if (from !== to) w.emit('disposition', { rival, from, to })
   return patchRival(state, rival, { threat, disposition: { ...r.disposition, player: to } })
+}
+
+/**
+ * Patch 6 (D-49, C-85): each active rival's standing read from his Respect at a day's close, by his own
+ * lines (D-48), so a battle that moves him past a line shows the next morning. The week close reads it
+ * again in step 7 (`setDisposition`), after the prized week and the weekly drivers; Threat stays weekly.
+ */
+export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let state = input
+  for (const rival of RIVAL_IDS) {
+    const r = state.rivals[rival]
+    if (r.status !== 'active') continue
+    const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, day) })
+    if (to === r.disposition.player) continue
+    emit('disposition', { rival, from: r.disposition.player, to })
+    state = patchRival(state, rival, { disposition: { ...r.disposition, player: to } })
+  }
+  return state
 }
 
 /**

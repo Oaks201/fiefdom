@@ -14,7 +14,7 @@ import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, ty
 import { claimableBy, hexName } from '../map'
 import { greedBand, orcTrackOf, pactHolds, surgeOn } from '../personalities'
 import { RULES } from '../rules'
-import { marksOf } from '../respect'
+import { marksFor, marksOf, reaches } from '../respect'
 import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
 import { openDayOf, weekOn } from '../state'
 import { stanceOf, weighsMost } from '../terms'
@@ -94,15 +94,16 @@ function drivers(rival: RivalId): { up: string[]; down: string[] } {
 }
 
 /**
- * Patch 5 (D-40, C-65): his standing in plain words: what it allows him, the marks that change it, and what
- * moves his Respect. Read at each week close from Respect (`standingFor`). Every number in it is public.
+ * Patch 5 (D-40, C-65): his standing in plain words: what it allows him, the marks that change it (his
+ * own, Patch 6, D-48), and what moves his Respect. Read at each day's close from Respect (`standingFor`,
+ * D-49). Every number in it is public.
  */
 export function standingNote(state: CampaignState, rival: RivalId): string {
   const r = state.rivals[rival]
   if (r.status !== 'active') return ''
-  const S = RULES.respect.standing
+  const m = marksFor(rival)
   const now = { war: 'War: he sends conquest attempts as well as raids.', tension: 'Tension: he raids your border but sends no conquest attempts.', peace: 'Peace: no raids and no conquest attempts.' }[r.disposition.player]
-  const marks = S.neverAtPeace.includes(rival) ? `He never makes peace; War comes at Respect ${signed(S.war)}, or if he joins a coalition against you.` : `Peace comes at Respect ${signed(S.peace)}; War at ${signed(S.war)}, or if he joins a coalition against you.`
+  const marks = m.peace === null ? `He never makes peace; War comes at Respect ${signed(m.war)}, or if he joins a coalition against you.` : `Peace comes at Respect ${signed(m.peace)}; War at ${signed(m.war)}, or if he joins a coalition against you.`
   const d = drivers(rival)
   return `${now} ${marks} He respects ${d.up.join(', ')}; he resents ${d.down.join(', ')}.`
 }
@@ -189,7 +190,7 @@ const OPENS: Record<string, (rival: RivalId) => string> = {
   accordEasier: () => 'Its Accord is easier',
   accordSigned: () => 'An Accord signed: allied',
   challenge: () => 'Ugrak’s Challenge instead of his final Warhost',
-  'own.orc.up': () => 'His envoy fights for you at no fee',
+  'own.orc.up': () => 'His routed forces in his march no longer strike back at once',
   'own.orc.down': () => `${OWN.orcConquests === 1 ? 'One more conquest attempt' : `${OWN.orcConquests} more conquest attempts`} a week`,
   'own.goblin.up': () => 'He bids for none of your villages',
   'own.goblin.down': () => 'He gouges: dearer bribes and richer bids for your villages',
@@ -201,7 +202,7 @@ const OPENS: Record<string, (rival: RivalId) => string> = {
 
 /** Every mark on `rival`'s track, both sides (D-39, `marksOf`), with what each brings for him; reached at or above one from 0 up, at or below one under 0. */
 export function respectMarks(rival: RivalId, respect: number): RespectMark[] {
-  return marksOf(rival).map((m) => ({ at: m.at, opens: m.opens, labels: m.opens.map((k) => OPENS[k](rival)), reached: m.at >= 0 ? respect >= m.at : respect <= m.at }))
+  return marksOf(rival).map((m) => ({ at: m.at, opens: m.opens, labels: m.opens.map((k) => OPENS[k](rival)), reached: reaches(respect, m.at) }))
 }
 
 /**
@@ -303,25 +304,25 @@ export function dealName(kind: DealKind, hexId?: string, target?: RivalId): stri
 }
 
 function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: string } {
-  const th = RULES.respect.thresholds
+  const m = marksFor(rival)
   const tr = RULES.trade
   switch (kind) {
     case 'buyHex':
       return {
-        requires: `Respect ${rival === 'goblin' ? th.goblinBuysHex : th.buyHex}; not at war with you; never its Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
+        requires: m.sellsHex === null ? 'He sells no hex' : `Respect ${m.sellsHex}; not at war with you; never its Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
         effect: `The hex is yours at once; +${RULES.respect.change.tradeOrTruce} Respect`
       }
     case 'sellHex':
       return {
-        requires: rival === 'goblin' ? 'Any time; not rings 1 and 2, nor a Gate' : `Respect ${th.sellHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
+        requires: rival === 'goblin' ? 'Any time; not rings 1 and 2, nor a Gate' : `Respect ${m.buysHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
         effect: `You receive ${Math.round(tr.sellShare * PERCENT)}% of its buy price; +${RULES.respect.change.hexSold} Respect`
       }
     case 'truce':
       return { requires: 'Any time, except while a Grand Battle is announced', effect: `No raids or conquest attempts from it for ${tr.truce.days} days; +${RULES.respect.change.tradeOrTruce} Respect` }
     case 'pact':
-      return { requires: `Respect ${th.pact}`, effect: `No conquest attempts from it for ${tr.pact.days} days; its raids come half as often` }
+      return { requires: `Respect ${m.pact}`, effect: `No conquest attempts from it for ${tr.pact.days} days; its raids come half as often` }
     case 'callToArms':
-      return { requires: `Respect ${th.callToArms}; a front between them; not coalition partners`, effect: `It declares war on the other for ${tr.callToArms.days} days` }
+      return { requires: `Respect ${m.callToArms}; a front between them; not coalition partners`, effect: `It declares war on the other for ${tr.callToArms.days} days` }
     case 'buyout':
       return { requires: `Respect ${RULES.world.coalitions.buyout.minRespect}; it stands in a coalition against you`, effect: 'It walks away and the coalition ends today' }
     case 'buyOff':

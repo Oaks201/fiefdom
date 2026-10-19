@@ -227,6 +227,10 @@
     "template": "{rival} sells his hexes only by a bribe to their garrison, from the hex.",
     "final": null
   },
+  "herald.deal.refused.neverSells": {
+    "template": "{rival} sells you no hex.",
+    "final": null
+  },
   "herald.deal.refused.offeredOnly": {
     "template": "{rival} offers a buy-off himself; it cannot be asked for.",
     "final": null
@@ -381,6 +385,18 @@
   },
   "herald.terms.stance": {
     "template": "{rival} now stands: {band}.",
+    "final": null
+  },
+  "herald.standing.peace": {
+    "template": "{rival} now stands at Peace with you.",
+    "final": null
+  },
+  "herald.standing.tension": {
+    "template": "{rival} now stands at Tension with you.",
+    "final": null
+  },
+  "herald.standing.war": {
+    "template": "{rival} now stands at War with you.",
     "final": null
   },
   "herald.terms.offered.buyOff": {

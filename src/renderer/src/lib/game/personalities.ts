@@ -176,11 +176,13 @@ export function fallbackShareOn(rule: RivalId | undefined): number {
 
 /**
  * The chance a fallen force strikes back at a dawn of its window (D-24 as N-02 changes it), by the
- * rules of the march it lost its hex in: the Orc's always at their first dawn; the Dwarf's never; the
- * Goblin's own make an offer instead (never a strike), as do beasts in his march dig in only.
+ * rules of the march it lost its hex in: the Orc's always at their first dawn, unless he is at his own
+ * mark (`orcYields`, Patch 6, P6-07: beaten fairly, they yield, and strike only at the common chance);
+ * the Dwarf's never; the Goblin's own make an offer instead (never a strike), as do beasts in his march
+ * dig in only.
  */
-export function strikeChance(rule: RivalId | undefined, holder: HexState['owner'], firstDawn: boolean): number {
-  if (rule === 'orc') return firstDawn ? P.orc.firstDawnChance : RULES.sieges.counterattack.chancePerDay
+export function strikeChance(rule: RivalId | undefined, holder: HexState['owner'], firstDawn: boolean, orcYields = false): number {
+  if (rule === 'orc') return firstDawn && !orcYields ? P.orc.firstDawnChance : RULES.sieges.counterattack.chancePerDay
   if (rule === 'dwarf' || rule === 'goblin') return 0
   return holder === 'player' ? 0 : RULES.sieges.counterattack.chancePerDay
 }

@@ -23,7 +23,7 @@
  * mythic's quarry are the only draws.
  */
 import { CODEX, type MatchupId } from './codex'
-import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, defenseOf, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
+import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, defenseOf, envoyAvailable, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
 import { balance } from './economy'
 import { realmEffects, wallsFor } from './effects'
 import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor } from './grand'
@@ -79,7 +79,7 @@ function fightId(side: FightPlan['side'], hexId: string, threat?: ThreatKind, ri
   return side === 'assault' ? `assault:${hexId}` : `defense:${threat}:${rival ?? ''}:${hexId}${restrike ? ':restrike' : ''}`
 }
 
-/** What a company costs to field in a defense battle: hired blades and envoys are paid per battle (the Orc's envoy free at his own mark, D-39). */
+/** What a company costs to field in a defense battle: hired blades and envoys are paid per battle. */
 function feeOf(state: CampaignState, c: Company): number {
   if (c.source === 'hired') return HIRE_FEE
   return envoyFee(state, c)
@@ -107,7 +107,8 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
   const validity = ordersValidity(state, orders, effects)
   const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
   const hired = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
-  const army = roster(state, { day, hired, envoys: orders?.envoys ?? [] }, effects)
+  // An envoy no longer lent (his Respect fell, or the Orc's, who sends none from Patch 6, C-84) leaves the roll unpaid.
+  const army = roster(state, { day, hired, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
   const defensePool = army.filter((c) => !assigned.has(c.id))
   const purse = balance(state.purse)
   const plans: FightPlan[] = []

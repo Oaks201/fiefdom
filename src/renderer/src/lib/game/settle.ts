@@ -26,7 +26,7 @@ import './surges'
 import { prepareMarches } from './marches'
 import { marchRulesDay } from './personalities'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
-import { borderCampaigns, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
+import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalTurn, settleFronts, type RivalWeek, type WarhostRequest } from './rivals'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
 import { EventBuffer, isPlayable } from './state'
@@ -48,7 +48,9 @@ export const DAY_PHASE_NAMES = [
   'contractEnd',
   'chronicle',
   /** Patch 4 (D-28): the day's battles with the Orc move his war track; his beaten attacks cost him army. */
-  'marchRules'
+  'marchRules',
+  /** Patch 6 (D-49): each rival's standing read from his Respect after the day's battles moved it. */
+  'standings'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -427,6 +429,9 @@ const chroniclePhase: Phase = (state, ctx) => chronicle(state, ctx.emit)
 /** Patch 4 (D-28): the march rules that read the day once it has closed: the Orc's war track and his attrition. */
 const marchRulesPhase: Phase = (state, ctx) => marchRulesDay(state, ctx.day, ctx.emit)
 
+/** Patch 6 (D-49): Peace, Tension and War follow Respect each day, not only at the week close. */
+const standingsPhase: Phase = (state, ctx) => dailyStandings(state, ctx.day, ctx.emit)
+
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
@@ -437,7 +442,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   expireTimers,
   contractEnd,
   chronicle: chroniclePhase, // Patch 2 (D-18)
-  marchRules: marchRulesPhase // Patch 4 (D-28)
+  marchRules: marchRulesPhase, // Patch 4 (D-28)
+  standings: standingsPhase // Patch 6 (D-49)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */

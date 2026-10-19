@@ -797,6 +797,34 @@
   vertical-align: top;
 }
 
+/* Each ruler's Respect marks (Patch 6, D-48): one column per ruler. */
+.guide__table-item {
+  list-style: none;
+}
+
+.guide__marks {
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.guide__marks th,
+.guide__marks td {
+  padding: 3px 12px;
+  border-bottom: 1px solid var(--rule-soft);
+  text-align: right;
+}
+
+.guide__marks th:first-child,
+.guide__marks td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.guide__marks th {
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+}
+
 /* ----------------------------------------------------------- settings */
 .modal--settings {
   width: min(660px, 100%);

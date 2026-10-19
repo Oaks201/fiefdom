@@ -45,7 +45,7 @@ import { refreshRoster, roster } from './roster'
 import { pathRank } from './dominion'
 import { dissolves, fallbackShareOn, pactBars, personalitiesOf, surgeOn, withPersonalities, inMarchOf, marchRule, orcStrikeMult, raidWeight, rulesHarden, strikeChance, wearDecayOn, wildsMayReclaim } from './personalities'
 import { decayedWear, fortificationShare, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
-import { envoyFee, raidRespectMult, respectChange } from './respect'
+import { envoyFee, marksFor, ownMark, raidRespectMult, respectChange } from './respect'
 import { adjustRespect, awayOn, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds, withWorld, worldOf } from './state'
 import {
   RIVAL_IDS,
@@ -258,12 +258,12 @@ export function isSiegeDay(date: ISODate): boolean {
   return weekdayOf(date) === RULES.combat.siegeDay.weekday
 }
 
-/** A raid's multipliers: Respect 25 (×0.9) or −50 (×1.1, D-39), the Spy Network, Emboldened (+15%) and Humbled (−15%). */
+/** A raid's multipliers: Respect at the rival's own marks (×0.9 or ×1.1, D-39, D-48), the Spy Network, Emboldened (+15%) and Humbled (−15%). */
 function raidMult(state: CampaignState, effects: Effects, rival: RivalId, date: ISODate): number {
   const r = state.rivals[rival]
   const fronts = RULES.rivals.fronts
   let mult = effects.raidStrength.value
-  mult *= raidRespectMult(r.respect)
+  mult *= raidRespectMult(rival, r.respect)
   const tracks = Object.values(r.frontTracks)
   if (tracks.some((t) => t >= fronts.track.max)) mult *= 1 + fronts.emboldenedRaid
   if (tracks.some((t) => t <= fronts.track.min) || (r.humbledUntil !== undefined && r.humbledUntil >= date)) mult *= 1 - fronts.humbledRaid
@@ -467,7 +467,7 @@ function fallbacksAtDawn(state: CampaignState, day: ISODate): CampaignState {
     const may = week >= C.fromWeek && lost?.owner === 'player' && !away && (!rival || canRaid(state, rival, day))
     // Patch 4 (N-02): the march it lost its hex in decides how it strikes back: the Orc's always at the first dawn, the Dwarf's and the Goblin's never.
     const rule = lost ? marchRule(state, lost, day) : undefined
-    if (may && chance(seed, day, `counter:${f.id}`, strikeChance(rule, f.holder, k === 1))) {
+    if (may && chance(seed, day, `counter:${f.id}`, strikeChance(rule, f.holder, k === 1, ownMark(state, 'orc', 'up')))) {
       const orc = rule === 'orc' ? orcStrikeMult(state) * RULES.personalities.orc.counterMult : 1
       const strength = fallbackStrengthOn(f, day) * C.strengthMult * orc * (1 + roll(seed, day, `counter:roll:${f.id}`, -spread, spread)) * earlyGraceMult(week)
       strikes.push({ date: day, hexId: f.from, ...(rival ? { rival } : {}), strength, fallbackId: f.id })
@@ -873,10 +873,16 @@ export function ordersValidity(state: CampaignState, orders: DailyOrders | undef
   return { ok: problems.length === 0, problems, assaults, grandBattles, defense }
 }
 
-/** Whether `rival` lends an envoy company for the day's defense: active, at Respect 50 (A-20). */
+/** Whether `rival` lends an envoy company for the day's defense (A-20): active, at his own envoy mark; the Orc never (P6-04, D-48). */
 export function envoyAvailable(state: CampaignState, rival: RivalId): boolean {
   const r = state.rivals[rival]
-  return r.status === 'active' && r.respect >= RULES.respect.thresholds.envoy
+  const at = marksFor(rival).envoy
+  return r.status === 'active' && at !== null && r.respect >= at
+}
+
+/** The rivals who ever lend an envoy (D-48): all but the Orc. */
+export function envoyRivals(): RivalId[] {
+  return RIVAL_IDS.filter((r) => marksFor(r).envoy !== null)
 }
 
 /**

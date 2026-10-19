@@ -33,7 +33,7 @@ import { realmEffects } from './effects'
 import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
 import { pactBars } from './personalities'
 import { RULES, byTier } from './rules'
-import { respectChange } from './respect'
+import { marksFor, respectChange } from './respect'
 import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
 import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
@@ -354,6 +354,8 @@ export type DealRefusalCode =
   | 'noCoalition'
   /** Patch 4 (C-43): the Goblin's hexes are bought by bribing their garrison, from the hex. */
   | 'useBribe'
+  /** Patch 6 (P6-04): the Orc never gives ground and the Dwarf never sells his people. */
+  | 'neverSells'
   /** Patch 4 (D-33): a buy-off pact is the Goblin's to offer, never the player's to ask. */
   | 'offeredOnly'
   | 'reputation'
@@ -483,19 +485,21 @@ function respectBelow(state: CampaignState, rival: RivalId, needed: number): Dea
 /**
  * One deal with `rival`, priced and checked (Ch 6 trade table, Ch 12 Respect thresholds):
  *
- * - Buy a hex: an adjacent rival hex, not its Gate (A-16); Respect 50 (the Goblin 25); not at war
- *   with the player; one hex deal per rival every 4 weeks.
- * - Sell a hex: a player hex touching the rival's land, ring 3 or beyond and not a Gate; Respect 25;
- *   the same 4-week limit.
+ * Each Respect is the rival's own mark (Patch 6, D-48; `marksFor`):
+ * - Buy a hex: an adjacent rival hex, not its Gate (A-16); at his `sellsHex` (only the Archmage sells:
+ *   never the Orc or the Dwarf, P6-04; the Goblin's are bribed, C-43); not at war with the player; one
+ *   hex deal per rival every 4 weeks.
+ * - Sell a hex: a player hex touching the rival's land, ring 3 or beyond and not a Gate; at his
+ *   `buysHex` (the Goblin at any Respect); the same 4-week limit.
  * - Truce: any time but during a Grand Battle warning; not while one already holds.
- * - Non-aggression pact: Respect 40; not while one already holds.
- * - Call to arms: Respect 60; the target shares a Rim front with the rival and is not in a
+ * - Non-aggression pact: at his `pact`; not while one already holds.
+ * - Call to arms: at his `callToArms`; the target shares a Rim front with the rival and is not in a
  *   coalition with it; not while the rival already answers one.
  * - Buy-out (T12, Ch 13): 300 to a coalition member at Respect 40 to walk away, breaking it.
  */
 export function offerDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate = openDayOf(state)): DealOffer {
   const r = state.rivals[rival]
-  const th = RULES.respect.thresholds
+  const m = marksFor(rival)
   const t = RULES.trade
   const hex = request.hexId !== undefined ? hexOf(state, request.hexId) : undefined
   const offer = (price: number): Omit<DealOffer, 'allowed' | 'reason'> => ({ ...request, rival, price })
@@ -505,12 +509,13 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
       if (!hex) return judged(state, offer(0), [dealRefusal('noHex')])
       // Patch 4 (C-43, X-12): the Goblin's hexes have a bribe price instead (goblin.ts).
       if (rival === 'goblin') return judged(state, offer(0), [dealRefusal('useBribe')])
+      if (m.sellsHex === null) return judged(state, offer(0), [dealRefusal('neverSells')])
       return judged(state, offer(buyPrice(state, rival, hex)), [
         hex.kind === 'gate' ? dealRefusal('gate') : null,
         hex.owner !== rival ? dealRefusal('notRivalHex') : null,
         !claimableBy(state.hexes, hex.id, 'player', 'buy') ? dealRefusal('notClaimable') : null,
         r.disposition.player === 'war' ? dealRefusal('atWar') : null,
-        respectBelow(state, rival, th.buyHex),
+        respectBelow(state, rival, m.sellsHex),
         onCooldown(state, rival, today) ? dealRefusal('cooldown') : null
       ])
     }
@@ -522,7 +527,7 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
         hex.kind === 'gate' ? dealRefusal('gate') : null,
         !isClaimableKind(hex) || hex.kind === 'lairMouth' || !touchesOwner(state.hexes, hex.id, rival) ? dealRefusal('notClaimable') : null,
         // Patch 4 (C-43): the Goblin buys any time, whatever his Respect.
-        rival === 'goblin' ? null : respectBelow(state, rival, th.sellHex),
+        rival === 'goblin' ? null : respectBelow(state, rival, m.buysHex),
         rival !== 'goblin' && onCooldown(state, rival, today) ? dealRefusal('cooldown') : null
       ])
     }
@@ -534,7 +539,7 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
     case 'pact':
       return judged(state, offer(t.pact.cost), [
         inForce(state, rival, 'pact', today) ? dealRefusal('inForce') : null,
-        respectBelow(state, rival, th.pact)
+        respectBelow(state, rival, m.pact)
       ])
     case 'callToArms': {
       const target = request.target
@@ -544,7 +549,7 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
         valid && !frontBetween(state, rival, target) ? dealRefusal('noFront') : null,
         valid && coalitionPartners(state, rival, target, today) ? dealRefusal('targetAllied') : null,
         inForce(state, rival, 'callToArms', today) ? dealRefusal('inForce') : null,
-        respectBelow(state, rival, th.callToArms)
+        respectBelow(state, rival, m.callToArms)
       ])
     }
     case 'buyout': {
@@ -567,8 +572,8 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
   const hexDeals = (kind: 'buyHex' | 'sellHex', hexes: HexState[]): DealOffer[] =>
     hexes.length > 0 ? hexes.map((h) => offerDeal(state, rival, { kind, hexId: h.id }, today)) : [offerDeal(state, rival, { kind }, today)]
   return [
-    // Patch 4 (C-43): the Goblin's hexes are bribed from the hex, not bought here.
-    ...(rival === 'goblin' ? [] : hexDeals('buyHex', buyable)),
+    // Patch 4 (C-43): the Goblin's hexes are bribed from the hex, not bought here; Patch 6 (P6-04): the Orc and the Dwarf sell none.
+    ...(marksFor(rival).sellsHex === null ? [] : hexDeals('buyHex', buyable)),
     ...hexDeals('sellHex', sellable),
     offerDeal(state, rival, { kind: 'truce' }, today),
     offerDeal(state, rival, { kind: 'pact' }, today),

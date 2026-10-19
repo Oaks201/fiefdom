@@ -35,8 +35,37 @@ export type LengthUnlock =
 
 type PerRival<T> = Record<RivalId, T>
 
+/**
+ * Patch 6 (D-48, P6-03, P6-04): one rival's marks on his Respect track, each the Respect at which it
+ * comes (at or above it from 0 up, at or below it under 0); `null`: never for him.
+ */
+export interface RivalMarks {
+  /** War at this or below (or in a coalition against the player). */
+  war: number
+  /** His raids 10% stronger at this or below. */
+  raidsStrongerAt: number
+  /** His own detriment (`respect.own`). */
+  ownDown: number
+  /** His raids 10% weaker. */
+  raidsWeaker: number
+  /** He buys the player's hexes; the Goblin at any Respect (C-43), so at the track's floor. */
+  buysHex: number
+  /** Non-aggression pacts. */
+  pact: number
+  /** Peace; never the Orc. */
+  peace: number | null
+  /** His envoy fights for the player at `envoyCostPerBattle`; never the Orc (P6-04). */
+  envoy: number | null
+  /** He sells the player his hexes; never the Orc or the Dwarf (P6-04), the Goblin's are bribed (C-43). */
+  sellsHex: number | null
+  /** Calls to arms. */
+  callToArms: number
+  /** His own perk (`respect.own`). */
+  ownUp: number
+}
+
 const RULES_TABLE = {
-  ruleVersion: '3.3.0',
+  ruleVersion: '3.4.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -540,23 +569,34 @@ const RULES_TABLE = {
     } as PerRival<Record<string, number>>,
     constantWeekAt: 0.85,
     /**
-     * Patch 5 (D-40, P5-08, N-09): the standing toward the player, read from Respect at each week close:
-     * War at `war` or below (or in a coalition against the player), Peace at `peace` or above, Tension
-     * between. The rivals in `neverAtPeace` never come to Peace. TUNE.
+     * Patch 6 (D-48, P6-03, P6-04, N-16 to N-18; replacing Patch 5's shared marks of D-39 and D-40): each
+     * rival's marks, his own way, each within 15 points of the shared line they replace (War −25, raids
+     * stronger −50, his own detriment −75, raids weaker 25, pacts 40, Peace 50, envoys 50, calls to arms 60,
+     * his own perk 75). The Orc: quick to anger and to fight beside you; he never makes peace, lends no
+     * envoy and never gives ground. The Goblin: every deal cheap and early, his greed early too. The
+     * Dwarf: slow to anger and slow to warm, an oath the first thing he gives, his people never sold. The
+     * Archmage: he wants to be left alone, speaks in warnings, and seldom lends his mages or joins a war.
+     * The standing (D-40) is read from `war` and `peace` at each day's close (D-49). TUNE.
      */
-    standing: { war: -25, peace: 50, neverAtPeace: ['orc'] as RivalId[] },
-    /** Patch 5 (D-39): raids 10% stronger at −50, the mirror of the 10% weaker at 25. TUNE. */
-    raidsStrongerAt: -50,
+    marks: {
+      orc: { war: -15, raidsStrongerAt: -40, ownDown: -60, raidsWeaker: 25, buysHex: 25, pact: 50, peace: null, envoy: null, sellsHex: null, callToArms: 45, ownUp: 75 },
+      goblin: { war: -25, raidsStrongerAt: -50, ownDown: -60, raidsWeaker: 25, buysHex: -100, pact: 30, peace: 40, envoy: 35, sellsHex: null, callToArms: 60, ownUp: 60 },
+      dwarf: { war: -40, raidsStrongerAt: -60, ownDown: -75, raidsWeaker: 35, buysHex: 25, pact: 30, peace: 60, envoy: 50, sellsHex: null, callToArms: 60, ownUp: 75 },
+      archmage: { war: -25, raidsStrongerAt: -50, ownDown: -75, raidsWeaker: 15, buysHex: 25, pact: 40, peace: 40, envoy: 65, sellsHex: 50, callToArms: 75, ownUp: 60 }
+    } as PerRival<RivalMarks>,
+    /** Patch 5 (D-39): raids 10% stronger at a rival's `raidsStrongerAt`, the mirror of 10% weaker at `raidsWeaker`. TUNE. */
     raidsStrongerMult: 1.1,
     /**
-     * Patch 5 (D-39, P5-07): each rival's own mark on each side, at `up` and `down`. Up: the Orc's envoy at
-     * no fee; the Goblin bids for none of the player's villages; the Dwarf raises no walls on the wilds
-     * facing the player; the Archmage's surge is foretold. Down: the Orc plans `orcConquests` more conquest
-     * attempt a week; the Goblin's greed counts `goblinGreedSteps` higher and his bids offer `goblinOfferMult`
-     * × loyalty; the Dwarf's walls on the wilds rise to `dwarfWildWallMax`; the Archmage's swells and strikes
-     * are × `archmageSurgeMult`. TUNE.
+     * Each rival's own mark on each side (P5-07), at his `ownUp` and `ownDown`. Up: the Orc's routed forces
+     * in his march no longer strike back for certain at their first dawn, only at the common chance
+     * (`sieges.counterattack.chancePerDay`; Patch 6, P6-07, N-19: it was his envoy at no fee); the Goblin
+     * bids for none of the player's villages; the Dwarf raises no walls on the wilds facing the player; the
+     * Archmage's surge is foretold. Down: the Orc plans `orcConquests` more conquest attempt a week; the
+     * Goblin's greed counts `goblinGreedSteps` higher and his bids offer `goblinOfferMult` × loyalty; the
+     * Dwarf's walls on the wilds rise to `dwarfWildWallMax`; the Archmage's swells and strikes are ×
+     * `archmageSurgeMult`. TUNE.
      */
-    own: { up: 75, down: -75, orcConquests: 1, goblinGreedSteps: 2, goblinOfferMult: 1.5, dwarfWildWallMax: 2, archmageSurgeMult: 1.1 },
+    own: { orcConquests: 1, goblinGreedSteps: 2, goblinOfferMult: 1.5, dwarfWildWallMax: 2, archmageSurgeMult: 1.1 },
     change: {
       raidDefeated: 3,
       prizedWeek: 4,
@@ -567,15 +607,9 @@ const RULES_TABLE = {
       villageCourted: -3,
       hexConquered: -5
     },
+    /** The marks every rival shares (Patch 6, C-82): the Accord's, which set the campaign's length (D-43). The rest are each rival's own, in `marks`. */
     thresholds: {
-      raidsWeaker: 25,
-      goblinBuysHex: 25,
-      sellHex: 25,
-      pact: 40,
-      envoy: 50,
-      buyHex: 50,
       accordTalks: 55, // TUNE (Patch 5, T-07, D-43, N-15): Ch 12's 60; the Lost Heir still opens talks at 50
-      callToArms: 60,
       accordEasier: 75
     },
     raidsWeakerMult: 0.9,
