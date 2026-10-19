@@ -9,8 +9,9 @@
  * never consults. `installOverride` must run before anything imports `rules.ts`; `checkOverride`
  * then confirms the loaded `RULES` really carries the variant, so a hook that missed fails loudly.
  *
- * A variant is `base`, `income` (the Ch 15 income check's conditions) or `<lever>:<percent>`, such as
- * `hostShare:+10`. A lever scales its values by 1 + percent / 100.
+ * A variant is `base`, `income` (the Ch 15 income check's conditions), `conquestOnWar` (Patch 6, C-93: daily
+ * conquest planning switched on, for T-09's comparison) or `<lever>:<percent>`, such as `hostShare:+10`. A
+ * lever scales its values by 1 + percent / 100.
  */
 import Module from 'node:module'
 
@@ -138,14 +139,19 @@ function incomeCheck(t: Table): void {
 
 export const BASE = 'base'
 export const INCOME = 'income'
+/** Patch 6 (C-93, T-09): a rival who goes to War at a day's close plans his conquest attempts at once. */
+export const CONQUEST_ON_WAR = 'conquestOnWar'
+
+/** The variants that are switches rather than a lever's step. */
+const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR])
 
 export function variantOf(lever: string, delta: number): string {
   return `${lever}:${delta > 0 ? '+' : ''}${delta}`
 }
 
-/** A variant's lever and step, or null for `base` and `income`. */
+/** A variant's lever and step, or null for `base`, `income` and `conquestOnWar`. */
 export function parseVariant(variant: string): { lever: Lever; delta: number } | null {
-  if (variant === BASE || variant === INCOME) return null
+  if (SWITCHES.has(variant)) return null
   const [id, step] = variant.split(':')
   const lever = LEVERS.find((l) => l.id === id)
   const delta = Number(step)
@@ -157,6 +163,7 @@ export function parseVariant(variant: string): { lever: Lever; delta: number } |
 export function patchOf(variant: string): (table: Table) => Table {
   if (variant === BASE) return (t) => t
   if (variant === INCOME) return (t) => (incomeCheck(t), t)
+  if (variant === CONQUEST_ON_WAR) return (t) => ((t.rivalAi.planConquestOnWar = true), t)
   const { lever, delta } = parseVariant(variant) as { lever: Lever; delta: number }
   return (t) => (lever.apply(t, 1 + delta / 100), t)
 }
@@ -200,6 +207,10 @@ export function checkOverride(variant: string, rules: Table): number[] {
   if (!applied) throw new Error(`The rules hook for ${variant} never ran: rules.ts was loaded before installOverride, or not through require`)
   if (variant === INCOME) {
     if (rules.reputation.weekly.tithePerRing !== 0 || rules.combat.spoils.winPerRing !== 0) throw new Error('The income check’s overrides did not reach RULES')
+    return []
+  }
+  if (variant === CONQUEST_ON_WAR) {
+    if (rules.rivalAi.planConquestOnWar !== true) throw new Error('The conquestOnWar switch did not reach RULES')
     return []
   }
   const lever = (parseVariant(variant) as { lever: Lever }).lever

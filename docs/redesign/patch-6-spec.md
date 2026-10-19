@@ -62,7 +62,7 @@ The Ch 16 guardrails stay. No hidden value is shown as a number.
 | # | Question | Options | Recommendation |
 | --- | --- | --- | --- |
 | P6-07 | **The Orc's own perk at +75.** His perk was his envoy fighting for the player at no fee (P5-07); P6-04 takes his envoys away | (a) **Beaten fairly, they yield.** In his march, a force the player routed no longer strikes back at its first dawn for certain (`personalities.orc.firstDawnChance` 1). It strikes at the common chance, 30% a day (`sieges.counterattack.chancePerDay`). (b) **His raids 20% weaker** from +75, on top of nothing else (his 10% at 25 becomes 20%) | **(a).** It turns his own march rule (D-28, N-02), and it fits a warlord who respects strength: once he respects the player, a beaten band of his doesn't rush back. (b) is simpler but says nothing about him. **Decided (Rich, 2026-10-18): (a).** |
-| P6-08 | **Conquest attempts on the day a rival goes to War** | Decided after the simulator run (T-09, section 6.5) | – |
+| P6-08 | **Conquest attempts on the day a rival goes to War** | Decided after the simulator run (T-09, section 6.5); the run is in [section 12.4](#124-stage-4-the-run-and-the-report-2026-10-18) | See T-09 |
 
 ### 1.3 Claude's calls
 
@@ -537,3 +537,70 @@ Built on `patch-6` at Rich's go-ahead ("Go ahead with stage 3: fronts, stances, 
 | The rest | | within a point of stage 2 | kept |
 
 **Verification:** `npm run typecheck`, `npm test` (862 tests: `dailyMoves.test.ts` new, ten tests of the four moves and the switch) and `npm run check:game` (373 text slots) pass; `scripts/campaign-perf.ts`: the 365-day catch-up 1,005 ms, the re-founding 1,922 ms, `campaign.json` 1.31 MB after 70 weeks.
+
+### 12.4 Stage 4: the run and the report (2026-10-18)
+
+At Rich's go-ahead ("Go ahead with stage 4: run the comparison with daily conquest planning on and off, add the standing flips row, and write the report and decisions"). `decisions.md` gains D-46 to D-50, and D-30, D-33, D-39, D-40, A-20, A-25, A-142 and A-153 carry their Patch 6 changes.
+
+| # | Spec said | Built | Why |
+| --- | --- | --- | --- |
+| S-75 | Section 9: a row of each rival's standing changes a campaign | A section of its own in the targets report, "Standing flips and conquest attempts", counted from the daily `disposition` events (so a flip and a flip back within a week both count), with the conquest attempts that struck the player. G-20's row still samples the week closes | A week-close sample can't see a flip back within the week |
+| S-76 | Section 6.5: an override | `npm run sim -- --targets --variant conquestOnWar` (`CONQUEST_ON_WAR` in `sim/overrides.ts`) plays the targets with the switch on and writes `targets-3.4.0-conquestOnWar.md` beside the base report. The comparison's file was written to a scratch folder; its numbers are here | The base report stays the one `targets-3.4.0.md` |
+| S-77 | Section 7.3: A-145 marked changed | Not marked: A-145 sets only the Dwarf's fourth level's cost. D-30 carries the walls' new rhythm | The cost is unchanged |
+
+#### Targets with the switch off (as built)
+
+`targets-3.4.0.md`, regenerated (717 s): every target reads as stage 3's run did (the simulator is seeded), so every target stays met, G-08 at 2.05× on 100 seeds. The new section reads:
+
+| Rival | Steadfast smarter: standing changes a campaign (median; most) | Steadfast greedy (median; most) |
+| --- | --- | --- |
+| Orc | 2; 4 | 0; 4 |
+| Goblin | 4; 22 | 5; 35 |
+| Dwarf | 1; 3 | 4; 10 |
+| Archmage | 1; 1 | 3; 11 |
+
+Conquest attempts that struck the player a campaign: smarter 0.6 (0.3 held), greedy 1.2 (0.0 held).
+
+#### T-09: daily conquest planning, off against on
+
+The same 720 campaigns, once as built and once with `planConquestOnWar` on (666 s):
+
+| Target | Off (as built) | On |
+| --- | --- | --- |
+| G-04 | 3.32; 4.1 | 3.33; 4.1 |
+| G-08 (100 seeds; 40) | 1.21 vs 0.59 = 2.05×; 2.09× | 1.21 vs 0.59 = 2.04×; 2.10× |
+| G-10 | the Dwarf's and the Orc's rows; the Goblin by deal 45% | the same |
+| G-11 | 54; 59; 69 (80%) | 54; 59; 69 (80%) |
+| G-15 | 1.73 MB | 1.81 MB |
+| G-19 (falls; Ultimatums) | 0%; 0%; 4%; 79%, 98%, 100% | 0%; 0%; 4%; 78%, 98%, 100% |
+| G-20 | 3; 0; 2; 2 | 3; 0; 2; 2 |
+| Conquest attempts a campaign (smarter; greedy) | 0.6; 1.2 | 0.6; 1.1 |
+| Every other target | met | met, within a point |
+
+- **The switch changes almost nothing,** because a rival seldom falls to War by Respect: the Orc's climbs as his raids are beaten, and the others' sit above their War lines. Most conquest attempts come from rivals already at War at a close, which the close plans as before. A coalition's War is set at the week close, after the rival turn, so the switch doesn't reach it either.
+- **What it would change in play:** on the rare day a rival's Respect drops past his War line mid-week (the Orc at −15 after his land is taken, say), his first attempt strikes 2 to 7 days later instead of after the next close (from a Monday, 8 to 13 days later). That is what the court's standing note already says War means.
+
+| # | Target | Reading | Options | Recommendation |
+| --- | --- | --- | --- | --- |
+| T-09 | P6-08 | The switch moves no target past the noise; conquest attempts stay about one a campaign | (a) switch it on: War means conquest attempts from the day it starts, as the court says; (b) leave it off: the weekly rhythm, as built | (a): it costs nothing the targets can see, and it matches daily standings. Either is Rich's call (D-02) |
+
+#### T-10: the Goblin's standing churns in some campaigns (C-87)
+
+The flips section shows it, and a scratch probe outside the repo (40 Steadfast greedy and 40 smarter campaigns, played as the targets run plays them, each standing change tallied from the log) says where:
+
+| Rival | Greedy: changes, by line | Back within 7 days | Per campaign (greedy) |
+| --- | --- | --- | --- |
+| Goblin | Tension ↔ War 154, Tension ↔ Peace 139, Peace ↔ War 3 | 117 of 296 | 1 to 35; 5 campaigns at 19 or more |
+| Dwarf | Tension ↔ Peace 101, Peace ↔ War 54 (coalitions) | 26 of 155 | 1 to 9 |
+| Archmage | Tension ↔ Peace 99, Peace ↔ War 30 (coalitions) | 32 of 129 | 1 to 9 |
+| Orc | 2 | 0 | 0 to 2 |
+
+With the smarter player the Goblin's runs 2 to 22 (62 of 200 back within a week); the Dwarf's and the Archmage's are 1 to 3.
+
+- **Why the Goblin:** his Respect moves most often and both ways (a bribe +2, a buy-off +10 or −5, his bid held −2, his raids +3 or −2, his land taken −5), and his lines sit close to where it wanders (Peace at 40, War at −25). Read daily, a week of bribes and a hex taken can carry him across a line and back.
+- **What the player sees:** in a churning campaign, a Herald line and a new standing on his court every week or two; his raids stop and start with the weekly draw.
+
+| # | Target | Reading | Options | Recommendation |
+| --- | --- | --- | --- | --- |
+| T-10 | C-87 | The Goblin's standing changes a median 5 times a greedy campaign but up to 35, and 40% of his changes followed by another within a week; the others don't churn | (a) accept: most campaigns see a handful of changes; (b) a buffer: once his standing changes, it changes back only when Respect is a few points past the line the other way (5, TUNE), for every rival; (c) hold any new standing at least 7 days | (b), probed first: run the targets with a 5-point buffer and report the Goblin's flips and G-20 before any number is set (D-02). Nothing is changed |
+

@@ -7,7 +7,9 @@
  *   npm run sim -- --report-only     rebuild the report and CSVs from the last run's saved results
  *   npm run sim -- --targets         the blueprint's targets (Patch 2): docs/game/sim/targets-<ruleVersion>.md
  *                                    (--runs sets the seeds per greedy profile, default 40; --save-results also
- *                                    writes the campaigns' raw results beside it, for a scratch --out only)
+ *                                    writes the campaigns' raw results beside it, for a scratch --out only;
+ *                                    --variant <name> plays them under a rules variant of `overrides.ts`, written
+ *                                    to targets-<ruleVersion>-<variant>.md)
  *
  * Options: --runs 300 (per profile, for greedy and smarter), --push-runs 50, --income-runs 50, --sweep-runs 30,
  * --weeks 70, --workers <n> (default: every core), --out docs/game/sim, --results sim/.results.
@@ -40,6 +42,7 @@ interface Options {
   targets: boolean
   runsSet: boolean
   saveResults: boolean
+  variant: string
 }
 
 const ROOT = path.resolve(__dirname, '..')
@@ -66,7 +69,8 @@ function parseArgs(argv: string[]): Options {
     reportOnly: false,
     targets: false,
     runsSet: false,
-    saveResults: false
+    saveResults: false,
+    variant: BASE
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -78,6 +82,7 @@ function parseArgs(argv: string[]): Options {
     } else if (a === '--report-only') o.reportOnly = true
     else if (a === '--targets') o.targets = true
     else if (a === '--save-results') o.saveResults = true
+    else if (a === '--variant') o.variant = next()
     else if (a === '--runs') {
       o.runs = Number(next())
       o.runsSet = true
@@ -186,11 +191,11 @@ async function main(): Promise<void> {
 /** The blueprint's targets (Patch 2): greedy profiles and the path-mix players, then the targets report. */
 async function runTargets(o: Options): Promise<void> {
   const seeds = o.runsSet ? o.runs : TARGET_SEEDS
-  const runs = targetPlan(seeds, o.weeks)
-  process.stderr.write(`Fiefdom simulator, targets: ${runs.length} campaigns on ${o.workers} workers\n`)
+  const runs = targetPlan(seeds, o.weeks).map((r) => ({ ...r, variant: o.variant }))
+  process.stderr.write(`Fiefdom simulator, targets${o.variant === BASE ? '' : ` (variant ${o.variant})`}: ${runs.length} campaigns on ${o.workers} workers\n`)
   const started = Date.now()
-  const { results } = await runAll(new Map([[BASE, runs]]), o.workers)
-  const file = writeTargets(results, { seeds, weeks: o.weeks, seconds: Math.round((Date.now() - started) / 1000) }, o.out)
+  const { results } = await runAll(new Map([[o.variant, runs]]), o.workers)
+  const file = writeTargets(results, { seeds, weeks: o.weeks, seconds: Math.round((Date.now() - started) / 1000), ...(o.variant === BASE ? {} : { variant: o.variant }) }, o.out)
   // With --save-results, the campaigns' raw results go beside the report, for a closer look (never into the repo).
   if (o.saveResults) fs.writeFileSync(path.join(o.out, 'targets-results.json'), JSON.stringify(results))
   process.stderr.write(`Wrote ${path.relative(ROOT, file)}\n`)

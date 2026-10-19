@@ -10,7 +10,7 @@ import path from 'node:path'
 import { Worker } from 'node:worker_threads'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { runCampaign, type RunOptions, type RunResult } from '../../sim/campaign'
-import { BASE, LEVERS, variantOf } from '../../sim/overrides'
+import { BASE, CONQUEST_ON_WAR, LEVERS, parseVariant, patchOf, variantOf } from '../../sim/overrides'
 import { writeReport, type RunMeta } from '../../sim/report'
 import type { WorkerMessage } from '../../sim/worker'
 
@@ -53,6 +53,21 @@ test('T13: a worker is served a patched RULES for its variant, while this thread
   assert.ok(messages.some((m) => m.type === 'result' && m.result.variant === variant))
   assert.deepEqual(lever.read(RULES), [0.6, 0.5, 0.7])
   assert.equal(fs.readFileSync(path.join(__dirname, '../../src/renderer/src/lib/game/rules.ts'), 'utf8'), before)
+})
+
+test('Patch 6 (C-93, T-09): the conquestOnWar variant switches daily conquest planning on in a worker; the rules stay off', async () => {
+  assert.equal(patchOf(CONQUEST_ON_WAR)({ rivalAi: { planConquestOnWar: false } }).rivalAi.planConquestOnWar, true)
+  assert.equal(parseVariant(CONQUEST_ON_WAR), null)
+  const variant = CONQUEST_ON_WAR
+  const messages: WorkerMessage[] = await new Promise((resolve, reject) => {
+    const got: WorkerMessage[] = []
+    const worker = new Worker(path.join(__dirname, '../../sim/worker.cjs'), { workerData: { variant, runs: [{ ...RUNS[0], weeks: 1, variant }] } })
+    worker.on('message', (m: WorkerMessage) => got.push(m))
+    worker.once('error', reject)
+    worker.once('exit', (code) => (code === 0 ? resolve(got) : reject(new Error(`worker exited with ${code}`))))
+  })
+  assert.ok(messages.some((m) => m.type === 'done'), 'checkOverride found the switch on')
+  assert.equal(RULES.rivalAi.planConquestOnWar, false)
 })
 
 test('T13: the report and its CSVs build from a handful of runs, byte for byte the same each time', () => {

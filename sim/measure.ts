@@ -103,6 +103,10 @@ export interface Measures {
   eventWeeks?: Record<string, number>
   /** Patch 5 (G-21): reputation earned by the end: behavior income, tithes, spoils (battles and land), and every other gain. */
   income?: { behavior: number; tithe: number; spoils: number; other: number }
+  /** Patch 6 (C-87): each rival's changes of standing toward the player over the campaign, read each day (its `disposition` events), in RIVAL_IDS order. */
+  standingFlips?: number[]
+  /** Patch 6 (T-09): conquest attempts that struck the player, and those the player held. */
+  conquests?: { struck: number; held: number }
 }
 
 /** Patch 4 (G-10): one rival march, over the campaign. */
@@ -390,14 +394,23 @@ export class Recorder {
     this.m.deedMix = mix
     const reasons = Object.fromEntries(RIVAL_IDS.map((r) => [r, {}])) as Record<RivalId, Record<string, [number, number]>>
     const eventWeeks: Record<string, number> = {}
+    const flips = RIVAL_IDS.map(() => 0)
+    const conquests = { struck: 0, held: 0 }
     for (const e of state.log) {
       if (e.kind === 'respect') {
         const [n, sum] = reasons[e.rival][e.reason] ?? [0, 0]
         reasons[e.rival][e.reason] = [n + 1, sum + e.change]
       } else if (e.kind === 'worldEvent' && eventWeeks[e.eventId] === undefined) eventWeeks[e.eventId] = weekOn(state, e.day)
+      else if (e.kind === 'disposition') flips[RIVAL_IDS.indexOf(e.rival)]++
+      else if (e.kind === 'defense' && e.threat === 'conquest') {
+        conquests.struck++
+        if (e.outcome !== 'defeat') conquests.held++
+      }
     }
     this.m.respectReasons = reasons
     this.m.eventWeeks = eventWeeks
+    this.m.standingFlips = flips
+    this.m.conquests = conquests
     const behavior = new Set<string>(PURSE_SOURCES.behavior)
     const income = { behavior: 0, tithe: 0, spoils: 0, other: 0 }
     for (const p of state.purse.events) {
