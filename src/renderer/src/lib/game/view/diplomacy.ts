@@ -96,7 +96,8 @@ function drivers(rival: RivalId): { up: string[]; down: string[] } {
 /**
  * Patch 5 (D-40, C-65): his standing in plain words: what it allows him, the marks that change it (his
  * own, Patch 6, D-48), and what moves his Respect. Read at each day's close from Respect (`standingFor`,
- * D-49). Every number in it is public.
+ * D-49); a standing he holds lasts until his Respect is `standingBuffer` past its line (D-52). Every number
+ * in it is public.
  */
 export function standingNote(state: CampaignState, rival: RivalId): string {
   const r = state.rivals[rival]
@@ -104,8 +105,15 @@ export function standingNote(state: CampaignState, rival: RivalId): string {
   const m = marksFor(rival)
   const now = { war: 'War: he sends conquest attempts as well as raids.', tension: 'Tension: he raids your border but sends no conquest attempts.', peace: 'Peace: no raids and no conquest attempts.' }[r.disposition.player]
   const marks = m.peace === null ? `He never makes peace; War comes at Respect ${signed(m.war)}, or if he joins a coalition against you.` : `Peace comes at Respect ${signed(m.peace)}; War at ${signed(m.war)}, or if he joins a coalition against you.`
+  // D-52: a standing he holds lasts until his Respect is the buffer past its line the other way.
+  const b = RULES.respect.standingBuffer
+  const holds = {
+    war: b > 0 ? ` At War he stays until his Respect rises above ${signed(m.war + b)}.` : '',
+    peace: b > 0 && m.peace !== null ? ` At Peace he stays until his Respect falls below ${signed(m.peace - b)}.` : '',
+    tension: ''
+  }[r.disposition.player]
   const d = drivers(rival)
-  return `${now} ${marks} He respects ${d.up.join(', ')}; he resents ${d.down.join(', ')}.`
+  return `${now} ${marks}${holds} He respects ${d.up.join(', ')}; he resents ${d.down.join(', ')}.`
 }
 
 /** One line of a march's state; a date the screen formats. */

@@ -813,7 +813,8 @@ export function HowToPlay(): React.JSX.Element | null {
               <li>
                 <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each day’s close. <b>War</b> at his War line or below, or while he stands in a
                 coalition against you: raids and conquest attempts. <b>Peace</b> at his Peace line or above: no raids and no conquest attempts. The Orc never makes peace.{' '}
-                <b>Tension</b> between: raids only. Who raids is drawn each week, so a ruler who comes to Peace stops raiding the next day, and one who leaves it raids again from the
+                <b>Tension</b> between: raids only. Once he is at Peace or War he holds it until his Respect is {RULES.respect.standingBuffer} past that line the other way, so a
+                ruler on a line doesn’t flip back and forth. Who raids is drawn each week, so a ruler who comes to Peace stops raiding the next day, and one who leaves it raids again from the
                 next week. A ruler who goes to War plans his conquest attempts that day; each strikes {RULES.rivalAi.conquestDays.min} to {RULES.rivalAi.conquestDays.max} days
                 later, and the Herald announces it the day before. A Truce, which stops his raids for a while, is open at any Respect.
               </li>

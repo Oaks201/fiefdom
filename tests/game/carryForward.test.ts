@@ -1,7 +1,7 @@
 /**
  * Patch 4 (docs/redesign/patch-4-spec.md section 11; C-48), Patch 5 (docs/redesign/patch-5-spec.md
- * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md section 7; C-94): a campaign founded and
- * played on rules 3.1.0, 3.2.0 or 3.3.0 carries forward to 3.4.0 in place. Each fixture
+ * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md sections 7 and 12.5; C-94, D-52): a campaign
+ * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.4.1 in place. Each fixture
  * (`tests/game/fixtures/campaign-<version>.json`) was written by its script in `scripts/` on its own
  * rules, before the next patch changed any: a synthetic Steadfast campaign played by the automatic player
  * on the simulator's ledger (no one's health data). As the app does when it loads one, a save from before
@@ -36,6 +36,7 @@ const load = (version: string): Fixture => JSON.parse(fs.readFileSync(path.join(
 const FIXTURES = { '3.1.0': load('3.1.0'), '3.2.0': load('3.2.0') }
 const V310 = FIXTURES['3.1.0']
 const V330 = load('3.3.0')
+const V340 = load('3.4.0')
 const WEEKS_ON = 12
 const after = (day: ISODate): Date => new Date(dayCloseInstant(day, TZ).getTime() + 60_000)
 
@@ -65,8 +66,8 @@ function playOn(f: Fixture, weeks: number): { state: CampaignState; violations: 
   return { state, violations }
 }
 
-test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.4.0 takes each without a re-founding, migrating it once', () => {
-  assert.equal(RULES.ruleVersion, '3.4.0')
+test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.4.1 takes each without a re-founding, migrating it once', () => {
+  assert.equal(RULES.ruleVersion, '3.4.1')
   for (const [version, f] of Object.entries(FIXTURES)) {
     assert.equal(f.ruleVersion, version)
     assert.equal(f.state.campaign.ruleVersion, version)
@@ -109,7 +110,7 @@ test('C-48 (section 11): the 3.1.0 save played on 12 weeks settles with no invar
   for (const d of deeds) if (d.kind === 'deed' && d.source) assert.ok(!V310.state.log.some((e) => e.id === d.source && ['bribe', 'goblinBid', 'surge', 'ritual'].includes(e.kind)))
 })
 
-test('C-50: the 3.2.0 save played on 12 weeks under 3.4.0 settles with no invariant broken', () => {
+test('C-50: the 3.2.0 save played on 12 weeks under 3.4.1 settles with no invariant broken', () => {
   const f = FIXTURES['3.2.0']
   const { state, violations } = playOn(f, WEEKS_ON)
   assert.deepEqual(violations, [])
@@ -123,7 +124,7 @@ test('C-48: the carried-forward campaign settles the same twice (Test 9)', () =>
   assert.equal(fingerprint(a), fingerprint(b))
 })
 
-test('C-94: the 3.3.0 save is what it says, and 3.4.0 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
+test('C-94: the 3.3.0 save is what it says, and 3.4.1 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
   assert.equal(V330.ruleVersion, '3.3.0')
   assert.equal(V330.state.campaign.ruleVersion, '3.3.0')
   assert.equal(needsRefounding(V330.state), false)
@@ -135,7 +136,7 @@ test('C-94: the 3.3.0 save is what it says, and 3.4.0 takes it as it is: no re-f
   assert.ok(state.settledThrough.week >= V330.state.settledThrough.week + WEEKS_ON - 1)
 })
 
-test('D-48, D-49: on its first night under 3.4.0 the 3.3.0 save reads every standing from Respect by each rival’s own lines; days already settled are never settled again', () => {
+test('D-48, D-49: on its first night under 3.4.1 the 3.3.0 save reads every standing from Respect by each rival’s own lines; days already settled are never settled again', () => {
   const profile = profileOf(V330.profile)
   const ledger = ledgerFor(profile, V330.seed, V330.ledgerWeeks * 7)
   // As 3.3.0 read them: the Goblin and the Archmage at 45 in Tension (its Peace at 50), the Orc at −20 in Tension (its War at −25).
@@ -151,4 +152,28 @@ test('D-48, D-49: on its first night under 3.4.0 the 3.3.0 save reads every stan
   const posted = result.events.filter((e) => e.kind === 'disposition' && e.day === night).map((e) => (e.kind === 'disposition' ? `${e.rival}:${e.to}` : ''))
   for (const want of ['goblin:peace', 'archmage:peace', 'orc:war']) assert.ok(posted.includes(want), `${want} posted (${posted.join(', ')})`)
   assert.equal(result.events.filter((e) => e.day < night).length, 0, 'no day already settled is settled again')
+})
+
+test('D-52: the 3.4.0 save (the live game\'s rules) is what it says, and 3.4.1 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
+  assert.equal(V340.ruleVersion, '3.4.0')
+  assert.equal(V340.state.campaign.ruleVersion, '3.4.0')
+  assert.equal(needsRefounding(V340.state), false)
+  assert.deepEqual(migrateCampaign(V340.state).applied, [], 'nothing to migrate')
+  const { state, violations } = playOn(V340, WEEKS_ON)
+  assert.deepEqual(violations, [])
+  assert.equal(state.campaign.ruleVersion, '3.4.0', 'a campaign keeps its founding version')
+  assert.ok(state.settledThrough.week >= V340.state.settledThrough.week + WEEKS_ON - 1)
+})
+
+test('D-52: on its first night under 3.4.1 a 3.4.0 save keeps a standing it holds until Respect is 5 past the line', () => {
+  const profile = profileOf(V340.profile)
+  const ledger = ledgerFor(profile, V340.seed, V340.ledgerWeeks * 7)
+  const at = (s: CampaignState, r: 'orc' | 'goblin' | 'archmage', respect: number, standing: 'peace' | 'tension' | 'war'): CampaignState => ({ ...s, rivals: { ...s.rivals, [r]: { ...s.rivals[r], respect, disposition: { ...s.rivals[r].disposition, player: standing } } } })
+  // Under 3.4.0 these read: the Goblin at 37 still at Peace from a day at 40 or more; the Orc at −12 at War from a day at −15 or less; the Archmage at 33 at Peace.
+  const start = at(at(at(V340.state, 'goblin', 37, 'peace'), 'orc', -12, 'war'), 'archmage', 33, 'peace')
+  const night = addDays(start.settledThrough.day, 1)
+  const s = settle(start, ledger, after(night)).state
+  assert.equal(s.rivals.goblin.disposition.player, 'peace', 'the Goblin holds Peace above 35')
+  assert.equal(s.rivals.orc.disposition.player, 'war', 'the Orc holds War below −10')
+  assert.equal(s.rivals.archmage.disposition.player, 'tension', 'the Archmage at 33 is past his 35: back to Tension')
 })

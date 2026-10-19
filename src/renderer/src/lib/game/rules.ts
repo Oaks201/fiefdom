@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.4.0',
+  ruleVersion: '3.4.1',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -587,10 +587,11 @@ const RULES_TABLE = {
     /**
      * Patch 6 (T-10, C-87): the standing's buffer. A rival at Peace goes back to Tension only below his `peace`
      * line less this; at War, back to Tension only above his `war` line plus this. Coming to Peace or War reads
-     * the lines themselves, and a coalition is War whatever his Respect. 0 reads the lines both ways (as built);
-     * the simulator's `standingBuffer` variant measures 5. Rich decides any other number (D-02). TUNE.
+     * the lines themselves, and a coalition is War whatever his Respect. 0 reads the lines both ways (Patch 6 as
+     * first built); 5 from rules 3.4.1 (D-52: Rich took T-10's option (b) on 2026-10-19, after the simulator's
+     * `standingBuffer` variant measured it). TUNE.
      */
-    standingBuffer: 0,
+    standingBuffer: 5,
     /** Patch 5 (D-39): raids 10% stronger at a rival's `raidsStrongerAt`, the mirror of 10% weaker at `raidsWeaker`. TUNE. */
     raidsStrongerMult: 1.1,
     /**

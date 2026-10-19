@@ -483,8 +483,9 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 3.4.0 (Patch 6: D-46 on), a 3.x campaign carried forward in place (C-33, C-48, C-50, C-94)', () => {
-  assert.equal(RULES.ruleVersion, '3.4.0')
+test('RULES is versioned 3.4.1 (Patch 6: D-46 on; the standing buffer, D-52), a 3.x campaign carried forward in place (C-33, C-48, C-50, C-94)', () => {
+  assert.equal(RULES.ruleVersion, '3.4.1')
+  assert.equal(RULES.respect.standingBuffer, 5)
 })
 
 test('RULES is deep-frozen: mutating it throws in strict mode', () => {

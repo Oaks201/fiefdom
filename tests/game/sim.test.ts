@@ -70,7 +70,7 @@ test('Patch 6 (C-93, T-09): the conquestOnWar variant switches daily conquest pl
   assert.equal(RULES.rivalAi.planConquestOnWar, true)
 })
 
-test('Patch 6 (T-10, C-87): the standingBuffer variant sets a 5-point buffer on the standings in a worker, while this thread keeps 0', async () => {
+test('Patch 6 (T-10, C-87): the standingBuffer variant sets a 5-point buffer on the standings in a worker (the rules have 5 from D-52)', async () => {
   assert.equal(patchOf(STANDING_BUFFER)({ respect: { standingBuffer: 0 } }).respect.standingBuffer, BUFFER_PROBE)
   assert.equal(BUFFER_PROBE, 5)
   assert.equal(parseVariant(STANDING_BUFFER), null)
@@ -86,7 +86,7 @@ test('Patch 6 (T-10, C-87): the standingBuffer variant sets a 5-point buffer on 
   assert.ok(done && done.type === 'done')
   assert.deepEqual(done.lever, [BUFFER_PROBE], 'checkOverride found the buffer at 5')
   assert.ok(messages.some((m) => m.type === 'result' && m.result.variant === variant))
-  assert.equal(RULES.respect.standingBuffer, 0)
+  assert.equal(RULES.respect.standingBuffer, 5)
 })
 
 test('T13: the report and its CSVs build from a handful of runs, byte for byte the same each time', () => {

@@ -143,11 +143,12 @@ test('reaches: at or above a mark from 0 up, at or below one under 0, never a ma
 test('D-49: the standing follows Respect at each day’s close, posting each change once', () => {
   const events: GameEvent[] = []
   const emit = (kind: GameEvent['kind'], payload: object): void => void events.push({ id: 'x', day: START, kind, ...payload } as GameEvent)
-  const base = at(at(at(realm(), 'goblin', 40, 'tension'), 'orc', -15, 'tension'), 'dwarf', 59, 'peace')
+  // The Dwarf at Peace with 54, past his Peace line (60) less the buffer (5, D-52).
+  const base = at(at(at(realm(), 'goblin', 40, 'tension'), 'orc', -15, 'tension'), 'dwarf', 54, 'peace')
   const next = dailyStandings(base, START, emit)
   assert.equal(next.rivals.goblin.disposition.player, 'peace')
   assert.equal(next.rivals.orc.disposition.player, 'war')
-  assert.equal(next.rivals.dwarf.disposition.player, 'tension', 'nothing kept from the old lines (P6-05)')
+  assert.equal(next.rivals.dwarf.disposition.player, 'tension', 'nothing kept from the old lines (P6-05) past the buffer')
   assert.deepEqual(
     events.filter((e) => e.kind === 'disposition').map((e) => (e.kind === 'disposition' ? [e.rival, e.from, e.to] : [])),
     [
@@ -161,20 +162,25 @@ test('D-49: the standing follows Respect at each day’s close, posting each cha
   assert.equal(dailyStandings(resolved, START, () => undefined).rivals.goblin.disposition.player, 'tension', 'a resolved rival is left as he is')
 })
 
-test('T-10: the standing’s buffer is 0 as built, and at 0 the lines read the same whatever standing he holds', () => {
-  assert.equal(R.standingBuffer, 0)
+test('T-10, D-52: the standing’s buffer is 5 (rules 3.4.1); at 0 the lines read the same whatever standing he holds', () => {
+  assert.equal(R.standingBuffer, 5)
   for (const r of RIVAL_IDS) {
     for (let respect = R.min; respect <= R.max; respect++) {
       for (const coalition of [false, true]) {
-        const lines = standingFor(r, respect, coalition)
-        for (const from of ['peace', 'tension', 'war'] as const) assert.equal(standingFor(r, respect, coalition, from), lines, `${r} at ${respect} from ${from}`)
+        const lines = standingFor(r, respect, coalition, undefined, 0)
+        for (const from of ['peace', 'tension', 'war'] as const) assert.equal(standingFor(r, respect, coalition, from, 0), lines, `${r} at ${respect} from ${from}`)
       }
     }
   }
-  const base = at(at(realm(), 'goblin', marksFor('goblin').war + 1, 'war'), 'archmage', (marksFor('archmage').peace as number) - 1, 'peace')
-  const next = dailyStandings(base, START, () => undefined)
-  assert.equal(next.rivals.goblin.disposition.player, 'tension', 'War left a point over his line')
-  assert.equal(next.rivals.archmage.disposition.player, 'tension', 'Peace left a point under his line')
+  const b = R.standingBuffer
+  const war = marksFor('goblin').war
+  const peace = marksFor('archmage').peace as number
+  const held = dailyStandings(at(at(realm(), 'goblin', war + b, 'war'), 'archmage', peace - b, 'peace'), START, () => undefined)
+  assert.equal(held.rivals.goblin.disposition.player, 'war', 'War held while within the buffer of his line')
+  assert.equal(held.rivals.archmage.disposition.player, 'peace', 'Peace held while within the buffer of his line')
+  const left = dailyStandings(at(at(realm(), 'goblin', war + b + 1, 'war'), 'archmage', peace - b - 1, 'peace'), START, () => undefined)
+  assert.equal(left.rivals.goblin.disposition.player, 'tension', 'War left past the buffer')
+  assert.equal(left.rivals.archmage.disposition.player, 'tension', 'Peace left past the buffer')
 })
 
 test('D-49: settlement reads the standing at a mid-week day’s close, and Peace stops his raids from the next dawn (A-132)', () => {
