@@ -131,7 +131,7 @@ test('Ch 9: the Milestone panel for 217 → 168 at 205 lb in week 5 shows Milest
   assert.equal(panel.week, 5)
   assert.equal(panel.rows[0].index, 1)
   assert.ok(panel.rows[0].brokenOn)
-  assert.deepEqual(panel.next, { index: 2, mark: 207, earliestWeek: 7, keeping: false, lock1: true, lock2: false })
+  assert.deepEqual(panel.next, { index: 2, mark: 207, earliestWeek: 7, keeping: false, lock1: true, lock2: false, breaksAtClose: false })
   assert.equal(panel.broken, 1)
   assert.deepEqual(panel.rows.map((r) => r.mark), [212, 207, 202, 197, 193, 188, 183, 178, 173, 168])
   assert.equal(panel.grace.textId, 'herald.grace.0')
@@ -146,6 +146,18 @@ test('D-11, D-13: the Milestone panel reads one weigh-in a week, and one at or b
   // Milestone 2's mark is 207. A Thursday dip below it doesn't count: the week reads its Monday weigh-in.
   assert.equal(milestonePanel(state, [{ date: MONDAY, weight: 208 }, { date: THURSDAY, weight: 206 }], sunday).next?.lock1, false)
   assert.equal(milestonePanel(state, [{ date: sunday, weight: 207 }], sunday).next?.lock1, true)
+})
+
+test('D-53: on the weigh-in day that reaches the next mark in its week, the panel says it breaks at today’s close', () => {
+  const state = withMilestones(realm(), 1)
+  // Milestone 2 at 207, not before week 7: Monday 2026-11-16.
+  const weighIns = [
+    { date: '2026-11-02', weight: 208 },
+    { date: '2026-11-09', weight: 207.6 },
+    { date: '2026-11-16', weight: 206.9 }
+  ]
+  assert.equal(milestonePanel(state, weighIns, '2026-11-16').next?.breaksAtClose, true)
+  assert.equal(milestonePanel(state, weighIns.slice(0, 2), '2026-11-16').next?.breaksAtClose, false, 'no weigh-in at the mark yet')
 })
 
 test('Ch 5: a day’s earnings come from the purse; an open day’s projection from its duties, food and streak', () => {

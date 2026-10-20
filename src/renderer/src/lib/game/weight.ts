@@ -7,7 +7,7 @@
  * Every weight here is in lb with loss positive (A-05): turn ledger weigh-ins into lb with
  * `weighInsInLb` first. What each Milestone unlocks is T14's; when the week close runs is T06's.
  */
-import { addDays, diffDays, weekOf, weighInDay } from './clock'
+import { addDays, diffDays, weekCloseDay, weekOf, weighInDay } from './clock'
 import { CampaignError } from './errors'
 import { RULES } from './rules'
 import { HEALER_CHECK_INS, t, type HealerCheckIn, type TextFacts } from './text'
@@ -297,6 +297,11 @@ export interface MilestoneCheck {
   dispensation?: boolean
 }
 
+/** A regular Milestone's two locks (Ch 9 rule 4, D-11): a weekly weigh-in on or before `day` at or below its mark, and its earliest week come. */
+function locksOpen(m: MilestoneState, weighIns: readonly WeighIn[], day: ISODate, week: number): boolean {
+  return markReachedOn(weighIns, m.mark, day) !== null && week >= m.earliestWeek
+}
+
 /**
  * Breaks every Milestone whose locks are open at this week close, in order. A broken Milestone is
  * never revoked. A too-fast week breaks nothing (A-43). The Dispensation may break the next
@@ -322,11 +327,10 @@ export function breakMilestones(c: MilestoneCheck): { milestones: MilestoneState
     const m = milestones[i]
     if (m.brokenOn !== undefined) continue
     const sincePrevious = i > 0 ? milestones[i - 1].brokenOn : undefined
-    const lock1 = m.keeping
-      ? trailingWeeks(c.weeks, (w) => nearGoal(w.average, c.goal), sincePrevious) >= RULES.milestones.keeping.weeks
-      : markReachedOn(c.weighIns, m.mark, c.day) !== null
-    const lock2 = c.week >= m.earliestWeek
-    if (lock1 && lock2) {
+    const open = m.keeping
+      ? trailingWeeks(c.weeks, (w) => nearGoal(w.average, c.goal), sincePrevious) >= RULES.milestones.keeping.weeks && c.week >= m.earliestWeek
+      : locksOpen(m, c.weighIns, c.day, c.week)
+    if (open) {
       Object.assign(m, { brokenOn: c.day, brokenWeek: c.week, byDispensation: false })
     } else if (mayDispense && !m.keeping && c.week > m.earliestWeek) {
       Object.assign(m, { brokenOn: c.day, brokenWeek: c.week, byDispensation: true })
@@ -335,6 +339,36 @@ export function breakMilestones(c: MilestoneCheck): { milestones: MilestoneState
     } else {
       break
     }
+    broken.push(m)
+  }
+  return { milestones, broken }
+}
+
+export interface DayMilestoneCheck {
+  milestones: readonly MilestoneState[]
+  /** The weekly weigh-ins (`weeklyWeighIns`), in lb. */
+  weighIns: readonly WeighIn[]
+  /** The day closing and its campaign week. */
+  day: ISODate
+  week: number
+  weekStartsOn: WeekStartsOn
+}
+
+/**
+ * D-53: a regular Milestone breaks at the close of the day its locks open, not at its week close.
+ * A reading taken before its week's weigh-in day counts only once that week has closed, since a
+ * later one may still replace it. A day whose 28-day trend is too fast breaks nothing (A-43).
+ * Keeping Milestones and the Dispensation still wait for the week close.
+ */
+export function breakMilestonesOnDay(c: DayMilestoneCheck): { milestones: MilestoneState[]; broken: MilestoneState[] } {
+  const milestones = c.milestones.map((m) => ({ ...m }))
+  const broken: MilestoneState[] = []
+  const settled = c.weighIns.filter((w) => w.date >= weighInDay(w.date, c.weekStartsOn) || weekCloseDay(w.date, c.weekStartsOn) < c.day)
+  if (isTooFast(trend(settled, c.day, RULES.momentum.tooFast.windowDays), currentWeight(settled, c.day))) return { milestones, broken }
+  for (const m of milestones) {
+    if (m.brokenOn !== undefined) continue
+    if (m.keeping || !locksOpen(m, settled, c.day, c.week)) break
+    Object.assign(m, { brokenOn: c.day, brokenWeek: c.week, byDispensation: false })
     broken.push(m)
   }
   return { milestones, broken }

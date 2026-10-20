@@ -33,8 +33,8 @@ import { finishSkirmishes } from './skirmish'
 import { EventBuffer, isPlayable } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
-import { closeWeightWeek, toLb, weekMomentum } from './weight'
-import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, PurseLine, WeekStartsOn } from './types'
+import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum } from './weight'
+import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn } from './types'
 
 // ── The phase registry ───────────────────────────────────────────────────────
 
@@ -55,7 +55,9 @@ export const DAY_PHASE_NAMES = [
   /** Patch 6 (D-50): the day's skirmish on each Rim front at War. */
   'fronts',
   /** Patch 6 (D-50): the rivals' land grabs and walls due today. */
-  'rivalMoves'
+  'rivalMoves',
+  /** Rules 3.5.0 (D-53): a Milestone whose weigh-in reached its mark breaks at that day's close. */
+  'milestones'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -361,6 +363,14 @@ const courtshipsPhase: Phase = (state, ctx) => {
   return raiseIncursions(state, resolved, addDays(ctx.day, 1), ctx.emit)
 }
 
+/** Announces each Milestone broken, and what it opens. */
+function announceMilestones(broken: readonly MilestoneState[], emit: Emit): void {
+  for (const m of broken) {
+    emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
+    emit('unlock', { milestone: m.index, unlocks: milestoneUnlocks(m.index) })
+  }
+}
+
 /** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
 const weightPhase: Phase = (state, ctx) => {
   const result = closeWeightWeek(state.campaign, state.weight, {
@@ -371,10 +381,7 @@ const weightPhase: Phase = (state, ctx) => {
     qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
     realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)
   })
-  for (const m of result.broken) {
-    ctx.emit('milestone', { index: m.index, mark: m.mark, byDispensation: m.byDispensation === true })
-    ctx.emit('unlock', { milestone: m.index, unlocks: milestoneUnlocks(m.index) })
-  }
+  announceMilestones(result.broken, ctx.emit)
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
   return { ...state, weight: result.weight }
@@ -449,6 +456,25 @@ const frontsDayPhase: Phase = (state, ctx) => skirmishFronts(state, ctx.day, ctx
 /** Patch 6 (D-50): a rival's land grab and walls land on their days, after the day's battles. */
 const rivalMovesPhase: Phase = (state, ctx) => rivalMovesDay(state, ctx.day, ctx.emit)
 
+/**
+ * Rules 3.5.0 (D-53): the regular Milestones whose locks opened break at the day's close, after
+ * everything the day pays, so what they open counts from the next day. A week close breaks its
+ * own in the `weight` week phase, after the week's income, as before.
+ */
+const milestonesDayPhase: Phase = (state, ctx) => {
+  if (ctx.weekClose) return state
+  const { milestones, broken } = breakMilestonesOnDay({
+    milestones: state.weight.milestones,
+    weighIns: weighInsOf(state.settlement.snapshots, ctx.weekStartsOn),
+    day: ctx.day,
+    week: ctx.week,
+    weekStartsOn: ctx.weekStartsOn
+  })
+  if (broken.length === 0) return state
+  announceMilestones(broken, ctx.emit)
+  return { ...state, weight: { ...state.weight, milestones } }
+}
+
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
@@ -462,7 +488,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   marchRules: marchRulesPhase, // Patch 4 (D-28)
   standings: standingsPhase, // Patch 6 (D-49, D-50)
   fronts: frontsDayPhase, // Patch 6 (D-50)
-  rivalMoves: rivalMovesPhase // Patch 6 (D-50)
+  rivalMoves: rivalMovesPhase, // Patch 6 (D-50)
+  milestones: milestonesDayPhase // Rules 3.5.0 (D-53)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */

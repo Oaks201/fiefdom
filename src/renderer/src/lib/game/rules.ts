@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.4.1',
+  ruleVersion: '3.5.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */

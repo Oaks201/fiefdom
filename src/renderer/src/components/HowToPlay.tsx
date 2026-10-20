@@ -364,8 +364,9 @@ export function HowToPlay(): React.JSX.Element | null {
                 pays more, and when your habits stay strong through a plateau it still pays part.
               </li>
               <li>
-                <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark reaches it, and
-                each opens something new: the Armory first, then building Wings, Elite companies and more items. A Milestone is never taken back.
+                <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark breaks it
+                when that day closes at {dawn}; a mark reached before its earliest week breaks on that week’s first day. Each opens something new: the Armory first, then building
+                Wings, Elite companies and more items. A Milestone is never taken back.
               </li>
               <li>
                 <b>The Crown’s Grace</b> (levels I to {numeral(RULES.grace.thresholds.length)}) rises with steady Momentum and makes the world gentler: lost battles cost less, lost

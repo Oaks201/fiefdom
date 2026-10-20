@@ -9,7 +9,8 @@ import { foundCampaign, type FoundingInput } from '../../src/renderer/src/lib/ga
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { seal } from '../../src/renderer/src/lib/game/contracts'
 import { balance } from '../../src/renderer/src/lib/game/economy'
-import { realmEffects } from '../../src/renderer/src/lib/game/effects'
+import { milestoneBroken, realmEffects } from '../../src/renderer/src/lib/game/effects'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import {
   DAY_PHASE_NAMES,
   DAY_PHASES,
@@ -19,7 +20,7 @@ import {
 } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
 import type { Ledger } from '../../src/renderer/src/lib/types'
-import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, steadyLedger, withDay } from './fixtures/ledgers'
+import { FOUNDED_AT, START, TZ, charter, chicago, emptyLedger, goodDay, ledgerWith, steadyLedger, withDay } from './fixtures/ledgers'
 import { near } from './support/assert'
 
 function found(ledger: Ledger = emptyLedger(), over: Partial<FoundingInput> = {}): CampaignState {
@@ -43,10 +44,10 @@ const LEDGER = steadyLedger('2026-09-10', 70)
 const COMBAT_EVENTS: string[] = ['defense', 'assault', 'calledOff', 'trophy', 'respect', 'hexTransfer']
 const COMBAT_PURSE: string[] = ['spoils', 'tribute']
 
-test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50)', () => {
+test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53)', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
-    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves']
+    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones']
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],
@@ -290,6 +291,29 @@ test('Week close: weight records the week, Momentum pays, and steady weigh-ins e
   assert.ok(state.purse.events.some((e) => e.source === 'momentum' && e.date === '2026-10-11'))
   assert.ok(state.weight.healerFloor !== undefined)
   assert.equal(state.settledThrough.week, 4)
+})
+
+test('D-53: the Monday weigh-in at 211.9 breaks Milestone 1 at that day’s close, so the Armory is open the next morning', () => {
+  // 217 → 168: Milestone 1 at 212, not before week 4 (Monday 2026-10-26 to Sunday 11-01). Mondays fall about 1 lb a week.
+  const mondays: Record<string, number> = { '2026-09-28': 216, '2026-10-05': 215, '2026-10-12': 214, '2026-10-19': 213, '2026-10-26': 211.9 }
+  const ledger = ledgerWith('2026-09-10', 60, (_, date) => goodDay(mondays[date] ? { weight: mondays[date] } : {}))
+  const sunday = settle(found(ledger), ledger, chicago('2026-10-26')).state
+  assert.equal(milestoneBroken(sunday, RULES.milestones.unlocks.armory), false)
+
+  const monday = settle(sunday, ledger, chicago('2026-10-27'))
+  assert.equal(monday.state.weight.milestones[0].brokenOn, '2026-10-26')
+  assert.equal(milestoneBroken(monday.state, RULES.milestones.unlocks.armory), true)
+  const unlock = monday.events.find((e) => e.kind === 'unlock')
+  assert.ok(unlock && unlock.kind === 'unlock' && unlock.day === '2026-10-26' && unlock.unlocks.includes('armory'))
+
+  // The week close that follows breaks nothing more and announces nothing again.
+  const later = settle(monday.state, ledger, chicago('2026-11-03')).state
+  assert.equal(later.log.filter((e) => e.kind === 'milestone').length, 1)
+  assert.equal(later.weight.milestones[0].brokenOn, '2026-10-26')
+
+  // A save whose Monday closed under 3.4.1, Milestone 1 still waiting for the week close, breaks it at its next day close.
+  const waiting = { ...monday.state, weight: { ...monday.state.weight, milestones: monday.state.weight.milestones.map((m) => (m.index === 1 ? { ...m, brokenOn: undefined, brokenWeek: undefined, byDispensation: undefined } : m)) } }
+  assert.equal(settle(waiting, ledger, chicago('2026-10-28')).state.weight.milestones[0].brokenOn, '2026-10-27')
 })
 
 test('Settlement never changes the ledger', () => {

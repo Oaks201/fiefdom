@@ -7,6 +7,7 @@ import {
   avg7,
   bmi,
   breakMilestones,
+  breakMilestonesOnDay,
   buildMilestones,
   changeGoal,
   checkGoal,
@@ -326,6 +327,61 @@ test('Locks: reaching 212 in week 2 waits until week 4; a broken Milestone stays
   }
   assert.equal(milestones[0].brokenOn, weekEnd(4))
   assert.equal(milestones.filter((m) => m.brokenOn).length, 1)
+})
+
+/** Closes days `from` to `to` one by one (weeks start on Monday, as `START` does): the days each breaks a Milestone on. */
+function dayCloses(milestones: MilestoneState[], weighIns: WeighIn[], from: number, to: number): { milestones: MilestoneState[]; brokenOn: Record<string, number[]> } {
+  const brokenOn: Record<string, number[]> = {}
+  for (let n = from; n <= to; n++) {
+    const result = breakMilestonesOnDay({ milestones, weighIns, day: day(n), week: Math.floor(n / 7) + 1, weekStartsOn: 1 })
+    milestones = result.milestones
+    if (result.broken.length > 0) brokenOn[day(n)] = result.broken.map((m) => m.index)
+  }
+  return { milestones, brokenOn }
+}
+
+test('D-53: the Monday weigh-in that reaches 212 breaks Milestone 1 at that day’s close, not at the week close', () => {
+  // 217 → 168: Milestone 1 at 212, not before week 4. Week 4's Monday is day 21.
+  const weighIns: WeighIn[] = [
+    { date: day(0), weight: 217 },
+    { date: day(7), weight: 215.5 },
+    { date: day(14), weight: 213.9 },
+    { date: day(21), weight: 211.9 }
+  ]
+  const { milestones, brokenOn } = dayCloses(buildMilestones(217, 168), weighIns, 0, 27)
+  assert.deepEqual(brokenOn, { [day(21)]: [1] })
+  assert.equal(milestones[0].brokenWeek, 4)
+  assert.equal(milestones[0].byDispensation, false)
+})
+
+test('D-53 / Ch 9 rule 5: a mark reached before its earliest week breaks at the close of that week’s first day, even after a small regain', () => {
+  const weighIns: WeighIn[] = [
+    { date: day(0), weight: 217 },
+    { date: day(7), weight: 214.5 },
+    { date: day(14), weight: 211.8 },
+    { date: day(21), weight: 212.6 }
+  ]
+  assert.deepEqual(dayCloses(buildMilestones(217, 168), weighIns, 0, 27).brokenOn, { [day(21)]: [1] })
+})
+
+test('D-53: a day whose trend is too fast breaks nothing, and Keeping Milestones wait for the week close (A-43, A-116)', () => {
+  // As in the too-fast test: 2.5 lb a week at 217 lb, Milestone 1 of 230 → 180 (225, week 3) reached.
+  const weighIns = series(0, 27, 217, 2.5)
+  assert.deepEqual(dayCloses(buildMilestones(230, 180), weighIns, 14, 27).brokenOn, {})
+  // 217 → 195 ends in Keeping Milestones: with every regular one broken, a day close breaks none of them.
+  const kept = buildMilestones(217, 195).map((m) => (m.keeping ? m : { ...m, brokenOn: weekEnd(20), brokenWeek: 20, byDispensation: false }))
+  const flat: WeighIn[] = [{ date: day(140), weight: 195 }, { date: day(147), weight: 195 }]
+  assert.deepEqual(breakMilestonesOnDay({ milestones: kept, weighIns: flat, day: day(150), week: 22, weekStartsOn: 1 }).broken, [])
+})
+
+test('D-53: a reading before its week’s weigh-in day counts only once that week has closed', () => {
+  // Weeks from Sunday: a Sunday reading at the mark is the week's reading only if no Monday one comes.
+  const sunday = day(6)
+  const early: WeighIn[] = [{ date: day(0), weight: 213 }, { date: sunday, weight: 211.9 }]
+  const milestones = buildMilestones(217, 168).map((m) => ({ ...m, earliestWeek: 1 }))
+  const check = (n: number, weighIns: WeighIn[]) => breakMilestonesOnDay({ milestones, weighIns, day: day(n), week: 2, weekStartsOn: 0 }).broken.map((m) => m.index)
+  assert.deepEqual(check(6, early), [], 'not at the Sunday close: a Monday weigh-in may still replace it')
+  assert.deepEqual(check(13, early), [1], 'its week has closed: it is the week’s reading')
 })
 
 test('Ch 9 rule 2: a Keeping Milestone breaks after 4 straight weeks with the 7-day average within 2% of the goal', () => {

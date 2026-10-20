@@ -11,7 +11,9 @@ import type { Ledger } from '../../lib/types'
 
 type Unit = CampaignState['campaign']['unit']
 
-/** A weigh-in's note: a Milestone broken at that week's close, or its mark reached while its week was still to come. */
+const DAY_CLOSE = `${String(RULES.clock.dayCloseHour).padStart(2, '0')}:00`
+
+/** A weigh-in's note: a Milestone broken that week, or its mark reached while its week was still to come. */
 function noteText(n: WeighInNote, unit: Unit, week: number): string {
   if (n.kind === 'broken') return `Milestone ${n.index} broken (${n.keeping ? 'kept near the goal' : `${n.mark} ${unit}`})${n.byDispensation ? ' by Dispensation' : ''}`
   return `Reached Milestone ${n.index}’s mark (${n.mark} ${unit})${n.earliestWeek > week ? `; it waits for week ${n.earliestWeek}` : ''}`
@@ -21,7 +23,8 @@ function noteText(n: WeighInNote, unit: Unit, week: number): string {
 function nextText(r: MilestoneRow, unit: Unit): string {
   const { withinShare, weeks } = RULES.milestones.keeping
   if (r.keeping) return `Next: Milestone ${r.index}, kept by staying within ${percent(withinShare)}% of the goal for ${weeks} week closes in a row.`
-  return `Next: Milestone ${r.index} at ${r.mark} ${unit}, not before week ${r.earliestWeek}${r.lock1 ? ' (mark reached)' : ''}.`
+  const reached = r.breaksAtClose ? ` (mark reached: it breaks when today closes at ${DAY_CLOSE})` : r.lock1 ? ' (mark reached)' : ''
+  return `Next: Milestone ${r.index} at ${r.mark} ${unit}, not before week ${r.earliestWeek}${reached}.`
 }
 
 /**

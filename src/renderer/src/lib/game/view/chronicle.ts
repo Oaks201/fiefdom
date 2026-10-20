@@ -17,7 +17,7 @@ import { dutiesPillar, poolShare, stepsPillar, tableIntake, termsOf, valor, week
 import { charterOn, contractsOf, snapshotOf } from '../settle'
 import { openDayOf, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
-import { graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
+import { breakMilestonesOnDay, graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
 import type { CampaignState, DayRecord, GraceLevel, ISODate, WeekStartsOn, WeighIn } from '../types'
 import type { Ledger } from '../../types'
 import { ledSpoilsDue } from './skirmish'
@@ -335,6 +335,8 @@ export interface MilestoneRow {
   /** Lock 1, the mark reached (Ch 9 rule 4), and lock 2, its earliest week come. */
   lock1: boolean
   lock2: boolean
+  /** D-53: it breaks when today closes, as the day's settlement will read it. */
+  breaksAtClose: boolean
 }
 
 export interface MilestonePanel {
@@ -360,6 +362,7 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
   const week = weekOn(state, today)
   const unit = state.campaign.unit
   const weekly = weeklyWeighIns(weighInsLb, state.campaign.weekStartsOn)
+  const atClose = breakMilestonesOnDay({ milestones: state.weight.milestones, weighIns: weekly, day: today, week, weekStartsOn: state.campaign.weekStartsOn }).broken.map((m) => m.index)
   const rows: MilestoneRow[] = state.weight.milestones.map((m) => ({
     index: m.index,
     mark: inUnit(m.mark, unit),
@@ -368,7 +371,8 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
     ...(m.brokenOn ? { brokenOn: m.brokenOn } : {}),
     ...(m.byDispensation !== undefined && m.brokenOn ? { byDispensation: m.byDispensation } : {}),
     lock1: m.brokenOn !== undefined || (!m.keeping && markReachedOn(weekly, m.mark, today) !== null),
-    lock2: m.brokenOn !== undefined || week >= m.earliestWeek
+    lock2: m.brokenOn !== undefined || week >= m.earliestWeek,
+    breaksAtClose: atClose.includes(m.index)
   }))
   const lastClose = state.weight.weeks.at(-1)?.day
   const momentum = lastClose ? state.purse.events.filter((e) => e.date === lastClose && e.source === 'momentum').reduce((s, e) => s + e.amount, 0) : null
@@ -389,7 +393,7 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
 // ── The weigh-in log (D-13) ──────────────────────────────────────────────────
 
 export interface WeighInNote {
-  /** Broken at this week's close, or its mark reached by this weigh-in while its week was still to come. */
+  /** Broken this week, or its mark reached by this weigh-in while its week was still to come. */
   kind: 'broken' | 'reached'
   index: number
   /** The mark in the campaign's unit. */
@@ -416,7 +420,7 @@ export interface WeighInRow {
 /**
  * The Chronicle's weigh-in log (D-13), newest first: one row for each week's weigh-in day, with the
  * weigh-in the game reads for that week (`weeklyWeighIns`) and its change since the one before,
- * noting each Milestone broken at that week's close and each mark reached while its week was still
+ * noting each Milestone broken that week and each mark reached while its week was still
  * to come. A Milestone broken in a week with no weigh-in (by Dispensation, or a mark reached
  * earlier) gets a row of its own. `weighInsLb` are the player's weigh-ins in lb.
  */
