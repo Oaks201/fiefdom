@@ -1,6 +1,6 @@
 # Patch 6 spec: catch-up figures, Dawn tidings, Respect by rival, a realm that moves by the day
 
-Written 2026-10-18. **Status: approved as drafted by Rich on 2026-10-18, with the Orc's +75 perk as P6-07 (a)** ("Approved as drafted, with the Orc's +75 perk as (a): his beaten forces no longer strike back at their first dawn."). Rich's decisions of 2026-10-18 are in [section 1.1](#11-what-rich-decided-2026-10-18), with his words. What was still his to answer is in [section 1.2](#12-open-questions): P6-08, answered after the simulator run (T-09 (a), D-51). Every further rule Claude settled is a call, C-74 onward ([section 1.3](#13-claudes-calls)); Rich may overturn any of them. Every earlier number or rule this patch changes is an N-item ([section 1.4](#14-earlier-numbers-and-rules-this-patch-changes-d-02)). The build's own changes go in [section 12](#12-what-the-build-changed), and number changes from the tuning stage still come to him (D-02).
+Written 2026-10-18. **Status: approved as drafted by Rich on 2026-10-18, with the Orc's +75 perk as P6-07 (a)** ("Approved as drafted, with the Orc's +75 perk as (a): his beaten forces no longer strike back at their first dawn."). Rich's decisions of 2026-10-18 are in [section 1.1](#11-what-rich-decided-2026-10-18), with his words. What was still his to answer is in [section 1.2](#12-open-questions): P6-08, answered after the simulator run (T-09 (a), D-51). The tuning report's T-10 was probed and taken at a 5-point buffer (D-52, rules 3.4.1, [section 12.5](#125-rules-341-the-standing-buffer-at-5-2026-10-19-d-52)). Every further rule Claude settled is a call, C-74 onward ([section 1.3](#13-claudes-calls)); Rich may overturn any of them. Every earlier number or rule this patch changes is an N-item ([section 1.4](#14-earlier-numbers-and-rules-this-patch-changes-d-02)). The build's own changes go in [section 12](#12-what-the-build-changed), and number changes from the tuning stage still come to him (D-02).
 
 This spec carries out Rich's three requests of 2026-10-18 and what followed from talking them through:
 1. a figure for what the rest of the week needs to get back on pace, for steps and for calories;
@@ -317,7 +317,7 @@ The court and the Herald say so the next morning.
 
 ### 7.1 The version
 
-- **`ruleVersion` 3.4.0** (C-94). `campaign.ruleVersion` stays the founding version (3.1.0 for Rich).
+- **`ruleVersion` 3.4.0** (C-94); 3.4.1 from the standing buffer (D-52, section 12.5). `campaign.ruleVersion` stays the founding version (3.1.0 for Rich).
 - Stage 1 (the screens) changes no rule and stays on 3.3.0, so it can be installed on its own.
 - **New state, all optional:**
   - `RivalMemory.grabs?: { hexId: string; day: ISODate; i: number }[]` (C-91);
@@ -350,14 +350,14 @@ The proof is synthetic: the 3.1.0, 3.2.0 and 3.3.0 fixtures load under 3.4.0 wit
 
 | Where | Value |
 | --- | --- |
-| `ruleVersion` | `3.4.0` |
+| `ruleVersion` | `3.4.0`; `3.4.1` from D-52 (T-10) |
 | `respect.marks` | section 4.1's table (`orc: { war: −15, raidsStrongerAt: −40, ownDown: −60, raidsWeaker: 25, buysHex: 25, pact: 50, peace: null, envoy: null, sellsHex: null, callToArms: 45, ownUp: 75 }`, and so on for each rival) |
 | `respect.standing`, `respect.raidsStrongerAt`, `respect.own.up`, `respect.own.down`, `respect.thresholds.{raidsWeaker, sellHex, goblinBuysHex, pact, envoy, buyHex, callToArms}` | retired into `respect.marks` |
 | `respect.own` | keeps its effects (`orcConquests`, `goblinGreedSteps`, `goblinOfferMult`, `dwarfWildWallMax`, `archmageSurgeMult`) and gains the Orc's +75 perk per P6-07 |
 | `rivalAi.planConquestOnWar` | `false` (C-93) as built; `true` from D-51 (T-09) |
 | `rivalAi.grabDays` | `{ min: 1, max: 7 }` (C-91) |
 | `rivalAi.wallDays` | `6` (C-92) |
-| `respect.standingBuffer` | `0` (T-10's probe, section 12.4): 0 reads the lines both ways, as built; the simulator measured 5. Rich decides any other number |
+| `respect.standingBuffer` | `0` as built (T-10's probe, section 12.4); `5` from D-52 (T-10 (b), section 12.5) |
 
 ---
 
@@ -664,3 +664,11 @@ At Rich's go-ahead ("Take the standing buffer at 5 (T-10 option b): merge the bu
 - **Targets** ([targets-3.4.1](../game/sim/targets-3.4.1.md), regenerated): every target met, reading as the probe's buffer-5 run did. The Goblin's standing changes a campaign: smarter 4; 8 (was 4; 22), greedy 3; 13 (was 5; 35). G-08 2.04× on 100 seeds; G-11 54; 58; 69 (83% by week 76); G-20 3; 0; 2; 1.
 - **Verification:** `npm run typecheck`, `npm test` (872 tests) and `npm run check:game` pass.
 
+
+### 12.6 Rules 3.5.0 on this branch: Milestones at the day close (2026-10-19, D-53)
+
+Not part of this patch: Rich asked that a Milestone break at the close of the day its weigh-in reaches the mark, not at the week close (D-53, `2c76bad`), and it was built on `patch-6` and installed on the live game the same evening. It was committed without a targets run; the run below was made afterwards (2026-10-20) on the committed build.
+
+- **Targets** ([targets-3.5.0](../game/sim/targets-3.5.0.md), 692 s on 12 workers): every target met, as at 3.4.1. Nothing moves by more than the noise of a re-drawn campaign: G-08 2.08× on 100 seeds (2.04×), 2.06× on 40 (2.01×); G-11 54; 58; 69, Committed by week 76 85% (83%); G-07 in full 59 / 60 / 60 / 59 (59 / 60 / 59.5 / 59); G-21 1.03; 0.85; 0.62; behavior share 35% (36%); G-15 1.79 MB (1.81 MB). G-20 and the standing flips read as at 3.4.1 but for the Dwarf's most greedy changes, 8 against 7.
+- **Why so little:** the simulator's players weigh in on Mondays and Thursdays (`sim/ledgerGen.ts`), so a mark reached on the Monday weigh-in now breaks at that day's close instead of the week close: the same Milestones, a few days sooner. No number changes.
+- **Verification:** `npm run typecheck`, `npm test` (878 tests) and `npm run check:game` pass.
