@@ -11,18 +11,17 @@ import { Modal } from '../Modal'
 import { AudienceDebug } from './AudienceDebug' // TEMPORARY: the dev Respect override
 import { DealsList } from './DealsList'
 
-/** The width the court cards draw a ruler's portrait at (RivalCourt). */
 /** Twice the portraits' 128-pixel drawing (their files are 4×), so the pixel art stays even. */
 const PORTRAIT_WIDTH = 256
 
 /**
  * An audience with one rival court, opened from its card on the Diplomacy page: the player's
  * portrait facing the ruler's, the ruler's line for its Respect tier (rivalLines.json), and below
- * them that court's Accord and deals, the same panels the page shows. A deal struck or an Accord
- * sealed turns the line to the rival's accept line. The close button and Escape (Modal) return to
- * the page.
+ * them that court's Accord (none for the Orc, who signs none) and its deals, with `highlight` picking
+ * out a hex's row. A deal struck or an Accord sealed turns the line to the rival's accept line. The
+ * close button and Escape (Modal) return to the page.
  */
-export function Audience({ campaign, today, panel, onClose }: { campaign: CampaignState; today: ISODate; panel: RivalPanel; onClose(): void }): React.JSX.Element {
+export function Audience({ campaign, today, panel, highlight, onClose }: { campaign: CampaignState; today: ISODate; panel: RivalPanel; highlight?: string; onClose(): void }): React.JSX.Element {
   const rival = panel.rival
   const profile = useLedgerData().profile
   const [accepted, setAccepted] = useState(false)
@@ -64,8 +63,8 @@ export function Audience({ campaign, today, panel, onClose }: { campaign: Campai
         />
       )}
       <div className="audience__options">
-        {campaign.rivals[rival].status === 'active' && <AccordPanel campaign={campaign} today={today} rival={rival} onSealed={() => setAccepted(true)} />}
-        <DealsList campaign={campaign} today={today} rival={rival} onStruck={() => setAccepted(true)} />
+        <AccordPanel campaign={campaign} today={today} rival={rival} onSealed={() => setAccepted(true)} />
+        <DealsList campaign={campaign} today={today} rival={rival} highlight={highlight} onStruck={() => setAccepted(true)} />
       </div>
     </Modal>
   )

@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Diplomacy (T15): the four rival courts, their Respect, the deals and the
-   courtships.
+   Diplomacy (T15): the four rival courts, their Respect and the courtships; the
+   Audience with a court, and its Accord and deals.
    ========================================================================== */
 
 .diplomacy-page {
@@ -28,7 +28,6 @@
   border: 1px solid var(--rule);
   border-top: 5px solid var(--court);
   border-radius: 12px;
-  transition: box-shadow 0.15s;
 }
 
 .court--orc {
@@ -45,10 +44,6 @@
 
 .court--archmage {
   --court: #6b3fa0;
-}
-
-.court.is-selected {
-  box-shadow: 0 0 0 3px var(--court), 0 6px 14px rgba(40, 22, 8, 0.25);
 }
 
 .court.is-resolved {
@@ -117,14 +112,8 @@
   background: #6b5a46;
 }
 
-.court__greeting {
+.court__audience {
   margin: 2px 0;
-  padding: 6px 10px;
-  font-style: italic;
-  color: var(--ink);
-  background: rgba(255, 252, 242, 0.6);
-  border-left: 3px solid var(--court);
-  border-radius: 4px;
 }
 
 .respect__head {
@@ -261,30 +250,7 @@
   color: var(--crimson);
 }
 
-.diplomacy-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
 /* -- Deals ---------------------------------------------------------------- */
-.court-reply {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  background: rgba(255, 252, 242, 0.7);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-}
-
-.court-reply blockquote {
-  margin: 0;
-  font-style: italic;
-}
-
 .deals__table,
 .courtships__table {
   width: 100%;
@@ -380,13 +346,6 @@
 }
 
 /* -- The endgame (T16) ------------------------------------------------------ */
-.diplomacy-court {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
 .ultimatum,
 .coalition-banner {
   display: flex;
@@ -500,12 +459,6 @@
 .endgame__reign {
   margin: 0;
   font-style: italic;
-}
-
-@media (max-width: 1280px) {
-  .diplomacy-cols {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 1100px) {

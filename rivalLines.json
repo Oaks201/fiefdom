@@ -1,41 +1,53 @@
 {
-  "tiers": [0, 25, 40, 50, 60, 75],
+  "tiers": [-75, -50, -25, 0, 25, 40, 50, 60, 75],
   "rivals": {
     "ugrak": {
+      "-75": "I have promised your skull to the Steppe. Speak, lordling. Even the dead get last words.",
+      "-50": "My warriors whet their axes on your border stones. Say your piece and go.",
+      "-25": "You still breathe in my tent. Call it patience. Mine runs short.",
       "0": "You walk into my tent like you own the ground under it. You own nothing, lordling. Not yet.",
       "25": "You have not run. Most do. Speak, and keep it short.",
       "40": "Your blades stay sheathed, mine stay sheathed. For now, that is enough.",
       "50": "My warriors spoke your name at the fire last night. They did not spit after.",
       "60": "You bleed like one of us. When the horns sound, the Steppe will answer.",
       "75": "Ugrak calls no lord brother. You are the exception. Do not make me regret it.",
-      "accept": "Ugrak: deal accepted (placeholder)."
+      "accept": "Done. Ugrak keeps his word. Keep yours, or I come to collect it."
     },
     "skivvet": {
+      "-75": "There's a price on your head, landlord. Don't fret, it's a very generous one.",
+      "-50": "You've cost me coin. I write down every copper, and I always collect.",
+      "-25": "Your credit's gone sour, friend. Coin up front from now on. All of it.",
       "0": "Ah, the new landlord! Everything has a price, friend. Yours is just... very high right now.",
       "25": "You've got land, I've got patience. Let's see which runs out first.",
       "40": "A quiet border is good for business. Let's keep it quiet, eh?",
       "50": "I've got a few parcels I could part with. For a friend. At a friend's price. Mostly.",
       "60": "My ledgers like you. My ledgers don't like anybody.",
       "75": "Partner! Sit, sit. The Warren's vaults are open to you. Well, the front ones.",
-      "accept": "Skivvet: deal accepted (placeholder)."
+      "accept": "Pleasure doing business! Mind the fine print. Kidding! Mostly."
     },
     "hrodgar": {
+      "-75": "The clans have sworn on the anvil to break your banners. Stone forgets nothing, and forgives less.",
+      "-50": "The forges of Dun Kaldor ring for war now, not for trade. You earned that, outsider.",
+      "-25": "The book of grudges holds a whole page for you now. I mean to settle every line.",
       "0": "Your name is written in the book of grudges. Ink dries slow in Dun Kaldor.",
       "25": "You have kept your word so far. Stone holds weight long before it earns trust.",
       "40": "There will be no war between us this season. My word is iron. See that yours is too.",
       "50": "The clans speak of you without spitting. For an outsider, that is no small thing.",
       "60": "You stood firm where lesser lords cracked. When you call, Dun Kaldor's hammers will ring.",
       "75": "Your name is carved in the hall now. Few outsiders earn the stone. Fewer keep it.",
-      "accept": "Hrodgar: deal accepted (placeholder)."
+      "accept": "Agreed, and carved in stone. What a dwarf carves, he does not unmake."
     },
     "emrys": {
+      "-75": "Do hold still. I've prepared something special just for you, and I'd hate to miss.",
+      "-50": "I could turn you into a newt. I'm only hesitating out of respect for newts.",
+      "-25": "You again. I've started keeping notes on you. They are not flattering.",
       "0": "Oh. You. I was told someone important was here. Clearly a scheduling error.",
       "25": "You've learned to read a map. How wonderful for you. Do continue.",
       "40": "I've decided not to burn your borders. You're welcome. Try not to make me reconsider.",
       "50": "You're less tedious than the others. That's the highest praise I give, so savor it.",
       "60": "Fine. When your little war comes, I'll lend you a spell or two. Stay out of the blast.",
       "75": "I suppose you're... adequate. Don't tell anyone I said that. It would ruin us both.",
-      "accept": "Emrys: deal accepted (placeholder)."
+      "accept": "Very well, agreed. Do keep up your end; I so dislike repeating myself."
     }
   }
 }

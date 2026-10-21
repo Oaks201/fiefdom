@@ -820,7 +820,8 @@ export function HowToPlay(): React.JSX.Element | null {
                 later, and the Herald announces it the day before. A Truce, which stops his raids for a while, is open at any Respect.
               </li>
               <li>
-                <b>Deals</b> (choose a court): Truces, pacts, buying and selling hexes. Each shows what it costs and needs.
+                <b>Deals</b> (a court’s Audience): Truces, pacts, calls to arms, buying and selling hexes. Each shows what it costs and needs; a deal that can’t be struck as
+                things stand, such as a call to arms against a rival he shares no front with, isn’t listed.
               </li>
               <li className="guide__table-item">
                 <MarksTable />

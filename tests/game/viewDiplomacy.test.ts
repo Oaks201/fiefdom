@@ -6,14 +6,14 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { armyValue } from '../../src/renderer/src/lib/game/combat'
-import { makeDeal, placeBid } from '../../src/renderer/src/lib/game/land'
+import { availableDeals, makeDeal, placeBid } from '../../src/renderer/src/lib/game/land'
 import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome, holdings, rivalIncome } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
-import { hasText, t } from '../../src/renderer/src/lib/game/text'
+import { hasText } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { courtableVillages, courtshipsView, dealReaction, dealsView, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealsView, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -101,11 +101,32 @@ test('Ch 6: every deal shown as available is accepted by makeDeal; every unavail
   assert.ok(shownAvailable > 0 && shownRefused > 0, `${shownAvailable} available, ${shownRefused} refused`)
 })
 
-test('Ch 17: a deal struck gets the rival’s one-line reaction, its placeholders filled with the deal and its price', () => {
-  const line = dealReaction('goblin', { kind: 'buyHex', price: 135, hexId: '1,-3' })
-  assert.equal(line.textId, 'rivals.goblin.dealStruck')
-  assert.doesNotMatch(line.text, /\{/)
-  assert.match(line.text, /135/)
+test('the court lists only the deals that can be struck or wait on something within reach (Respect, the purse, time, a standing); never a deal with no hex, no front or a rival who never makes it', () => {
+  const within = new Set(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied'])
+  const base = driveCampaign({ seed: 21, weeks: 14, habits: 'steady', policy: 'greedy' }).state
+  const today = openDayOf(base)
+  let hidden = 0
+  for (const respect of [10, 55]) {
+    const state = { ...base, rivals: Object.fromEntries(RIVAL_IDS.map((r) => [r, { ...base.rivals[r], respect }])) as CampaignState['rivals'] }
+    for (const r of RIVAL_IDS) {
+      const lines = dealsView(state, r, today)
+      for (const line of lines) assert.ok(line.available || within.has(line.reason?.code ?? ''), `${r} ${line.kind}: ${line.reason?.code}`)
+      // A call to arms is listed only against a rival he shares a front with.
+      for (const line of lines.filter((l) => l.kind === 'callToArms')) assert.ok(Object.values(state.fronts).some((f) => f.rivals.includes(r) && f.rivals.includes(line.target as RivalId)), `${r} against ${line.target}`)
+      hidden += availableDeals(state, r, today).length - lines.length
+    }
+  }
+  assert.ok(hidden > 0, 'some deals are out of reach')
+  // A resolved rival deals on nothing.
+  const conquered = { ...base, rivals: { ...base.rivals, goblin: { ...base.rivals.goblin, status: 'conquered' as const } } }
+  assert.deepEqual(dealsView(conquered, 'goblin', today), [])
+})
+
+test('D-39: the Truce says the Respect it brings, the rival’s own: the Orc gives none', () => {
+  const state = realm()
+  const truce = (r: RivalId): string => dealsView(state, r, openDayOf(state)).find((l) => l.kind === 'truce')?.effect ?? ''
+  assert.doesNotMatch(truce('orc'), /Respect/)
+  assert.ok(truce('goblin').endsWith(`; +${RULES.respect.change.tradeOrTruce} Respect`), truce('goblin'))
 })
 
 test('D-39, D-48: the Respect marks on both sides, each rival his own at his own numbers (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord, never makes peace, sends no envoy and sells no hex)', () => {
@@ -156,11 +177,8 @@ test('Ch 17: the portrait’s mood follows disposition: calm at Peace, angry at 
   assert.equal(moodOf(resolved, 'orc'), 'humbled')
   const panel = rivalPanel(at('war'), 'orc')
   assert.equal(panel.portrait, 'rival.orc.angry')
-  assert.equal(panel.greeting.textId, 'rivals.orc.warning')
-  assert.equal(rivalPanel(resolved, 'orc').greeting.textId, 'rivals.orc.fall')
-  assert.equal(rivalPanel(resolved, 'orc').greeting.text, t('rivals.orc.fall', { how: 'conquest' }))
-  assert.equal(rivalPanel(at('peace'), 'orc').greeting.textId, 'rivals.orc.greeting')
-  assert.doesNotMatch(rivalPanel(at('peace'), 'orc').greeting.text, /\{/, 'every placeholder filled')
+  assert.equal(rivalPanel(resolved, 'orc').portrait, 'rival.orc.humbled')
+  assert.equal(rivalPanel(at('peace'), 'orc').portrait, 'rival.orc.calm')
   assert.equal(panel.name, 'Ugrak')
 })
 

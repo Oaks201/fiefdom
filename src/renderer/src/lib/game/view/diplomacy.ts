@@ -10,15 +10,15 @@
  */
 import { CODEX } from '../codex'
 import { realmEffects } from '../effects'
-import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer } from '../land'
+import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer, type DealRefusalCode } from '../land'
 import { claimableBy, hexName } from '../map'
 import { greedBand, orcTrackOf, pactHolds, surgeOn } from '../personalities'
 import { RULES } from '../rules'
-import { marksFor, marksOf, reaches } from '../respect'
+import { marksFor, marksOf, reaches, respectChange } from '../respect'
 import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
 import { openDayOf, weekOn } from '../state'
 import { stanceOf, weighsMost } from '../terms'
-import { t, type RivalMoment } from '../text'
+import { t } from '../text'
 import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
 import { suggestedBid, trustNow } from './realm'
 import { landRefusalLabel } from './refusals'
@@ -60,8 +60,6 @@ export interface RivalPanel {
   rumors: { textId: string; text: string }[]
   /** Its Rim fronts: the other rival, the state, and the war track from this rival's side. */
   fronts: { front: FrontId; other: RivalId; otherName: string; state: Disposition; track: number }[]
-  /** A one-line greeting in its mood (the words are A3's; until then the placeholder). */
-  greeting: { textId: string; text: string }
   /** His stance toward the player from week 16 (D-33): a band, never the score or which measure is close. */
   stance?: { band: StanceBand; label: string }
   /** His march's state in plain lines (D-28 to D-31): the Orc's war track, the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge. */
@@ -174,15 +172,6 @@ export function moodOf(state: CampaignState, rival: RivalId): Mood {
   return r.disposition.player === 'war' ? 'angry' : 'calm'
 }
 
-/** The voice line a court opens with: its fall, its alliance, a warning at War, otherwise its greeting. */
-function greetingMoment(status: RivalState['status'], mood: Mood): RivalMoment {
-  if (status === 'conquered' || status === 'abdicated') return 'fall'
-  if (status === 'allied') return 'allied'
-  return mood === 'angry' ? 'warning' : 'greeting'
-}
-
-const FALL_HOW: Partial<Record<RivalState['status'], string>> = { conquered: 'conquest', abdicated: 'abdication' }
-
 const OWN = RULES.respect.own
 const OPENS: Record<string, (rival: RivalId) => string> = {
   raidsWeaker: () => `Its raids strike ${Math.round((1 - RULES.respect.raidsWeakerMult) * PERCENT)}% weaker`,
@@ -232,7 +221,6 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
   const name = rivalName(rival)
   const view = rivalView(state, rival, effects)
   const mood = moodOf(state, rival)
-  const greetingId = `rivals.${rival}.${greetingMoment(r.status, mood)}`
   const fronts = Object.values(state.fronts)
     .filter((f) => f.rivals.includes(rival))
     .map((f) => {
@@ -258,7 +246,6 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     ...(view.army !== undefined ? { army: view.army } : {}),
     rumors: [...view.rumors, ...watchRumors(state, rival, today)].map((id) => ({ textId: id, text: t(id, { rival: name }) })),
     fronts,
-    greeting: { textId: greetingId, text: t(greetingId, { rival: name, disposition: view.disposition, how: FALL_HOW[r.status] ?? r.status }) },
     ...(stance ? { stance } : {}),
     march: marchLines(state, rival, today),
     standingNote: standingNote(state, rival)
@@ -325,8 +312,11 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
         requires: rival === 'goblin' ? 'Any time; not rings 1 and 2, nor a Gate' : `Respect ${m.buysHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
         effect: `You receive ${Math.round(tr.sellShare * PERCENT)}% of its buy price; +${RULES.respect.change.hexSold} Respect`
       }
-    case 'truce':
-      return { requires: 'Any time, except while a Grand Battle is announced', effect: `No raids or conquest attempts from it for ${tr.truce.days} days; +${RULES.respect.change.tradeOrTruce} Respect` }
+    case 'truce': {
+      // Patch 5 (D-39): the Orc gives nothing for a Truce.
+      const gain = respectChange(rival, 'truce', RULES.respect.change.tradeOrTruce)
+      return { requires: 'Any time, except while a Grand Battle is announced', effect: `No raids or conquest attempts from it for ${tr.truce.days} days${gain !== 0 ? `; ${signed(gain)} Respect` : ''}` }
+    }
     case 'pact':
       return { requires: `Respect ${m.pact}`, effect: `No conquest attempts from it for ${tr.pact.days} days; its raids come half as often` }
     case 'callToArms':
@@ -338,35 +328,38 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
   }
 }
 
-/** Every deal `rival` could strike today (`availableDeals`), the unavailable ones with the engine's reason. */
+/**
+ * The refusals a player can work toward: Respect, the purse, the 4 weeks between hex deals, a standing,
+ * an agreement or a Grand Battle warning that ends, a coalition that breaks. A deal refused for any other
+ * reason (no hex to trade, no front between them, a rival who never does it, a resolved rival) cannot be
+ * struck as things stand, and the court doesn't list it.
+ */
+const WITHIN_REACH: ReadonlySet<DealRefusalCode> = new Set<DealRefusalCode>(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied'])
+
+/** Every deal `rival` could strike today (`availableDeals`), and those it refuses for a reason within reach, with the engine's reason. */
 export function dealsView(state: CampaignState, rival: RivalId, today: ISODate = openDayOf(state)): DealLine[] {
   const name = rivalName(rival)
-  return availableDeals(state, rival, today).map((d) => {
-    const line: DealLine = { kind: d.kind, rival, price: d.price, name: dealName(d.kind, d.hexId, d.target), ...dealTerms(d.kind, rival), available: d.allowed }
-    if (d.hexId) {
-      line.hexId = d.hexId
-      line.hexName = hexName(d.hexId)
-    }
-    if (d.target) line.target = d.target
-    if (!d.allowed && d.reason) {
-      const facts = {
-        rival: name,
-        ...(d.reason.needed !== undefined ? { needed: d.reason.needed } : {}),
-        ...(d.reason.have !== undefined ? { have: d.reason.have } : {}),
-        ...(d.hexId ? { hex: hexName(d.hexId) } : {}),
-        ...(d.target ? { target: rivalName(d.target) } : {})
+  return availableDeals(state, rival, today)
+    .filter((d) => d.allowed || (d.reason !== undefined && WITHIN_REACH.has(d.reason.code)))
+    .map((d) => {
+      const line: DealLine = { kind: d.kind, rival, price: d.price, name: dealName(d.kind, d.hexId, d.target), ...dealTerms(d.kind, rival), available: d.allowed }
+      if (d.hexId) {
+        line.hexId = d.hexId
+        line.hexName = hexName(d.hexId)
       }
-      line.reason = { code: d.reason.code, textId: d.reason.textId, text: t(d.reason.textId, facts) }
-    }
-    return line
-  })
-}
-
-/** The rival's one-line reaction to a deal struck (A3 writes it; until then the placeholder). */
-export function dealReaction(rival: RivalId, deal: { kind: DealKind; price: number; hexId?: string; target?: RivalId }): { textId: string; text: string } {
-  const id = `rivals.${rival}.dealStruck`
-  const price = Math.round(deal.price * PURSE_STEP) / PURSE_STEP
-  return { textId: id, text: t(id, { rival: rivalName(rival), deal: dealName(deal.kind, deal.hexId, deal.target), price }) }
+      if (d.target) line.target = d.target
+      if (!d.allowed && d.reason) {
+        const facts = {
+          rival: name,
+          ...(d.reason.needed !== undefined ? { needed: d.reason.needed } : {}),
+          ...(d.reason.have !== undefined ? { have: d.reason.have } : {}),
+          ...(d.hexId ? { hex: hexName(d.hexId) } : {}),
+          ...(d.target ? { target: rivalName(d.target) } : {})
+        }
+        line.reason = { code: d.reason.code, textId: d.reason.textId, text: t(d.reason.textId, facts) }
+      }
+      return line
+    })
 }
 
 // ── Courtships (Ch 6 "Influence") ────────────────────────────────────────────

@@ -1,3 +1,5 @@
+import { RULES } from '../../lib/game/rules'
+
 /**
  * TEMPORARY, development builds only (Audience.tsx draws it under `import.meta.env.DEV`): sets the
  * Respect the Audience picks its line by, to read each tier's line. It never changes the campaign;
@@ -11,7 +13,7 @@ export function AudienceDebug({ real, value, tiers, onChange }: { real: number; 
       <span className="audience-debug__tag">DEV</span>
       <label className="audience-debug__range">
         Respect for the line
-        <input type="range" min={0} max={100} step={1} value={shown} onChange={(e) => onChange(Number(e.target.value))} />
+        <input type="range" min={RULES.respect.min} max={RULES.respect.max} step={1} value={shown} onChange={(e) => onChange(Number(e.target.value))} />
         <output>{shown}</output>
       </label>
       {tiers.map((tier) => (

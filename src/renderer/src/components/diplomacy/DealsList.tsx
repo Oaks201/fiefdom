@@ -3,36 +3,32 @@ import { GiShakingHands } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { makeDeal } from '../../lib/game/land'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
-import { dealReaction, dealsView, type DealLine } from '../../lib/game/view/diplomacy'
+import { dealsView, type DealLine } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
 import { rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
-import { GameArt } from '../game/GameArt'
 
 function keyOf(d: DealLine): string {
   return `${d.kind}:${d.hexId ?? ''}:${d.target ?? ''}`
 }
 
 /**
- * What a rival will deal on (Ch 6 "Trade and negotiation"): every line of `availableDeals` with its
- * price, what it needs and what it does. Unavailable lines stay listed with the engine's reason.
- * Striking one asks once more, then shows the rival's one-line reaction. With `onStruck` (the
- * Audience) the caller voices the rival instead, and the inline reaction is not drawn.
+ * What a rival will deal on (Ch 6 "Trade and negotiation"), in the Audience: each deal `dealsView`
+ * lists, with its price, what it needs and what it does; one that waits on Respect, the purse or
+ * time shows the engine's reason. Striking one asks once more, then `onStruck` lets the Audience
+ * voice the rival. `highlight` picks out a hex's row (the hex panel's "Buy").
  */
-export function DealsList({ campaign, today, rival, highlight, onStruck }: { campaign: CampaignState; today: ISODate; rival: RivalId; highlight?: string; onStruck?(deal: DealLine): void }): React.JSX.Element {
+export function DealsList({ campaign, today, rival, highlight, onStruck }: { campaign: CampaignState; today: ISODate; rival: RivalId; highlight?: string; onStruck(deal: DealLine): void }): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const deals = useMemo(() => dealsView(campaign, rival, today), [campaign, rival, today])
   const [confirming, setConfirming] = useState<string | null>(null)
-  const [reaction, setReaction] = useState<{ rival: RivalId; textId: string; text: string } | null>(null)
-  const mood = campaign.rivals[rival].disposition.player === 'war' ? 'angry' : 'calm'
 
   const strike = (d: DealLine): void => {
     const done = act((s) => makeDeal(s, rival, { kind: d.kind, ...(d.hexId ? { hexId: d.hexId } : {}), ...(d.target ? { target: d.target } : {}) }, today))
     setConfirming(null)
     if (!done) return
     sfx('coin')
-    if (onStruck) onStruck(d)
-    else setReaction({ rival, ...dealReaction(rival, d) })
+    onStruck(d)
   }
 
   return (
@@ -43,60 +39,58 @@ export function DealsList({ campaign, today, rival, highlight, onStruck }: { cam
         </h3>
         <span className="panel__aside">Prices are fixed by the court</span>
       </header>
-      {reaction?.rival === rival && (
-        <div className="court-reply">
-          <GameArt slot={`rival.${rival}.${mood}`} owner={rival} width={56} label={rivalName(rival)} />
-          <blockquote data-text-id={reaction.textId}>{reaction.text}</blockquote>
-        </div>
-      )}
-      <table className="deals__table">
-        <thead>
-          <tr>
-            <th>Deal</th>
-            <th className="num">Price</th>
-            <th>Needs</th>
-            <th>Does</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {deals.map((d) => {
-            const k = keyOf(d)
-            return (
-              <tr key={k} className={`${d.available ? 'is-open' : 'is-shut'} ${highlight && d.hexId === highlight ? 'is-highlight' : ''}`}>
-                <td>
-                  <strong>{d.name}</strong>
-                </td>
-                <td className="num">{(d.kind === 'buyHex' || d.kind === 'sellHex') && !d.hexId ? '—' : d.kind === 'sellHex' ? `+${amount(d.price)}` : amount(d.price)}</td>
-                <td className="deals__needs">{d.requires}</td>
-                <td className="deals__does">{d.effect}</td>
-                <td className="deals__act">
-                  {d.available ? (
-                    confirming === k ? (
-                      <span className="deals__confirm">
-                        <button type="button" className="btn btn--primary btn--small" onClick={() => strike(d)}>
-                          {d.kind === 'sellHex' ? `Sell for ${amount(d.price)}` : `Pay ${amount(d.price)}`}
+      {deals.length === 0 ? (
+        <p className="muted">No deal is open with {rivalName(rival)}.</p>
+      ) : (
+        <table className="deals__table">
+          <thead>
+            <tr>
+              <th>Deal</th>
+              <th className="num">Price</th>
+              <th>Needs</th>
+              <th>Does</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {deals.map((d) => {
+              const k = keyOf(d)
+              return (
+                <tr key={k} className={`${d.available ? 'is-open' : 'is-shut'} ${highlight && d.hexId === highlight ? 'is-highlight' : ''}`}>
+                  <td>
+                    <strong>{d.name}</strong>
+                  </td>
+                  <td className="num">{d.kind === 'sellHex' ? `+${amount(d.price)}` : amount(d.price)}</td>
+                  <td className="deals__needs">{d.requires}</td>
+                  <td className="deals__does">{d.effect}</td>
+                  <td className="deals__act">
+                    {d.available ? (
+                      confirming === k ? (
+                        <span className="deals__confirm">
+                          <button type="button" className="btn btn--primary btn--small" onClick={() => strike(d)}>
+                            {d.kind === 'sellHex' ? `Sell for ${amount(d.price)}` : `Pay ${amount(d.price)}`}
+                          </button>
+                          <button type="button" className="btn btn--ghost btn--small" onClick={() => setConfirming(null)}>
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" className="btn btn--small" onClick={() => setConfirming(k)}>
+                          Strike
                         </button>
-                        <button type="button" className="btn btn--ghost btn--small" onClick={() => setConfirming(null)}>
-                          Cancel
-                        </button>
-                      </span>
+                      )
                     ) : (
-                      <button type="button" className="btn btn--small" onClick={() => setConfirming(k)}>
-                        Strike
-                      </button>
-                    )
-                  ) : (
-                    <span className="deals__why" data-text-id={d.reason?.textId}>
-                      {d.reason?.text}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                      <span className="deals__why" data-text-id={d.reason?.textId}>
+                        {d.reason?.text}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
     </section>
   )
 }

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Audience } from '../components/diplomacy/Audience'
 import { Courtships } from '../components/diplomacy/Courtships'
-import { AccordPanel, CoalitionBanners, EndgameRecord, TermsBanners, UltimatumBanners } from '../components/endgame/Endgame'
-import { DealsList } from '../components/diplomacy/DealsList'
+import { CoalitionBanners, EndgameRecord, TermsBanners, UltimatumBanners } from '../components/endgame/Endgame'
 import { WeekCloseNote } from '../components/game/WeekClose'
 import { RivalCourt } from '../components/diplomacy/RivalCourt'
 import type { RivalId } from '../lib/game/types'
@@ -11,22 +10,21 @@ import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useUI } from '../state/ui'
 
 /**
- * Diplomacy (T15, T16): the four rival courts, the Accord and the deals the chosen court will
- * strike, and the courtships; above them the endgame: an Ultimatum, a coalition, and after the
- * campaign ends its record. Picking a court also opens an audience with it.
+ * Diplomacy (T15, T16): the four rival courts and the courtships; above them the endgame: an
+ * Ultimatum, a coalition, a rival's terms, and after the campaign ends its record. A court's
+ * portrait or Audience button opens an audience with it, where its Accord and deals are.
  */
 export function DiplomacyPage(): React.JSX.Element | null {
   const campaign = useCampaignState()
   const today = useCampaignToday()
   const focus = useUI((s) => s.rivalFocus)
-  const [rival, setRival] = useState<RivalId>(focus?.rival ?? 'orc')
-  const [audience, setAudience] = useState<RivalId | null>(null)
+  const [audience, setAudience] = useState<RivalId | null>(focus?.rival ?? null)
   const panels = useMemo(() => (campaign ? rivalPanels(campaign) : []), [campaign])
   const audiencePanel = panels.find((p) => p.rival === audience)
 
-  // Arriving from the hex panel's "buy": show that court, with the hex picked out.
+  // Arriving from the hex panel's "Buy": an audience with that court, the hex picked out in its deals.
   useEffect(() => {
-    if (focus) setRival(focus.rival)
+    if (focus) setAudience(focus.rival)
   }, [focus])
   useEffect(() => () => useUI.getState().setRivalFocus(null), [])
 
@@ -44,25 +42,23 @@ export function DiplomacyPage(): React.JSX.Element | null {
       <TermsBanners campaign={campaign} today={today} />
       <div className="courts">
         {panels.map((p) => (
-          <RivalCourt
-            key={p.rival}
-            panel={p}
-            selected={p.rival === rival}
-            onSelect={() => {
-              setRival(p.rival)
-              setAudience(p.rival)
-            }}
-          />
+          <RivalCourt key={p.rival} panel={p} onAudience={() => setAudience(p.rival)} />
         ))}
       </div>
-      <div className="diplomacy-cols">
-        <div className="diplomacy-court">
-          {campaign.rivals[rival].status === 'active' && <AccordPanel campaign={campaign} today={today} rival={rival} />}
-          <DealsList campaign={campaign} today={today} rival={rival} highlight={focus?.rival === rival ? focus.hexId : undefined} />
-        </div>
-        <Courtships campaign={campaign} today={today} />
-      </div>
-      {audiencePanel && <Audience key={audiencePanel.rival} campaign={campaign} today={today} panel={audiencePanel} onClose={() => setAudience(null)} />}
+      <Courtships campaign={campaign} today={today} />
+      {audiencePanel && (
+        <Audience
+          key={audiencePanel.rival}
+          campaign={campaign}
+          today={today}
+          panel={audiencePanel}
+          highlight={focus?.rival === audiencePanel.rival ? focus.hexId : undefined}
+          onClose={() => {
+            setAudience(null)
+            useUI.getState().setRivalFocus(null)
+          }}
+        />
+      )}
     </div>
   )
 }

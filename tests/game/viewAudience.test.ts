@@ -16,16 +16,24 @@ test('each rival id maps to its key in rivalLines.json', () => {
   for (const rival of RIVAL_IDS) assert.ok(lines.rivals[LINE_KEYS[rival]], `${rival} has an entry`)
 })
 
-test('the file lists the six tiers, and every rival has a line for each and an accept line', () => {
-  assert.deepEqual(lineTiers(), [0, 25, 40, 50, 60, 75])
+test('the file lists the nine tiers, three below 0 (C-64), and every rival has a line for each and an accept line', () => {
+  assert.deepEqual(lineTiers(), [-75, -50, -25, 0, 25, 40, 50, 60, 75])
   for (const rival of RIVAL_IDS) {
     for (const tier of lineTiers()) assert.equal(audienceLine(rival, tier).missing, false, `${rival} at ${tier}`)
     assert.equal(acceptLine(rival).missing, false, `${rival} accept`)
   }
 })
 
-test('Respect picks its tier: 0–24, 25–39, 40–49, 50–59, 60–74, 75 and up', () => {
+test('Respect picks its tier: −51 and down, −50 to −26, −25 to −1, 0–24, 25–39, 40–49, 50–59, 60–74, 75 and up', () => {
   const cases: [number, number][] = [
+    [-100, -75],
+    [-75, -75],
+    [-51, -75],
+    [-50, -50],
+    [-26, -50],
+    [-25, -25],
+    [-5, -25],
+    [-0.5, -25],
     [0, 0],
     [24, 0],
     [24.9, 0],
@@ -38,8 +46,7 @@ test('Respect picks its tier: 0–24, 25–39, 40–49, 50–59, 60–74, 75 and
     [60, 60],
     [74, 60],
     [75, 75],
-    [100, 75],
-    [-5, 0]
+    [100, 75]
   ]
   for (const [respect, tier] of cases) {
     assert.equal(respectTier(lineTiers(), respect), tier, `Respect ${respect}`)

@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { GiCoins, GiCrossedSwords, GiSpeaker } from 'react-icons/gi'
+import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker } from 'react-icons/gi'
 import { formatShort } from '../../lib/dates'
 import { meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
@@ -39,13 +39,14 @@ export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Elemen
 /**
  * One rival court (Ch 12, Ch 17's NPC note): the ruler's portrait in a mood that follows its
  * disposition, who it is, how it feels about you, its Respect and what it opens, its treasury and
- * army as bands (numbers only when revealed), the rumors, and its fronts.
+ * army as bands (numbers only when revealed), the rumors, and its fronts. The portrait and the
+ * Audience button open an audience with it, where its deals are.
  */
-export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }: { panel: RivalPanel; selected: boolean; onSelect(): void }): React.JSX.Element {
+export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { panel: RivalPanel; onAudience(): void }): React.JSX.Element {
   const resolved = panel.status !== 'active'
   return (
-    <article className={`court court--${panel.rival} ${selected ? 'is-selected' : ''} ${resolved ? 'is-resolved' : ''}`} aria-label={panel.ruler}>
-      <button type="button" className="court__pick" onClick={onSelect} aria-pressed={selected} title={`See ${panel.name}’s deals`}>
+    <article className={`court court--${panel.rival} ${resolved ? 'is-resolved' : ''}`} aria-label={panel.ruler}>
+      <button type="button" className="court__pick" onClick={onAudience} title={`An audience with ${panel.ruler}`}>
         <GameArt slot={panel.portrait} owner={panel.rival} width={150} label={panel.ruler} title={`${panel.ruler}, ${panel.mood}`} />
       </button>
       <div className="court__body">
@@ -69,9 +70,11 @@ export const RivalCourt = memo(function RivalCourt({ panel, selected, onSelect }
           )}
         </p>
         {!resolved && panel.standingNote && <p className="court__why">{panel.standingNote}</p>}
-        <blockquote className="court__greeting" data-text-id={panel.greeting.textId}>
-          {panel.greeting.text}
-        </blockquote>
+        <p className="court__audience">
+          <button type="button" className="btn btn--small" onClick={onAudience}>
+            <GiShakingHands aria-hidden="true" /> Audience
+          </button>
+        </p>
         <RespectMeter panel={panel} />
         <dl className="court__strength">
           <div>
