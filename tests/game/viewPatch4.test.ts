@@ -81,7 +81,9 @@ test('D-33: a court shows its stance as a word from week 16 only, and his march 
     rivalPanel(withPersonalities(s0, { goblinGreed: 4 }), 'goblin').march.map((m) => m.label),
     ['His prices: gouging']
   )
-  assert.match(rivalPanel(withPersonalities(s0, { orcTrack: -2 }), 'orc').march[0].label, /^War track −2 .*his way$/)
+  const orc = rivalPanel(withPersonalities(s0, { orcTrack: -2 }), 'orc')
+  assert.deepEqual(orc.march, [], 'his war track is drawn on its own, as orcWar')
+  assert.equal(orc.orcWar?.tug.leader, 'Ugrak leads by 2')
   assert.doesNotMatch(JSON.stringify(panel), /threshold|score|weight/i)
 })
 

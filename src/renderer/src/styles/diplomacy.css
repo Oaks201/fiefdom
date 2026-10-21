@@ -212,8 +212,7 @@
 }
 
 .court__rumors,
-.court__march,
-.court__fronts {
+.court__march {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -227,8 +226,170 @@
   align-items: baseline;
 }
 
-.front--war {
-  color: var(--crimson);
+/* War tracks (Ch 12's Rim fronts; the Orc's war on you, D-28): a tug of war, the marker leaning toward whoever is winning. */
+.court__wars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.court__wars-title {
+  margin: 0;
+  font: 700 13px var(--font-caps);
+  color: var(--ink-2);
+}
+
+.war {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.war--you {
+  margin-top: 2px;
+  padding: 8px 10px;
+  background: rgba(255, 252, 242, 0.55);
+  border: 1px solid var(--rule-soft);
+  border-left: 3px solid var(--court);
+  border-radius: 8px;
+}
+
+.war__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.war__head strong {
+  font: 700 14px var(--font-caps);
+  color: var(--ink);
+}
+
+.war__leader {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.war__now {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.war__how {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.tug {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 3px 0;
+}
+
+.tug__side {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 13px var(--font-caps);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.tug__side::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--left);
+  border: 1px solid rgba(43, 26, 10, 0.35);
+  border-radius: 50%;
+}
+
+.tug__side--right {
+  flex-direction: row-reverse;
+}
+
+.tug__side--right::before {
+  background: var(--right);
+}
+
+.tug__side.is-end {
+  color: var(--ink);
+}
+
+.tug__bar {
+  position: relative;
+  height: 12px;
+  background: rgba(92, 58, 24, 0.14);
+  border-radius: 6px;
+}
+
+/* Each end, tinted in its side's color: the marker there means Emboldened (or, on the Orc's track, the furthest it goes). */
+.tug__end {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8%;
+}
+
+.tug__end--left {
+  left: 0;
+  background: color-mix(in srgb, var(--left) 30%, transparent);
+  border-radius: 6px 0 0 6px;
+}
+
+.tug__end--right {
+  right: 0;
+  background: color-mix(in srgb, var(--right) 30%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.tug__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--lead);
+  opacity: 0.85;
+}
+
+.tug__step {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: rgba(43, 26, 10, 0.3);
+  transform: translateX(-0.5px);
+}
+
+.tug__step.is-middle {
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--ink-2);
+  transform: translateX(-1px);
+}
+
+.tug__marker {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--lead);
+  border: 2px solid #fffaf0;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(40, 22, 8, 0.45);
+  transform: translate(-50%, -50%);
 }
 
 /* What Peace, Tension or War means for this court, and what would change it. */

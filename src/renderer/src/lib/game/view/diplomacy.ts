@@ -19,7 +19,7 @@ import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
 import { openDayOf, weekOn } from '../state'
 import { stanceOf, weighsMost } from '../terms'
 import { t } from '../text'
-import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
+import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type FrontState, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
 import { suggestedBid, trustNow } from './realm'
 import { landRefusalLabel } from './refusals'
 import { STANCE_WORDS, SURGE_WORDS, rivalName } from './shell'
@@ -58,11 +58,13 @@ export interface RivalPanel {
   treasury?: number
   army?: number
   rumors: { textId: string; text: string }[]
-  /** Its Rim fronts: the other rival, the state, and the war track from this rival's side. */
-  fronts: { front: FrontId; other: RivalId; otherName: string; state: Disposition; track: number }[]
+  /** Its Rim fronts: the other rival, the state, and the war track from this rival's side, drawn and explained. */
+  fronts: FrontLine[]
+  /** The Orc's war track against the player (D-28), drawn and explained; only on his court while he is active. */
+  orcWar?: OrcWar
   /** His stance toward the player from week 16 (D-33): a band, never the score or which measure is close. */
   stance?: { band: StanceBand; label: string }
-  /** His march's state in plain lines (D-28 to D-31): the Orc's war track, the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge. */
+  /** His march's state in plain lines (D-29 to D-31): the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge (the Orc's war track is `orcWar`). */
   march: MarchLine[]
   /** Patch 5 (D-40, C-65): what his standing means, the marks that change it, and what moves his Respect, in plain words; empty once he is resolved. */
   standingNote: string
@@ -124,12 +126,8 @@ export interface MarchLine {
 function marchLines(state: CampaignState, rival: RivalId, today: ISODate): MarchLine[] {
   if (state.rivals[rival].status !== 'active') return state.rivals[rival].grudging ? [{ label: 'A grudging vassal: he sends no company' }] : []
   switch (rival) {
-    case 'orc': {
-      const track = orcTrackOf(state)
-      const side = track > 0 ? 'your way' : track < 0 ? 'his way' : 'even'
-      const tr = RULES.personalities.orc.track
-      return [{ label: `War track ${track > 0 ? `+${track}` : track < 0 ? `−${-track}` : '0'} (−${-tr.min} to +${tr.max}), ${side}` }]
-    }
+    case 'orc':
+      return []
     case 'goblin': {
       const lines: MarchLine[] = [{ label: `His prices: ${({ fair: 'fair', dear: 'dear', gouging: 'gouging' } as const)[greedBand(state)]}` }]
       const pact = state.deals.find((d) => d.rival === 'goblin' && d.kind === 'buyOff' && d.madeOn <= today && d.until !== undefined && today <= d.until)
@@ -149,6 +147,114 @@ function marchLines(state: CampaignState, rival: RivalId, today: ISODate): March
       return [{ label: `Today’s surge: ${SURGE_WORDS[s.surge]} on ${on}` }]
     }
   }
+}
+
+// ── War tracks: the Rim fronts and the Orc's war on you ─────────────────────
+
+/** One side of a war track: a rival or the player. */
+export interface TrackSide {
+  owner: Owner
+  name: string
+}
+
+/**
+ * A war track as a tug of war (Ch 12's Rim fronts, A-153; the Orc's track against the player, D-28): the
+ * ruler on the left, the other side on the right, and the marker leaning toward whoever is winning. Every
+ * number on it is public.
+ */
+export interface WarTrack {
+  left: TrackSide
+  right: TrackSide
+  /** −max to +max: positive leans toward the left side, negative toward the right. */
+  lean: number
+  max: number
+  /** Who leads, in plain words: "Ugrak leads by 2", "You lead by 1", "Even". */
+  leader: string
+}
+
+/** A Rim front from one rival's side (Ch 12, A-144, A-153, A-37): its state this week and its war track, with what each means. */
+export interface FrontLine {
+  front: FrontId
+  other: RivalId
+  otherName: string
+  state: Disposition
+  /** The war track from this rival's side, −3 to +3. */
+  track: number
+  tug: WarTrack
+  /** What the front's state does to the track this week, in plain words from `RULES`. */
+  how: string
+  /** Only with the marker at an end: who is Emboldened and who Humbled, and what that does to raids on the player. */
+  end?: string
+}
+
+/** The Orc's war track against the player (D-28): drawn, what moves it, and what it does now. */
+export interface OrcWar {
+  tug: WarTrack
+  how: string
+  now: string
+}
+
+const pct = (share: number): number => Math.round(share * PERCENT)
+
+function warTrack(left: TrackSide, right: TrackSide, lean: number, max: number): WarTrack {
+  const ahead = lean > 0 ? left : right
+  const leader = lean === 0 ? 'Even' : ahead.owner === 'player' ? `You lead by ${Math.abs(lean)}` : `${ahead.name} leads by ${Math.abs(lean)}`
+  return { left, right, lean, max, leader }
+}
+
+/** What a front's state does to its track this week: skirmishes at War (A-153), nothing at Tension, a step back toward 0 at Peace (A-37). */
+function frontHow(state: Disposition): string {
+  const fr = RULES.rivals.fronts
+  switch (state) {
+    case 'war':
+      return `At War this week: they skirmish every day, the larger army winning more often, and each win moves the marker a step toward the winner. The war costs each side ${pct(fr.warArmyLoss)}% of his army a week.`
+    case 'tension':
+      return 'At Tension this week: no fighting, so the marker holds.'
+    case 'peace':
+      return `At Peace this week: no fighting, and at the week’s close the marker moves ${fr.peaceStep === 1 ? 'a step' : `${fr.peaceStep} steps`} back toward the middle.`
+  }
+}
+
+/**
+ * What every front is, said once on each court (Ch 12, A-144): its weekly draw and what its ends do. Every
+ * number from `RULES`.
+ */
+export function frontsNote(): string {
+  const fr = RULES.rivals.fronts
+  return `Each pair of neighboring rivals shares a front, drawn again each week: War (${pct(fr.warChance.touchingOrc)}% of weeks on the Orc’s fronts, ${pct(fr.warChance.other)}% on the others), otherwise Tension or Peace. The marker shows who is winning. At either end the winner is Emboldened, his raids on you ${pct(fr.emboldenedRaid)}% harder, and the loser Humbled, his ${pct(fr.humbledRaid)}% weaker. A call to arms, struck in an audience, puts a front at War.`
+}
+
+/** A Rim front from `rival`'s side: at its end the winner is Emboldened and the loser Humbled (Ch 12, `raidMult` in combat.ts). */
+function frontLine(state: CampaignState, rival: RivalId, f: FrontState): FrontLine {
+  const fr = RULES.rivals.fronts
+  const other = f.rivals[0] === rival ? f.rivals[1] : f.rivals[0]
+  const track = state.rivals[rival].frontTracks[f.front] ?? 0
+  const me: TrackSide = { owner: rival, name: rivalName(rival) }
+  const them: TrackSide = { owner: other, name: rivalName(other) }
+  const ends = track >= fr.track.max ? [me, them] : track <= fr.track.min ? [them, me] : undefined
+  const end = ends && `${ends[0].name} is Emboldened: his raids on you strike ${pct(fr.emboldenedRaid)}% harder. ${ends[1].name} is Humbled: his strike ${pct(fr.humbledRaid)}% weaker.`
+  return { front: f.front, other, otherName: them.name, state: f.state, track, tug: warTrack(me, them, track, fr.track.max), how: frontHow(f.state), ...(end ? { end } : {}) }
+}
+
+/** The Orc's war track against the player (D-28): positive the player's way, drawn with the Orc on the left. */
+function orcWarOf(state: CampaignState): OrcWar | undefined {
+  if (state.rivals.orc.status !== 'active') return undefined
+  const tr = RULES.personalities.orc.track
+  const t = orcTrackOf(state)
+  const strike = pct(tr.strikePerStep * Math.abs(t))
+  const garrison = pct(tr.garrisonPerStep * Math.abs(t))
+  const extra =
+    t <= tr.extraConquestAt
+      ? ' While he is at War with you, he plans an extra conquest attempt each week.'
+      : ` At ${-tr.extraConquestAt} his way, he plans an extra conquest attempt each week he is at War with you.`
+  const now =
+    t > 0
+      ? `Your way by ${t}: his raids, conquest attempts and counterattacks strike ${strike}% weaker, and his march’s garrisons are ${garrison}% easier to take.`
+      : t < 0
+        ? `His way by ${-t}: his raids, conquest attempts and counterattacks strike ${strike}% harder, and his march’s garrisons are ${garrison}% harder to take.${extra}`
+        : `Even: his strikes and his march’s garrisons are as usual. Each step your way makes his strikes ${pct(tr.strikePerStep)}% weaker and his garrisons ${pct(tr.garrisonPerStep)}% easier to take; each step his way, the reverse.${extra}`
+  const how = `From week ${RULES.personalities.fromWeek}, a day you win more battles with him than you lose (his raids, conquest attempts and counterattacks; hexes of his march taken; Grand Battles) moves the marker a step your way, and a day you lose more moves it his way.`
+  return { tug: warTrack({ owner: 'orc', name: rivalName('orc') }, { owner: 'player', name: 'You' }, -t, tr.max), how, now }
 }
 
 /** His stance, from the week terms start (D-33). */
@@ -223,10 +329,8 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
   const mood = moodOf(state, rival)
   const fronts = Object.values(state.fronts)
     .filter((f) => f.rivals.includes(rival))
-    .map((f) => {
-      const other = f.rivals[0] === rival ? f.rivals[1] : f.rivals[0]
-      return { front: f.front, other, otherName: rivalName(other), state: f.state, track: r.frontTracks[f.front] ?? 0 }
-    })
+    .map((f) => frontLine(state, rival, f))
+  const orcWar = rival === 'orc' ? orcWarOf(state) : undefined
   return {
     rival,
     name,
@@ -246,6 +350,7 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     ...(view.army !== undefined ? { army: view.army } : {}),
     rumors: [...view.rumors, ...watchRumors(state, rival, today)].map((id) => ({ textId: id, text: t(id, { rival: name }) })),
     fronts,
+    ...(orcWar ? { orcWar } : {}),
     ...(stance ? { stance } : {}),
     march: marchLines(state, rival, today),
     standingNote: standingNote(state, rival)

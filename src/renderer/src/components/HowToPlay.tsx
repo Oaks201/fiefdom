@@ -830,6 +830,15 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>Stance:</b> from week {RULES.terms.fromWeek} each court shows how near its ruler is to yielding: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what
                 he watches; no number is shown.
               </li>
+              <li>
+                <b>The rivals’ own wars:</b> each pair of neighboring rivals shares a front, and each court draws its two as a tug of war, the marker leaning toward whoever is winning
+                ({RULES.rivals.fronts.track.min} to +{RULES.rivals.fronts.track.max}). Each week a front is drawn again: War ({pct(RULES.rivals.fronts.warChance.touchingOrc)} of weeks on
+                the Orc’s fronts, {pct(RULES.rivals.fronts.warChance.other)} on the others), otherwise Tension or Peace. At War the two skirmish every day, the larger army winning more
+                often, each win a step toward the winner, and the war costs each {pct(RULES.rivals.fronts.warArmyLoss)} of his army a week; at Tension the marker holds; at Peace it
+                steps back toward the middle each week. At either end the winner is <b>Emboldened</b>, his raids on you {pct(RULES.rivals.fronts.emboldenedRaid)} harder, and the
+                loser <b>Humbled</b>, his {pct(RULES.rivals.fronts.humbledRaid)} weaker. A call to arms puts a front at War for {RULES.trade.callToArms.days} days: a way to set two
+                rivals on each other.
+              </li>
             </ul>
           )
         },

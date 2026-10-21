@@ -1,9 +1,10 @@
 import { memo } from 'react'
 import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker } from 'react-icons/gi'
 import { formatShort } from '../../lib/dates'
-import { meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
+import { frontsNote, meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
+import { WarTrackBar } from './WarTrack'
 
 const DISPOSITIONS: Record<string, string> = { peace: 'Peace', tension: 'Tension', war: 'War' }
 const STATUSES: Record<string, string> = { active: '', conquered: 'Conquered', abdicated: 'Abdicated', allied: 'Allied' }
@@ -39,8 +40,9 @@ export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Elemen
 /**
  * One rival court (Ch 12, Ch 17's NPC note): the ruler's portrait in a mood that follows its
  * disposition, who it is, how it feels about you, its Respect and what it opens, its treasury and
- * army as bands (numbers only when revealed), the rumors, and its fronts. The portrait and the
- * Audience button open an audience with it, where its deals are.
+ * army as bands (numbers only when revealed), its war tracks drawn as tugs of war (the Orc's against you,
+ * and each Rim front) with what they mean, and the rumors. The portrait and the Audience button open an
+ * audience with it, where its deals are.
  */
 export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { panel: RivalPanel; onAudience(): void }): React.JSX.Element {
   const resolved = panel.status !== 'active'
@@ -96,6 +98,35 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { pane
             </dd>
           </div>
         </dl>
+        {panel.orcWar && (
+          <section className="war war--you" aria-label="His war track against you">
+            <header className="war__head">
+              <strong>His war on you</strong>
+              <span className="war__leader">{panel.orcWar.tug.leader}</span>
+            </header>
+            <WarTrackBar tug={panel.orcWar.tug} />
+            <p className="war__now">{panel.orcWar.now}</p>
+            <p className="war__how">{panel.orcWar.how}</p>
+          </section>
+        )}
+        {panel.fronts.length > 0 && (
+          <section className="court__wars" aria-label="His wars with the other rivals">
+            <h4 className="court__wars-title">His wars with the other rivals</h4>
+            <p className="war__how">{frontsNote()}</p>
+            {panel.fronts.map((f) => (
+              <div key={f.front} className={`war war--${f.state}`}>
+                <header className="war__head">
+                  <strong>{FRONTS[f.front]} front</strong>
+                  <span className={`disposition disposition--${f.state}`}>{DISPOSITIONS[f.state]}</span>
+                  <span className="war__leader">{f.tug.leader}</span>
+                </header>
+                <WarTrackBar tug={f.tug} />
+                {f.end && <p className="war__now">{f.end}</p>}
+                <p className="war__how">{f.how}</p>
+              </div>
+            ))}
+          </section>
+        )}
         {panel.march.length > 0 && (
           <ul className="court__march">
             {panel.march.map((m) => (
@@ -115,13 +146,6 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { pane
             ))}
           </ul>
         )}
-        <ul className="court__fronts">
-          {panel.fronts.map((f) => (
-            <li key={f.front} className={`front front--${f.state}`}>
-              {FRONTS[f.front]} front with {f.otherName}: {DISPOSITIONS[f.state]}, track {f.track > 0 ? `+${f.track}` : f.track < 0 ? `−${-f.track}` : '0'}
-            </li>
-          ))}
-        </ul>
       </div>
     </article>
   )

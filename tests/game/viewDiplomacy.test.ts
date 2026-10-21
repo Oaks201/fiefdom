@@ -12,8 +12,10 @@ import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { hasText } from '../../src/renderer/src/lib/game/text'
-import { RIVAL_IDS, type CampaignState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { courtableVillages, courtshipsView, dealsView, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { RIVAL_IDS, type CampaignState, type Disposition, type RivalId } from '../../src/renderer/src/lib/game/types'
+import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
+import { withPersonalities } from '../../src/renderer/src/lib/game/personalities'
+import { courtableVillages, courtshipsView, dealsView, frontsNote, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -21,12 +23,12 @@ import { realm, withCrossings, withPurse } from './support/realm'
 
 /**
  * Every number a rival panel shows outside its public fields (Respect, the Respect marks with the
- * rules they open, the front tracks, and Patch 4's march lines: the Orc's war track, the Dwarf's walls,
- * hired companies and their dates, C-49, and the disposition note's Respect and weeks), with its path;
- * numbers written inside its text count too.
+ * rules they open, the front tracks drawn and explained, the Orc's war track against the player drawn and
+ * explained, Patch 4's march lines: the Dwarf's walls, hired companies and their dates, C-49, and the
+ * disposition note's Respect and weeks), with its path; numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.track$/.test(path) || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote') return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.(track|tug|how|end)$/.test(path) || path === 'orcWar' || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote') return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -127,6 +129,59 @@ test('D-39: the Truce says the Respect it brings, the rival’s own: the Orc giv
   const truce = (r: RivalId): string => dealsView(state, r, openDayOf(state)).find((l) => l.kind === 'truce')?.effect ?? ''
   assert.doesNotMatch(truce('orc'), /Respect/)
   assert.ok(truce('goblin').endsWith(`; +${RULES.respect.change.tradeOrTruce} Respect`), truce('goblin'))
+})
+
+test('D-28: the Orc’s war track against you is drawn as a tug of war, Ugrak on the left and you on the right, with what moves it and what it does now, from RULES', () => {
+  const s0 = realm()
+  const tr = RULES.personalities.orc.track
+  const pct = (share: number): number => Math.round(share * 100)
+  const at = (orcTrack: number): NonNullable<ReturnType<typeof rivalPanel>['orcWar']> => rivalPanel(withPersonalities(s0, { orcTrack }), 'orc').orcWar!
+  const yours = at(3)
+  assert.deepEqual([yours.tug.left, yours.tug.right], [{ owner: 'orc', name: 'Ugrak' }, { owner: 'player', name: 'You' }])
+  assert.deepEqual([yours.tug.lean, yours.tug.max, yours.tug.leader], [-3, tr.max, 'You lead by 3'])
+  assert.ok(yours.now.startsWith(`Your way by 3: his raids, conquest attempts and counterattacks strike ${pct(3 * tr.strikePerStep)}% weaker, and his march’s garrisons are ${pct(3 * tr.garrisonPerStep)}% easier`), yours.now)
+  assert.doesNotMatch(yours.now, /extra conquest/)
+  const his = at(-2)
+  assert.deepEqual([his.tug.lean, his.tug.leader], [2, 'Ugrak leads by 2'])
+  assert.match(his.now, /^His way by 2: .* harder to take\. While he is at War with you, he plans an extra conquest attempt each week\.$/)
+  assert.match(at(-1).now, new RegExp(`At ${-tr.extraConquestAt} his way, he plans an extra conquest attempt`))
+  assert.equal(at(0).tug.leader, 'Even')
+  assert.match(at(0).how, new RegExp(`^From week ${RULES.personalities.fromWeek}, a day you win more battles with him than you lose`))
+  for (const r of RIVAL_IDS.filter((x) => x !== 'orc')) assert.equal(rivalPanel(s0, r).orcWar, undefined, `not on ${r}’s court`)
+  const conquered = { ...s0, rivals: { ...s0.rivals, orc: { ...s0.rivals.orc, status: 'conquered' as const } } }
+  assert.equal(rivalPanel(conquered, 'orc').orcWar, undefined, 'none once he is resolved')
+})
+
+test('Ch 12, A-153: each Rim front is drawn from its court’s side, the ruler on the left, and names who is Emboldened and who Humbled at an end', () => {
+  const s0 = realm()
+  const fr = RULES.rivals.fronts
+  const pct = (share: number): number => Math.round(share * 100)
+  const front = Object.values(s0.fronts).find((f) => f.rivals.includes('orc'))!
+  const [a, b] = front.rivals
+  const withTrack = (track: number, state: Disposition): CampaignState => ({
+    ...s0,
+    fronts: { ...s0.fronts, [front.front]: { ...front, track, state } },
+    rivals: {
+      ...s0.rivals,
+      [a]: { ...s0.rivals[a], frontTracks: { ...s0.rivals[a].frontTracks, [front.front]: track } },
+      [b]: { ...s0.rivals[b], frontTracks: { ...s0.rivals[b].frontTracks, [front.front]: -track } }
+    }
+  })
+  const lineOf = (state: CampaignState, r: RivalId) => rivalPanel(state, r).fronts.find((f) => f.front === front.front)!
+  const won = withTrack(fr.track.max, 'war')
+  const fromA = lineOf(won, a)
+  const fromB = lineOf(won, b)
+  assert.deepEqual([fromA.tug.left.owner, fromA.tug.right.owner, fromA.tug.lean, fromA.tug.leader], [a, b, fr.track.max, `${rivalName(a)} leads by ${fr.track.max}`])
+  assert.deepEqual([fromB.tug.left.owner, fromB.tug.right.owner, fromB.tug.lean, fromB.tug.leader], [b, a, -fr.track.max, `${rivalName(a)} leads by ${fr.track.max}`])
+  assert.equal(fromA.end, `${rivalName(a)} is Emboldened: his raids on you strike ${pct(fr.emboldenedRaid)}% harder. ${rivalName(b)} is Humbled: his strike ${pct(fr.humbledRaid)}% weaker.`)
+  assert.equal(fromB.end, fromA.end, 'the same news from either court')
+  assert.match(fromA.how, /^At War this week: they skirmish every day/)
+  const midway = lineOf(withTrack(1, 'peace'), a)
+  assert.equal(midway.end, undefined)
+  assert.match(midway.how, /^At Peace this week: no fighting, and at the week’s close the marker moves a step back toward the middle\.$/)
+  assert.equal(lineOf(withTrack(-1, 'tension'), a).how, 'At Tension this week: no fighting, so the marker holds.')
+  assert.ok(frontsNote().includes(`War (${pct(fr.warChance.touchingOrc)}% of weeks on the Orc’s fronts, ${pct(fr.warChance.other)}% on the others)`), frontsNote())
+  for (const r of RIVAL_IDS) for (const f of rivalPanel(s0, r).fronts) assert.doesNotMatch(JSON.stringify(f), /undefined|NaN/)
 })
 
 test('D-39, D-48: the Respect marks on both sides, each rival his own at his own numbers (the Goblin’s hex trades need no Respect, C-43; the Orc signs no Accord, never makes peace, sends no envoy and sells no hex)', () => {
