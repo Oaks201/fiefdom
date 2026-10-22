@@ -1,9 +1,9 @@
 import './support/tokyo-tz'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { addDays } from '../../src/renderer/src/lib/game/clock'
+import { addDays, weekOf } from '../../src/renderer/src/lib/game/clock'
 import { COMBAT_HOOKS, armyValue, combatOf, dawn, tidings } from '../../src/renderer/src/lib/game/combat'
-import { resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
+import { makeDeal, resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
 import { bandOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
 import {
   armyBand,
@@ -580,6 +580,21 @@ test('Test 9 (part): the rival turn is settled once — settling again for a wee
   assert.deepEqual(once.state.rivals, later.state.rivals)
   assert.deepEqual(once.state.fronts, later.state.fronts)
   assert.deepEqual(once.state.hexes, later.state.hexes)
+})
+
+test('D-39: a pact with the Dwarf kept to its end posts his +5 at the close of the week it ends, once, though its last day’s close has cleared the deal', () => {
+  const ledger = steadyLedger('2026-09-10', 120)
+  const base = withRival(withPurse(realm(11, ledger), 1_000), 'dwarf', { respect: RULES.respect.marks.dwarf.pact })
+  const made = makeDeal(base, 'dwarf', { kind: 'pact' })
+  assert.ok(made.ok)
+  const until = made.deal?.until as string
+  const close = addDays(weekOf(until, made.state.campaign.weekStartsOn), 6)
+  assert.ok(until < close, 'the pact ends mid-week, so the deal is gone before the week close')
+  // Through the week after, to show it posts once.
+  const result = settle(made.state, ledger, chicago(addDays(close, 8)))
+  const kept = eventsOf(result.events, 'respect').filter((e) => e.rival === 'dwarf' && e.reason === 'pactKept')
+  assert.deepEqual(kept.map((e) => [e.day, e.change]), [[close, RULES.respect.byRival.dwarf.pactKept]])
+  assert.ok(!result.state.deals.some((d) => d.kind === 'pact'))
 })
 
 test('Ch 12 determinism and safety: a 52-week run with a passive player keeping every habit keeps every treasury ≥ 0, every rival out of rings 0 to 2 and every AV > 0', () => {

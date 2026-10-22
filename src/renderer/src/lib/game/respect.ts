@@ -131,8 +131,8 @@ export function weeklyRespect(input: CampaignState, w: { day: ISODate; weekStart
   add('goblin', 'buyOffAccepted', week.filter((e) => e.kind === 'terms' && e.rival === 'goblin' && e.offer === 'buyOff' && e.stage === 'accepted').length)
   add('goblin', 'buyOffRefused', week.filter((e) => e.kind === 'terms' && e.rival === 'goblin' && e.offer === 'buyOff' && (e.stage === 'refused' || e.stage === 'lapsed')).length)
   add('goblin', 'bidHeld', week.filter((e) => e.kind === 'goblinBid' && e.stage === 'held').length)
-  // The Dwarf: an oath kept, and his walls broken.
-  add('dwarf', 'pactKept', state.deals.filter((d) => d.rival === 'dwarf' && d.kind === 'pact' && d.until !== undefined && d.until >= from && d.until <= w.day).length)
+  // The Dwarf: an oath kept, and his walls broken. A pact is read from its deal in the log: the close of its last day has already cleared it from `state.deals`.
+  add('dwarf', 'pactKept', state.log.filter((e) => e.kind === 'deal' && e.rival === 'dwarf' && e.deal === 'pact' && e.until !== undefined && e.until >= from && e.until <= w.day).length)
   const byId = new Map(state.hexes.map((h) => [h.id, h]))
   const walls = week.reduce((s, e) => (e.kind === 'hexTransfer' && e.to === 'player' && e.from !== 'player' && byId.get(e.hexId)?.march === 'dwarf' ? s + (e.fortification ?? 0) : s), 0)
   add('dwarf', 'wallBroken', walls)

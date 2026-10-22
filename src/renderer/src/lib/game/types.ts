@@ -772,8 +772,8 @@ export interface GameEventMap {
   restless: { hexId: string; stage: 'uprising' | 'settled' | 'lost' }
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner; rivals?: RivalId[] }
-  /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. */
-  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId }
+  /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. `until`: the last day of one that runs (the Dwarf's pact kept is read from it). */
+  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId; until?: ISODate }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. */

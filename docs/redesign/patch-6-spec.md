@@ -672,3 +672,13 @@ Not part of this patch: Rich asked that a Milestone break at the close of the da
 - **Targets** ([targets-3.5.0](../game/sim/targets-3.5.0.md), 692 s on 12 workers): every target met, as at 3.4.1. Nothing moves by more than the noise of a re-drawn campaign: G-08 2.08× on 100 seeds (2.04×), 2.06× on 40 (2.01×); G-11 54; 58; 69, Committed by week 76 85% (83%); G-07 in full 59 / 60 / 60 / 59 (59 / 60 / 59.5 / 59); G-21 1.03; 0.85; 0.62; behavior share 35% (36%); G-15 1.79 MB (1.81 MB). G-20 and the standing flips read as at 3.4.1 but for the Dwarf's most greedy changes, 8 against 7.
 - **Why so little:** the simulator's players weigh in on Mondays and Thursdays (`sim/ledgerGen.ts`), so a mark reached on the Monday weigh-in now breaks at that day's close instead of the week close: the same Milestones, a few days sooner. No number changes.
 - **Verification:** `npm run typecheck`, `npm test` (878 tests) and `npm run check:game` pass.
+
+### 12.7 A fix: the Dwarf's pact kept (2026-10-21, rules 3.5.0)
+
+At Rich's go-ahead ("Yes, fix the Dwarf's pact-kept bonus so it posts when the pact ends, with a test that runs it through settlement.").
+
+- **The fault:** D-39's "a pact kept to its end +5" never posted. `weeklyRespect` looked for the pact in `state.deals`, but the close of its last day (`expireTimers`, a day phase) had already cleared it, and the week phases run after the day phases, so even a pact ending on the week close was gone.
+- **The fix:** the `deal` event carries a running deal's last day (`until`), and `weeklyRespect` counts the Dwarf's pacts whose last day falls in the week from the log, as D-39 says. The rule itself is unchanged, so the version stays 3.5.0. No migration: the live save has struck no pact (a pact struck before this build has no `until` on its event and would not post).
+- **Targets:** not run. The simulator's players strike no deals (`sim/` never calls `makeDeal`), so no target can move.
+- **Test:** `rivals.test.ts` strikes a pact with the Dwarf at his mark and settles through the week after it ends: one +5, at that week's close. Without the fix it posts none.
+- **Verification:** `npm run typecheck`, `npm test` (882 tests) and `npm run check:game` pass.

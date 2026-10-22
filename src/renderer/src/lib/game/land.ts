@@ -663,7 +663,7 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     case 'buyOff':
       break
   }
-  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}) })
+  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}), ...(deal.until ? { until: deal.until } : {}) })
   next = events.flush({ ...next, deals: [...next.deals, deal] })
   return { ok: true, state: next, cost: offer.price, deal }
 }
