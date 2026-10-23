@@ -342,8 +342,11 @@ export function HowToPlay(): React.JSX.Element | null {
                   {pct(c.payoutCurve.start + c.payoutCurve.span / c.pledge.returnMultiplier)}, and not at all at {pct(c.payoutCurve.start)} or below.
                 </li>
                 <li>
-                  <b>Respite:</b> one Respite day is banked every {RULES.respite.earnEveryDays} days. Spending one on today or yesterday removes that day from the score and moves the
-                  end a day later, for illness or travel.
+                  <b>Respite:</b> one Respite day is banked every {RULES.respite.earnEveryDays} days, for rest, illness or travel. Spent on today or yesterday, it makes that day a paid
+                  day off. Nothing needs logging: the Chronicle freezes, and the day leaves every score (the contract’s, the week’s goals and Realm Consistency), the week’s step pool
+                  shrinking by a day’s share. It pays a full day’s reputation × your Realm Consistency, the streak grows, and the day’s battles are fought as usual at a Valor of your
+                  Realm Consistency. The contract still ends on its day. Spent on today, a Grand Battle due today waits a day (not once it has begun); spent on yesterday, that day’s
+                  pay and battles stand.
                 </li>
                 <li>
                   <b>Withdrawing</b> ends a contract early: it pays for the days so far without the length bonus and returns half the pledge.

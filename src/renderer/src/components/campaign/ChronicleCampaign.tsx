@@ -1,8 +1,9 @@
-import { GiBootPrints, GiHealthPotion, GiKnifeFork, GiLaurelCrown, GiScales, GiSwordman } from 'react-icons/gi'
+import { GiBootPrints, GiHealthPotion, GiHourglass, GiKnifeFork, GiLaurelCrown, GiScales, GiSwordman } from 'react-icons/gi'
 import { diffDays, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep } from '../../lib/format'
 import { snapshotDay, toDayRecord } from '../../lib/game/ledgerDays'
 import { charterOn } from '../../lib/game/settle'
+import { isRestDay, respiteDays } from '../../lib/game/state'
 import type { CampaignState, ISODate } from '../../lib/game/types'
 import { weighInDay } from '../../lib/game/clock'
 import {
@@ -12,6 +13,7 @@ import {
   dayProjection,
   daySpoils,
   healerCards,
+  liveValor,
   liveWeek,
   stepPace,
   valorParts,
@@ -34,9 +36,11 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
   const openDay = useCampaignToday()
   const charter = charterOn(campaign, date)
   const days = liveWeek(campaign, ledger, date)
-  const pace = stepPace(days, charter.stepPool, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
-  const cal = calorieWeek(days, charter.calorieLimit, campaign.weight.healerFloor ?? 0, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate)
-  const figures = date === openDay ? catchUp(campaign, ledger, date) : null
+  const respite = respiteDays(campaign)
+  const pace = stepPace(days, charter.stepPool, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate, respite)
+  const cal = calorieWeek(days, charter.calorieLimit, campaign.weight.healerFloor ?? 0, date, campaign.campaign.weekStartsOn, campaign.campaign.startDate, respite)
+  // A rest day asks for nothing (D-54): no catch-up figures on it.
+  const figures = date === openDay && !respite.includes(date) ? catchUp(campaign, ledger, date) : null
   const stepLine = figures ? stepCatchUpLine(figures.steps) : null
   const calorieLine = figures ? calorieCatchUpLine(figures.calories) : null
   const fill = Math.min(1, pace.walked / pace.pool)
@@ -52,7 +56,8 @@ export function CampaignWeek({ campaign, ledger, date }: { campaign: CampaignSta
           <span className="weekbar__mark" title="Even pace so far" />
         </div>
         <p className="weekbar__text">
-          <strong>{formatNumber(pace.walked)}</strong> of {formatNumber(pace.expected)} expected by today ({formatNumber(pace.pool)} for the week) ·{' '}
+          <strong>{formatNumber(pace.walked)}</strong> of {formatNumber(pace.expected)} expected by today ({formatNumber(pace.pool)} for the week
+          {pace.rested > 0 ? `, ${pace.rested === 1 ? 'a day' : `${pace.rested} days`} less for Respite` : ''}) ·{' '}
           <span className={`pace pace--${pace.status}`}>{pace.status === 'ahead' ? 'ahead' : 'behind'}</span>
         </p>
         {stepLine && <p className="weekbar__catchup">{stepLine}</p>}
@@ -93,6 +98,28 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
   const settled = date <= campaign.settledThrough.day
   const earned = settled ? dayEarned(campaign, date) : dayProjection(campaign, day)
   const spoils = daySpoils(campaign, date)
+  if (isRestDay(campaign, date)) {
+    // A paid day off (D-54): Valor is Realm Consistency, and so is the day's pay.
+    const rc = liveValor(campaign, ledger, date)
+    return (
+      <section className="panel valor valor--rest" aria-label="Valor">
+        <header className="panel__head">
+          <h3 className="panel__title">
+            <GiHourglass aria-hidden="true" /> Valor {date === today ? 'today' : 'this day'}: a Respite day
+          </h3>
+          <span className="panel__aside">{percent(rc)}%</span>
+        </header>
+        <p>A paid day off. Valor is your Realm Consistency, so the Marshal fights the day at {percent(rc)}%, and it pays a full day’s reputation at {percent(rc)}%.</p>
+        {date === openDay && <StartBattles campaign={campaign} today={date} valor={rc} />}
+        <div className="ledger__total">
+          <span>{settled ? 'Reputation earned' : 'Earned at the day’s close'}</span>
+          <WaxSeal color="gold" icon={GiLaurelCrown} size={30} seed={9} />
+          <strong>{formatRep(earned)}</strong>
+        </div>
+        {spoils > 0 && <p className="muted valor__spoils">Including {formatNumber(spoils)} from battle spoils.</p>}
+      </section>
+    )
+  }
   return (
     <section className="panel valor" aria-label="Valor">
       <header className="panel__head">

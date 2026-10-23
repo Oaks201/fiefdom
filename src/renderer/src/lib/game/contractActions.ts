@@ -11,6 +11,7 @@ import { scoredDays, seal, spendRespite, validateCharter, withdraw, withdrawalPa
 import { realmEffects } from './effects'
 import { roundPosting, withBonus } from './economy'
 import { CampaignError } from './errors'
+import { pendingBattles, restGrandBattles } from './grand'
 import { EventBuffer, isPlayable, openDayOf } from './state'
 import type { CampaignState, Charter, ISODate, LandContract, RivalId } from './types'
 
@@ -99,7 +100,7 @@ export interface WithdrawalPreview {
   contractId: string
   /** Q over the contract's settled days so far, without its Respite days. */
   score: number
-  /** Its days from the start through `today`, less Respite days (A-114). */
+  /** Its days from the start through `today`, at most its term (A-114, D-54: a Respite day is one of them). */
   daysElapsed: number
   /** What withdrawing today pays (with the reputation bonus) and returns of the pledge, as posted. */
   payout: number
@@ -138,14 +139,32 @@ export function withdrawContract(state: CampaignState, today: ISODate = openDayO
   })
 }
 
-/** Spends a banked Respite day on `day`, today or yesterday, inside the running contract: the contract ends a day later. */
+/**
+ * Why a Respite can't be taken on the open day (D-54): a Grand Battle due today has begun, so it can't
+ * wait a day. Null when nothing stands in the way, and always for yesterday.
+ */
+export function respiteRefusal(state: CampaignState, day: ISODate, today: ISODate = openDayOf(state)): string | null {
+  if (day !== today) return null
+  if (pendingBattles(state).some((b) => b.battleDate === today && b.setup)) return 'Today’s Grand Battle has begun, so today can’t be a rest day.'
+  return null
+}
+
+/**
+ * Spends a banked Respite day on `day`, today or yesterday, inside the running contract: the day is a
+ * rest day, a paid day off (D-54), and the contract still ends on its day. Taken on the open day, a
+ * Grand Battle due today waits a day.
+ */
 export function takeRespite(state: CampaignState, day: ISODate, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
+    const refusal = respiteRefusal(state, day, today)
+    if (refusal) return refused(state, refusal)
     const contracts = spendRespite(state.contracts, day, today)
     const contract = contracts.active as LandContract
     const events = new EventBuffer()
-    events.emitter(today)('respite', { contractId: contract.id, day, endDate: contract.endDate })
-    return { ok: true, contract, state: events.flush({ ...state, contracts }) }
+    const emit = events.emitter(today)
+    emit('respite', { contractId: contract.id, day, endDate: contract.endDate })
+    const rested = { ...state, contracts }
+    return { ok: true, contract, state: events.flush(day === today ? restGrandBattles(rested, today, emit) : rested) }
   })
 }
 

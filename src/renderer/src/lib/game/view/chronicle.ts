@@ -14,8 +14,8 @@ import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } f
 import { hexName } from '../map'
 import { RULES } from '../rules'
 import { dutiesPillar, poolShare, stepsPillar, tableIntake, termsOf, valor, weekScores } from '../score'
-import { charterOn, contractsOf, snapshotOf } from '../settle'
-import { openDayOf, weekOn } from '../state'
+import { charterOn, realmConsistencyOn, restDayIncome, streakBefore } from '../settle'
+import { isRestDay, openDayOf, respiteDays, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
 import { breakMilestonesOnDay, graceTextId, healerCheckIns, lbTo, loggedAverage, markReachedOn, toLb, weeklyWeighIns, weekMomentum, type HealerSituation } from '../weight'
 import type { CampaignState, DayRecord, GraceLevel, ISODate, WeekStartsOn, WeighIn } from '../types'
@@ -45,19 +45,30 @@ export interface StepPace {
   walked: number
   /** The pool's share for the days so far: pool × days ÷ 7, rounded. */
   expected: number
+  /** The week's pool, a day's share less for each of its rest days (D-54): 70,000 with one is 60,000. */
   pool: number
+  /** The week's rest days. */
+  rested: number
   daysElapsed: number
   /** Ahead of the even pace, or behind it. */
   status: 'ahead' | 'behind'
 }
 
-/** The week's pace toward the step pool (Ch 2): steps so far against pool × days elapsed ÷ 7. */
-export function stepPace(days: readonly { date: ISODate; steps?: number }[], pool: number, today: ISODate, weekStartsOn: WeekStartsOn, campaignStart?: ISODate): StepPace {
+/** The week's pace toward the step pool (Ch 2): steps so far against pool × days elapsed ÷ 7, rest days left out of both and of the pool (D-54). */
+export function stepPace(
+  days: readonly { date: ISODate; steps?: number }[],
+  pool: number,
+  today: ISODate,
+  weekStartsOn: WeekStartsOn,
+  campaignStart?: ISODate,
+  respite: readonly ISODate[] = []
+): StepPace {
   const from = weekFrom(today, weekStartsOn, campaignStart)
-  const daysElapsed = diffDays(from, today) + 1
-  const walked = days.filter((d) => d.date >= from && d.date <= today).reduce((sum, d) => sum + Math.max(0, d.steps ?? 0), 0)
+  const rested = respite.filter((d) => d >= from && d <= weekCloseDay(today, weekStartsOn)).length
+  const daysElapsed = diffDays(from, today) + 1 - respite.filter((d) => d >= from && d <= today).length
+  const walked = days.filter((d) => d.date >= from && d.date <= today && !respite.includes(d.date)).reduce((sum, d) => sum + Math.max(0, d.steps ?? 0), 0)
   const expected = poolShare(pool, daysElapsed)
-  return { walked, expected: Math.round(expected), pool, daysElapsed, status: walked >= expected ? 'ahead' : 'behind' }
+  return { walked, expected: Math.round(expected), pool: Math.round(pool - poolShare(pool, rested)), rested, daysElapsed, status: walked >= expected ? 'ahead' : 'behind' }
 }
 
 export interface CalorieWeek {
@@ -72,10 +83,18 @@ export interface CalorieWeek {
   overLimit: boolean
 }
 
-/** The week's logged calorie average against the limit, with the Healer's floor marked (Ch 4). */
-export function calorieWeek(days: readonly { date: ISODate; eaten?: number }[], limit: number, floor: number, today: ISODate, weekStartsOn: WeekStartsOn, campaignStart?: ISODate): CalorieWeek {
+/** The week's logged calorie average against the limit, with the Healer's floor marked (Ch 4), rest days left out (D-54). */
+export function calorieWeek(
+  days: readonly { date: ISODate; eaten?: number }[],
+  limit: number,
+  floor: number,
+  today: ISODate,
+  weekStartsOn: WeekStartsOn,
+  campaignStart?: ISODate,
+  respite: readonly ISODate[] = []
+): CalorieWeek {
   const from = weekFrom(today, weekStartsOn, campaignStart)
-  const week = days.filter((d) => d.date >= from && d.date <= today)
+  const week = days.filter((d) => d.date >= from && d.date <= today && !respite.includes(d.date))
   const logged = week.filter((d) => d.eaten !== undefined && d.eaten > 0)
   const average = logged.length > 0 ? logged.reduce((sum, d) => sum + (d.eaten as number), 0) / logged.length : null
   return {
@@ -234,7 +253,7 @@ export function catchUp(state: CampaignState, ledger: Ledger, today: ISODate): C
   const charter = charterOn(state, today)
   const days = liveWeek(state, ledger, today)
   const { weekStartsOn, startDate } = state.campaign
-  const respite = contractsOf(state).flatMap((c) => c.respiteDates)
+  const respite = respiteDays(state)
   const floor = termsOf(charter, state.weight.healerFloor).floor ?? RULES.healer.minFloor
   return {
     calories: calorieCatchUp(days, charter.calorieLimit, floor, today, weekStartsOn, startDate, respite),
@@ -261,8 +280,9 @@ export function valorParts(day: DayRecord, weekSoFar: readonly DayRecord[], step
   return { duties: dutiesPillar([day]), food: day.eaten !== undefined ? 1 : 0, steps: stepsPillar(elapsed, stepPool), valor: valor(day, weekSoFar, stepPool) }
 }
 
-/** `date`'s Valor so far, from the ledger as it stands (the close reads the day's final Valor). */
+/** `date`'s Valor so far, from the ledger as it stands (the close reads the day's final Valor); a rest day's is Realm Consistency (D-54). */
 export function liveValor(state: CampaignState, ledger: Ledger, date: ISODate): number {
+  if (isRestDay(state, date)) return realmConsistencyOn(state, date, state.campaign.weekStartsOn)
   const days = liveWeek(state, ledger, date)
   const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(state, date)))
   return valorParts(day, days, charterOn(state, date).stepPool).valor
@@ -307,15 +327,16 @@ export function daySpoils(state: CampaignState, day: ISODate): number {
 /**
  * What an unsettled day would earn at its close as it stands: duties, the perfect day and the streak
  * (Ch 5), and the spoils it has won so far (`daySpoils`). A battle the close still fights adds nothing yet.
+ * A rest day earns a full day × Realm Consistency (D-54).
  */
 export function dayProjection(state: CampaignState, day: DayRecord): number {
-  const prior = snapshotOf(state, addDays(day.date, -1))
+  if (isRestDay(state, day.date)) return roundPosting(restDayIncome(state, day.date, day.dutiesSworn).lines.reduce((sum, l) => sum + l.amount, 0) + daySpoils(state, day.date))
   const income = dailyIncome(
     {
       dutiesKept: day.dutiesKept,
       dutiesSworn: day.dutiesSworn,
       foodLogged: day.eaten !== undefined,
-      priorStreak: prior && prior.date >= state.campaign.startDate ? prior.streak : 0
+      priorStreak: streakBefore(state, day.date)
     },
     realmEffects(state).reputationBonus.value
   )
@@ -480,9 +501,10 @@ export function healerCards(state: CampaignState, today: ISODate = openDayOf(sta
     situation.loggedAverage = loggedAverage(snapshots.map(toHealerDay), settled, RULES.healer.checkInWindowDays).average
   }
   const lastWeek = state.weight.weeks.at(-1)
+  const respite = respiteDays(state)
   if (lastWeek) {
     const days = snapshotsBetween(snapshots, state.campaign.startDate, lastWeek.day).map(toDayRecord)
-    const qw = weekScores(days, termsOf(state.charter, floor), state.campaign.weekStartsOn).at(-1)?.score ?? 0
+    const qw = weekScores(days, termsOf(state.charter, floor), state.campaign.weekStartsOn, respite).at(-1)?.score ?? 0
     const m = weekMomentum({ weighIns: weighInsOf(snapshots, state.campaign.weekStartsOn), day: lastWeek.day, qw, goal: toLb(state.campaign.goalWeight, state.campaign.unit), cap: state.campaign.targetPace })
     situation.momentum = { r: m.r, mw: m.mw, mf: m.mf, qw: m.qw, tooFast: m.tooFast }
   }
@@ -490,6 +512,8 @@ export function healerCards(state: CampaignState, today: ISODate = openDayOf(sta
     const recent = snapshotsBetween(snapshots, state.campaign.startDate, settled).map(toDayRecord).reverse()
     let low = 0
     for (const d of recent) {
+      // A rest day is neither a low day nor a good one (D-54).
+      if (respite.includes(d.date)) continue
       if (dayScore(d, state.charter.stepPool) >= RULES.healer.roughDayBelow) break
       low++
     }

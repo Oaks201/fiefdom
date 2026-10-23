@@ -22,6 +22,8 @@ interface TallyProps {
   metric: Metric
   date: ISODate
   inputRef?: RefObject<HTMLInputElement | null>
+  /** The campaign rests on this day (a Respite day, D-54): nothing to log, so the tally only shows what it holds. */
+  frozen?: boolean
 }
 
 /** How a number measures up against the day's contract. */
@@ -92,7 +94,7 @@ function standing(metric: Metric, c: Contract, value: number | undefined): Stand
   return { met, over, fill: Math.min(1, v / limit), floor: min !== undefined ? min / limit : undefined, text }
 }
 
-export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element {
+export function Tally({ metric, date, inputRef, frozen = false }: TallyProps): React.JSX.Element {
   const meta = META[metric]
   const ledger = useLedgerData()
   const applyFx = useApplyWithFeedback()
@@ -159,7 +161,7 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
   }
 
   const Icon = meta.icon
-  const classes = ['tally', `tally--${metric}`, next?.met ? 'is-met' : '', next?.over ? 'is-over' : '', invalid ? 'is-invalid' : '']
+  const classes = ['tally', `tally--${metric}`, next?.met ? 'is-met' : '', next?.over ? 'is-over' : '', invalid ? 'is-invalid' : '', frozen ? 'is-frozen' : '']
 
   return (
     <section className={classes.filter(Boolean).join(' ')}>
@@ -186,6 +188,8 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
             autoComplete="off"
             spellCheck={false}
             placeholder="0"
+            readOnly={frozen}
+            tabIndex={frozen ? -1 : undefined}
             value={draft ?? (value !== undefined ? formatNumber(value) : '')}
             onFocus={(e) => {
               // Select everything so typing replaces the tally ("+1200" adds to it instead).
@@ -199,6 +203,7 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => {
+              if (frozen) return
               if (e.key === 'Enter') {
                 e.currentTarget.blur()
               } else if (e.key === 'Escape') {
@@ -228,7 +233,9 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
         </div>
       </div>
 
-      {contract && next ? (
+      {frozen ? (
+        <p className="tally__unbound">Frozen for a Respite day: nothing to log, and the week’s goal leaves this day out.</p>
+      ) : contract && next ? (
         <>
           <div
             className="tally__bar"
@@ -252,7 +259,7 @@ export function Tally({ metric, date, inputRef }: TallyProps): React.JSX.Element
         </p>
       )}
 
-      <div className="tally__presets">
+      <div className="tally__presets" hidden={frozen}>
         {meta.presets.map((n) => (
           <button
             key={n}

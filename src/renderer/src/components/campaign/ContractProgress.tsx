@@ -61,7 +61,7 @@ export function ContractProgress({ running, today }: { running: RunningView; tod
   const p = running.progress
   const status = !running.started ? `Begins ${day(c.startDate)}` : running.lastDay ? 'In force · the last day' : `In force · Day ${running.dayNumber} of ${running.totalDays}`
   const r = c.respiteDates.length
-  const rested = r === 0 ? '' : r === 1 ? ' A Respite day moved its end a day later.' : ` ${r} Respite days moved its end ${r} days later.`
+  const rested = r === 0 ? '' : r === 1 ? ' One of its days is a Respite day, a paid day off.' : ` ${r} of its days are Respite days, paid days off.`
   const when = !running.started
     ? `It begins at dawn on ${day(c.startDate)}.`
     : running.lastDay

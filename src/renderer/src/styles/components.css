@@ -416,6 +416,17 @@
   color: #a45a12;
 }
 
+/* A Respite day (D-54): calm, nothing asked. */
+.banner--rest {
+  background: rgba(47, 116, 64, 0.08);
+  border-color: rgba(47, 116, 64, 0.3);
+  border-left-color: var(--forest);
+}
+
+.banner--rest .banner__icon {
+  color: var(--forest);
+}
+
 /* ----------------------------------------------------------- ledger lines */
 .ledger__lines {
   margin: 0;

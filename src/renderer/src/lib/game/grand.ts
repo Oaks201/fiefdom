@@ -806,6 +806,24 @@ export function holdSieges(state: CampaignState, emit: Emit): CampaignState {
   return next
 }
 
+/**
+ * A rest day (D-54): every battle due on `day` and not begun waits to the first free day after it
+ * (one in any 5 days), an Ultimatum's with it. Taking a Respite on the open day runs it, and so does
+ * that day's close.
+ */
+export function restGrandBattles(state: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let next = state
+  for (const b of pendingBattles(state)) {
+    if (b.battleDate > day || b.setup) continue
+    const others = { ...next, grandBattles: next.grandBattles.filter((x) => x.id !== b.id) }
+    const battleDate = firstFreeDay(others, addDays(day, 1))
+    next = withBattle(next, { ...b, battleDate })
+    if (b.trigger === 'siege') for (const r of b.members ?? (b.rival ? [b.rival] : [])) next = patchRival(next, r, { ultimatumUntil: battleDate })
+    emit('grandBattle', { battleId: b.id, trigger: b.trigger, hexId: b.hexId, stage: 'queued', battleDate, ...(b.rival ? { rival: b.rival } : {}) })
+  }
+  return next
+}
+
 /** Fights every battle due on `day` and not yet fought (the `grandBattlesAuto` phase); a hex one takes can raise an Incursion (A-33). */
 export function grandBattlesDue(input: CampaignState, day: ISODate, valorsFor: (battleDate: ISODate) => readonly number[], emit: Emit): CampaignState {
   const state = holdSieges(uniqueBattleIds(input), emit)

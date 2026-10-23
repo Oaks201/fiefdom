@@ -20,7 +20,7 @@ const THURSDAY = '2026-11-05'
 test('Ch 2: the pace bar for 30,000 steps by Thursday against a 50,000 pool (Monday weeks) reads 30,000 of 28,571 expected, ahead', () => {
   const days = [7_500, 7_500, 7_500, 7_500].map((steps, i) => ({ date: addDays(MONDAY, i), steps }))
   const pace = stepPace([{ date: addDays(MONDAY, -1), steps: 20_000 }, ...days], 50_000, THURSDAY, 1)
-  assert.deepEqual(pace, { walked: 30_000, expected: 28_571, pool: 50_000, daysElapsed: 4, status: 'ahead' })
+  assert.deepEqual(pace, { walked: 30_000, expected: 28_571, pool: 50_000, rested: 0, daysElapsed: 4, status: 'ahead' })
   assert.equal(stepPace(days.slice(0, 3), 50_000, THURSDAY, 1).status, 'behind')
   // A partial week 1 counts from the campaign's first day.
   assert.equal(stepPace([{ date: START, steps: 8_000 }], 50_000, START, 1, START).expected, 7_143)

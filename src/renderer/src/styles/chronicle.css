@@ -423,6 +423,13 @@
   font-style: normal;
 }
 
+/* A Respite day (D-54): frozen, nothing to log. */
+.tally.is-frozen .tally__input {
+  color: var(--ink-2);
+  cursor: default;
+  border-bottom-color: transparent;
+}
+
 .tally__unit {
   font: 700 13px var(--font-caps);
   letter-spacing: 0.03em;

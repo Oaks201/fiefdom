@@ -28,6 +28,8 @@ interface Props {
   date: ISODate
   today: ISODate
   newDutyRef: RefObject<HTMLInputElement | null>
+  /** The campaign rests on this day (a Respite day, D-54): the list is frozen, with no duty asked of it. */
+  resting?: boolean
 }
 
 function seedFor(id: string): number {
@@ -36,7 +38,7 @@ function seedFor(id: string): number {
   return h
 }
 
-export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element {
+export function DutyList({ date, today, newDutyRef, resting = false }: Props): React.JSX.Element {
   const ledger = useLedgerData()
   const apply = useLedger((s) => s.apply)
   const applyFx = useApplyWithFeedback()
@@ -59,6 +61,8 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
   useEffect(() => setJustDone(null), [date])
 
   const toggle = (h: Habit): void => {
+    // A Respite day is frozen (D-54): nothing to mark.
+    if (resting) return
     const el = listRef.current?.querySelector(`[data-duty="${h.id}"] .duty__box`)
     setJustDone(log.done[h.id] ? null : h.id)
     sfx(log.done[h.id] ? 'unstamp' : 'stamp')
@@ -151,6 +155,7 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
           </span>
         )}
       </header>
+      {resting && habits.length > 0 && <p className="muted duties__rest">Frozen for a Respite day: no duty is asked, and the day is paid as if every one were kept.</p>}
 
       {habits.length === 0 ? (
         sworn ? (
@@ -207,7 +212,7 @@ export function DutyList({ date, today, newDutyRef }: Props): React.JSX.Element 
                     }}
                   />
                 ) : (
-                  <button type="button" className="duty__toggle" role="checkbox" aria-checked={done} onClick={() => toggle(h)}>
+                  <button type="button" className="duty__toggle" role="checkbox" aria-checked={done} disabled={resting} onClick={() => toggle(h)}>
                     <span className="duty__box">
                       {done && <WaxSeal color="crimson" icon={GiCheckMark} size={34} seed={seedFor(h.id)} stamp={justDone === h.id} />}
                     </span>

@@ -67,7 +67,7 @@ test('Gap 1: withdrawing pays exactly what the preview shows, and returns half t
   assert.equal(withdrawContract(done.state, today).reason, 'No contract is running.')
 })
 
-test('Gap 1: a Respite day on yesterday moves the end date a day later; the bank pays for it', () => {
+test('Gap 1: a Respite day on yesterday leaves the end date where it was (D-54); the bank pays for it', () => {
   let state = withPurse(realm(), 200)
   state = sealContract(state, { id: 'c1', termDays: 3 }, addDays(START, -1)).state
   state = { ...state, contracts: { ...state.contracts, respiteBank: 1 } }
@@ -75,7 +75,7 @@ test('Gap 1: a Respite day on yesterday moves the end date a day later; the bank
   const end = state.contracts.active?.endDate as string
   const rested = takeRespite(state, START, today)
   assert.ok(rested.ok, rested.reason)
-  assert.equal(rested.state.contracts.active?.endDate, addDays(end, 1))
+  assert.equal(rested.state.contracts.active?.endDate, end)
   assert.equal(rested.state.contracts.respiteBank, 0)
   assert.equal(rested.state.log.at(-1)?.kind, 'respite')
   assert.equal(takeRespite(rested.state, today, today).reason, 'No Respite days are banked.')
@@ -223,7 +223,7 @@ test('D-45: today’s figures so far come from the ledger and stay out of the sc
   const view = runningView(rested.state, today, ledger)
   assert.ok(view)
   const week2 = view.progress.weeks[1]
-  assert.deepEqual(week2.days.map((d) => d?.state ?? null), ['respite', 'today', 'upcoming', 'upcoming', null, null, null], 'the Respite day moved the end a day later')
+  assert.deepEqual(week2.days.map((d) => d?.state ?? null), ['respite', 'today', 'upcoming', null, null, null, null], 'the contract still ends on its day (D-54)')
   const live = week2.days[1]
   assert.ok(live && live.steps === 3_000 && live.eaten === 900 && live.dutiesKept === 3)
   assert.equal(live.calories, 'underFloor', 'logged well under the floor, shown gently')
@@ -231,7 +231,7 @@ test('D-45: today’s figures so far come from the ledger and stay out of the sc
   assert.equal(week2.score, null, 'nothing of week 2 is settled and scored')
   assert.ok(near(view.score, 0.9))
   assert.equal(view.settledDays, 4)
-  assert.equal(view.totalDays, 8)
+  assert.equal(view.totalDays, 7)
   const without = runningView(rested.state, today)
   assert.ok(without && without.progress.weeks[1].days[1]?.steps === undefined, 'without the ledger, today shows no figures')
 })

@@ -248,13 +248,13 @@ test('Charter validation: pool 10,000 to 200,000, limit from the Healer floor to
 
 // ── Respite ──────────────────────────────────────────────────────────────────
 
-test('Respite on yesterday removes that day from every pillar and moves the end date by +1 (Ch 4 rule 4)', () => {
+test('Respite on yesterday removes that day from every pillar (Ch 4 rule 4); from rules 3.6.0 the end date stays (D-54)', () => {
   const sealed = sealOne()
   const banked: ContractsState = { ...sealed.contracts, respiteBank: 1 }
   // Wednesday 10-07 was a bad day; today is Thursday 10-08.
   const after = spendRespite(banked, '2026-10-07', '2026-10-08')
   const active = after.active!
-  assert.equal(active.endDate, '2026-10-12')
+  assert.equal(active.endDate, '2026-10-11')
   assert.deepEqual(active.respiteDates, ['2026-10-07'])
   assert.equal(active.respiteDays, 1)
   assert.equal(after.respiteBank, 0)
@@ -277,12 +277,12 @@ test('Respite on the day before yesterday, without a bank, or outside the contra
   assert.throws(() => spendRespite(once, '2026-10-08', '2026-10-08'), /already/)
 })
 
-test('Respite on the last day moves the next contract back with the running one (D-45)', () => {
+test('Respite on the last day leaves the running contract and the next where they are (D-45, D-54)', () => {
   const second = oldQueue()
   const after = spendRespite({ ...second.contracts, respiteBank: 1 }, '2026-10-11', '2026-10-11')
-  assert.equal(after.active?.endDate, '2026-10-12')
-  assert.equal(after.queued?.startDate, '2026-10-13')
-  assert.equal(after.queued?.endDate, '2026-10-15')
+  assert.equal(after.active?.endDate, '2026-10-11')
+  assert.equal(after.queued?.startDate, '2026-10-12')
+  assert.equal(after.queued?.endDate, '2026-10-14')
 })
 
 test('D-45: a contract waiting for its chosen day holds the slot too; the slot opens on its last day', () => {
@@ -304,11 +304,15 @@ test('Respite is earned once per 7 days played and the bank never exceeds its ca
   assert.equal(earnRespite({ ...EMPTY, respiteBank: 6 }, 7, 4).respiteBank, 4)
 })
 
-test('A withdrawn contract does not pay for its Respite days', () => {
+test('A withdrawn contract pays for its Respite days as days of it (D-54); one an older Respite lengthened counts only its term', () => {
   const sealed = sealOne()
   const after = spendRespite({ ...sealed.contracts, respiteBank: 1 }, '2026-10-07', '2026-10-08')
   const out = withdraw(after, sealed.purse, 1, { ...PAY, date: '2026-10-08' })
-  assert.equal(out.outcome.payout, 30)
+  assert.equal(out.outcome.payout, 40, '10 × 4 days × f(1)')
+  // Before rules 3.6.0 a Respite moved the end a day later: withdrawn on that last day, it pays its 7-day term.
+  const active = after.active!
+  const lengthened: ContractsState = { ...after, active: { ...active, endDate: '2026-10-12' } }
+  assert.equal(withdraw(lengthened, sealed.purse, 1, { ...PAY, date: '2026-10-12' }).outcome.payout, 70)
 })
 
 // ── Late data ────────────────────────────────────────────────────────────────

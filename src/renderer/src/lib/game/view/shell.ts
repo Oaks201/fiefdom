@@ -19,7 +19,7 @@ import { rivalView } from '../rivals'
 import { RULES } from '../rules'
 import { realmConsistencyOn, type SettleSummary } from '../settle'
 import { foreseesSurges } from '../surges'
-import { isPlayable, openDayOf, weekOn, worldOf } from '../state'
+import { isPlayable, isRestDay, openDayOf, weekOn, worldOf } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type StanceBand, type Surge, type SurgeKind, type WeekStartsOn } from '../types'
@@ -148,6 +148,8 @@ export function strengthWord(n: ThreatNotice): string {
 function threatLines(state: CampaignState, today: ISODate): { hidden: boolean; lines: HeraldLine[] } {
   const view = tidings(state, today)
   const lines: HeraldLine[] = []
+  // A rest day (D-54): a paid day off, its battles fought at Realm Consistency.
+  if (isRestDay(state, today)) lines.push(line('threat', 'herald.threat.rest', { valor: String(percent(realmConsistencyOn(state, today, state.campaign.weekStartsOn))) }))
   for (const n of view.threats) {
     const facts: TextFacts = { hex: hexName(n.hexId), strength: strengthWord(n), date: n.date, ...(n.rival ? { rival: rivalName(n.rival) } : {}) }
     const id = n.kind === 'conquest' ? 'herald.threat.conquest' : `herald.threat.${n.kind}`

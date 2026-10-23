@@ -16,7 +16,7 @@ import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
-import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions } from './grand'
+import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { chronicle } from './dominion'
 import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
@@ -30,7 +30,7 @@ import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalMovesDay, rival
 import { dailyStances } from './terms'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
-import { EventBuffer, isPlayable } from './state'
+import { EventBuffer, isPlayable, isRestDay, respiteDays } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum } from './weight'
@@ -160,14 +160,38 @@ function records(state: CampaignState, from: ISODate, to: ISODate): DayRecord[] 
   return snapshotsBetween(state.settlement.snapshots, start, to).map(toDayRecord)
 }
 
+/** The settled days from `from` through `to` that the scores read: rest days left out of every one (D-54). */
+function scoredRecords(state: CampaignState, from: ISODate, to: ISODate): DayRecord[] {
+  const rest = new Set(respiteDays(state))
+  return records(state, from, to).filter((d) => !rest.has(d.date))
+}
+
+/** The streak a day builds on (Ch 5): the day before's. A rest day counts as a day kept (D-54), even one spent after it closed. */
+export function streakBefore(state: CampaignState, day: ISODate): number {
+  const d = addDays(day, -1)
+  if (d < state.campaign.startDate) return 0
+  if (isRestDay(state, d)) return streakBefore(state, d) + 1
+  return snapshotOf(state, d)?.streak ?? 0
+}
+
+/**
+ * A rest day's pay (D-54), a paid day off: a full day's daily lines (every one of its `dutiesSworn`
+ * duties kept, food logged, the perfect day and the streak), each × Realm Consistency. The streak grows.
+ */
+export function restDayIncome(state: CampaignState, day: ISODate, dutiesSworn: number): { lines: PurseLine[]; streak: number } {
+  const full = dailyIncome({ dutiesKept: dutiesSworn, dutiesSworn, foodLogged: true, priorStreak: streakBefore(state, day) }, reputationBonus(state))
+  const rc = realmConsistencyOn(state, day, state.campaign.weekStartsOn)
+  return { lines: full.lines.map((l) => ({ ...l, amount: l.amount * rc })), streak: full.streak }
+}
+
 /** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor (A-124). */
 function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
   return termsOf(charterOn(state, day), state.weight.healerFloor)
 }
 
-/** Realm Consistency at `day`'s close: Q over the last 28 settled campaign days (A-39). */
+/** Realm Consistency at `day`'s close: Q over the last 28 settled campaign days (A-39), rest days left out (D-54). */
 export function realmConsistencyOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
-  return realmConsistency(records(state, state.campaign.startDate, day), currentTerms(state, day), weekStartsOn)
+  return realmConsistency(scoredRecords(state, state.campaign.startDate, day), currentTerms(state, day), weekStartsOn)
 }
 
 /** A contract's Q over its days through `through`, without its Respite days, by its sealed terms. */
@@ -182,23 +206,30 @@ function postedTotal(lines: readonly PurseLine[]): number {
 }
 
 function dailyLines(state: CampaignState, snapshot: DaySnapshot): { lines: PurseLine[]; streak: number } {
-  const prior = snapshotOf(state, addDays(snapshot.date, -1))
+  if (isRestDay(state, snapshot.date)) return restDayIncome(state, snapshot.date, snapshot.dutiesSworn)
   const income = dailyIncome(
     {
       dutiesKept: snapshot.dutiesKept,
       dutiesSworn: snapshot.dutiesSworn,
       foodLogged: snapshot.eaten !== undefined,
-      priorStreak: prior && prior.date >= state.campaign.startDate ? prior.streak : 0
+      priorStreak: streakBefore(state, snapshot.date)
     },
     reputationBonus(state)
   )
   return { lines: income.lines, streak: income.streak }
 }
 
-/** The week ending `day`: its campaign days, q_w and the behavior income it pays (steps, calories, flawless, Momentum). */
-function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number; days: number } {
-  const days = records(state, weekOf(day, weekStartsOn), day)
-  const pillars = weekPillars(days, currentTerms(state, day))
+/**
+ * The week ending `day`: q_w and the behavior income it pays (steps, calories, flawless, Momentum).
+ * Its pillars read its scored days only, rest days left out, so the step pool shrinks by a day's share
+ * for each (D-54); its pay still counts every day, so a rest day never slows it. A week of rest days
+ * only is judged at Realm Consistency, as a rest day is.
+ */
+function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number } {
+  const from = weekOf(day, weekStartsOn)
+  const days = scoredRecords(state, from, day)
+  const rc = days.length > 0 ? null : realmConsistencyOn(state, day, weekStartsOn)
+  const pillars = rc === null ? weekPillars(days, currentTerms(state, day)) : { steps: rc, table: rc, duties: rc }
   const qw = pillarScore(pillars)
   const { campaign } = state
   const momentum = weekMomentum({
@@ -208,8 +239,8 @@ function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStarts
     goal: toLb(campaign.goalWeight, campaign.unit),
     cap: campaign.targetPace
   })
-  const lines = weeklyIncome({ ...pillars, momentum: momentum.m, days: days.length }, reputationBonus(state))
-  return { lines, qw, days: days.length }
+  const lines = weeklyIncome({ ...pillars, momentum: momentum.m, days: records(state, from, day).length }, reputationBonus(state))
+  return { lines, qw }
 }
 
 // ── Day phases ───────────────────────────────────────────────────────────────
@@ -265,11 +296,15 @@ const expireTimers: Phase = (state, ctx) => {
   return { ...state, hexes, roster, deals }
 }
 
-/** The day's Valor (Ch 10, A-40) from its snapshot and the week so far; 0 without a snapshot. */
+/**
+ * The day's Valor (Ch 10, A-40) from its snapshot and the week so far, its rest days left out of the
+ * pace; 0 without a snapshot. A rest day's Valor is Realm Consistency (D-54), whatever was logged.
+ */
 export function valorOn(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): number {
+  if (isRestDay(state, day)) return realmConsistencyOn(state, day, weekStartsOn)
   const snapshot = snapshotOf(state, day)
   if (!snapshot) return 0
-  return valor(toDayRecord(snapshot), records(state, weekOf(day, weekStartsOn), day), charterOn(state, day).stepPool)
+  return valor(toDayRecord(snapshot), scoredRecords(state, weekOf(day, weekStartsOn), day), charterOn(state, day).stepPool)
 }
 
 /**
@@ -300,8 +335,9 @@ const combatPhase: Phase = (state, ctx) => {
   return raiseIncursions(state, announced, dawnAfter, ctx.emit)
 }
 
-/** Every Grand Battle due today and not fought by the close: the Marshal fights it (Ch 11 rule 1, T11). */
-const grandBattlesAuto: Phase = (state, ctx) => grandBattlesDue(state, ctx.day, (battleDate) => readinessValors(state, battleDate), ctx.emit)
+/** Every Grand Battle due today and not fought by the close: the Marshal fights it (Ch 11 rule 1, T11); on a rest day it waits a day (D-54). */
+const grandBattlesAuto: Phase = (state, ctx) =>
+  isRestDay(state, ctx.day) ? restGrandBattles(state, ctx.day, ctx.emit) : grandBattlesDue(state, ctx.day, (battleDate) => readinessValors(state, battleDate), ctx.emit)
 
 /**
  * Pays the running contract on its last day; the queued one takes the slot at the next dawn. An
@@ -331,7 +367,8 @@ function interest(state: CampaignState, day: ISODate): CampaignState {
 /** The Bank's interest on the purse as the week closes, then step pool, calorie average, flawless week and Momentum (prorated in a partial week 1), then tithes. */
 const weeklyIncomePhase: Phase = (input, ctx) => {
   const state = interest(input, ctx.day)
-  const { lines, days } = weekIncome(state, ctx.day, ctx.weekStartsOn)
+  const { lines } = weekIncome(state, ctx.day, ctx.weekStartsOn)
+  const days = records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).length
   const villages = state.hexes
     .filter((h) => h.owner === 'player' && h.village)
     .map((h) => ({
@@ -387,16 +424,17 @@ const weightPhase: Phase = (state, ctx) => {
   return { ...state, weight: result.weight }
 }
 
-/** The week as the rivals see it (T10): its days, pillars and average Valor. */
+/** The week as the rivals see it (T10): its days, its average Valor (a rest day's its Realm Consistency), and its pillars without its rest days (D-54). */
 function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
   const from = weekOf(ctx.day, ctx.weekStartsOn)
-  const days = records(state, from, ctx.day)
-  const valors = days.map((d) => valorOn(state, d.date, ctx.weekStartsOn))
+  const all = records(state, from, ctx.day)
+  const days = scoredRecords(state, from, ctx.day)
+  const valors = all.map((d) => valorOn(state, d.date, ctx.weekStartsOn))
   return {
     day: ctx.day,
     week: ctx.week,
     weekStartsOn: ctx.weekStartsOn,
-    days: days.length,
+    days: all.length,
     valor: valors.length > 0 ? valors.reduce((s, v) => s + v, 0) / valors.length : 0,
     habits: { days, pillars: weekPillars(days, currentTerms(state, ctx.day)) },
     realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),

@@ -296,16 +296,19 @@ export function settleContract(contracts: ContractsState, purse: PurseState, sco
   }
 }
 
-/** The contract's days from its start through `through`, less its Respite days. */
+/**
+ * The contract's days from its start through `through`, at most its term. A Respite day is one of
+ * them (D-54, a paid day off); one spent before rules 3.6.0 moved the end a day later, so a contract
+ * it lengthened still counts only its term.
+ */
 export function scoredDays(contract: LandContract, through: ISODate): number {
   const last = through < contract.endDate ? through : contract.endDate
-  const span = Math.max(0, diffDays(contract.startDate, last) + 1)
-  return Math.max(0, span - contract.respiteDates.filter((d) => d >= contract.startDate && d <= last).length)
+  return Math.min(contract.termDays, Math.max(0, diffDays(contract.startDate, last) + 1))
 }
 
 /**
  * Ends the running contract early on `ctx.date` (today). It pays 10 × daysElapsed × 1.0 × f(Q),
- * where daysElapsed counts its days through today less Respite days, and returns half the pledge.
+ * where daysElapsed counts its days through today (`scoredDays`), and returns half the pledge.
  * The queued contract, if any, starts at the next dawn.
  */
 export function withdraw(contracts: ContractsState, purse: PurseState, score: number, ctx: PayContext): ContractSettlement {
@@ -369,8 +372,8 @@ export function earnRespite(contracts: ContractsState, daysPlayed: number, cap: 
 
 /**
  * Spends a banked Respite on `day`, which must be today or yesterday and one of the running
- * contract's days. The day leaves every pillar of the contract's score, and the contract (and
- * any queued one) ends a day later. Respite buys time, never score.
+ * contract's days. The day leaves every pillar of the contract's score; the contract still ends on
+ * its day (rules 3.6.0, D-54: before, it ended a day later).
  */
 export function spendRespite(contracts: ContractsState, day: ISODate, today: ISODate): ContractsState {
   const active = contracts.active
@@ -380,10 +383,7 @@ export function spendRespite(contracts: ContractsState, day: ISODate, today: ISO
   if (!active || day < active.startDate || day > active.endDate) throw new CampaignError(`No running contract covers ${day}.`)
   if (active.respiteDates.includes(day)) throw new CampaignError(`${day} is already a Respite day.`)
   const respiteDates = [...active.respiteDates, day].sort()
-  const nextActive: LandContract = { ...active, respiteDates, respiteDays: respiteDates.length, endDate: addDays(active.endDate, 1) }
-  const queued = contracts.queued
-  const nextQueued = queued && queued.startDate <= nextActive.endDate ? { ...queued, startDate: addDays(queued.startDate, 1), endDate: addDays(queued.endDate, 1) } : queued
-  return { ...contracts, respiteBank: contracts.respiteBank - 1, active: nextActive, ...(nextQueued ? { queued: nextQueued } : {}) }
+  return { ...contracts, respiteBank: contracts.respiteBank - 1, active: { ...active, respiteDates, respiteDays: respiteDates.length } }
 }
 
 // ── The Steward's Counsel ────────────────────────────────────────────────────

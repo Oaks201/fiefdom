@@ -31,6 +31,10 @@
     "template": "If this defense is lost, {hex} returns to the wilds.",
     "final": null
   },
+  "herald.threat.rest": {
+    "template": "A Respite day: the Marshal holds the realm today, at a Valor of {valor}%.",
+    "final": null
+  },
   "herald.grandBattle.warning": {
     "template": "Grand Battle ({trigger}) at {hex} on {date}. Enemy: {host}.",
     "final": null

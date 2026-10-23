@@ -67,7 +67,11 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
               </h3>
               <span className="panel__aside">{view.respiteBank} banked</span>
             </header>
-            <p className="muted">A Respite day pauses the running contract without penalty: the day leaves its score and the contract ends a day later. One is earned every 7 days.</p>
+            <p className="muted">
+              A Respite day is a paid day off. Nothing needs logging: the Chronicle freezes, and the day leaves every score (the contract’s, the week’s goals and Realm Consistency), and the week’s step pool shrinks by a day’s share. It pays a full day’s
+              reputation at your Realm Consistency, your streak grows, and the realm fights its day as usual at a Valor of your Realm Consistency. The contract still ends on its day. Taken today, a Grand Battle due today waits a day. Taken for yesterday,
+              its pay and its battles stand. One is earned every 7 days.
+            </p>
           </section>
         </aside>
       </div>
@@ -332,7 +336,7 @@ function Running({ running, today }: { running: RunningView; today: ISODate }): 
               onClick={() => {
                 if (act((s) => takeRespite(s, d.day, today))) {
                   sfx('quill')
-                  toast(`A Respite day on ${day(d.day)}. The contract now ends a day later.`, 'success')
+                  toast(d.day === today ? 'Today is a Respite day, a paid day off: nothing needs logging.' : `${day(d.day)} is a Respite day: the week’s goals leave it out.`, 'success')
                 }
               }}
             >

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { GiBootPrints, GiHornInternal, GiKnifeFork } from 'react-icons/gi'
 import { catchUp } from '../../lib/game/view/chronicle'
-import { isPlayable } from '../../lib/game/state'
+import { isPlayable, isRestDay } from '../../lib/game/state'
 import { useCampaign } from '../../state/campaign'
 import { useCampaignState, useCampaignToday } from '../../state/campaignHooks'
 import { dawnTidingsDue, useDawnTidings } from '../../state/dawnTidings'
@@ -42,10 +42,13 @@ export function DawnTidings(): React.JSX.Element | null {
 
   if (!due || fighting || !campaign || !openDay) return null
   const figures = catchUp(campaign, ledger, openDay)
-  const lines = [
-    { icon: GiBootPrints, text: stepCatchUpLine(figures.steps) },
-    { icon: GiKnifeFork, text: calorieCatchUpLine(figures.calories) }
-  ].filter((l): l is { icon: typeof GiBootPrints; text: string } => l.text !== null)
+  // A rest day asks for nothing (D-54): no catch-up figures on it.
+  const lines = isRestDay(campaign, openDay)
+    ? []
+    : [
+        { icon: GiBootPrints, text: stepCatchUpLine(figures.steps) },
+        { icon: GiKnifeFork, text: calorieCatchUpLine(figures.calories) }
+      ].filter((l): l is { icon: typeof GiBootPrints; text: string } => l.text !== null)
   const close = (): void => dismiss(openDay)
   const to = (page: 'chronicle' | 'realm'): void => {
     close()

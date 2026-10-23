@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { GiScrollUnfurled, GiScales } from 'react-icons/gi'
+import { GiHourglass, GiScrollUnfurled, GiScales } from 'react-icons/gi'
 import { CalendarButton } from '../components/chronicle/MonthCalendar'
 import { DayLedger } from '../components/chronicle/DayLedger'
 import { CampaignWeek, CampaignWeight, HealerCards, ValorPanel, WeighInBanner } from '../components/campaign/ChronicleCampaign'
@@ -11,6 +11,7 @@ import { Tally } from '../components/chronicle/Tally'
 import { WeekStrip } from '../components/chronicle/WeekStrip'
 import { calorieMetricFor, contractStatus } from '../lib/contracts'
 import { addDays, diffDays, formatLong, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../lib/dates'
+import { isRestDay } from '../lib/game/state'
 import { nextContractDue } from '../lib/game/view/contract'
 import { contractOn, dutiesSwornUnder, openContract } from '../lib/ledger'
 import { useToday } from '../state/clock'
@@ -73,7 +74,20 @@ export function ChroniclePage(): React.JSX.Element {
   let banner: React.JSX.Element | null = null
   const running = campaign?.contracts.active
   const covering = campaign ? [...campaign.contracts.history, ...(running ? [running] : [])].find((c) => c.startDate <= date && date <= c.endDate) : undefined
-  if (campaign && date === today) {
+  // A Respite day is a paid day off (D-54): the page is frozen, so its banner is the only one.
+  const resting = campaign ? isRestDay(campaign, date) : false
+  if (campaign && resting) {
+    banner = (
+      <div className="banner banner--rest">
+        <GiHourglass className="banner__icon" aria-hidden="true" />
+        <span>
+          {date === today
+            ? 'Today is a Respite day, a paid day off. Nothing needs logging: steps, calories and duties are frozen, and the week’s goals leave the day out. It pays a full day at your Realm Consistency, your streak grows, and the Marshal holds the realm.'
+            : 'A Respite day, a paid day off. The week’s goals left it out, and it was paid at Realm Consistency.'}
+        </span>
+      </div>
+    )
+  } else if (campaign && date === today) {
     if (!running && !campaign.contracts.queued) {
       banner = (
         <div className="banner">
@@ -143,7 +157,7 @@ export function ChroniclePage(): React.JSX.Element {
             {campaign ? (
               covering ? (
                 <>
-                  Day {diffDays(covering.startDate, date) + 1} of {covering.termDays + covering.respiteDays} under the {covering.kind === 'accord' ? 'Accord' : 'contract'} of {formatShort(covering.startDate)}
+                  Day {diffDays(covering.startDate, date) + 1} of {diffDays(covering.startDate, covering.endDate) + 1} under the {covering.kind === 'accord' ? 'Accord' : 'contract'} of {formatShort(covering.startDate)}
                 </>
               ) : (
                 'No contract binds this day'
@@ -183,14 +197,14 @@ export function ChroniclePage(): React.JSX.Element {
       {campaign && campaignToday && date === today && <WeighInBanner campaign={campaign} ledger={ledger} today={date} />}
 
       <div className="chronicle__tallies">
-        <Tally metric="steps" date={date} inputRef={stepsRef} />
-        <Tally key={calorieMetric} metric={calorieMetric} date={date} inputRef={caloriesRef} />
+        <Tally metric="steps" date={date} inputRef={stepsRef} frozen={resting} />
+        <Tally key={calorieMetric} metric={calorieMetric} date={date} inputRef={caloriesRef} frozen={resting} />
       </div>
 
       {campaign && date >= campaign.campaign.startDate && <CampaignWeek campaign={campaign} ledger={ledger} date={date} />}
 
       <div className="chronicle__lower">
-        <DutyList date={date} today={today} newDutyRef={newDutyRef} />
+        <DutyList date={date} today={today} newDutyRef={newDutyRef} resting={resting} />
         {campaign && date >= campaign.campaign.startDate ? (
           <div className="chronicle__side">
             <ValorPanel campaign={campaign} ledger={ledger} date={date} today={today} />
@@ -206,7 +220,7 @@ export function ChroniclePage(): React.JSX.Element {
       {campaign && campaignToday && (
         <div className="chronicle__realm">
           <div className="chronicle__realm-main">
-            {date === today && <HealerCards campaign={campaign} ledger={ledger} today={campaignToday} />}
+            {date === today && !resting && <HealerCards campaign={campaign} ledger={ledger} today={campaignToday} />}
             {date === today && <Herald today={campaignToday} />}
           </div>
           <WeighInLog campaign={campaign} ledger={ledger} today={campaignToday} />

@@ -5,7 +5,7 @@
  * Steward's Counsel. Pure; components only render these.
  */
 import { addDays, diffDays, weekOf } from '../clock'
-import { charterLocked, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
+import { charterLocked, respiteRefusal, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
 import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, sealRefusal, startDays, stewardSuggestion, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
 import { numeral, realmEffects } from '../effects'
@@ -291,14 +291,17 @@ export function runningView(state: CampaignState, today: ISODate = openDayOf(sta
   const settledDays = progress.table.days
   const score = settledDays > 0 ? contractScore(state, c, today, ws) : 0
   const started = c.startDate <= today
-  const dayNumber = started ? Math.min(diffDays(c.startDate, today) + 1, c.termDays + c.respiteDays) : 0
+  // Its days by the calendar: its term, and a day more for each Respite spent before rules 3.6.0 (D-54).
+  const totalDays = diffDays(c.startDate, c.endDate) + 1
+  const dayNumber = started ? Math.min(diffDays(c.startDate, today) + 1, totalDays) : 0
   const respiteDay = (day: ISODate): RespiteDay => {
     if (state.contracts.respiteBank < 1) return { day, allowed: false, reason: 'No Respite days are banked.' }
     if (day < c.startDate || day > c.endDate) return { day, allowed: false, reason: 'The contract does not cover this day.' }
     if (c.respiteDates.includes(day)) return { day, allowed: false, reason: 'Already a Respite day.' }
+    const refusal = respiteRefusal(state, day, today)
+    if (refusal) return { day, allowed: false, reason: refusal }
     return { day, allowed: true }
   }
-  const totalDays = c.termDays + c.respiteDays
   return {
     contract: summary(c),
     started,

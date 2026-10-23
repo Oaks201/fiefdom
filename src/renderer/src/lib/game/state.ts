@@ -21,6 +21,21 @@ export function awayOn(state: CampaignState, day: ISODate): boolean {
   return last !== undefined && diffDays(last, day) >= RULES.clock.absenceDays
 }
 
+/** Every Respite day spent in a contract that has run or is running (Ch 4 rule 4), oldest first. */
+export function respiteDays(state: CampaignState): ISODate[] {
+  const { active, history } = state.contracts
+  return [...history, ...(active ? [active] : [])].flatMap((c) => c.respiteDates).sort()
+}
+
+/**
+ * Whether `day` is a rest day (rules 3.6.0, D-54): a Respite day, a paid day off. Nothing needs logging:
+ * it leaves every score, and it pays a full day × Realm Consistency, the streak growing. The realm
+ * fights its day at a Valor of Realm Consistency; a Grand Battle due on it waits a day.
+ */
+export function isRestDay(state: CampaignState, day: ISODate): boolean {
+  return respiteDays(state).includes(day)
+}
+
 /**
  * Whether the campaign still plays: it settles, buys and fights while active and in the Reign
  * after a victory (Ch 14); only the Fall is final (T12).
