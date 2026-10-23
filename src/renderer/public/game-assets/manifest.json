@@ -1656,7 +1656,7 @@
     ]
   },
   "banner.player": {
-    "file": "banner.player-green-silver-v1.png",
+    "file": "banner.player-oak-v2.png",
     "kind": "banner",
     "size": [
       256,
@@ -1816,7 +1816,7 @@
     ]
   },
   "milestone.1": {
-    "file": "milestone.1-armory-crest-v4.png",
+    "file": "milestone.1-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1824,7 +1824,7 @@
     ]
   },
   "milestone.2": {
-    "file": "milestone.2-crest-v2.png",
+    "file": "milestone.2-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1832,7 +1832,7 @@
     ]
   },
   "milestone.3": {
-    "file": "milestone.3-early-v4.png",
+    "file": "milestone.3-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1840,7 +1840,7 @@
     ]
   },
   "milestone.4": {
-    "file": "milestone.4-completion-v1.png",
+    "file": "milestone.4-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1848,7 +1848,7 @@
     ]
   },
   "milestone.5": {
-    "file": "milestone.5-completion-v1.png",
+    "file": "milestone.5-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1856,7 +1856,7 @@
     ]
   },
   "milestone.6": {
-    "file": "milestone.6-completion-v1.png",
+    "file": "milestone.6-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1864,7 +1864,7 @@
     ]
   },
   "milestone.7": {
-    "file": "milestone.7-completion-v1.png",
+    "file": "milestone.7-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1872,7 +1872,7 @@
     ]
   },
   "milestone.8": {
-    "file": "milestone.8-completion-v1.png",
+    "file": "milestone.8-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1880,7 +1880,7 @@
     ]
   },
   "milestone.9": {
-    "file": "milestone.9-completion-v1.png",
+    "file": "milestone.9-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1888,7 +1888,7 @@
     ]
   },
   "milestone.10": {
-    "file": "milestone.10-completion-v1.png",
+    "file": "milestone.10-oak-approved-v3.png",
     "kind": "milestone",
     "size": [
       1920,
@@ -1944,7 +1944,7 @@
     ]
   },
   "moment.dawnTidings": {
-    "file": null,
+    "file": "moment.dawnTidings-approved-v1.png",
     "kind": "moment",
     "size": [
       1920,
@@ -1976,7 +1976,7 @@
     ]
   },
   "ui.armoryClosed": {
-    "file": "ui.armoryClosed-crest-v2.png",
+    "file": "ui.armoryClosed-oak-approved-v3.png",
     "kind": "armoryScene",
     "size": [
       1920,

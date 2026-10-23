@@ -134,10 +134,10 @@
   display: block;
   width: 100%;
   height: auto;
-  /* A band across the picture's middle; the prompt keeps the herald in its middle third. */
+  /* Lift the band slightly to keep the herald's head, top grip and scroll together. */
   aspect-ratio: 4 / 1;
   object-fit: cover;
-  object-position: center;
+  object-position: 50% 35%;
   border: 2px solid var(--gold-deep);
   border-radius: 10px;
 }
