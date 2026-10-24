@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker } from 'react-icons/gi'
+import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker, GiSpellBook } from 'react-icons/gi'
 import { formatShort } from '../../lib/dates'
 import { frontsNote, meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
@@ -44,7 +44,7 @@ export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Elemen
  * and each Rim front) with what they mean, and the rumors. The portrait and the Audience button open an
  * audience with it, where its deals are.
  */
-export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { panel: RivalPanel; onAudience(): void }): React.JSX.Element {
+export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide }: { panel: RivalPanel; onAudience(): void; onGuide(): void }): React.JSX.Element {
   const resolved = panel.status !== 'active'
   return (
     <article className={`court court--${panel.rival} ${resolved ? 'is-resolved' : ''}`} aria-label={panel.ruler}>
@@ -75,6 +75,9 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience }: { pane
         <p className="court__audience">
           <button type="button" className="btn btn--small" onClick={onAudience}>
             <GiShakingHands aria-hidden="true" /> Audience
+          </button>{' '}
+          <button type="button" className="btn btn--small btn--ghost" onClick={onGuide}>
+            <GiSpellBook aria-hidden="true" /> How he works
           </button>
         </p>
         <RespectMeter panel={panel} />

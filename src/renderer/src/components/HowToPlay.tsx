@@ -751,6 +751,10 @@ export function HowToPlay(): React.JSX.Element | null {
                 {RULES.marches.preparation.max}, and each level makes its garrisons {pct(RULES.marches.preparation.perLevel)} stronger; a week you push a march lowers it. Each rival also prepares his own way: the Dwarf adds a wall, the Orc’s
                 Warhost comes sooner, the Goblin grows greedier, the Archmage’s surges grow stronger.
               </p>
+              <p>
+                <b>One rival at a time:</b> Diplomacy’s <b>How each rival works</b> tab (or <b>How he works</b> on a court) gathers one ruler’s rules: what moves his Respect and
+                your Renown, side by side, his path’s perks, and how he can be resolved.
+              </p>
             </>
           )
         },

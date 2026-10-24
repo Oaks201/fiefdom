@@ -71,7 +71,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
 | `world.ts`, `world/events.ts` | Resolving rivals, Accords, coalitions, Ascendancy, the Siege, victory, the Chronicle record; the event deck and its effects | T12 |
 | `contractActions.ts` | The player's contract actions on the whole campaign: seal, withdraw, Respite, revise the Charter | T14 |
-| `view/*.ts` | View models for screens: `shell.ts`, `contract.ts`, `chronicle.ts` (T14); `realm.ts`, `orders.ts`, `diplomacy.ts`, `refusals.ts` (T15); `battle.ts`, `armory.ts`, `endgame.ts` (T16) | T14 to T16 |
+| `view/*.ts` | View models for screens: `shell.ts`, `contract.ts`, `chronicle.ts` (T14); `realm.ts`, `orders.ts`, `diplomacy.ts`, `refusals.ts` (T15); `battle.ts`, `armory.ts`, `endgame.ts` (T16); `rivalGuide.ts`, Diplomacy's "How each rival works" tab (2026-10-24) | T14 to T16 |
 | `dev/` | Development only: `mapAscii.ts` (T03), the scenario loader `scenarios.ts` (T15) | T03, T15 |
 | `sim/` (repo root) | Headless simulator and tuning report (`npm run sim`, `docs/game/sim/report.md`) | T13 |
 | `dev/invariants.ts` | The runtime invariants checked after every settlement in development builds and every simulated day | T17 |
