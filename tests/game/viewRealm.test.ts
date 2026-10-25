@@ -9,7 +9,7 @@ import { createRequire } from 'node:module'
 import { tierOffer } from '../../src/renderer/src/lib/game/buildings'
 import { CODEX } from '../../src/renderer/src/lib/game/codex'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
-import { ordersEstimate, ordersValidity, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { ordersEstimate, ordersValidity, setOrders, siegeOrders } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { bribeOffer } from '../../src/renderer/src/lib/game/goblin'
 import { challenge } from '../../src/renderer/src/lib/game/grand'
@@ -23,7 +23,7 @@ import { openDayOf } from '../../src/renderer/src/lib/game/state'
 import { bendSurge } from '../../src/renderer/src/lib/game/surges'
 import { realmConsistencyNow } from '../../src/renderer/src/lib/game/view/shell'
 import { BUILDING_IDS, type CampaignState, type HexState, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
+import { aimAssault, marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withTarget } from '../../src/renderer/src/lib/game/view/orders'
 import {
   HEX_WIDTH,
   buildingsView,
@@ -317,7 +317,7 @@ test('Ch 8: a Crossing’s perks say what they give, the walls-count-double perk
   assert.equal(ironLegion.hybrid?.name, 'Cataphracts')
   assert.equal(ironLegion.hybrid?.power, 18)
   assert.deepEqual(ironLegion.perks.map((p) => [p.name, p.active]), [['Shieldwall', true], ['Siegebreakers', false]])
-  assert.deepEqual(ironLegion.perks[0].gives.map((g) => g.label), ['Walls count double on rings 4 and 5'])
+  assert.deepEqual(ironLegion.perks[0].gives.map((g) => g.label), ['Walls count double on your hexes deep in the marches: depth 5 and deeper in a rival’s march, 3 and deeper in a lair’s'])
   assert.deepEqual(ironLegion.perks[1].gives.map((g) => g.label), ['Your assaults ignore fortification'])
   const shadow = effectLines(realmEffects(withCrossings(realm(), { mageTowerMerchantHall: 2 })), (r) => r.kind === 'perk')
   assert.ok(shadow.some((g) => g.label === 'Rival treasuries shown as numbers'))
@@ -402,6 +402,26 @@ test('A-36 / Ch 10: companies sent before a target is named still defend; a seco
   assert.equal(toggleDefender(state, picked, today, ids[2 + banners]).refused, 'tooManyCompanies')
   assert.equal(toggleDefender(state, orders, today, ids[0]).refused, 'onAssault')
   assert.deepEqual(ordersValidity(state, picked).problems, [])
+})
+
+test('Patch 7 B1: choosing a target from the Assault list sends the companies Lay siege would, so the day is never left without its assault', () => {
+  const state = realm()
+  const today = openDayOf(state)
+  const target = state.hexes.find((h) => h.owner === 'neutral' && h.ring === 1)!.id
+  const aimed = aimAssault(state, null, today, target)
+  assert.deepEqual(aimed.assault, siegeOrders(state, today, target).assault)
+  assert.ok(aimed.assault.length > 0)
+  const view = ordersView(setOrders(state, aimed).state, 0.8, today)
+  assert.deepEqual([view.allDefend, view.assaults[0].goesOut], [false, true])
+  // Companies the player already sent stay: only the target changes.
+  const own = moveCompany(state, withTarget(null, today, target), today, view.companies[0].id, 'assault').orders
+  const other = state.hexes.filter((h) => h.owner === 'neutral' && h.ring === 1)[1].id
+  assert.deepEqual(aimAssault(state, own, today, other).assault, [view.companies[0].id])
+  // A company pinned to defend stays home.
+  const pinned = toggleDefender(state, null, today, aimed.assault[0]).orders
+  assert.ok(!aimAssault(state, pinned, today, target).assault.includes(aimed.assault[0]))
+  // No target clears it, as before.
+  assert.equal(aimAssault(state, aimed, today, undefined).assaultTarget, undefined)
 })
 
 test('T15: the estimate at the day’s own Valor gives the outcome the close then gives', () => {

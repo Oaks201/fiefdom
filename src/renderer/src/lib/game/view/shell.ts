@@ -8,7 +8,7 @@
  */
 import { CODEX } from '../codex'
 import { numeral } from '../effects'
-import { addDays, diffDays, weekCloseDay } from '../clock'
+import { addDays, diffDays, isWeekCloseDay, weekCloseDay } from '../clock'
 import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
@@ -304,15 +304,17 @@ export function resultLine(e: GameEvent): HeraldLine | null {
 
 /**
  * The Herald at dawn on `today` (Ch 2 "The daily and weekly loop"): today's threats with their
- * targets and bands (the exact strength only when revealed), Grand Battle warnings, rumors from
- * the rival courts, and yesterday's results, all through the text catalog.
+ * targets and bands (the exact strength only when revealed), what is coming up, and yesterday's
+ * results, all through the text catalog. The courts' rumors change once a week, at the rivals'
+ * turn, so the Herald tells them on the week's first day only (Patch 7, B8); the courts show them all week.
  */
 export function heraldView(state: CampaignState, today: ISODate = openDayOf(state)): HeraldView {
   const yesterday = addDays(today, -1)
   const threats = isPlayable(state) ? threatLines(state, today) : { hidden: false, lines: [] }
   const results = state.log.filter((e) => e.day === yesterday).flatMap((e) => resultLine(e) ?? [])
   const live = isPlayable(state) ? [...surgeLines(state, today), ...warningLines(state, today), ...buyBackLines(state, today)] : []
-  return { date: today, hidden: threats.hidden, lines: [...threats.lines, ...live, ...rumorLines(state), ...results] }
+  const weekBegins = today === state.campaign.startDate || isWeekCloseDay(yesterday, state.campaign.weekStartsOn)
+  return { date: today, hidden: threats.hidden, lines: [...threats.lines, ...live, ...(weekBegins ? rumorLines(state) : []), ...results] }
 }
 
 // ── The Homecoming (A-45, Ch 16) ─────────────────────────────────────────────

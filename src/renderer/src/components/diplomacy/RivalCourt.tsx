@@ -1,7 +1,8 @@
 import { memo } from 'react'
 import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker, GiSpellBook } from 'react-icons/gi'
 import { formatShort } from '../../lib/dates'
-import { frontsNote, meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
+import { meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
+import { HelpLink } from '../game/HelpLink'
 import { amount } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
 import { WarTrackBar } from './WarTrack'
@@ -12,8 +13,12 @@ const TREASURY: Record<string, string> = { meager: 'Meager', modest: 'Modest', p
 const ARMY: Record<string, string> = { weaker: 'Weaker than yours', matched: 'Matched with yours', stronger: 'Stronger than yours', overwhelming: 'Overwhelming' }
 const FRONTS: Record<string, string> = { north: 'North', south: 'South', west: 'West', east: 'East' }
 
-/** Respect toward the player on a −100 to +100 meter (D-39), with his marks on both sides and what each brings. */
-export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Element {
+/**
+ * Respect toward the player on a −100 to +100 meter (D-39), with his marks on both sides. `full` (his
+ * guide) lists every mark and what it brings; the court shows the next mark each way and links to the
+ * full list (Patch 7, E2).
+ */
+export function RespectMeter({ panel, full = false, onMore }: { panel: RivalPanel; full?: boolean; onMore?(): void }): React.JSX.Element {
   return (
     <div className="respect">
       <div className="respect__head">
@@ -26,13 +31,26 @@ export function RespectMeter({ panel }: { panel: RivalPanel }): React.JSX.Elemen
           </span>
         ))}
       </div>
-      <ul className="respect__opens">
-        {panel.marks.map((m) => (
-          <li key={m.at} className={m.reached ? 'is-reached' : ''}>
-            <strong>{m.at}</strong> {m.labels.join('; ')}
-          </li>
-        ))}
-      </ul>
+      {full ? (
+        <ul className="respect__opens">
+          {panel.marks.map((m) => (
+            <li key={m.at} className={m.reached ? 'is-reached' : ''}>
+              <strong>{m.at}</strong> {m.labels.join('; ')}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="respect__opens respect__opens--next">
+          {panel.nextMarks.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+          {onMore && (
+            <li>
+              Every mark: <HelpLink onOpen={onMore} label="Every mark, in his guide" />
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   )
 }
@@ -71,7 +89,11 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide 
             </span>
           )}
         </p>
-        {!resolved && panel.standingNote && <p className="court__why">{panel.standingNote}</p>}
+        {!resolved && panel.standingNote && (
+          <p className="court__why">
+            {panel.standingNote} <HelpLink section="diplomacy" label="Peace, Tension and War" />
+          </p>
+        )}
         <p className="court__audience">
           <button type="button" className="btn btn--small" onClick={onAudience}>
             <GiShakingHands aria-hidden="true" /> Audience
@@ -80,7 +102,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide 
             <GiSpellBook aria-hidden="true" /> How he works
           </button>
         </p>
-        <RespectMeter panel={panel} />
+        <RespectMeter panel={panel} onMore={onGuide} />
         <dl className="court__strength">
           <div>
             <dt>
@@ -103,29 +125,32 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide 
         </dl>
         {panel.orcWar && (
           <section className="war war--you" aria-label="His war track against you">
-            <header className="war__head">
-              <strong>His war on you</strong>
+            <header className="war__head" title={panel.orcWar.how}>
+              <strong>
+                His war on you <HelpLink onOpen={onGuide} label="How his war track moves, in his guide" />
+              </strong>
               <span className="war__leader">{panel.orcWar.tug.leader}</span>
             </header>
             <WarTrackBar tug={panel.orcWar.tug} />
             <p className="war__now">{panel.orcWar.now}</p>
-            <p className="war__how">{panel.orcWar.how}</p>
           </section>
         )}
         {panel.fronts.length > 0 && (
           <section className="court__wars" aria-label="His wars with the other rivals">
-            <h4 className="court__wars-title">His wars with the other rivals</h4>
-            <p className="war__how">{frontsNote()}</p>
+            <h4 className="court__wars-title">
+              His wars with the other rivals <HelpLink section="diplomacy" label="How the rivals’ own wars work" />
+            </h4>
             {panel.fronts.map((f) => (
               <div key={f.front} className={`war war--${f.state}`}>
                 <header className="war__head">
                   <strong>{FRONTS[f.front]} front</strong>
-                  <span className={`disposition disposition--${f.state}`}>{DISPOSITIONS[f.state]}</span>
+                  <span className={`disposition disposition--${f.state}`} title={f.how}>
+                    {DISPOSITIONS[f.state]}
+                  </span>
                   <span className="war__leader">{f.tug.leader}</span>
                 </header>
                 <WarTrackBar tug={f.tug} />
                 {f.end && <p className="war__now">{f.end}</p>}
-                <p className="war__how">{f.how}</p>
               </div>
             ))}
           </section>

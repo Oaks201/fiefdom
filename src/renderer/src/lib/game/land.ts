@@ -345,6 +345,8 @@ export type DealRefusalCode =
   | 'grandBattleWarning'
   /** The same kind of agreement already runs with this rival. */
   | 'inForce'
+  /** Patch 7 (B5): at Peace he sends no raids or conquest attempts, so a Truce or pact stops nothing. */
+  | 'atPeace'
   | 'noTarget'
   /** A call to arms needs a Rim front between the two rivals. */
   | 'noFront'
@@ -533,11 +535,13 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
     }
     case 'truce':
       return judged(state, offer(trucePrice(state, rival)), [
+        state.rivals[rival].disposition.player === 'peace' ? dealRefusal('atPeace') : null,
         grandBattleWarning(state, today) ? dealRefusal('grandBattleWarning') : null,
         inForce(state, rival, 'truce', today) ? dealRefusal('inForce') : null
       ])
     case 'pact':
       return judged(state, offer(t.pact.cost), [
+        state.rivals[rival].disposition.player === 'peace' ? dealRefusal('atPeace') : null,
         inForce(state, rival, 'pact', today) ? dealRefusal('inForce') : null,
         respectBelow(state, rival, m.pact)
       ])

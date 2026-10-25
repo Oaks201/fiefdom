@@ -60,7 +60,7 @@
     "final": null
   },
   "battle.conquest.coreHeld": {
-    "template": "{rival} conquest attempt on {hex}: lost. Rings 0 to 2 cannot be taken, so the hex is scorched until {until}.",
+    "template": "{rival} conquest attempt on {hex}: lost. The heartland cannot be taken, so the hex is scorched until {until}.",
     "final": null
   },
   "battle.assault.taken": {

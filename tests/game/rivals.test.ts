@@ -2,6 +2,7 @@ import './support/tokyo-tz'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays, weekOf } from '../../src/renderer/src/lib/game/clock'
+import { heraldView } from '../../src/renderer/src/lib/game/view/shell'
 import { COMBAT_HOOKS, armyValue, combatOf, dawn, tidings } from '../../src/renderer/src/lib/game/combat'
 import { makeDeal, resolveCourtships, resolveRivalCourtships } from '../../src/renderer/src/lib/game/land'
 import { bandOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
@@ -523,6 +524,23 @@ function numbersIn(value: unknown, path = ''): string[] {
   if (value && typeof value === 'object') return Object.entries(value).flatMap(([k, v]) => numbersIn(v, path ? `${path}.${k}` : k))
   return []
 }
+
+test('Patch 7 B8: a rival’s rumor follows what his week spent, so it changes from week to week; the Herald tells it on the week’s first day only', () => {
+  const heard: Record<string, Set<string>> = {}
+  let last = simulateRivals(realm(7), 1).state
+  for (let weeks = 1; weeks <= 10; weeks++) {
+    last = simulateRivals(realm(7), weeks).state
+    for (const rival of ['orc', 'goblin', 'dwarf', 'archmage'] as const) {
+      const rumor = last.rivals[rival].ai?.rumor
+      if (rumor) (heard[rival] ??= new Set()).add(rumor)
+    }
+  }
+  assert.ok(Object.values(heard).some((s) => s.size > 1), JSON.stringify(Object.fromEntries(Object.entries(heard).map(([r, s]) => [r, [...s]]))))
+  const weekStart = addDays(last.settledThrough.day, 1)
+  const rumors = (day: string): number => heraldView(last, day).lines.filter((l) => l.section === 'rumor').length
+  assert.ok(rumors(weekStart) > 0)
+  assert.equal(rumors(addDays(weekStart, 1)), 0)
+})
 
 test('Ch 12 hidden stays hidden: rivalView shows no number but Respect unless the Spy Network or the Spymaster reveals it', () => {
   const state = simulateRivals(realm(7), 8, { playerHexes: 12 }).state

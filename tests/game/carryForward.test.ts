@@ -1,7 +1,7 @@
 /**
  * Patch 4 (docs/redesign/patch-4-spec.md section 11; C-48), Patch 5 (docs/redesign/patch-5-spec.md
  * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md sections 7 and 12.5; C-94, D-52): a campaign
- * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.6.0 in place. Each fixture
+ * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.6.1 in place. Each fixture
  * (`tests/game/fixtures/campaign-<version>.json`) was written by its script in `scripts/` on its own
  * rules, before the next patch changed any: a synthetic Steadfast campaign played by the automatic player
  * on the simulator's ledger (no one's health data). As the app does when it loads one, a save from before
@@ -70,8 +70,8 @@ function playOn(f: Fixture, weeks: number): { state: CampaignState; violations: 
   return { state, violations }
 }
 
-test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.6.0 takes each without a re-founding, migrating it once', () => {
-  assert.equal(RULES.ruleVersion, '3.6.0')
+test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.6.1 takes each without a re-founding, migrating it once', () => {
+  assert.equal(RULES.ruleVersion, '3.6.1')
   for (const [version, f] of Object.entries(FIXTURES)) {
     assert.equal(f.ruleVersion, version)
     assert.equal(f.state.campaign.ruleVersion, version)
@@ -114,7 +114,7 @@ test('C-48 (section 11): the 3.1.0 save played on 12 weeks settles with no invar
   for (const d of deeds) if (d.kind === 'deed' && d.source) assert.ok(!V310.state.log.some((e) => e.id === d.source && ['bribe', 'goblinBid', 'surge', 'ritual'].includes(e.kind)))
 })
 
-test('C-50: the 3.2.0 save played on 12 weeks under 3.6.0 settles with no invariant broken', () => {
+test('C-50: the 3.2.0 save played on 12 weeks under 3.6.1 settles with no invariant broken', () => {
   const f = FIXTURES['3.2.0']
   const { state, violations } = playOn(f, WEEKS_ON)
   assert.deepEqual(violations, [])
@@ -128,7 +128,7 @@ test('C-48: the carried-forward campaign settles the same twice (Test 9)', () =>
   assert.equal(fingerprint(a), fingerprint(b))
 })
 
-test('C-94: the 3.3.0 save is what it says, and 3.6.0 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
+test('C-94: the 3.3.0 save is what it says, and 3.6.1 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
   assert.equal(V330.ruleVersion, '3.3.0')
   assert.equal(V330.state.campaign.ruleVersion, '3.3.0')
   assert.equal(needsRefounding(V330.state), false)
@@ -158,7 +158,7 @@ test('D-48, D-49: on its first night under 3.4.1 the 3.3.0 save reads every stan
   assert.equal(result.events.filter((e) => e.day < night).length, 0, 'no day already settled is settled again')
 })
 
-test('D-52, D-53: the 3.4.0 save (the live game\'s rules) is what it says, and 3.6.0 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
+test('D-52, D-53: the 3.4.0 save (the live game\'s rules) is what it says, and 3.6.1 takes it as it is: no re-founding, no migration, 12 weeks with no invariant broken', () => {
   assert.equal(V340.ruleVersion, '3.4.0')
   assert.equal(V340.state.campaign.ruleVersion, '3.4.0')
   assert.equal(needsRefounding(V340.state), false)
@@ -189,7 +189,7 @@ test('D-52: on its first night under 3.4.1 a 3.4.0 save keeps a standing it hold
   assert.equal(s.rivals.archmage.disposition.player, 'tension', 'the Archmage at 33 is past his 35: back to Tension')
 })
 
-test('D-54: a 3.4.0 save (the live game\'s kind) with a Respite on its open day settles it under 3.6.0 as a paid day off: the siege pressed, a full day paid at Realm Consistency, the streak grown, the Accord ending on its day', () => {
+test('D-54: a 3.4.0 save (the live game\'s kind) with a Respite on its open day settles it under 3.6.1 as a paid day off: the siege pressed, a full day paid at Realm Consistency, the streak grown, the Accord ending on its day', () => {
   const profile = profileOf(V340.profile)
   const ledger = ledgerFor(profile, V340.seed, V340.ledgerWeeks * 7)
   const night = addDays(V340.state.settledThrough.day, 1)

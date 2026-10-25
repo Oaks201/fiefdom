@@ -220,7 +220,7 @@
     "final": null
   },
   "herald.deal.refused.innerRing": {
-    "template": "Hexes in rings 1 and 2 are never sold.",
+    "template": "Hexes in the heartland are never sold.",
     "final": null
   },
   "herald.deal.refused.cooldown": {
@@ -245,6 +245,10 @@
   },
   "herald.deal.refused.inForce": {
     "template": "This agreement with {rival} is already in force.",
+    "final": null
+  },
+  "herald.deal.refused.atPeace": {
+    "template": "Not needed: {rival} is at Peace with you and sends no raids or conquest attempts.",
     "final": null
   },
   "herald.deal.refused.noTarget": {

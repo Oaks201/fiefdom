@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { COMBAT_HOOKS, assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { fieldResult, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
+import { fieldResult, fitDeck, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
 import { claimableBy, neighbors } from '../../src/renderer/src/lib/game/map'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
@@ -411,4 +411,26 @@ test('Undo start is refused once a battle is opened or fought, before a start, o
     COMBAT_HOOKS.bandsHidden = bands
   }
   assert.equal(skirmishRefusalLabel('opened'), 'A battle is already opened, so the start can’t be taken back.')
+})
+
+test('Patch 7 B4: a hand never deals an Order that can do nothing in it (Arcane Ward against beasts, Bribe against mythics, Foresight in the last round, a ranged Order with no ranged company)', () => {
+  const melee = { side: 'player' as const, power: 10, health: 40, tags: ['steel' as const], reach: 'melee' as const }
+  const mine = [{ ...melee, id: 'a', name: 'A', slot: 'left:front' as const }, { ...melee, id: 'b', name: 'B', slot: 'center:front' as const }]
+  const beasts = ['bears', 'wolves'].map((unit, i) => ({ id: `e${i}`, side: 'enemy' as const, name: unit, power: 10, health: 40, tags: [], reach: 'melee' as const, slot: (i ? 'left:front' : 'center:front') as 'left:front', foe: 'beasts' as const, unit }))
+  const deck = ['arcaneWard', 'foresight', 'volley', 'barrage', 'shieldwall', 'charge', 'rally', 'holdFast', 'phalanx', 'huntersMark']
+  const dealt = fitDeck(deck, [...mine, ...beasts], 3, 2)
+  assert.deepEqual([...dealt].sort(), [...deck].sort(), 'the same Orders, only moved')
+  const first = dealt.slice(0, 3)
+  const last = dealt.slice(3, 6)
+  for (const dead of ['arcaneWard', 'volley', 'barrage']) assert.ok(![...first, ...last].includes(dead), `${dead} stays out of both hands`)
+  assert.ok(first.includes('foresight'), 'Foresight is dealt while a round is left to foresee')
+  assert.ok(!last.includes('foresight'))
+  // A Bribe skips a non-mythic company: against a host of mythics it waits.
+  const griffins = beasts.map((u) => ({ ...u, foe: 'mythic' as const, unit: 'griffin' }))
+  const hunt = ['bribe', 'charge', 'rally', 'phalanx', 'shieldwall', 'holdFast', 'huntersMark']
+  assert.ok(!fitDeck(hunt, [...mine, ...griffins], 3, 2).slice(0, 6).includes('bribe'))
+  // A short deck: a dead Order has to be dealt somewhere, and it goes where a later hand keeps a live one.
+  const short = fitDeck(['volley', 'shieldwall', 'charge', 'arcaneWard'], [...mine.map((u) => ({ ...u, reach: 'ranged' as const })), ...beasts], 3, 2)
+  assert.equal(short.slice(0, 3).length, 3, 'the hand is still full')
+  assert.notEqual(short[3], 'arcaneWard', 'the last round still has an Order that can do something')
 })

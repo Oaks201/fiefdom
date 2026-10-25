@@ -25,7 +25,7 @@ export function Homecoming(): React.JSX.Element | null {
       <div className="homecoming">
         <p className="homecoming__lede">
           <GiCastle aria-hidden="true" /> {view.daysSettled === 1 ? 'One day was' : `${view.daysSettled} days were`} settled
-          {view.awayDays > 0 ? ` after ${view.awayDays} days away` : ''}. Rings 0 to 2 held, as they always will.
+          {view.awayDays > 0 ? ` after ${view.awayDays} days away` : ''}. The heartland held, as it always will.
         </p>
         <dl className="homecoming__totals">
           <div>

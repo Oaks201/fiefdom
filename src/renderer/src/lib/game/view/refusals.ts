@@ -135,7 +135,7 @@ export function orderProblemLabel(p: OrderProblem): string {
     case 'grandBattleRequired':
       return `${hexName(p.hexId)} is taken only in a Grand Battle.`
     case 'notClaimable':
-      return `${hexName(p.hexId)} cannot be assaulted: it must touch your land, and rings 0 to 2 never fall to anyone else.`
+      return `${hexName(p.hexId)} cannot be assaulted: it must touch your land, and the heartland never falls to anyone else.`
     case 'barredByStronghold':
       return `${hexName(p.stronghold)} still stands: no assault reaches deeper into its march until it falls.`
     case 'grandBattlePending':

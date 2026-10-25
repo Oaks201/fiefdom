@@ -142,13 +142,14 @@ export function RivalGuide({ panel, guide, onAudience }: { panel: RivalPanel; gu
         <Lines lines={guide.march} />
       </section>
 
-      <section className="panel rival-guide__section" aria-label="What his Respect opens">
+      <section className="panel rival-guide__section" aria-label="His marks">
         <header className="panel__head">
           <h3 className="panel__title">
-            <GiShakingHands aria-hidden="true" /> What his Respect opens
+            <GiShakingHands aria-hidden="true" /> His marks: what his Respect opens and brings
           </h3>
         </header>
-        <RespectMeter panel={panel} />
+        <p className="muted rival-guide__note">{guide.standing}</p>
+        <RespectMeter panel={panel} full />
       </section>
 
       <section className="panel rival-guide__section" aria-label="His path's perks">

@@ -27,7 +27,7 @@ import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, defenseOf, envoyAvailab
 import { balance } from './economy'
 import { realmEffects, wallsFor } from './effects'
 import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor } from './grand'
-import { fieldResult, isOver, marshalPlay, offeredOn, orderMods, playProblem, playRoundOn, replayField, slotOf, type Field, type RoundPlay } from './grand/field'
+import { fieldResult, fitDeck, isOver, marshalPlay, offeredOn, orderMods, playProblem, playRoundOn, replayField, slotOf, type Field, type RoundPlay } from './grand/field'
 import { hostFromKinds, placeHost, type HostKind } from './grand/hosts'
 import { fortificationValue } from './land'
 import { bandOf, hexIndex } from './map'
@@ -189,11 +189,12 @@ export function fightSetup(state: CampaignState, plan: FightPlan, valor: number,
   const arms = 1 + effects.armsBonus.value
   const units = Object.entries(placeFormation(plan.companies)).map(([slot, id]) => companyUnit(byId.get(id) as Company, slot as SlotKey, start, slot === centerFront ? plan.walls : 0, arms))
   const { deck, orderStages } = orderDeck(state, day, `skirmish:${plan.id}:deck`, effects)
+  const all = [...units, ...placeHost(enemy)]
   const setup: BattleSetup = {
     readiness: rally(effects.rallyFloor.value, valor),
     marshal: false,
-    units: [...units, ...placeHost(enemy)],
-    deck,
+    units: all,
+    deck: fitDeck(deck, all, effects.ordersOffered.value, SK.rounds),
     offer: effects.ordersOffered.value,
     hire: hireOf(state, effects),
     orderStages,

@@ -35,6 +35,7 @@ import { chicago, steadyLedger } from './fixtures/ledgers'
 import { TODAY, realm, withArmory, withBuildings, withGrace, withPurse } from './support/realm'
 import { front, hex, plainHex, withDisposition, withHex, withOwner, type Posted } from './support/war'
 import { near } from './support/assert'
+import { dealsView } from '../../src/renderer/src/lib/game/view/diplomacy'
 
 
 function withRespect(state: CampaignState, rival: RivalId, respect: number): CampaignState {
@@ -355,6 +356,21 @@ test('Ch 6, D-17: a Truce bordering band 5 costs 150; for 7 days blocksRaids and
   }
   assert.equal(offerDeal(warned, 'dwarf', { kind: 'truce' }, addDays(TODAY, 1)).reason?.code, 'grandBattleWarning')
   assert.equal(offerDeal(warned, 'dwarf', { kind: 'truce' }, addDays(TODAY, 3)).allowed, true, 'the battle date has passed')
+})
+
+test('Patch 7 B5: at Peace a Truce and a pact stop nothing, so both are refused, with the reason shown', () => {
+  let state = withPurse(realm(), 1_000)
+  const dwarfHex = state.hexes.find((h) => h.owner === 'dwarf' && bandOf(h) === 5 && h.kind !== 'gate' && isClaimableKind(h)) as HexState
+  state = withRespect(reach(state, dwarfHex.id), 'dwarf', RULES.respect.marks.dwarf.pact)
+  assert.equal(offerDeal(state, 'dwarf', { kind: 'truce' }, TODAY).allowed, true)
+  assert.equal(offerDeal(state, 'dwarf', { kind: 'pact' }, TODAY).allowed, true)
+  const peace = withDisposition(state, 'dwarf', 'peace')
+  assert.equal(offerDeal(peace, 'dwarf', { kind: 'truce' }, TODAY).reason?.code, 'atPeace')
+  assert.equal(offerDeal(peace, 'dwarf', { kind: 'pact' }, TODAY).reason?.code, 'atPeace')
+  assert.equal(makeDeal(peace, 'dwarf', { kind: 'truce' }, TODAY).ok, false)
+  const line = dealsView(peace, 'dwarf', TODAY).find((d) => d.kind === 'truce')
+  assert.equal(line?.available, false)
+  assert.match(line?.reason?.text ?? '', /at Peace/)
 })
 
 test('Ch 6 non-aggression pact: at his own mark (the Orc 50, D-48) and 250; no conquest attempts for 28 days and raids at half rate', () => {

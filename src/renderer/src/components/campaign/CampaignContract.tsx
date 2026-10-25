@@ -4,6 +4,7 @@ import { sfx } from '../../audio'
 import { addDays, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep, parseInteger } from '../../lib/format'
 import { reviseCharter, sealContract, takeRespite, withdrawContract } from '../../lib/game/contractActions'
+import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ContractTerm, ISODate } from '../../lib/game/types'
 import { contractPageView, payoutPreview, type ContractPageView, type RunningView } from '../../lib/game/view/contract'
 import { percent, rivalName } from '../../lib/game/view/shell'
@@ -11,6 +12,7 @@ import type { Ledger } from '../../lib/types'
 import { useCampaign } from '../../state/campaign'
 import { newId } from '../../state/hooks'
 import { toast } from '../../state/toasts'
+import { HelpLink } from '../game/HelpLink'
 import { HoldButton } from '../HoldButton'
 import { WaxSeal } from '../WaxSeal'
 import { ContractProgress } from './ContractProgress'
@@ -67,10 +69,9 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
               </h3>
               <span className="panel__aside">{view.respiteBank} banked</span>
             </header>
+            {/* Patch 7 (E6): the rule in full lives in How to play › Contracts. */}
             <p className="muted">
-              A Respite day is a paid day off. Nothing needs logging: the Chronicle freezes, and the day leaves every score (the contract’s, the week’s goals and Realm Consistency), and the week’s step pool shrinks by a day’s share. It pays a full day’s
-              reputation at your Realm Consistency, your streak grows, and the realm fights its day as usual at a Valor of your Realm Consistency. The contract still ends on its day. Taken today, a Grand Battle due today waits a day. Taken for yesterday,
-              its pay and its battles stand. One is earned every 7 days.
+              A paid day off: nothing to log, paid at your Realm Consistency. One is earned every {RULES.respite.earnEveryDays} days. <HelpLink section="contracts" label="How Respite works" />
             </p>
           </section>
         </aside>

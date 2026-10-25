@@ -9,7 +9,8 @@ import { useUI } from '../../state/ui'
 
 const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
   { id: 'threat', title: 'Today’s threats', icon: GiCrossedSwords },
-  { id: 'warning', title: 'Grand Battles', icon: GiHornInternal },
+  // Patch 7 (B2): Grand Battle warnings, tomorrow's foreseen surge, the Goblin's bids and buy-backs, uprisings.
+  { id: 'warning', title: 'Coming up', icon: GiHornInternal },
   { id: 'result', title: 'Yesterday', icon: GiSwordClash },
   { id: 'world', title: 'Across the realm', icon: GiScrollQuill },
   { id: 'rumor', title: 'Rumors from the courts', icon: GiSpeaker }

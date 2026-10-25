@@ -478,6 +478,8 @@ export interface HexPanel {
   ownerName: string
   kind: HexState['kind']
   ring: number
+  /** Its band (D-17), which sets what it pays and costs: 1 and 2 in the heartland, then 3 to 5 by depth (Patch 7, B6). */
+  band: number
   land?: HexState['land']
   road?: HexState['road']
   /** The march it lies in and its depth there; a seam's second march and the one ruling today (D-16). */
@@ -655,6 +657,7 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     ownerName: ownerName(hex.owner),
     kind: hex.kind,
     ring: hex.ring,
+    band: bandOf(hex),
     ...(hex.land ? { land: hex.land } : {}),
     ...(hex.road ? { road: hex.road } : {}),
     ...(hex.march ? { march: hex.march, depth: depthOf(hex) } : {}),
@@ -704,6 +707,18 @@ function days(n: number): string {
   return n === 1 ? 'a day' : `${n} days`
 }
 
+/**
+ * Bands ("4 and 5", as an effect names them, D-17) in the depths a player sees (Patch 7, B6): the
+ * lowest band's first depth and deeper, in a rival's march and in a lair's.
+ */
+function bandDepths(bands: string): string {
+  const lowest = Math.min(...bands.split(' and ').map(Number))
+  const m = RULES.map
+  if (lowest <= m.heartlandRings) return 'in the heartland and beyond'
+  const from = (perBand: number): number => (lowest - m.heartlandRings - 1) * perBand + 1
+  return `deep in the marches: depth ${from(m.bands.rivalDepthsPerBand)} and deeper in a rival’s march, ${from(m.bands.lairDepthsPerBand)} and deeper in a lair’s`
+}
+
 /** One effect line in plain words. */
 export function effectLabel(field: string, value: number | boolean | string): string {
   const n = typeof value === 'number' ? value : 0
@@ -713,7 +728,7 @@ export function effectLabel(field: string, value: number | boolean | string): st
     case 'walls':
       return `Walls +${amount(n)}`
     case 'wallsDouble.rings':
-      return `Walls count double on rings ${value}`
+      return `Walls count double on your hexes ${bandDepths(String(value))}`
     case 'wallsDouble.against':
       return `Walls count double against ${value === 'mythic' ? 'mythics' : value}`
     case 'dailyAssaults':

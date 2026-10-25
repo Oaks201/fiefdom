@@ -15,6 +15,8 @@ import unitsJson from '../../data/text/units.json'
 import itemsJson from '../../data/text/items.json'
 import battleReportsJson from '../../data/text/battle-reports.json'
 import heraldJson from '../../data/text/herald.json'
+import { MONTHS_SHORT, WEEKDAYS_SHORT } from '../dates'
+import { weekdayOf } from './clock'
 
 export interface TextEntry {
   /** A plain statement of facts, with `{name}` placeholders. Never flavor (A-46). */
@@ -108,8 +110,17 @@ export function placeholders(text: string): string[] {
   return [...new Set(Array.from(text.matchAll(PLACEHOLDER), (m) => m[1]))]
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/** A fact as the line prints it: a date as players read it, "Thu, Feb 11" (Patch 7, B3); anything else as it is. */
+function factText(value: string | number): string {
+  if (typeof value !== 'string' || !ISO_DAY.test(value)) return String(value)
+  const [, month, day] = value.split('-').map(Number)
+  return `${WEEKDAYS_SHORT[weekdayOf(value)]}, ${MONTHS_SHORT[month - 1]} ${day}`
+}
+
 function fill(text: string, facts: TextFacts): string {
-  return text.replace(PLACEHOLDER, (whole, name: string) => (name in facts ? String(facts[name]) : whole))
+  return text.replace(PLACEHOLDER, (whole, name: string) => (name in facts ? factText(facts[name]) : whole))
 }
 
 /**

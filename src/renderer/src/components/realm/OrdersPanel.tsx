@@ -5,7 +5,7 @@ import { clearOrders, liftSiege, setOrders } from '../../lib/game/combat'
 import { hexName } from '../../lib/game/map'
 import type { CampaignState, DailyOrders, ISODate, RivalId } from '../../lib/game/types'
 import { liveValor } from '../../lib/game/view/chronicle'
-import { marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withHelp, withTarget, type OrdersView } from '../../lib/game/view/orders'
+import { aimAssault, marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withHelp, type OrdersView } from '../../lib/game/view/orders'
 import { amount, orderProblemLabel } from '../../lib/game/view/refusals'
 import { percent, rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
@@ -13,6 +13,7 @@ import { campaignNow } from '../../state/campaignClock'
 import { useLedger } from '../../state/store'
 import { toast } from '../../state/toasts'
 import { StartBattles } from '../battle/StartBattles'
+import { HelpLink } from '../game/HelpLink'
 
 const THREATS: Record<string, string> = { beasts: 'Beasts', mythic: 'A mythic', raid: 'Raid', conquest: 'Conquest attempt', counterattack: 'Counterattack' }
 const OUTCOMES: Record<string, string> = { taken: 'taken', rout: 'taken in a rout', repulsed: 'repulsed' }
@@ -140,7 +141,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
 
       <div className="orders__assaults">
         {view.assaults.map((slot) => (
-          <AssaultSlot key={slot.index} view={view} slot={slot} locked={locked} onTarget={(hexId) => store(withTarget(view.orders, today, hexId || undefined, slot.index))} />
+          <AssaultSlot key={slot.index} view={view} slot={slot} locked={locked} onTarget={(hexId) => store(aimAssault(campaign, view.orders, today, hexId || undefined, slot.index))} />
         ))}
       </div>
 
@@ -267,12 +268,10 @@ function SiegeLine({ view, locked, onLift }: { view: OrdersView; locked: boolean
         {s.flank > 1 ? ` · flanked ${flankWord(s.flank)}` : ''}
         {s.pressedToday ? days : ''}
       </p>
+      {/* Patch 7 (E8): what holds today; how a standing siege works is How to play › Taking land. */}
       <p className="muted">
-        {view.fromSiege
-          ? 'No orders of your own today: the Marshal presses it with the companies best matched to it, and every other company defends. It stands until it falls or you lift it.'
-          : s.pressedToday
-            ? 'Today’s orders press it. On any day without orders of your own, the Marshal presses it.'
-            : 'Today’s orders don’t press it; the Marshal presses it again on the next day without orders of your own.'}
+        {view.fromSiege ? 'The Marshal presses it today.' : s.pressedToday ? 'Today’s orders press it.' : 'Today’s orders don’t press it.'}{' '}
+        <HelpLink section="taking" label="How a standing siege works" />
       </p>
       <button type="button" className="btn btn--small btn--ghost" disabled={locked} onClick={onLift} title="Ends the standing siege; its wear stays on the hex and eases a little each day">
         Lift the siege

@@ -89,7 +89,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         </button>
       </header>
       <p className="hex-panel__what">
-        <span className={`owner-badge owner-badge--${view.owner}`}>{view.ownerName}</span> {kindName(view)}, {view.march ? `${marchName(view.march)}, depth ${view.depth}` : `ring ${view.ring}`}
+        <span className={`owner-badge owner-badge--${view.owner}`}>{view.ownerName}</span> {kindName(view)}, {view.march ? `${marchName(view.march)}, depth ${view.depth}` : 'the heartland'} · band {view.band}
       </p>
       <dl className="facts">
         {view.seam && view.march && (

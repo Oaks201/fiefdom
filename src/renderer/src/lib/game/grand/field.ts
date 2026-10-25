@@ -512,6 +512,64 @@ export function plannedIntents(f: Field, round: number, mods?: RoundMods): Plann
 
 // ── Orders: what each needs, and what the round offers ───────────────────────
 
+/**
+ * Whether an Order can do anything in round `round` of a battle with these companies (Patch 7, B4):
+ * cancelling or ignoring an intent no enemy plans in any round, a Bribe against mythics alone, a
+ * ranged Order with no ranged company of yours, a tag's power with no company bearing it, or
+ * Foresight in the last round can't. An Order with any effect that can still apply is kept.
+ */
+function orderFits(orderId: string, units: readonly FieldUnit[], round: number, rounds: number): boolean {
+  const order = CODEX.orders.find((o) => o.id === orderId)
+  if (!order) return true
+  const enemies = units.filter((u) => u.side === 'enemy')
+  const mine = units.filter((u) => u.side === 'player')
+  const planned = new Set(enemies.flatMap((u) => Array.from({ length: rounds }, (_, i) => enemyRound(u, i + 1).intent)))
+  return order.effects.some((e) => {
+    if (e.reach && !mine.some((u) => u.reach === e.reach)) return false
+    switch (e.kind) {
+      case 'cancelIntent':
+        return e.intents.some((i) => planned.has(i))
+      case 'ignoreIntent':
+        return planned.has(e.intent)
+      case 'skipAction':
+        return !e.excludeMythic || enemies.some((u) => u.foe !== 'mythic')
+      case 'rangedHitsRear':
+        return mine.some((u) => u.reach === 'ranged')
+      case 'directDamage': {
+        const tag = e.tagPower?.tag
+        return !tag || mine.some((u) => u.tags.includes(tag))
+      }
+      case 'revealIntents':
+        return round < rounds
+      default:
+        return true
+    }
+  })
+}
+
+/**
+ * The deck dealt hand by hand (Patch 7, B4): each round takes the next Orders, in the seeded order,
+ * that can do something that round, keeping one such Order back for each later round when the deck
+ * is short, so every hand has a live choice; it fills up with the others only when too few can. The
+ * draw is unchanged; only Orders that would be dead in a hand move later.
+ */
+export function fitDeck(deck: readonly string[], units: readonly FieldUnit[], offer: number, rounds: number): string[] {
+  const left = [...deck]
+  const out: string[] = []
+  for (let round = 1; round <= rounds && left.length > 0; round++) {
+    const live = left.filter((id) => orderFits(id, units, round, rounds))
+    // Only later rounds the deck will reach need an Order kept back.
+    const later = Math.min(rounds - round, Math.ceil(Math.max(0, left.length - offer) / offer))
+    const keep = Math.max(1, Math.min(offer, live.length - later))
+    const hand = live.slice(0, keep)
+    for (const id of left) if (hand.length < offer && !live.includes(id)) hand.push(id)
+    for (const id of live) if (hand.length < offer && !hand.includes(id)) hand.push(id)
+    for (const id of hand) left.splice(left.indexOf(id), 1)
+    out.push(...hand)
+  }
+  return [...out, ...left]
+}
+
 /** The Orders this round deals from the deck (Appendix C: never repeated within a battle). */
 export function offeredOn(setup: BattleSetup, round: number): string[] {
   return setup.deck.slice((round - 1) * setup.offer, round * setup.offer)

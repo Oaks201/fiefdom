@@ -100,6 +100,12 @@ test('t() leaves a placeholder visible when its fact is missing', () => {
   assert.equal(makeT(PLACEHOLDERS)('rivals.orc.surrenderHex'), 'Orc: hex {hex} ceded to you.')
 })
 
+test('Patch 7 B3: a date fact prints as players read it ("Thu, Feb 11"), never as 2027-02-11', () => {
+  const entries = new Map<string, TextEntry>([['endings.ultimatum', { template: 'The Siege comes on {date}; {count} days.', final: null }]])
+  assert.equal(makeT(entries)('endings.ultimatum', { date: '2027-02-11', count: 14 }), 'The Siege comes on Thu, Feb 11; 14 days.')
+  assert.equal(t('battle.raid.defeat', { rival: 'Ugrak', hex: 'Market Cross', tribute: 3, until: '2026-10-21' }).includes('Wed, Oct 21'), true)
+})
+
 test('t() returns final when someone has written it', () => {
   const entries = new Map<string, TextEntry>([['units.militia', { template: 'Template {x}.', final: 'Final {x}.' }]])
   assert.equal(makeT(entries)('units.militia', { x: 1 }), 'Final 1.')

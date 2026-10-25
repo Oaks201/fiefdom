@@ -16,6 +16,7 @@ import { marksFor, respectChange } from '../respect'
 import { RULES } from '../rules'
 import { RIVAL_IDS, type BuildingId, type CampaignState, type RivalId } from '../types'
 import { buildingName } from './realm'
+import { standingRules } from './diplomacy'
 import { amount, factor } from './refusals'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
@@ -71,7 +72,9 @@ export interface RivalGuide {
   ranks: PathRankLine[]
   /** His path's perks: what every rank adds, then what the named ranks add. */
   perks: GuideLine[]
-  /** The ways he can be resolved, and the realm's pace for it. */
+  /** His standing's rules: his Peace and War lines and how long a standing holds (Patch 7, E1: moved here from his court). */
+  standing: string
+  /** The ways he can be resolved; the realm's pace for any rival is How to play's (Patch 7, E7). */
   ends: GuideLine[]
   endsNote: string
 }
@@ -403,7 +406,6 @@ export function rivalGuide(state: CampaignState, rival: RivalId): RivalGuide {
   const thresholds = rankThresholds()
   const dominion = pathTotals(state)[rival]
   const known = renown(state)[rival]
-  const res = RULES.world.resolution
   return {
     rival,
     people: peopleOf(rival),
@@ -415,7 +417,8 @@ export function rivalGuide(state: CampaignState, rival: RivalId): RivalGuide {
     deedsNote: 'Rows add up: a Gate won in a Grand Battle counts as a Grand Battle won and as his hex taken. On a seam, where two marches meet, a hex’s deeds count half on each path. Respect from his own values and the habit he prizes posts at the week’s close; the rest when the deed is done.',
     ranks: thresholds.map((at, i) => ({ rank: i + 1, at, reached: rank > i })),
     perks: perksOf(rival),
+    standing: standingRules(rival),
     ends: endsOf(rival),
-    endsNote: `From week ${RULES.terms.fromWeek} his court shows his stance, Defiant to Ready to yield, and the Herald’s rumors say what he watches. The realm resolves one rival at a time: none before week ${res.notBeforeWeek}, then at most one every ${res.oncePerWeeks} weeks.`
+    endsNote: `From week ${RULES.terms.fromWeek} his court shows his stance, Defiant to Ready to yield, and the Herald’s rumors say what he watches.`
   }
 }

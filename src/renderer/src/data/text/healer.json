@@ -35,12 +35,12 @@
     "approved": false
   },
   "healer.fearOfLosing": {
-    "template": "Healer check-in: no rival can win before week {week}, and rings 0 to 2 can never be taken.",
+    "template": "Healer check-in: no rival can win before week {week}, and the heartland can never be taken.",
     "final": null,
     "approved": false
   },
   "healer.comingBack": {
-    "template": "Healer check-in: away for {days} days. Rings 0 to 2 held. A short contract can be sealed.",
+    "template": "Healer check-in: away for {days} days. The heartland held. A short contract can be sealed.",
     "final": null,
     "approved": false
   },

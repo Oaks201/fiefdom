@@ -808,34 +808,6 @@
   vertical-align: top;
 }
 
-/* Each ruler's Respect marks (Patch 6, D-48): one column per ruler. */
-.guide__table-item {
-  list-style: none;
-}
-
-.guide__marks {
-  border-collapse: collapse;
-  font-size: 15px;
-}
-
-.guide__marks th,
-.guide__marks td {
-  padding: 3px 12px;
-  border-bottom: 1px solid var(--rule-soft);
-  text-align: right;
-}
-
-.guide__marks th:first-child,
-.guide__marks td:first-child {
-  padding-left: 0;
-  text-align: left;
-}
-
-.guide__marks th {
-  font: 700 13px var(--font-caps);
-  color: var(--ink-3);
-}
-
 /* ----------------------------------------------------------- settings */
 .modal--settings {
   width: min(660px, 100%);
@@ -1025,4 +997,29 @@
   margin-top: 6px;
   font: italic 13.5px/1.45 var(--font-body);
   color: var(--ink-3);
+}
+
+/* A rule's ? (Patch 7, E8): opens the rule's home in How to play or a rival's guide. */
+.help-link {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  font: 700 11px var(--font-caps);
+  line-height: 1;
+  color: var(--ink-2);
+  vertical-align: 1px;
+  background: rgba(255, 250, 236, 0.7);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.help-link:hover,
+.help-link:focus-visible {
+  color: var(--crimson);
+  border-color: var(--gold);
+  outline: none;
 }

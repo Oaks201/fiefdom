@@ -37,7 +37,7 @@ import { realmEffects } from './effects'
 import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, tradeValue } from './land'
 import { bandOf, borderHexesOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, touches } from './map'
 import { RULES, type DeepReadonly } from './rules'
-import { chance, draw, int, pick, roll, shuffle } from './rng'
+import { chance, draw, int, pick, roll, shuffle, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
@@ -551,10 +551,12 @@ function oneTurn(input: CampaignState, rival: RivalId, w: RivalWeek, effects: Ef
   state = setDisposition(state, rival, w, effects)
   state = planConquests(state, rival, w, effects)
 
-  // The Herald's rumor: what this turn spent most on.
-  const top = SPENDS.reduce<RivalSpend | undefined>((best, s) => (spent[s] > 0 && (!best || spent[s] > spent[best]) ? s : best), undefined)
+  // The Herald's rumor: one thing this turn spent on, drawn in proportion to what it spent (Patch 7, B8),
+  // so the rumor follows the week instead of repeating the rival's fixed budget split.
+  const spends = SPENDS.filter((s) => spent[s] > 0)
+  const heard = spends.length > 0 ? weighted(input.campaign.seed, w.day, `rival:${rival}:rumor`, spends, spends.map((s) => spent[s])) : undefined
   const ai: RivalMemory = { ...state.rivals[rival].ai }
-  if (top) ai.rumor = top
+  if (heard) ai.rumor = heard
   else delete ai.rumor
   state = patchRival(state, rival, { ai })
   return warhost ? { state, warhost } : { state }

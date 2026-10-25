@@ -282,6 +282,24 @@ export function withTarget(orders: DailyOrders | null, date: ISODate, hexId: str
   return tidy(out)
 }
 
+/**
+ * The Assault list's choice (Patch 7, B1): `withTarget`, and when that assault has no company yet,
+ * the companies best matched to the hex go with it, as Lay siege sends them (`siegeOrders`), less
+ * any pinned to defend or already on another assault. Choosing a target alone never leaves the
+ * day without an assault.
+ */
+export function aimAssault(state: CampaignState, orders: DailyOrders | null, date: ISODate, hexId: string | undefined, index = 0, effects: Effects = realmEffects(state)): DailyOrders {
+  const out = withTarget(orders, date, hexId, index)
+  if (!hexId || sentOn(out, index).length > 0) return out
+  const busy = new Set(out.defenseOverride ?? [])
+  const slots = 1 + (out.extraAssaults?.length ?? 0)
+  for (let i = 0; i < slots; i++) if (i !== index) for (const id of sentOn(out, i)) busy.add(id)
+  const pick = siegeOrders(state, date, hexId, effects).assault.filter((id) => !busy.has(id))
+  setSent(out, index, pick)
+  out.defense = out.defense.filter((id) => !pick.includes(id))
+  return tidy(out)
+}
+
 export type MoveRefusal = 'tooManyCompanies' | 'noTarget'
 
 /**

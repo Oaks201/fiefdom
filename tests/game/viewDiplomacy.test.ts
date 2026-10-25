@@ -15,7 +15,7 @@ import { hasText } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type Disposition, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
 import { withPersonalities } from '../../src/renderer/src/lib/game/personalities'
-import { courtableVillages, courtshipsView, dealsView, frontsNote, meterAt, moodOf, respectMarks, rivalPanel, rivalPanels, standingNote } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealsView, meterAt, moodOf, nextMarks, respectMarks, rivalPanel, rivalPanels, standingNote, standingRules } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
@@ -28,7 +28,7 @@ import { realm, withCrossings, withPurse } from './support/realm'
  * disposition note's Respect and weeks), with its path; numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.(track|tug|how|end)$/.test(path) || path === 'orcWar' || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote') return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.(track|tug|how|end)$/.test(path) || path === 'orcWar' || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote' || /^nextMarks\.\d+$/.test(path)) return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -104,7 +104,7 @@ test('Ch 6: every deal shown as available is accepted by makeDeal; every unavail
 })
 
 test('the court lists only the deals that can be struck or wait on something within reach (Respect, the purse, time, a standing); never a deal with no hex, no front or a rival who never makes it', () => {
-  const within = new Set(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied'])
+  const within = new Set(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied', 'atPeace'])
   const base = driveCampaign({ seed: 21, weeks: 14, habits: 'steady', policy: 'greedy' }).state
   const today = openDayOf(base)
   let hidden = 0
@@ -180,7 +180,6 @@ test('Ch 12, A-153: each Rim front is drawn from its court’s side, the ruler o
   assert.equal(midway.end, undefined)
   assert.match(midway.how, /^At Peace this week: no fighting, and at the week’s close the marker moves a step back toward the middle\.$/)
   assert.equal(lineOf(withTrack(-1, 'tension'), a).how, 'At Tension this week: no fighting, so the marker holds.')
-  assert.ok(frontsNote().includes(`War (${pct(fr.warChance.touchingOrc)}% of weeks on the Orc’s fronts, ${pct(fr.warChance.other)}% on the others)`), frontsNote())
   for (const r of RIVAL_IDS) for (const f of rivalPanel(s0, r).fronts) assert.doesNotMatch(JSON.stringify(f), /undefined|NaN/)
 })
 
@@ -261,17 +260,34 @@ test('Ch 6: the courtships list: open bids with their Offer at today’s Trust a
   assert.deepEqual([again?.available, again?.reason?.code], [false, 'alreadyCourting'])
 })
 
-test('D-40, C-65: each court says what its standing means, the marks that change it and what moves his Respect; a resolved rival says nothing', () => {
+test('D-40, C-65, Patch 7 E1: each court says its standing and his lines in one line; his guide says how long a standing holds; a resolved rival says nothing', () => {
   const state = realm()
   const at = (d: 'peace' | 'tension' | 'war', r: RivalId = 'orc'): CampaignState => ({ ...state, rivals: { ...state.rivals, [r]: { ...state.rivals[r], disposition: { ...state.rivals[r].disposition, player: d } } } })
-  assert.match(standingNote(at('tension'), 'orc'), /^Tension: he raids your border but sends no conquest attempts\./)
-  assert.match(standingNote(at('tension'), 'orc'), /He never makes peace/)
+  assert.equal(standingNote(at('tension'), 'orc'), `Tension: raids, no conquest attempts · never makes Peace · War at −${-RULES.respect.marks.orc.war}`)
   // D-48: his own lines, Peace at +60 and War at −40 for the Dwarf.
-  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), new RegExp(`Peace comes at Respect \\+${RULES.respect.marks.dwarf.peace}; War at −${-RULES.respect.marks.dwarf.war}`))
-  assert.match(standingNote(at('tension', 'dwarf'), 'dwarf'), /a pact kept to its end \(\+5\)/)
-  assert.match(standingNote(at('war'), 'orc'), /^War: he sends conquest attempts/)
+  assert.equal(standingNote(at('tension', 'dwarf'), 'dwarf'), `Tension: raids, no conquest attempts · Peace at +${RULES.respect.marks.dwarf.peace} · War at −${-RULES.respect.marks.dwarf.war}`)
+  assert.match(standingNote(at('war'), 'orc'), /^War: raids and conquest attempts/)
   assert.match(standingNote(at('peace', 'goblin'), 'goblin'), /^Peace: no raids/)
   assert.equal(rivalPanel(at('war'), 'orc').standingNote, standingNote(at('war'), 'orc'))
   assert.equal(standingNote({ ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, status: 'conquered' } } }, 'orc'), '')
-  for (const r of ['orc', 'goblin', 'dwarf', 'archmage'] as RivalId[]) assert.doesNotMatch(standingNote(state, r), /undefined|NaN/)
+  // D-52: how long a standing holds is the guide's.
+  const b = RULES.respect.standingBuffer
+  assert.match(standingRules('dwarf'), new RegExp(`At Peace he stays until his Respect falls below \\+${(RULES.respect.marks.dwarf.peace ?? 0) - b}`))
+  assert.match(standingRules('orc'), /He never makes Peace/)
+  for (const r of RIVAL_IDS) {
+    assert.doesNotMatch(standingNote(state, r), /undefined|NaN/)
+    assert.doesNotMatch(standingRules(r), /undefined|NaN/)
+  }
+})
+
+test('Patch 7 E2: a court shows the next mark each way from his Respect; his guide lists them all', () => {
+  const marks = respectMarks('goblin', 45)
+  assert.deepEqual(nextMarks(marks, 45), [
+    `Next, at +55: ${marks.find((m) => m.at === 55)!.labels.join('; ')} (10 to go)`,
+    `Below +40 it ends: ${marks.find((m) => m.at === 40)!.labels.join('; ')} (5 above it now)`
+  ])
+  // Under every mark from 0 up, the next way down is the first mark below 0.
+  const low = respectMarks('goblin', 10)
+  assert.match(nextMarks(low, 10)[1], /^At −25: .* \(35 to fall\)$/)
+  assert.deepEqual(rivalPanel(realm(), 'goblin').nextMarks, nextMarks(rivalPanel(realm(), 'goblin').marks, rivalPanel(realm(), 'goblin').respect))
 })

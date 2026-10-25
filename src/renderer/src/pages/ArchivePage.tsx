@@ -105,88 +105,96 @@ export function ArchivePage(): React.JSX.Element {
 
       {campaign && <CampaignArchive campaign={campaign} />}
       {campaign && evals.length > 0 && <h2 className="campaign-archive__title">The ledger’s contracts</h2>}
+      {/* Patch 7 (B7): in a campaign the ledger's shelf shows only when the ledger has contracts of its own. */}
+      {campaign && evals.length === 0 && legacy.total !== 0 && (
+        <p className="muted archive__legacy">Ledger reputation, kept as history: {formatRep(legacy.total)}</p>
+      )}
 
-      <dl className="archive__stats">
-        <div>
-          <dt>Contracts closed</dt>
-          <dd>{closed.length}</dd>
-        </div>
-        <div>
-          <dt>Gilded weeks</dt>
-          <dd>{gilded}</dd>
-        </div>
-        <div>
-          <dt>Weight change</dt>
-          <dd>
-            {formatSigned(Math.round(weightChange * 10) / 10)} {unit}
-          </dd>
-        </div>
-        <div>
-          <dt>Contract reputation</dt>
-          <dd>{formatRep(fromContracts)}</dd>
-        </div>
-        {campaign && (
-          <div>
-            <dt>Ledger reputation, kept as history</dt>
-            <dd>{formatRep(legacy.total)}</dd>
+      {(!campaign || evals.length > 0) && (
+        <>
+          <dl className="archive__stats">
+            <div>
+              <dt>Contracts closed</dt>
+              <dd>{closed.length}</dd>
+            </div>
+            <div>
+              <dt>Gilded weeks</dt>
+              <dd>{gilded}</dd>
+            </div>
+            <div>
+              <dt>Weight change</dt>
+              <dd>
+                {formatSigned(Math.round(weightChange * 10) / 10)} {unit}
+              </dd>
+            </div>
+            <div>
+              <dt>Contract reputation</dt>
+              <dd>{formatRep(fromContracts)}</dd>
+            </div>
+            {campaign && (
+              <div>
+                <dt>Ledger reputation, kept as history</dt>
+                <dd>{formatRep(legacy.total)}</dd>
+              </div>
+            )}
+          </dl>
+
+          <div className="archive__controls">
+            <label className="search">
+              <GiMagnifyingGlass className="search__icon" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search — “march”, “2026”, “gilded”, “10,000”…"
+                aria-label="Search contracts"
+              />
+            </label>
+            <div className="chips" role="radiogroup" aria-label="Filter by outcome">
+              {filters.map((f) => (
+                <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} className={`chip ${filter === f.id ? 'is-on' : ''}`}
+                  onClick={() => {
+                    sfx('click')
+                    setFilter(f.id)
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <label className="select">
+              <span className="sr-only">Sort</span>
+              <select
+                value={sort}
+                onChange={(e) => {
+                  sfx('click')
+                  setSort(e.target.value as Sort)
+                }}
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="reputation">Most reputation</option>
+                <option value="weight">Most weight lost</option>
+              </select>
+            </label>
           </div>
-        )}
-      </dl>
 
-      <div className="archive__controls">
-        <label className="search">
-          <GiMagnifyingGlass className="search__icon" aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search — “march”, “2026”, “gilded”, “10,000”…"
-            aria-label="Search contracts"
-          />
-        </label>
-        <div className="chips" role="radiogroup" aria-label="Filter by outcome">
-          {filters.map((f) => (
-            <button key={f.id} type="button" role="radio" aria-checked={filter === f.id} className={`chip ${filter === f.id ? 'is-on' : ''}`}
-              onClick={() => {
-                sfx('click')
-                setFilter(f.id)
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <label className="select">
-          <span className="sr-only">Sort</span>
-          <select
-            value={sort}
-            onChange={(e) => {
-              sfx('click')
-              setSort(e.target.value as Sort)
-            }}
-          >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="reputation">Most reputation</option>
-            <option value="weight">Most weight lost</option>
-          </select>
-        </label>
-      </div>
-
-      {evals.length === 0 ? (
-        <div className="archive__empty">
-          <p>The shelves are bare. Sealed contracts will be kept here, week upon week.</p>
-        </div>
-      ) : shown.length === 0 ? (
-        <div className="archive__empty">
-          <p>No contract matches “{query}”.</p>
-        </div>
-      ) : (
-        <div className="archive__grid">
-          {shown.map((ev) => (
-            <ContractCard key={ev.contract.id} ev={ev} onOpen={() => openArchive(ev.contract.id)} />
-          ))}
-        </div>
+          {evals.length === 0 ? (
+            <div className="archive__empty">
+              <p>The shelves are bare. Sealed contracts will be kept here, week upon week.</p>
+            </div>
+          ) : shown.length === 0 ? (
+            <div className="archive__empty">
+              <p>No contract matches “{query}”.</p>
+            </div>
+          ) : (
+            <div className="archive__grid">
+              {shown.map((ev) => (
+                <ContractCard key={ev.contract.id} ev={ev} onOpen={() => openArchive(ev.contract.id)} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <Modal open={!!selected && !burning} onClose={() => openArchive(null)} className="modal--wide">

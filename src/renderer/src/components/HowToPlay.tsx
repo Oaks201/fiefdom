@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { WEEKDAYS } from '../lib/dates'
 import { formatNumber } from '../lib/format'
 import { rankThresholds } from '../lib/game/dominion'
@@ -7,58 +7,12 @@ import { trust } from '../lib/game/land'
 import { RULES } from '../lib/game/rules'
 import { RIVAL_IDS } from '../lib/game/types'
 import { amount } from '../lib/game/view/refusals'
-import { rivalName, weekCloseView } from '../lib/game/view/shell'
-import { marksFor } from '../lib/game/respect'
-import type { RivalId } from '../lib/game/types'
+import { weekCloseView } from '../lib/game/view/shell'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
 import { weekCloseAt, weekCloseLeft } from './game/WeekClose'
 import { Modal } from './Modal'
-
-/** Respect shown signed: +25, −40, 0. */
-const signedMark = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
-
-/** Each ruler's marks (Patch 6, D-48), one row each, every number from `RULES`: "never" where he has none, "any" where any Respect will do. */
-const MARK_ROWS: { label: string; at: (r: RivalId) => number | null; any?: boolean }[] = [
-  { label: 'His own perk', at: (r) => marksFor(r).ownUp },
-  { label: 'Calls to arms', at: (r) => marksFor(r).callToArms },
-  { label: 'He sells you hexes', at: (r) => marksFor(r).sellsHex },
-  { label: 'Envoys fight for you', at: (r) => marksFor(r).envoy },
-  { label: 'Peace', at: (r) => marksFor(r).peace },
-  { label: 'Pacts', at: (r) => marksFor(r).pact },
-  { label: 'Raids 10% weaker', at: (r) => marksFor(r).raidsWeaker },
-  { label: 'He buys your hexes', at: (r) => marksFor(r).buysHex, any: true },
-  { label: 'War', at: (r) => marksFor(r).war },
-  { label: 'Raids 10% stronger', at: (r) => marksFor(r).raidsStrongerAt },
-  { label: 'His own threat', at: (r) => marksFor(r).ownDown }
-]
-
-function MarksTable(): React.JSX.Element {
-  return (
-    <table className="guide__marks">
-      <thead>
-        <tr>
-          <th>Respect for</th>
-          {RIVAL_IDS.map((r) => (
-            <th key={r}>{rivalName(r)}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {MARK_ROWS.map((row) => (
-          <tr key={row.label}>
-            <td>{row.label}</td>
-            {RIVAL_IDS.map((r) => {
-              const at = row.at(r)
-              return <td key={r}>{at === null ? 'never' : row.any && at <= RULES.respect.min ? 'any' : signedMark(at)}</td>
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
-}
 
 /** A share as a whole percent, e.g. 0.4 → "40%". */
 const pct = (share: number): string => `${Math.round(share * 100)}%`
@@ -75,7 +29,7 @@ const dawn = `${String(RULES.clock.dayCloseHour).padStart(2, '0')}:00`
 const EXAMPLE_DEPTH = 6
 
 /**
- * A worked courtship on an unaligned ring-3 village at 50% Realm Consistency, read from the rules.
+ * A worked courtship on an unaligned band-3 village at 50% Realm Consistency, read from the rules.
  * Trust is rounded to the two places the Courtships panel shows.
  */
 function courtshipExample(): { ring: number; rc: string; loyalty: number; trust: string; bid: number; offer: number; short: { bid: number; offer: number; back: number; loyalty: number } } {
@@ -140,8 +94,16 @@ interface Category {
  */
 export function HowToPlay(): React.JSX.Element | null {
   const open = useUI((s) => s.helpOpen)
+  const section = useUI((s) => s.helpSection)
   const setOpen = useUI((s) => s.setHelpOpen)
   const body = useRef<HTMLDivElement>(null)
+  // Opened from a rule's ? (Patch 7, E8): start at that rule's section, a frame after the modal has
+  // focused its first control (which scrolls it back to the top).
+  useEffect(() => {
+    if (!open || !section) return
+    const frame = requestAnimationFrame(() => body.current?.querySelector(`#guide-${section}`)?.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [open, section])
   const campaign = useCampaignState()
   const campaignToday = useCampaignToday()
   const ledgerWeekStartsOn = useLedgerData().settings.weekStartsOn
@@ -165,9 +127,7 @@ export function HowToPlay(): React.JSX.Element | null {
   const sg = RULES.sieges
   const deeds = RULES.dominion.deeds
   const pm = RULES.personalities
-  const pa = RULES.personalities.archmage
   const rp = RULES.dominion.rankPerks
-  const strongholdRings = sg.stronghold.depths.map((d) => d + RULES.map.heartlandRings)
   const map = RULES.map
   const ranks = rankThresholds()
   const tierGates = RULES.buildings.tierDominion.flatMap((n, i) => (i === 0 ? [] : [`Tier ${numeral(i + 1)}: ${formatNumber(n)}`]))
@@ -395,12 +355,15 @@ export function HowToPlay(): React.JSX.Element | null {
             <>
               <ul>
                 <li>
-                  <b>The heartland</b> (rings 0 to {map.heartlandRings}) is your castle and its four buildings. Rings 0 to {land.protectedThroughRing} can never be taken from you.
+                  <b>The heartland</b> is your castle, its four buildings and the land around them. It can never be taken from you.
                 </li>
                 <li>
                   <b>A rival’s march</b> runs out along his road, {map.marchHalfWidth * 2 + 1} hexes wide and {map.marchDepth} deep: his Gate at the far end and his capital beyond.
-                  He holds the outer part of it from the start. A hex’s <b>depth</b> is how far out it lies (its ring less {map.heartlandRings}); deeper hexes are stronger and worth
-                  more.
+                  He holds the outer part of it from the start. A hex’s <b>depth</b> is how many steps out from the heartland it lies; deeper hexes are stronger and worth more.
+                </li>
+                <li>
+                  <b>Band:</b> what a hex pays and costs (a village’s tithe and loyalty, tribute, fortification) goes by its band, shown on its panel: 1 and 2 in the heartland,
+                  then 3, 4 and 5, one band every {map.bands.rivalDepthsPerBand} depths of a rival’s march and every {map.bands.lairDepthsPerBand} of a lair’s.
                 </li>
                 <li>
                   <b>The two lairs</b>, the Thornwild and the Wyrmfells, fill the gaps between marches, {map.lairDepth} deep, with a Lair Mouth at the end. Beasts and mythic creatures
@@ -457,7 +420,7 @@ export function HowToPlay(): React.JSX.Element | null {
                   <b>Garrison</b>: what an assault must beat, shown on every hex you don’t hold. It grows with depth.
                 </li>
                 <li>
-                  <b>Scorched</b> (flame): a threat beat your defense here. You paid tribute ({RULES.combat.tribute.perRing} × the ring, halved from the Crown’s Grace {graceII}) but
+                  <b>Scorched</b> (flame): a threat beat your defense here. You paid tribute ({RULES.combat.tribute.perRing} × its band, halved from the Crown’s Grace {graceII}) but
                   kept the hex. It stays scorched for {RULES.combat.scorchedDays} days; a scorched village pays no tithe that week.
                 </li>
                 <li>
@@ -466,7 +429,7 @@ export function HowToPlay(): React.JSX.Element | null {
                 </li>
                 <li>
                   <b>Fortified</b> (shield): each level adds {pct(land.garrison.fortificationPerLevel)} of the hex’s base garrison to its defense. Levels 1 to{' '}
-                  {land.fortificationMax} cost {listed(land.fortificationCost)} × the ring. A hex loses its fortification when it changes hands.
+                  {land.fortificationMax} cost {listed(land.fortificationCost)} × its band. A hex loses its fortification when it changes hands.
                 </li>
                 <li>
                   <b>Settling</b> (on a village): taken by assault or reclaimed. For {land.settling.weeks} weeks it pays {pct(land.settling.titheShare)} of its tithe, and its loyalty
@@ -660,15 +623,16 @@ export function HowToPlay(): React.JSX.Element | null {
                 </li>
                 <li>
                   <b>Siege:</b> a failed assault wears {pct(land.repulseWear)} of its strength off the garrison, and the wear stays (it fades {pct(sg.wearDecay.perDay)} a day while you
-                  leave the hex alone). Keep pressing and it falls. The Herald reports a <b>Breach</b> when the same assault would now take it. <b>Lay siege</b> on a hex makes it your
-                  standing siege: on days you set no orders, the Marshal presses it for you.
+                  leave the hex alone). Keep pressing and it falls. The Herald reports a <b>Breach</b> when the same assault would now take it. <b>Lay siege</b> on a hex, or choose it in
+                  the day’s orders, and it becomes your <b>standing siege</b>: on any day you set no orders of your own, the Marshal presses it with the companies best matched to it,
+                  and every other company defends. Orders of your own come first that day. It stands until it falls or you lift it; lifted, its wear stays and fades.
                 </li>
                 <li>
                   <b>Flanking:</b> each hex you hold touching the target, beyond the first, adds {pct(sg.flanking.perNeighbor)} to your assault there, up to{' '}
                   {pct(sg.flanking.perNeighbor * sg.flanking.maxNeighbors)}.
                 </li>
                 <li>
-                  <b>Strongholds</b> (stone tower) guard each rival’s march at rings {listed(strongholdRings)}. A stronghold’s garrison counts {sg.stronghold.garrisonMult} × until you
+                  <b>Strongholds</b> (stone tower) guard each rival’s march at depths {listed(sg.stronghold.depths)}. A stronghold’s garrison counts {sg.stronghold.garrisonMult} × until you
                   hold it, and while it stands your assault can’t reach deeper into its march (those hexes are marked Barred). Take it by siege, or challenge it to a Grand Battle from
                   its panel.
                 </li>
@@ -726,34 +690,26 @@ export function HowToPlay(): React.JSX.Element | null {
               </p>
               <ul>
                 <li>
-                  <b>The Orc</b> wars without rest. A garrison beaten in his march strikes back at once, and harder ({pct(pm.orc.counterMult)} of a usual counterattack), and his raids
-                  come at his march most. His <b>war track</b> ({pm.orc.track.min} to +{pm.orc.track.max}, on his court) moves a step your way on a day you win more battles with him
-                  than you lose, and his way on a day you lose more. Each step your way his strikes are {pct(pm.orc.track.strikePerStep)} weaker and his march’s garrisons{' '}
-                  {pct(pm.orc.track.garrisonPerStep)} easier; his way, stronger and harder, and from {pm.orc.track.extraConquestAt} he plans an extra conquest attempt.
+                  <b>The Orc</b> wars without rest: his beaten garrisons strike back at once, and his <b>war track</b> against you leans toward whoever wins more battles each day.
                 </li>
                 <li>
-                  <b>The Goblin</b> sells. Any hex of his march you could assault has a <b>bribe</b> price on its panel: pay it and the hex is yours at once. His greed (fair, dear or
-                  gouging) rises when you take his march by force. From week {pm.goblin.villageBid.fromWeek} he bids for one of your villages in his march each week; <b>Hold</b> it with
-                  reputation before the week closes. His beaten garrisons may offer to buy back the hex they lost.
+                  <b>The Goblin</b> sells: any hex of his march you could assault has a <b>bribe</b> price, and he bids for your villages in his march.
                 </li>
                 <li>
-                  <b>The Dwarf</b> is slow but steady. He walls the wilds of his march that face you, siege wear there fades only {pct(pm.dwarf.wearDecay)} a day, his beaten garrisons
-                  dig in and never strike back, and a hex you take from him is never lost to the wilds.
+                  <b>The Dwarf</b> is slow but steady: he walls the wilds facing you, sieges there wear off slowly, and a hex you take from him is never lost to the wilds.
                 </li>
                 <li>
-                  <b>The Archmage</b> works wild magic: each day one surge lands in his march. A garrison swells (×{pa.swell}) or ebbs (×{pa.ebb}) for the day, a mythic is summoned for{' '}
-                  {pa.summonDays} days, one of your companies is blessed or cursed ({pct(pa.companyShare)} for the day), or a surge strikes one of your hexes there. The Herald tells the
-                  day’s surge; Mage Tower Tier {numeral(RULES.buildings.mageTower.foresight.tier)}, or his path at rank I, shows tomorrow’s.
+                  <b>The Archmage</b> works wild magic: each day one surge swells or ebbs a garrison, summons a mythic, blesses or curses a company, or strikes a hex in his march.
                 </li>
               </ul>
               <p>
                 <b>Ignored marches harden.</b> In a week you push some marches (take or assault a hex there), each march you left alone gains a level, up to{' '}
-                {RULES.marches.preparation.max}, and each level makes its garrisons {pct(RULES.marches.preparation.perLevel)} stronger; a week you push a march lowers it. Each rival also prepares his own way: the Dwarf adds a wall, the Orc’s
-                Warhost comes sooner, the Goblin grows greedier, the Archmage’s surges grow stronger.
+                {RULES.marches.preparation.max}, and each level makes its garrisons {pct(RULES.marches.preparation.perLevel)} stronger; a week you push a march lowers it. Each
+                rival also prepares in his own way.
               </p>
               <p>
-                <b>One rival at a time:</b> Diplomacy’s <b>How each rival works</b> tab (or <b>How he works</b> on a court) gathers one ruler’s rules: what moves his Respect and
-                your Renown, side by side, his path’s perks, and how he can be resolved.
+                <b>Each ruler’s own rules,</b> with every number, are in Diplomacy’s <b>How each rival works</b> tab (or <b>How he works</b> on his court): how his march fights, what
+                moves his Respect and your Renown, his marks, his path’s perks and how he can be resolved.
               </p>
             </>
           )
@@ -765,7 +721,7 @@ export function HowToPlay(): React.JSX.Element | null {
           body: (
             <>
               <p>
-                Each village you hold pays a <b>tithe</b> of {RULES.reputation.weekly.tithePerRing} × its ring at every week’s close. You can take a village by assault, but it is then
+                Each village you hold pays a <b>tithe</b> of {RULES.reputation.weekly.tithePerRing} × its band at every week’s close. You can take a village by assault, but it is then
                 Settling and half loyal. Courting wins it at full loyalty. A rival’s Gate is a village too, but only courtship or a Grand Battle wins it.
               </p>
               <ul>
@@ -774,7 +730,7 @@ export function HowToPlay(): React.JSX.Element | null {
                   {inf.trust.max.toFixed(2)}). Steady habits make every bid go further.
                 </li>
                 <li>
-                  <b>Resistance</b> is what your Offer must reach: the village’s loyalty ({inf.loyalty.neutralPerRing} × the ring unaligned, {inf.loyalty.rivalPerRing} × the ring for a
+                  <b>Resistance</b> is what your Offer must reach: the village’s loyalty ({inf.loyalty.neutralPerRing} × its band unaligned, {inf.loyalty.rivalPerRing} × its band for a
                   rival’s), doubled for a Gate. A rival also defends its villages with a bid you can’t see.
                 </li>
                 <li>
@@ -788,7 +744,7 @@ export function HowToPlay(): React.JSX.Element | null {
                 </li>
               </ul>
               <p>
-                <b>Example:</b> an unaligned village in ring {ex.ring} has loyalty {ex.loyalty}. At {ex.rc} Realm Consistency your Trust is {ex.trust}, so a bid of {ex.bid} makes an
+                <b>Example:</b> an unaligned village of band {ex.ring} has loyalty {ex.loyalty}. At {ex.rc} Realm Consistency your Trust is {ex.trust}, so a bid of {ex.bid} makes an
                 Offer of {amount(ex.offer)}, enough to win it. A bid of {ex.short.bid} (Offer {amount(ex.short.offer)}) falls short: {amount(ex.short.back)} comes back and its loyalty
                 falls to {amount(ex.short.loyalty)}.
               </p>
@@ -803,20 +759,13 @@ export function HowToPlay(): React.JSX.Element | null {
             <ul>
               <li>
                 <b>Respect</b> runs from {RULES.respect.min} to +{RULES.respect.max} on each court, and every ruler starts at {RULES.rivals.start.respect}. It rises and falls with
-                what that ruler values. Beating his raids and other attacks raises it (+{RULES.respect.change.raidDefeated}), losing to them lowers it ({RULES.respect.change.raidLost}),
-                taking his land lowers it ({RULES.respect.change.hexConquered}; the Orc, who respects force, {RULES.respect.byRival.orc.hexConquered}), and each ruler prizes one
-                habit of yours (+{RULES.respect.change.prizedWeek} a week). The Orc also counts every Grand Battle against him (+{RULES.respect.byRival.orc.grandBattleWon} won,{' '}
-                {RULES.respect.byRival.orc.grandBattleLost} lost) and gives nothing for a Truce. The Goblin likes your coin: a bribe +{RULES.respect.byRival.goblin.bribePaid}, a
-                buy-off taken +{RULES.respect.byRival.goblin.buyOffAccepted}, refused {RULES.respect.byRival.goblin.buyOffRefused}, his bid for a village held off{' '}
-                {RULES.respect.byRival.goblin.bidHeld}. The Dwarf honors a pact kept to its end (+{RULES.respect.byRival.dwarf.pactKept}) and resents each wall of his you break (
-                {RULES.respect.byRival.dwarf.wallBroken}). The Archmage values constancy: +{RULES.respect.byRival.archmage.constantWeek} a week at Realm Consistency{' '}
-                {Math.round(RULES.respect.constantWeekAt * 100)}% or more, +{RULES.respect.byRival.archmage.surgeHeld} for a surge strike held, +
-                {RULES.respect.byRival.archmage.ritualEndured} for a Ritual endured. Weight never counts.
+                what that ruler values: beating his raids raises it, losing to them or taking his land lowers it, and each ruler prizes one habit of yours. Weight never counts.
+                Each ruler’s own list, with every number, is in his guide (Diplomacy’s <b>How each rival works</b>).
               </li>
               <li>
-                <b>Its marks</b> open more as it rises and bring worse as it falls, each ruler at his own numbers (the table below). Only the Accord’s are shared: talks at{' '}
-                {RULES.respect.thresholds.accordTalks}, an easier Accord at {RULES.respect.thresholds.accordEasier}, signed at {RULES.contracts.accord.signedAtRespect}. Each
-                court lists its marks and what they bring.
+                <b>Its marks</b> open more as it rises and bring worse as it falls, each ruler at his own numbers. Only the Accord’s are shared: talks at{' '}
+                {RULES.respect.thresholds.accordTalks}, an easier Accord at {RULES.respect.thresholds.accordEasier}, signed at {RULES.contracts.accord.signedAtRespect}. His court
+                shows the next mark each way; his guide lists them all.
               </li>
               <li>
                 <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each day’s close. <b>War</b> at his War line or below, or while he stands in a
@@ -829,9 +778,6 @@ export function HowToPlay(): React.JSX.Element | null {
               <li>
                 <b>Deals</b> (a court’s Audience): Truces, pacts, calls to arms, buying and selling hexes. Each shows what it costs and needs; a deal that can’t be struck as
                 things stand, such as a call to arms against a rival he shares no front with, isn’t listed.
-              </li>
-              <li className="guide__table-item">
-                <MarksTable />
               </li>
               <li>
                 <b>Stance:</b> from week {RULES.terms.fromWeek} each court shows how near its ruler is to yielding: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what

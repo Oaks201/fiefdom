@@ -52,6 +52,8 @@ export interface RivalPanel {
   portrait: string
   respect: number
   marks: RespectMark[]
+  /** The next mark each way, for his court (Patch 7, E2); his guide lists `marks` in full. */
+  nextMarks: string[]
   treasuryBand: TreasuryBand
   armyBand: ArmyBand
   /** Exact only when revealed (the Spy Network, or the Spymaster for a neighbor's treasury). */
@@ -70,50 +72,53 @@ export interface RivalPanel {
   standingNote: string
 }
 
-const RC = RULES.respect.change
 const signed = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
-/** What moves each rival's Respect, in plain words (D-39, P5-07): every number from `RULES`. */
-function drivers(rival: RivalId): { up: string[]; down: string[] } {
-  const own = RULES.respect.byRival[rival] as Readonly<Record<string, number>>
-  const conquered = own.hexConquered ?? RC.hexConquered
-  const beaten = `his raids and attacks beaten (${signed(RC.raidDefeated)})`
-  const lost = `a battle lost to him (${signed(RC.raidLost)})`
-  const taken = `his land taken (${signed(conquered)})`
-  const courted = `his villages courted away (${signed(RC.villageCourted)})`
-  switch (rival) {
-    case 'orc':
-      return { up: [beaten, `a Grand Battle won against him (${signed(own.grandBattleWon)})`, `a week with no battle lost (${signed(RC.prizedWeek)})`], down: [lost, `a Grand Battle lost to him (${signed(own.grandBattleLost)})`, taken] }
-    case 'goblin':
-      return { up: [beaten, `a bribe paid (${signed(own.bribePaid)})`, `a buy-off taken (${signed(own.buyOffAccepted)})`, `a hex sold to him (${signed(RC.hexSold)})`, `a week within your food budget (${signed(RC.prizedWeek)})`], down: [lost, taken, `a buy-off refused (${signed(own.buyOffRefused)})`, `his bid for a village held off (${signed(own.bidHeld)})`, courted] }
-    case 'dwarf':
-      return { up: [beaten, `a pact kept to its end (${signed(own.pactKept)})`, `a week meeting your step pool (${signed(RC.prizedWeek)})`], down: [lost, taken, `each wall of his broken (${signed(own.wallBroken)})`, courted] }
-    case 'archmage':
-      return { up: [beaten, `a week with every duty kept (${signed(RC.prizedWeek)})`, `a week at Realm Consistency ${Math.round(RULES.respect.constantWeekAt * PERCENT)}% or more (${signed(own.constantWeek)})`, `a surge strike held (${signed(own.surgeHeld)})`, `a Ritual endured (${signed(own.ritualEndured)})`], down: [lost, taken, courted] }
-  }
-}
-
 /**
- * Patch 5 (D-40, C-65): his standing in plain words: what it allows him, the marks that change it (his
- * own, Patch 6, D-48), and what moves his Respect. Read at each day's close from Respect (`standingFor`,
- * D-49); a standing he holds lasts until his Respect is `standingBuffer` past its line (D-52). Every number
+ * Patch 5 (D-40, C-65), cut to one line by Patch 7 (E1): his standing today and the Respect lines that
+ * change it (his own, D-48). What moves his Respect is in his guide (`rivalGuide`'s deeds), how long a
+ * standing holds is `standingRules`, and what a standing means in general is How to play's. Every number
  * in it is public.
  */
 export function standingNote(state: CampaignState, rival: RivalId): string {
   const r = state.rivals[rival]
   if (r.status !== 'active') return ''
   const m = marksFor(rival)
-  const now = { war: 'War: he sends conquest attempts as well as raids.', tension: 'Tension: he raids your border but sends no conquest attempts.', peace: 'Peace: no raids and no conquest attempts.' }[r.disposition.player]
-  const marks = m.peace === null ? `He never makes peace; War comes at Respect ${signed(m.war)}, or if he joins a coalition against you.` : `Peace comes at Respect ${signed(m.peace)}; War at ${signed(m.war)}, or if he joins a coalition against you.`
-  // D-52: a standing he holds lasts until his Respect is the buffer past its line the other way.
+  const now = { war: 'War: raids and conquest attempts', tension: 'Tension: raids, no conquest attempts', peace: 'Peace: no raids, no conquest attempts' }[r.disposition.player]
+  const lines = m.peace === null ? `never makes Peace · War at ${signed(m.war)}` : `Peace at ${signed(m.peace)} · War at ${signed(m.war)}`
+  return `${now} · ${lines}`
+}
+
+/**
+ * His standing's rules for his guide (Patch 7, E1): his lines, a coalition's War, and how long a standing
+ * he holds lasts, until his Respect is `standingBuffer` past its line the other way (D-52).
+ */
+export function standingRules(rival: RivalId): string {
+  const m = marksFor(rival)
   const b = RULES.respect.standingBuffer
-  const holds = {
-    war: b > 0 ? ` At War he stays until his Respect rises above ${signed(m.war + b)}.` : '',
-    peace: b > 0 && m.peace !== null ? ` At Peace he stays until his Respect falls below ${signed(m.peace - b)}.` : '',
-    tension: ''
-  }[r.disposition.player]
-  const d = drivers(rival)
-  return `${now} ${marks}${holds} He respects ${d.up.join(', ')}; he resents ${d.down.join(', ')}.`
+  const lines =
+    m.peace === null
+      ? `He never makes Peace. War comes at Respect ${signed(m.war)}, or if he joins a coalition against you.`
+      : `Peace comes at Respect ${signed(m.peace)}; War at ${signed(m.war)}, or if he joins a coalition against you.`
+  if (b <= 0) return lines
+  const holds = m.peace === null ? ` At War he stays until his Respect rises above ${signed(m.war + b)}.` : ` At Peace he stays until his Respect falls below ${signed(m.peace - b)}; at War, until it rises above ${signed(m.war + b)}.`
+  return `${lines}${holds}`
+}
+
+/**
+ * The next mark each way from his Respect (Patch 7, E2), for his court: what rising opens next, and
+ * what falling ends (a mark from 0 up he holds now) or brings (the first mark under 0 below him). His
+ * guide lists every mark.
+ */
+export function nextMarks(marks: readonly RespectMark[], respect: number): string[] {
+  const out: string[] = []
+  const up = marks.filter((m) => m.at > respect).sort((a, b) => a.at - b.at)[0]
+  if (up) out.push(`Next, at ${signed(up.at)}: ${up.labels.join('; ')} (${Math.ceil(up.at - respect)} to go)`)
+  const held = marks.filter((m) => m.at > 0 && m.at <= respect).sort((a, b) => b.at - a.at)[0]
+  const below = marks.filter((m) => m.at < 0 && m.at < respect).sort((a, b) => b.at - a.at)[0]
+  if (held) out.push(`Below ${signed(held.at)} it ends: ${held.labels.join('; ')} (${Math.floor(respect - held.at)} above it now)`)
+  else if (below) out.push(`At ${signed(below.at)}: ${below.labels.join('; ')} (${Math.ceil(respect - below.at)} to fall)`)
+  return out
 }
 
 /** One line of a march's state; a date the screen formats. */
@@ -181,13 +186,13 @@ export interface FrontLine {
   /** The war track from this rival's side, −3 to +3. */
   track: number
   tug: WarTrack
-  /** What the front's state does to the track this week, in plain words from `RULES`. */
+  /** What the front's state does to the track this week, in plain words from `RULES`: the state badge's tooltip (Patch 7, E3). */
   how: string
   /** Only with the marker at an end: who is Emboldened and who Humbled, and what that does to raids on the player. */
   end?: string
 }
 
-/** The Orc's war track against the player (D-28): drawn, what moves it, and what it does now. */
+/** The Orc's war track against the player (D-28): drawn, what moves it (the track's tooltip; his guide says it in full, Patch 7, E4), and what it does now. */
 export interface OrcWar {
   tug: WarTrack
   how: string
@@ -213,15 +218,6 @@ function frontHow(state: Disposition): string {
     case 'peace':
       return `At Peace this week: no fighting, and at the week’s close the marker moves ${fr.peaceStep === 1 ? 'a step' : `${fr.peaceStep} steps`} back toward the middle.`
   }
-}
-
-/**
- * What every front is, said once on each court (Ch 12, A-144): its weekly draw and what its ends do. Every
- * number from `RULES`.
- */
-export function frontsNote(): string {
-  const fr = RULES.rivals.fronts
-  return `Each pair of neighboring rivals shares a front, drawn again each week: War (${pct(fr.warChance.touchingOrc)}% of weeks on the Orc’s fronts, ${pct(fr.warChance.other)}% on the others), otherwise Tension or Peace. The marker shows who is winning. At either end the winner is Emboldened, his raids on you ${pct(fr.emboldenedRaid)}% harder, and the loser Humbled, his ${pct(fr.humbledRaid)}% weaker. A call to arms, struck in an audience, puts a front at War.`
 }
 
 /** A Rim front from `rival`'s side: at its end the winner is Emboldened and the loser Humbled (Ch 12, `raidMult` in combat.ts). */
@@ -344,6 +340,7 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     portrait: `rival.${rival}.${mood}`,
     respect: r.respect,
     marks: respectMarks(rival, r.respect),
+    nextMarks: nextMarks(respectMarks(rival, r.respect), r.respect),
     treasuryBand: view.treasuryBand,
     armyBand: view.armyBand,
     ...(view.treasury !== undefined ? { treasury: view.treasury } : {}),
@@ -414,7 +411,7 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
       }
     case 'sellHex':
       return {
-        requires: rival === 'goblin' ? 'Any time; not rings 1 and 2, nor a Gate' : `Respect ${m.buysHex}; not rings 1 and 2, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
+        requires: rival === 'goblin' ? 'Any time; not in the heartland, nor a Gate' : `Respect ${m.buysHex}; not in the heartland, nor a Gate; one hex deal every ${tr.hexDealEveryWeeks} weeks`,
         effect: `You receive ${Math.round(tr.sellShare * PERCENT)}% of its buy price; +${RULES.respect.change.hexSold} Respect`
       }
     case 'truce': {
@@ -437,9 +434,10 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
  * The refusals a player can work toward: Respect, the purse, the 4 weeks between hex deals, a standing,
  * an agreement or a Grand Battle warning that ends, a coalition that breaks. A deal refused for any other
  * reason (no hex to trade, no front between them, a rival who never does it, a resolved rival) cannot be
- * struck as things stand, and the court doesn't list it.
+ * struck as things stand, and the court doesn't list it. A Truce or pact refused at Peace (Patch 7, B5)
+ * stays listed with its reason, so the player sees why it isn't needed.
  */
-const WITHIN_REACH: ReadonlySet<DealRefusalCode> = new Set<DealRefusalCode>(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied'])
+const WITHIN_REACH: ReadonlySet<DealRefusalCode> = new Set<DealRefusalCode>(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied', 'atPeace'])
 
 /** Every deal `rival` could strike today (`availableDeals`), and those it refuses for a reason within reach, with the engine's reason. */
 export function dealsView(state: CampaignState, rival: RivalId, today: ISODate = openDayOf(state)): DealLine[] {

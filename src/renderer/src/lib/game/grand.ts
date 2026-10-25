@@ -55,6 +55,7 @@ import {
 } from './types'
 import {
   FILL_ORDER,
+  fitDeck,
   interpret,
   isOver,
   isSlot,
@@ -699,7 +700,7 @@ export function begin(state: CampaignState, battleId: string, o: BeginOptions): 
     readiness: readiness(o.valors, effects, marshal) + hornAdd,
     marshal,
     units,
-    deck,
+    deck: fitDeck(deck, units, effects.ordersOffered.value, G.rounds),
     offer: effects.ordersOffered.value,
     hire,
     orderStages

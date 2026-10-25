@@ -769,7 +769,7 @@ export function resultView(state: CampaignState, battleId: string): ResultView |
   if (o.respect) lines.push(`Respect ${o.respect > 0 ? '+' : '−'}${amount(Math.abs(o.respect))}${who ? ` with ${who}` : ''}`)
   if (o.hexTaken) lines.push(`${hexName(o.hexTaken)} is yours`)
   if (o.hexLost) lines.push(`${hexName(o.hexLost)} passes to ${who ?? 'the enemy'}`)
-  if (o.hexScorched) lines.push(`${hexName(o.hexScorched)} is scorched; rings 0 to 2 never fall`)
+  if (o.hexScorched) lines.push(`${hexName(o.hexScorched)} is scorched; the heartland never falls`)
   if (o.trophy) lines.push(`Trophy: ${CODEX.items.find((i) => i.id === o.trophy)?.name ?? o.trophy}`)
   if (o.armyLoss) lines.push(`${who ?? 'The enemy'}’s army −${pct(o.armyLoss)}`)
   if (o.armyGain) lines.push(`${who ?? 'The enemy'}’s army +${pct(o.armyGain)}`)

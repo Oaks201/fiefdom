@@ -18,6 +18,8 @@ interface UIState {
   foundingOpen: boolean
   /** How to play (F1 or ?). */
   helpOpen: boolean
+  /** The section How to play opens at (Patch 7, E8: a rule's ? opens its home), or null for the top. */
+  helpSection: string | null
   /** The Grand Battle screen (T16): a route over the page, not a tab; `replay` plays a fought battle back. */
   battle: { id: string; replay: boolean } | null
   /** The day's skirmishes (D-12): a route like the battle's, at one of the day's fights (the next to play when null); `replay` plays a fought one back. */
@@ -31,6 +33,8 @@ interface UIState {
   setSettingsOpen(open: boolean): void
   setFoundingOpen(open: boolean): void
   setHelpOpen(open: boolean): void
+  /** Opens How to play at `section` (a guide section id). */
+  openHelp(section: string): void
   openBattle(id: string, replay?: boolean): void
   closeBattle(): void
   openSkirmish(day: ISODate, fight?: string | null, replay?: boolean): void
@@ -50,6 +54,7 @@ export const useUI = create<UIState>((set) => ({
   settingsOpen: false,
   foundingOpen: false,
   helpOpen: false,
+  helpSection: null,
   rivalFocus: null,
   battle: null,
   skirmish: null,
@@ -63,7 +68,8 @@ export const useUI = create<UIState>((set) => ({
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setFoundingOpen: (foundingOpen) => set({ foundingOpen }),
-  setHelpOpen: (helpOpen) => set({ helpOpen }),
+  setHelpOpen: (helpOpen) => set({ helpOpen, helpSection: null }),
+  openHelp: (helpSection) => set({ helpOpen: true, helpSection }),
   goDiplomacy: (rival, hexId) => set({ page: 'diplomacy', rivalFocus: { rival, ...(hexId ? { hexId } : {}) } }),
   setRivalFocus: (rivalFocus) => set({ rivalFocus }),
   showDay: (date) => set({ page: 'chronicle', date, archiveId: null })
