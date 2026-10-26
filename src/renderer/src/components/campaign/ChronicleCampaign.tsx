@@ -14,9 +14,9 @@ import {
   daySpoils,
   healerCards,
   liveValor,
+  liveValorParts,
   liveWeek,
   stepPace,
-  valorParts,
   weighInPrompt
 } from '../../lib/game/view/chronicle'
 import { percent } from '../../lib/game/view/shell'
@@ -94,7 +94,7 @@ export function ValorPanel({ campaign, ledger, date, today }: { campaign: Campai
   const openDay = useCampaignToday()
   const days = liveWeek(campaign, ledger, date)
   const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(campaign, date)))
-  const parts = valorParts(day, days, charterOn(campaign, date).stepPool)
+  const parts = liveValorParts(campaign, ledger, date)
   const settled = date <= campaign.settledThrough.day
   const earned = settled ? dayEarned(campaign, date) : dayProjection(campaign, day)
   const spoils = daySpoils(campaign, date)

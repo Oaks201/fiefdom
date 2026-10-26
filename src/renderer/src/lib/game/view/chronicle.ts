@@ -280,12 +280,18 @@ export function valorParts(day: DayRecord, weekSoFar: readonly DayRecord[], step
   return { duties: dutiesPillar([day]), food: day.eaten !== undefined ? 1 : 0, steps: stepsPillar(elapsed, stepPool), valor: valor(day, weekSoFar, stepPool) }
 }
 
+/** `date`'s Valor so far in its three parts, from the ledger as it stands: the week as the close reads it (`valorOn`), its rest days left out of the step pace (D-54). */
+export function liveValorParts(state: CampaignState, ledger: Ledger, date: ISODate): ValorParts {
+  const rest = new Set(respiteDays(state))
+  const days = liveWeek(state, ledger, date)
+  const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(state, date)))
+  return valorParts(day, days.filter((d) => !rest.has(d.date)), charterOn(state, date).stepPool)
+}
+
 /** `date`'s Valor so far, from the ledger as it stands (the close reads the day's final Valor); a rest day's is Realm Consistency (D-54). */
 export function liveValor(state: CampaignState, ledger: Ledger, date: ISODate): number {
   if (isRestDay(state, date)) return realmConsistencyOn(state, date, state.campaign.weekStartsOn)
-  const days = liveWeek(state, ledger, date)
-  const day = days.at(-1) ?? toDayRecord(snapshotDay(ledger, date, charterOn(state, date)))
-  return valorParts(day, days, charterOn(state, date).stepPool).valor
+  return liveValorParts(state, ledger, date).valor
 }
 
 // ── The weigh-in ─────────────────────────────────────────────────────────────
