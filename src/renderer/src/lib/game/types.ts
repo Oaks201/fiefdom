@@ -263,6 +263,8 @@ export interface RivalMemory {
   grabs?: RivalGrab[]
   /** Patch 6 (D-50, C-92): wall levels bought at the week close and not yet raised, each at its day's close. */
   walls?: RivalWall[]
+  /** Patch 7 (W1, D-56): his siege of a wild hex of his march; absent when he presses none. */
+  siege?: RivalSiege
 }
 
 /** Patch 6 (C-91): a beast den a rival chose at the week close, to take at `day`'s close; `i` keys its roll. */
@@ -943,6 +945,30 @@ export interface CampaignState {
   personalities?: PersonalitiesState
   /** Patch 4 (D-33): each rival's stance and terms so far, and the Goblin's hired companies. Absent means none yet. */
   terms?: TermsState
+  /** Patch 7 (A2, D-56): the realm's reach, fixed at each dawn. Absent (a save from before 3.7.0, until its next dawn) means none, and nothing changes. */
+  reach?: ReachState
+}
+
+/**
+ * Patch 7 (A2, D-56): how deep the realm can patrol, fixed at `day`'s dawn: the patrol (the best
+ * defense at the 7 days' Valor before), and the deepest depth within reach in a rival's march and in
+ * a lair's (0 when only the heartland is).
+ */
+export interface ReachState {
+  day: ISODate
+  patrol: number
+  valor: number
+  rival: number
+  lair: number
+  /** Each rival march's own reach: the rival marches' reach and more with the player's rank on that rival's path. */
+  marches?: Record<RivalId, number>
+}
+
+/** Patch 7 (W1, D-56): the wild hex of his own march a rival is wearing down, and the wear so far. */
+export interface RivalSiege {
+  hexId: string
+  wear: number
+  since: ISODate
 }
 
 /** Patch 4 (C-35): what the Goblin gives for a buy-off: a hex, an Armory item, or hired companies. Never reputation. */

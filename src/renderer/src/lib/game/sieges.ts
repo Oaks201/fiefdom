@@ -17,6 +17,7 @@ import { claimableBy, isStronghold, neighbors, type HexIndex } from './map'
 import { pathRank } from './dominion'
 import { preparationMult } from './marches'
 import { marchGarrisonMult } from './personalities'
+import { supplyMult } from './reach'
 import { RULES } from './rules'
 import type { CampaignState, Fallback, HexState, ISODate, StandingSiege } from './types'
 
@@ -71,10 +72,12 @@ export function fortificationShare(state: CampaignState): number {
 /**
  * The multiple on `hex`'s garrison as the player's assault weighs it on `day`: its march's
  * preparation (D-19) × a stronghold's (D-23) × its march's rules (Patch 4: the Orc's weaker
- * garrisons, the Archmage's surges). A rival's own den assault reads none of it (C-29).
+ * garrisons, the Archmage's surges) × supply beyond the realm's reach (Patch 7, A2). A rival's own
+ * den assault reads none of it (C-29).
  */
 export function garrisonMult(state: CampaignState, hex: HexState, day: ISODate): number {
-  return preparationMult(state, hex, day) * strongholdMult(state.hexes, hex, strongholdWeight(state)) * marchGarrisonMult(state, hex, day)
+  // Patch 7 (A2): an assault beyond the realm's reach fights without supply.
+  return preparationMult(state, hex, day) * strongholdMult(state.hexes, hex, strongholdWeight(state)) * marchGarrisonMult(state, hex, day) * supplyMult(state, hex)
 }
 
 /** The most wear a hex can carry: the garrison it wears, as an assault must beat it (fortification and preparation counted). */

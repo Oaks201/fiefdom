@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.6.1',
+  ruleVersion: '3.7.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -535,7 +535,29 @@ const RULES_TABLE = {
       emboldenedRaid: 0.15,
       humbledRaid: 0.15,
       /** A week at Peace moves the track one step toward 0 (A-37). */
-      peaceStep: 1
+      peaceStep: 1,
+      /**
+       * Patch 7 (W2, D-56): each week close a front's marker stays at an end, with this chance the
+       * Emboldened rival takes a hex of the Humbled one's land touching his own; where none touches,
+       * the Humbled rival's frontier hex in his march falls to the wilds and the Emboldened one's own
+       * siege of the wilds falls at once. TUNE.
+       */
+      borderChance: 0.5
+    },
+    /**
+     * Patch 7 (W1, D-56): each rival besieges one wild hex of his own march touching his land at a
+     * time (the Orc the weakest garrison, the others the one touching most of their land), wearing it down at each day's close by `pressShare` of
+     * his army × his own pace, until the wear reaches its garrison. The Orc presses hardest but the
+     * beasts take back a hex he won from the wilds with `orcLossChance` at each week close; the Dwarf
+     * is slow but walls each hex he takes; the Archmage presses `archmageEbbMult` harder on a day his
+     * surge is an ebb. TUNE.
+     */
+    wildSieges: {
+      pressShare: 0.12,
+      pace: { orc: 1.5, goblin: 1, dwarf: 0.6, archmage: 1 } as PerRival<number>,
+      orcLossChance: 0.1,
+      dwarfWalls: 1,
+      archmageEbbMult: 1.5
     },
     /** A rival's vassal, envoy or ally company (Ch 14). Tags and reach are in the codex (A-20). */
     levyPower: 24, // TUNE (A-20)
@@ -813,6 +835,27 @@ const RULES_TABLE = {
   marches: {
     /** Each quiet week raises a rival march a level, each pushed week lowers it: garrisons there × (1 + perLevel × level). */
     preparation: { perLevel: 0.05, max: 8 }
+  },
+
+  /**
+   * Patch 7 (A2, D-56): reach, how deep the realm can patrol each kind of march. At each dawn the
+   * patrol is the Marshal's best defense banners against beasts, with the walls, at the Valor of the
+   * 7 days before (`startValor` before there are any); a march's reach is the deepest depth whose
+   * beasts strike no harder than `patrolShare` × the patrol, by its depth curve. Beasts and mythics
+   * strike a hex within reach at `withinMult` of its strength, and one beyond at `beyondPerStep` more
+   * a step past it, up to `beyondCap`; an assault beyond reach faces its garrison × (1 +
+   * `supplyPerStep` a step, up to `supplyCap`). TUNE.
+   */
+  reach: {
+    patrolShare: 1.6,
+    startValor: 0.75,
+    withinMult: 0.72,
+    beyondPerStep: 0.1,
+    beyondCap: 1.3,
+    supplyPerStep: 0.1,
+    supplyCap: 0.3,
+    /** Each rival march reaches this many depths deeper for every rank of the player's path on its rival. */
+    perRank: 1
   },
 
   scores: {

@@ -21,6 +21,7 @@ import { greedBand, marchRule, personalitiesOf, surgeOn, type GreedBand } from '
 import { draw } from '../rng'
 import { RULES, byTier } from '../rules'
 import { crownguardPower, rosterDetail } from '../roster'
+import { reachStanding, stepsBeyond } from '../reach'
 import { fallbackOn, flankingMult, standingSiegeOf } from '../sieges'
 import { openDayOf, worldOf } from '../state'
 import { bendSurge, foreseesSurges } from '../surges'
@@ -273,6 +274,8 @@ export interface MapHex extends HexPoint {
   fallback?: { strength: number; daysLeft: number }
   /** The stronghold, still standing, that bars the player's assault here (D-23): its place name. */
   barredBy?: string
+  /** Patch 7 (A2): steps past the realm's reach, on a march hex beyond it. */
+  beyondReach?: number
   /** Empty board drawn around the marches (C-05): no rules, no name, never chosen. */
   decor?: boolean
   /** The continent beyond the marches (drawing only): highlands, or the shore where they meet the sea. */
@@ -349,9 +352,25 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
       if (h.seam) out.ruling = rulingMarch(state.campaign.seed, h, today) as MarchId
       const preparation = preparationOf(state, h, today)
       if (preparation > 0) out.preparation = preparation
+      // Patch 7 (A2): the land past the realm's reach, shaded on the map.
+      const steps = stepsBeyond(state, h)
+      if (steps !== null && steps > 0 && isClaimableKind(h)) out.beyondReach = steps
     }
     return out
   })
+}
+
+/** Patch 7 (A2): where a hex stands against the realm's reach, in a line for its panel; none in the heartland or before the first 3.7.0 dawn. */
+export function reachLine(state: CampaignState, hex: HexState): { kind: 'within' | 'edge' | 'beyond'; steps: number; text: string } | undefined {
+  const standing = hex.march ? reachStanding(state, hex) : null
+  if (!standing) return undefined
+  const R = RULES.reach
+  const weaker = `beasts and mythics strike ${pct(1 - R.withinMult)} weaker`
+  if (standing.kind !== 'beyond') return { ...standing, text: `${standing.kind === 'edge' ? 'The edge of your reach' : 'Within your reach'}: ${weaker}` }
+  const steps = standing.steps
+  const harder = Math.min(R.beyondPerStep * steps, R.beyondCap - 1)
+  const supply = Math.min(R.supplyPerStep * steps, R.supplyCap)
+  return { ...standing, text: `${steps === 1 ? 'A step' : `${steps} steps`} beyond your reach: beasts and mythics strike ${pct(harder)} harder, and an assault faces a ${pct(supply)} stronger garrison` }
 }
 
 /**
@@ -511,6 +530,8 @@ export interface HexPanel {
   siege?: { progress: number; standing: boolean }
   /** The daily assault's flanking multiple on it today (D-22), on a hex a daily assault may take. */
   flank?: number
+  /** Patch 7 (A2): where it stands against the realm's reach, in a line (march hexes only). */
+  reach?: { kind: 'within' | 'edge' | 'beyond'; steps: number; text: string }
   /** A stronghold (D-23): its garrison is × `garrisonMult` while not the player's, and it bars its march beyond. */
   stronghold?: boolean
   /** The stronghold, still standing, that bars the player's assault here (D-23). */
@@ -648,6 +669,7 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
   const courtship = state.courtships.find((c) => c.hexId === hexId)
   const siege = siegeOn(state, hex, today, standingHex(state))
   const assaultable = claimableBy(state.hexes, hexId, 'player', 'assault')
+  const reach = reachLine(state, hex)
   const barring = hex.owner !== 'player' ? strongholdBarring(state.hexes, hexId) : undefined
   const fallen = fallbackHere(state, hex, today)
   return {
@@ -674,6 +696,7 @@ export function hexPanel(state: CampaignState, hexId: string, today: ISODate = o
     ...(isClaimableKind(hex) ? { garrison: assaultGarrison(state, hex, today) } : {}),
     ...(siege ? { siege } : {}),
     ...(assaultable ? { flank: flankingMult(hexIndex(state.hexes), hexId) } : {}),
+    ...(reach ? { reach } : {}),
     ...(isStronghold(state.hexes, hexId) ? { stronghold: true } : {}),
     ...(barring ? { barredBy: { hexId: barring, label: hexName(barring) } } : {}),
     ...(fallen ? { fallback: { strength: fallen.strength, daysLeft: fallen.daysLeft, from: fallen.from.map((id) => ({ hexId: id, label: hexName(id) })) } } : {}),

@@ -143,7 +143,7 @@ test('R-26: Border Campaigns are gone: the phase only draws next week’s fronts
   assert.deepEqual(next, drawFronts(state, week(SUNDAY, 10, [])), 'nothing but the fronts')
 })
 
-test('Test 10 (part), R-26: across 300 seeded 70-week runs no hex changes hands between rivals but by the Goblin’s Market, and no rival holds rings 0 to 2', (t) => {
+test('Test 10 (part), R-26, Patch 7 W2: across 300 seeded 70-week runs no Border Campaign is fought; a hex changes hands between rivals only by the Goblin’s Market or a won war (never a Gate or capital, never between partners); no rival holds rings 0 to 2', (t) => {
   const taken: number[] = []
   const bought: number[] = []
   let campaigns = 0
@@ -173,6 +173,12 @@ test('Test 10 (part), R-26: across 300 seeded 70-week runs no hex changes hands 
     const between = (e: { from: string; to: string }): boolean => e.from !== 'player' && e.from !== 'neutral' && e.to !== 'player' && e.to !== 'neutral'
     taken.push(transfers.filter((e) => e.how === 'borderCampaign').length)
     bought.push(transfers.filter((e) => e.how === 'trade' && between(e)).length)
+    for (const e of transfers.filter(between)) {
+      assert.ok(e.how === 'trade' || e.how === 'conquest', `seed ${seed}: ${e.how}`)
+      assert.notEqual(kinds.get(e.hexId), 'gate')
+      assert.notEqual(kinds.get(e.hexId), 'capital')
+      if (e.how === 'conquest') for (const c of coalitions) assert.ok(!(c.members.includes(e.from as RivalId) && c.members.includes(e.to as RivalId)), `seed ${seed}: partners took land`)
+    }
   }
   const median = (xs: number[]): number => {
     const s = [...xs].sort((a, b) => a - b)

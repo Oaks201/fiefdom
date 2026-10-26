@@ -591,6 +591,13 @@ export function HowToPlay(): React.JSX.Element | null {
                   defeat by beasts or a mythic can return a hex beyond the heartland to the wilds (never in the Dwarf’s march).
                 </li>
                 <li>
+                  <b>Your reach:</b> how deep your realm can patrol. Each dawn it is read from your best defense against beasts at your Valor over the last{' '}
+                  {RULES.grandBattles.readiness.valorDays} days, against how hard each march’s beasts strike at each depth. Within your reach beasts and mythics strike{' '}
+                  {pct(1 - RULES.reach.withinMult)} weaker; each step beyond it they strike {pct(RULES.reach.beyondPerStep)} harder (up to {pct(RULES.reach.beyondCap - 1)}), and an assault
+                  there faces a garrison {pct(RULES.reach.supplyPerStep)} stronger a step (up to {pct(RULES.reach.supplyCap)}), without supply. Good weeks push your reach deeper; a hard
+                  week pulls it in. The map shades the land beyond it, and each hex’s panel says where it stands.
+                </li>
+                <li>
                   <b>Match your companies to the enemy.</b> Each enemy is weak to some company types and resists others. For each defense the Marshal fields the companies that hit it
                   hardest; tick <b>Always field</b> beside a company to make sure it fights in every defense that day.
                 </li>
@@ -789,8 +796,14 @@ export function HowToPlay(): React.JSX.Element | null {
                 the Orc’s fronts, {pct(RULES.rivals.fronts.warChance.other)} on the others), otherwise Tension or Peace. At War the two skirmish every day, the larger army winning more
                 often, each win a step toward the winner, and the war costs each {pct(RULES.rivals.fronts.warArmyLoss)} of his army a week; at Tension the marker holds; at Peace it
                 steps back toward the middle each week. At either end the winner is <b>Emboldened</b>, his raids on you {pct(RULES.rivals.fronts.emboldenedRaid)} harder, and the
-                loser <b>Humbled</b>, his {pct(RULES.rivals.fronts.humbledRaid)} weaker. A call to arms puts a front at War for {RULES.trade.callToArms.days} days: a way to set two
-                rivals on each other.
+                loser <b>Humbled</b>, his {pct(RULES.rivals.fronts.humbledRaid)} weaker. While the marker stands at an end, each week the winner may gain on the loser: he takes
+                the loser’s hex touching his own land, or, where their lands don’t touch, the loser’s frontier hex falls to the wilds and the winner’s own siege of the wilds falls at
+                once. A call to arms puts a front at War for {RULES.trade.callToArms.days} days: a way to set two rivals on each other.
+              </li>
+              <li>
+                <b>The rivals take land too:</b> from week {RULES.personalities.fromWeek} each rival besieges one wild hex of his own march touching his land at a time, and takes it
+                when his siege wears it down, so a march you leave alone fills with its rival’s land. Each does it his own way (his guide says how); the Orc spearheads toward you.
+                The Herald tells each hex taken or lost.
               </li>
             </ul>
           )

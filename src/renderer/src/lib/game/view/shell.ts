@@ -276,9 +276,13 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     case 'stance':
       return line('world', 'herald.terms.stance', { rival: rivalName(e.rival), band: STANCE_WORDS[e.to] }, { rival: e.rival })
     case 'hexTransfer':
-      // Patch 6 (C-88, C-91): a rival's land grab, taken on its day; every other transfer is told by its battle or deal.
-      if (e.from !== 'neutral' || e.to === 'player' || e.to === 'neutral' || e.how !== 'conquest') return null
-      return line('world', 'herald.rival.grab', { rival: rivalName(e.to), hex: hexName(e.hexId) }, { hexId: e.hexId, rival: e.to })
+      // Patch 6 (C-88, C-91): a rival's land grab, taken on its day; every other transfer with the player is told by its battle or deal.
+      // Patch 7 (W1, W2): a rival's siege of the wilds falling, one rival's war taking another's hex, and a rival's hex lost to the wilds.
+      if (e.from === 'player' || e.to === 'player') return null
+      if (e.from === 'neutral' && e.to !== 'neutral' && e.how === 'conquest') return line('world', 'herald.rival.grab', { rival: rivalName(e.to), hex: hexName(e.hexId) }, { hexId: e.hexId, rival: e.to })
+      if (e.from !== 'neutral' && e.to !== 'neutral' && e.how === 'conquest') return line('world', 'herald.rival.takesFrom', { rival: rivalName(e.to), hex: hexName(e.hexId), other: rivalName(e.from) }, { hexId: e.hexId, rival: e.to })
+      if (e.from !== 'neutral' && e.to === 'neutral' && e.how === 'wilds') return line('world', 'herald.rival.lostToWilds', { rival: rivalName(e.from), hex: hexName(e.hexId) }, { hexId: e.hexId, rival: e.from })
+      return null
     case 'disposition':
       // Patch 6 (C-88): a standing that changes, read each day (D-49), is told the next morning.
       return line('world', `herald.standing.${e.to}`, { rival: rivalName(e.rival) }, { rival: e.rival })

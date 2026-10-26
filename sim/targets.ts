@@ -181,7 +181,7 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     return [w.paths[i] / Math.max(1, Math.max(...others))]
   })
   const rankV = focused.filter(({ run }) => run.measures.rankV !== undefined).length / Math.max(1, focused.length)
-  rows.push(row('G-06', 'A focused path pays', "The focused path's Dominion over the next highest at week 26 (median); share reaching rank V", `${f2(median(ratios))}×; ${pct(rankV)}`, median(ratios) >= 2 && rankV >= 0.9))
+  rows.push(row('G-06', 'A focused path pays', `The focused path's Dominion over the next highest at week 26 (median; at least ${G06.lead}×, D-58); share reaching rank V`, `${f2(median(ratios))}×; ${pct(rankV)}`, median(ratios) >= G06.lead && rankV >= 0.9))
   const tierIII = focused.filter(({ run }) => run.measures.weeks.find((x) => x.week === WEEK26)?.tiers.every((t) => t >= 3)).length / Math.max(1, focused.length)
   const rising = focused.filter(({ run }) => {
     const months = run.measures.weeks.filter((x) => x.week % MONTH === 0 && x.week <= WEEK40).map((x) => x.held)
@@ -317,7 +317,7 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     const p = r.measures.weeks[r.measures.weeks.length - 1]?.paths ?? []
     return d.indexOf(Math.max(...d)) === p.indexOf(Math.max(...p))
   }).length
-  rows.push(row('G-17', 'The path tells the story', 'One-path players whose path ends with both the most deeds and the most Dominion (every campaign: most-deeds path is the highest)', story.length > 0 ? `${pct(told / story.length)} (${pct(agree / Math.max(1, all.length))})` : 'not yet built', story.length > 0 ? told / story.length >= 0.9 : null))
+  rows.push(row('G-17', 'The path tells the story', `One-path players whose path ends with both the most deeds and the most Dominion (at least ${pct(G17.told)}, D-58; every campaign: most-deeds path is the highest)`, story.length > 0 ? `${pct(told / story.length)} (${pct(agree / Math.max(1, all.length))})` : 'not yet built', story.length > 0 ? told / story.length >= G17.told : null))
 
   // G-18 (Patch 4, spec section 2): the smarter one-path players resolve rivals by terms; nobody offers before week 16; the smarter refuse some.
   const smarterOne = RIVAL_IDS.flatMap((r) => of('steadfast', `smarter+paths:${r}`))
@@ -397,8 +397,55 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       Number.isFinite(rs) && Number.isFinite(rc) && Number.isFinite(rw) ? inside(rs, G21.steadfast) && inside(rc, G21.committed) && rw < G21.waveringBelow && behaviorShare >= G21.behaviorShare : null
     )
   )
+
+  // G-22 (Patch 7, A2): reach weighs Valor against depth. A good player loses fewer of the frontier's defenses, and depth still costs more.
+  const midWeeks = steadfast.flatMap((r) => r.measures.weeks.filter((w) => w.week >= G22.from && w.week <= G22.to))
+  const midLost = midWeeks.reduce((s, w) => s + (w.defensesLost ?? 0), 0) / Math.max(1, midWeeks.reduce((s, w) => s + (w.defenses ?? 0), 0))
+  // Depth still shows as a frontier harder to hold the deeper it lies. (Assault days per hex taken by band are reported beside it: they don't
+  // rise, as a player assaults deep hexes only once the army has grown to take them.)
+  const lostByBand = (band: number): number => {
+    const [n, lost] = steadfast.reduce(([a, b], r) => [a + (r.measures.defensesByBand?.[band]?.[0] ?? 0), b + (r.measures.defensesByBand?.[band]?.[1] ?? 0)], [0, 0])
+    return lost / Math.max(1, n)
+  }
+  const daysByBand = (band: number): number => {
+    const [days, hexes] = steadfast.reduce(([d, n], r) => [d + (r.measures.assaultDaysByBand?.[band]?.[0] ?? 0), n + (r.measures.assaultDaysByBand?.[band]?.[1] ?? 0)], [0, 0])
+    return days / Math.max(1, hexes)
+  }
+  const bandLost = G22.bands.map(lostByBand)
+  const deeper = bandLost.every((d, i) => i === 0 || d > bandLost[i - 1])
+  rows.push(
+    row(
+      'G-22',
+      'Reach weighs Valor against depth (A2)',
+      `Steadfast greedy: defenses lost in weeks ${G22.from} to ${G22.to} (at most ${pct(G22.lostAtMost)}); defenses lost on the player's rival-march hexes by band ${G22.bands.join(' / ')} (rising); assault days per hex taken there by band, reported; bad weeks' land lost against good weeks' is G-08's`,
+      `${pct(midLost)}; ${bandLost.map(pct).join(' / ')}; ${G22.bands.map(daysByBand).map(f2).join(' / ')}`,
+      midWeeks.length > 0 ? midLost <= G22.lostAtMost && deeper : null
+    )
+  )
+
+  // G-23 (Patch 7, W1 and W2): the rivals take land, so the marches change without the player.
+  const moves = steadfast.map((r) => r.measures.weeks.filter((w) => w.week <= G23.weeks).reduce((s, w) => s + (w.rivalMoves ?? 0), 0) / RIVAL_IDS.length / (G23.weeks / MONTH))
+  const maps = steadfast.flatMap((r) => (r.measures.week26Rivals !== undefined ? [r.measures.week26Rivals] : []))
+  const distinct = maps.length > 0 ? new Set(maps).size / maps.length : Number.NaN
+  rows.push(
+    row(
+      'G-23',
+      'The rivals take land (W1, W2)',
+      `Steadfast greedy, weeks 1 to ${G23.weeks}: hexes changing hands without the player a rival a month (median; at least ${G23.perMonth}); seeds whose rivals' land differs at week ${WEEK26} (at least ${pct(G23.distinct)})`,
+      `${f2(median(moves))}; ${pct(distinct)}`,
+      moves.length > 0 ? median(moves) >= G23.perMonth && distinct >= G23.distinct : null
+    )
+  )
   return rows
 }
+
+/** Patch 7 (D-58): Reach spreads Renown over every path (each defense won adds it to its rival's), so Rich retargeted G-06 from 2× and G-17 from 90%. */
+const G06 = { lead: 1.5 }
+const G17 = { told: 0.75 }
+/** Patch 7 (G-22, A2): defenses lost by a Steadfast player in the weeks the audit found hardest, and the bands assault days must rise across. */
+const G22 = { from: 9, to: 20, lostAtMost: 0.4, bands: [3, 4, 5] }
+/** Patch 7 (G-23, W1, W2): rival land moves a rival a month, and the share of seeds with a map of their own at week 26. */
+const G23 = { weeks: 52, perMonth: 2, distinct: 0.9 }
 
 function sumTo(v: readonly number[], weeks: number): number {
   return v.slice(0, weeks).reduce((s, x) => s + x, 0)

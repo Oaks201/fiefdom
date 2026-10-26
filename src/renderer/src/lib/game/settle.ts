@@ -12,7 +12,8 @@
 import type { Ledger } from '../types'
 import { milestoneUnlocks } from './armory'
 import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
-import { dawn, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
+import { dawn, patrolStrength, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
+import { withReach } from './reach'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
 import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
@@ -30,7 +31,7 @@ import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalMovesDay, rival
 import { dailyStances } from './terms'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
-import { EventBuffer, isPlayable, isRestDay, respiteDays } from './state'
+import { EventBuffer, awayOn, isPlayable, isRestDay, respiteDays } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum } from './weight'
@@ -321,6 +322,19 @@ export function readinessValors(state: CampaignState, day: ISODate): number[] {
 }
 
 /**
+ * Patch 7 (A2, D-56): the realm's reach at `day`'s dawn, from its patrol at the Valor of the 7 days
+ * before (`startValor` before there are any). Fixed once for the day. Absence never costs anything
+ * (X-17, R-24): while the player is away the reach holds where it was.
+ */
+function reachAtDawn(state: CampaignState, day: ISODate): CampaignState {
+  if (!isPlayable(state) || state.reach?.day === day) return state
+  if (state.reach && awayOn(state, day)) return { ...state, reach: { ...state.reach, day } }
+  const valors = readinessValors(state, day)
+  const valor = valors.length > 0 ? valors.reduce((s, v) => s + v, 0) / valors.length : RULES.reach.startValor
+  return withReach(state, day, patrolStrength(state, day, valor), valor)
+}
+
+/**
  * Defense battles, the assault, hex transfers, then spoils, tribute and Respect (T08, Ch 10). Then
  * the Grand Battles the day raised (T11): assaults on Gates, capitals and Lair Mouths, rare
  * creatures revealed, and Incursions for hexes conquered, each announced for the next dawn.
@@ -567,7 +581,7 @@ function settleDay(state: CampaignState, ledger: Ledger, day: ISODate, events: E
   const ctx: PhaseContext = { day, week, weekClose, weekStartsOn, ledger, emit: events.emitter(day), hooks }
   let next = runPhases(state, DAY_PHASE_NAMES, DAY_PHASES, ctx, events)
   if (weekClose && isPlayable(next)) next = runPhases(next, WEEK_PHASE_NAMES, WEEK_PHASES, ctx, events)
-  if (isPlayable(next)) next = dawn(next, addDays(day, 1), weekStartsOn)
+  if (isPlayable(next)) next = dawn(reachAtDawn(next, addDays(day, 1)), addDays(day, 1), weekStartsOn)
   return { ...next, settledThrough: { day, week } }
 }
 
@@ -726,7 +740,7 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
 
   // The open day's dawn, if no settled day has brought it yet (the campaign's first day). A clock
   // set back to a day already settled brings no dawn, and never moves the last launch back.
-  if (isPlayable(next) && today > next.settledThrough.day) next = dawn(next, today)
+  if (isPlayable(next) && today > next.settledThrough.day) next = dawn(reachAtDawn(next, today), today)
 
   if (options.launch && (last === undefined || today > last)) next = { ...next, settlement: { ...next.settlement, lastLaunch: today } }
 

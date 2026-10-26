@@ -329,6 +329,8 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
     }
   }
   state = { ...state, hexes: state.hexes.map((h) => (h.owner === 'dwarf' && h.village ? { ...h, owner: 'neutral' as const } : h)) }
+  // No village bid of his still waits to win one back (Patch 7, W1: his siege of the wilds can bring a village within his reach).
+  state = { ...state, rivals: { ...state.rivals, dwarf: { ...state.rivals.dwarf, ai: { ...state.rivals.dwarf.ai, courting: [] } } } }
 
   const r = settle(state, ledger, chicago(addDays(closeOf(52), 1)))
   assert.equal(r.state.campaign.status, 'won')

@@ -47,6 +47,7 @@ import { dissolves, fallbackShareOn, pactBars, personalitiesOf, surgeOn, withPer
 import { decayedWear, fortificationShare, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
 import { envoyFee, marksFor, ownMark, raidRespectMult, respectChange } from './respect'
 import { adjustRespect, awayOn, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds, withWorld, worldOf } from './state'
+import { strikeMult } from './reach'
 import {
   RIVAL_IDS,
   type CampaignState,
@@ -387,7 +388,9 @@ export function dawnTiding(state: CampaignState, date: ISODate, effects: Effects
     daily: true,
     wild: wildBase(hex)
   })
-  return { date, kind, hexId: hex.id, ...(rival ? { rival } : {}), strength, siegeDay: isSiegeDay(date) }
+  // Patch 7 (A2): beasts and mythics strike weaker within the realm's reach and harder beyond it.
+  const reached = kind === 'beasts' || kind === 'mythic' ? strength * strikeMult(state, hex) : strength
+  return { date, kind, hexId: hex.id, ...(rival ? { rival } : {}), strength: reached, siegeDay: isSiegeDay(date) }
 }
 
 /** Days of warning the realm has for each kind of threat (Mage Tower IV, the Spy Network, Watchtowers). */
@@ -738,6 +741,23 @@ export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effec
     rallyFloor: effects.rallyFloor.value,
     valor: q.valor
   })
+}
+
+/**
+ * Patch 7 (A2, D-56): the realm's patrol on `day` at `valor`, what its reach is read from: the Defense
+ * the Marshal's best defense banners against beasts put up with every company home and the walls,
+ * on no hex in particular (no fortification).
+ */
+export function patrolStrength(state: CampaignState, day: ISODate, valor: number, effects: Effects = realmEffects(state)): number {
+  const fielded = fieldBest(roster(state, { day }, effects), 'beasts', 'beast', defenseBanners(effects))
+  return defenseValue({
+    strikes: fielded.map((f) => f.strike),
+    armsBonus: effects.armsBonus.value,
+    walls: effects.walls.value,
+    fortification: 0,
+    rallyFloor: effects.rallyFloor.value,
+    valor
+  }).defense
 }
 
 /** Companies a defense may field: the banners, plus any for the defense pool alone. */

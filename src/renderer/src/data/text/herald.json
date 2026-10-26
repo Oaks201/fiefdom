@@ -411,6 +411,14 @@
     "template": "{rival} took {hex}.",
     "final": null
   },
+  "herald.rival.takesFrom": {
+    "template": "{rival} took {hex} from {other}.",
+    "final": null
+  },
+  "herald.rival.lostToWilds": {
+    "template": "{rival} lost {hex} to the wilds.",
+    "final": null
+  },
   "herald.terms.offered.buyOff": {
     "template": "{rival} offers to buy his way out: {gift}, for a pact to leave his march alone.",
     "final": null

@@ -19,6 +19,7 @@ import { toast } from '../../state/toasts'
 import { useUI } from '../../state/ui'
 import { BidForm } from '../diplomacy/BidForm'
 import { HoldForm } from '../diplomacy/HoldForm'
+import { HelpLink } from '../game/HelpLink'
 
 const KIND_NAMES: Record<string, string> = {
   castle: 'The castle',
@@ -204,6 +205,14 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
           <div>
             <dt>Flanked</dt>
             <dd title="Each hex of yours beside it beyond the first adds to today’s Assault on it">+{Math.round((view.flank - 1) * 100)}% Assault</dd>
+          </div>
+        )}
+        {view.reach && (
+          <div>
+            <dt>Reach</dt>
+            <dd className={view.reach.kind === 'beyond' ? 'is-beyond-reach' : undefined}>
+              {view.reach.text} <HelpLink section="defending" label="How reach works" />
+            </dd>
           </div>
         )}
         {view.village && (

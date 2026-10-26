@@ -139,6 +139,21 @@ function measuresOf(rival: RivalId): GuideLine[] {
   ]
 }
 
+/** Patch 7 (W1, D-56): how he takes the wilds of his own march, at his own pace. */
+function wildsOf(rival: RivalId): GuideLine {
+  const W = RULES.rivals.wildSieges
+  const pace = W.pace[rival]
+  const speed = pace > 1 ? `fast (${factor(pace)}× the usual pace)` : pace < 1 ? `slowly (${factor(pace)}× the usual pace)` : 'at the usual pace'
+  const own = {
+    orc: `; the beasts take back each hex he won from them with a ${pct(W.orcLossChance)} chance at each week close`,
+    goblin: '; he courts its villages besides',
+    dwarf: `, and walls each hex he takes (${W.dwarfWalls} level)`,
+    archmage: `, ${factor(W.archmageEbbMult)}× as hard on a day his surge is an ebb`
+  }[rival]
+  const which = rival === 'orc' ? 'the one with the weakest garrison, so he spearheads toward you' : 'the one touching most of his land, so he fills his march in'
+  return { term: 'His wilds', text: `From week ${RULES.personalities.fromWeek} he besieges a wild hex of his march touching his land, one at a time: ${which}. He presses ${speed}${own}. A march you leave alone fills with his land.` }
+}
+
 /** How his march fights you: his own rules (D-27 to D-32), his raids and how he prepares while you are away (D-19, P4-07). */
 function marchOf(rival: RivalId): GuideLine[] {
   const pm = RULES.personalities
@@ -163,6 +178,7 @@ function marchOf(rival: RivalId): GuideLine[] {
           text: `From ${signed(tr.min)} to ${signed(tr.max)}, on his court. A day you win more battles with him than you lose moves it a step your way; a day you lose more, his way. Each step your way his strikes are ${pct(tr.strikePerStep)} weaker and his march’s garrisons ${pct(tr.garrisonPerStep)} easier; his way, stronger and harder, and from ${signed(tr.extraConquestAt)} he plans an extra conquest attempt each week at War.`
         },
         { term: 'His deals', text: 'He never makes Peace: Tension is the best he gives. He sends no envoy, sells you no hex, and a Truce earns no Respect from him.' },
+        wildsOf(rival),
         away('He also brings his Warhost sooner.')
       ]
     }
@@ -181,6 +197,7 @@ function marchOf(rival: RivalId): GuideLine[] {
         },
         { term: 'Buy-backs', text: 'A garrison you beat in his march never strikes back; it may offer to buy back the hex it lost instead.' },
         { term: 'His deals', text: `He buys your hexes at any Respect and never sells his own. Pacts open at +${m.pact}, his envoy at +${m.envoy}, Peace at +${m.peace ?? RULES.respect.max}.` },
+        wildsOf(rival),
         away('He also grows greedier.')
       ]
     }
@@ -193,6 +210,7 @@ function marchOf(rival: RivalId): GuideLine[] {
         { term: 'Digging in', text: `A garrison you beat there falls back with ${pct(dw.fallbackShare)} of what you beat (${pct(sg.fallback.share)} elsewhere), and never strikes back.` },
         { term: 'Steady ground', text: 'A hex you take from his march is never lost to the wilds.' },
         { term: 'His deals', text: `War comes only at Respect ${signed(m.war)}, and Peace only at ${signed(m.peace ?? RULES.respect.max)}; a pact comes sooner, at ${signed(m.pact)}. He never sells you a hex.` },
+        wildsOf(rival),
         away('He also adds a wall.')
       ]
     }
@@ -210,6 +228,7 @@ function marchOf(rival: RivalId): GuideLine[] {
         },
         { term: 'Melting garrisons', text: 'A garrison you beat in his march melts away instead of falling back (a village’s still falls back).' },
         { term: 'His deals', text: `He sells you hexes from Respect +${m.sellsHex}, but sends his envoy only at +${m.envoy} and answers a call to arms only at +${m.callToArms}.` },
+        wildsOf(rival),
         away('His surges also grow stronger.')
       ]
     }

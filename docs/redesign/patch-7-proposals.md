@@ -2,7 +2,10 @@
 
 Written 2026-10-24, after the [player audit](audit-2026-10-24.md) and Rich's answers to it. Each item says what would change, where and why.
 
-**Status (2026-10-24):** Rich approved everything as recommended: B1 to B8 (B5 refuses at Peace), the principle and E1 to E8, A1a option 1, A1b, the A1c targets, A2 option 1, W options 1 and 2, and C2 to C7. **Stage 1 is built:** sections 1 and 2, rules 3.6.1 (D-55). Sections 3 and 4 are approved and not yet built (D-56).
+**Status (2026-10-25):** Rich approved everything as recommended: B1 to B8 (B5 refuses at Peace), the principle and E1 to E8, A1a option 1, A1b, the A1c targets, A2 option 1, W options 1 and 2, and C2 to C7.
+- **Stage 1 is built:** sections 1 and 2, rules 3.6.1 (D-55).
+- **Stage 2 is built:** A2 and W, rules 3.7.0 (D-57); its report is section 6.
+- **Not yet built:** A1 and C2 to C7 (D-56).
 
 Rich's direction (2026-10-24):
 - **A1:** no set intervals; soft thresholds instead, so things can't be taken too fast or too slow. A player who never attacks must not win. Forgiving, but not so forgiving that the game needn't be played.
@@ -161,3 +164,70 @@ Proposed target: each rival's land changes by at least 2 hexes a month without t
 8. **Polish:** which of C2 to C8?
 
 **Suggested order:** the bugs and explanations first (3.6.1, small and safe), then A2 and W together, since both are about the map, then A1, since it depends on how fast Dominion grows once A2 and W are in.
+
+## 6. Stage 2 report: Reach and the rivals taking land (rules 3.7.0)
+
+Built 2026-10-25 from A2 option 1 and W options 1 and 2 (D-56, recorded as D-57). Every number below is a first guess the simulator settled; Rich decides them (D-02).
+
+### 6.1 What was built
+
+- **Reach** (`lib/game/reach.ts`). At each dawn the realm's patrol is the Marshal's best defense banners against beasts, with the walls, at the Valor of the 7 days before.
+  - A rival march's reach is the deepest depth whose beasts strike no harder than 1.6 × the patrol, plus one depth per rank of the player's path on that rival. The lairs use their own, steeper curve.
+  - Within reach, beasts and mythics strike at 0.72 × the hex's strength. Beyond it they strike 10% harder a step (up to 30%), and an assault there faces its garrison 10% stronger a step (up to 30%, supply). Raids and conquest attempts are unchanged.
+  - While the player is away (14 days without opening the app) the reach holds where it was: absence costs nothing (X-17).
+  - **On screen:** the map shades the land beyond reach, with a key entry. Each march hex's panel says "Within your reach", "The edge of your reach" or "N steps beyond your reach", with what that does, and now shows its band. How to play › Defending holds the full rule.
+- **W1, rivals besiege their own wilds** (`pressWildSiege` in `rivals.ts`). From week 3 each rival besieges one wild hex of his march touching his land, adding a share of his army each day until it falls.
+  - **The Orc** spearheads toward you (the weakest garrison, which lies shallowest) at 1.5× pace, but the beasts take back each hex he won with a 10% chance a week.
+  - **The Goblin, the Dwarf and the Archmage** fill their marches in (the hex touching most of their land). The Dwarf goes at 0.6× pace and walls each hex he takes; the Archmage goes 1.5× on a day his surge is an ebb.
+  - The Herald tells each hex taken or lost ("Ugrak took Cinderheath."). Each ruler's guide has a "His wilds" line.
+- **W2, rival wars move borders** (`frontBorders`). Each week a front's marker stands at an end, with a 50% chance the winner gains: he takes the loser's hex touching his own land.
+  - **Needs your confirmation:** the rivals' lands start at depths 9 to 13 and touch only at the seams near the heartland, which you usually hold. Taken literally, the rule would almost never fire.
+  - So where their lands don't touch, the loser's frontier hex nearest the heartland falls to the wilds and the winner's own siege of the wilds falls at once. Both marches still move, and a call to arms still carves up a rival.
+  - The alternative would be to let the winner take a hex across the highlands as an outpost inside the loser's march.
+- **Simulator:** two new targets. **G-22** (A2): defenses lost in weeks 9 to 20, at most 40%; and defenses lost by band, rising with depth. **G-23** (W): rival land moving at least 2 hexes a rival a month, and seeds' maps differing by week 26.
+  - G-22's depth half was first measured as assault days per hex by band. That doesn't rise even when depth is harder, because the player assaults deep hexes only once the army is strong enough. Defense losses by band measure it directly.
+
+### 6.2 What the simulator found
+
+Five full runs of the targets (720 campaigns each). The last is [`docs/game/sim/targets-3.7.0.md`](../game/sim/targets-3.7.0.md).
+
+| Run | Change | G-22 lost wk 9–20 | G-08 bad ÷ good | G-06 focus | G-17 | G-05 | G-10 | G-11 Steadfast | Save size |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3.6.0 | (before) | 57% (est.) | 1.37× | 2.47× | 100% | 16% | met | 58 | 1.79 MB |
+| 1 | first guesses (0.7 within, rival press 0.08) | 38% | 1.95× | 1.57× | 68% | 6% | missed | 58 | 1.88 MB |
+| 2 | 0.75 within, press 0.12, path ranks extend reach | 41% | 1.88× | 1.53× | 79% | 7% | missed | 58 | 1.88 MB |
+| 3 | 0.72, press 0.16, the Orc 2× pace and 5% losses | met | met | 1.31× | 73% | 8% | missed | met | **2.01 MB** |
+| 4 | run 2 with the Orc spearheading and the others filling in | 42% | 1.90× | 1.61× | 74% | 7% | **met** | 58 | 1.81 MB |
+| **5 (built)** | run 4 with 0.72 within | **39%** | **2.25×** | 1.64× | 65% | 7% | missed | 57.5 | 1.84 MB |
+
+- **What A2 did:**
+  - A Steadfast player's defenses lost in weeks 9 to 20 fell from about 57% to 39%.
+  - Losses now rise with depth: 25% at band 3, 29% at band 4, 45% at band 5.
+  - Bad weeks lose 2.25× the land of good weeks (G-08 met for the first time).
+  - Land lost against land gained fell from 13% to 3%.
+  - Land pace (G-04) and the campaign's length (G-11) hardly moved.
+- **What W did:** each rival's land changes by about 3 hexes a month without the player, and every seed's map is its own by week 26. Falls stay at 0%; Ultimatums are 55% for Steadfast (75% before). The save stays under 2 MB.
+
+### 6.3 Every target in the built version
+
+Met: G-01 to G-04, G-07, G-08, G-09, G-12, G-13, G-15, G-16, G-18 to G-23. Missed: G-05, G-06, G-17. On their edges (met in run 4, missed in run 5, within the noise of 40 seeds): G-10 (the Orc's march against the Goblin's for the most defenses a hex) and G-11 (Steadfast's median victory week 57.5 against 58 to 64).
+
+**After D-58** (the report regenerated, values identical to run 5): G-06 is met at 1.64× against 1.5×. G-05 is accepted as missed. G-17 is still missed: 65% against the new 75%. The 75% recommendation was read from run 4 (74%), not the built run 5. To revisit after A1, which asks for path rank I before an Accord and so may change how players pursue paths.
+
+### 6.4 Decisions for Rich
+
+**Decided 2026-10-26 (D-58):** Rich took every recommendation below: G-06 retargeted to 1.5× and G-17 to 75%, G-05 accepted, W2's fallback confirmed, the built numbers kept.
+
+1. **G-06 and G-17, a focused path pays.** The focused path now leads the next by 1.64× at week 26 (target 2×), and its path ends with the most deeds and Dominion in 65% of campaigns (target 90%).
+   - **Why:** with defenses won far more often, every rival's path earns Renown from beaten raids and beasts, wherever the player focuses. Reach doesn't hold the focused player back: their path's rank pushes their reach ahead of their frontier.
+   - **Options:**
+     - (a) **Recommended:** retarget G-06 to 1.5× and G-17 to 75%. The focused path still leads clearly, and every one-path player still reaches rank V.
+     - (b) Halve the Renown a beaten raid or beast attack adds to its rival's path (D-18 numbers), then re-run.
+     - (c) Leave both as missed.
+2. **G-05, the map lasts.** At week 60 the least-held rival march is 93% the player's (target: at least 10% left).
+   - **Why:** the player now keeps almost all the land they take.
+   - **Options:**
+     - (a) **Recommended:** accept it, since Steadfast wins in week 58 and Perfect first holds every claimable hex in week 61, after victory.
+     - (b) Press the rivals' sieges harder (run 3 tried 0.16: G-05 only reached 8%, and G-06 and the save size got worse).
+3. **W2's reading.** Confirm the fallback in 6.1 (the loser's frontier hex falls to the wilds and the winner's siege falls), or ask for the outpost variant.
+4. **The numbers.** Confirm or change the built numbers: reach 1.6 × patrol, 0.72 within, 10% a step beyond (cap 30%), supply 10% a step (cap 30%), one depth a path rank; sieges 0.12 of the army a day; paces 1.5 / 1 / 0.6 / 1; the Orc's 10% loss a week; the Dwarf's wall; the Archmage's 1.5× on an ebb; W2's 50% a week.

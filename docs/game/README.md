@@ -65,6 +65,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `terms.ts` | Terms (D-33): each rival's stance from the six measures, the Goblin's buy-offs, surrenders, the Orc's last battle; accepting and refusing are in `world.ts` | Patch 4 |
 | `migrate.ts` | One-time migrations of older saves, run as a save loads (D-38): the bent marches' rename of every hex id, recorded in `campaign.migrations` | Patch 5 |
 | `respect.ts` | Respect both ways (D-39, D-40): each rival's own changes and marks on both sides, the standing from Respect, the week's own drivers | Patch 5 |
+| `reach.ts` | Reach (D-56, D-57): how deep the realm can patrol each kind of march, fixed at each dawn from the patrol (`patrolStrength` in combat.ts) at the last 7 days' Valor; beasts and mythics weaker within it and harder beyond, an assault beyond it without supply. The rivals' sieges of their own wilds and their wars moving borders (W1, W2) are in rivals.ts | Patch 7 |
 | `autoplay.ts` | The automatic player: the re-founding's catch-up player and the simulator's players (P2-09) | Patch 2 |
 | `refound.ts` | The re-founding (D-21): a campaign founded as of the journey's start, its real contracts carried over and every day since played and settled | Patch 2 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state | quality pass, 2026-10-07 |

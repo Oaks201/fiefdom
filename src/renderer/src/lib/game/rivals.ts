@@ -29,21 +29,21 @@
  * `skirmish:<front>` (on each day of the week), `front:<front>` and `borderCampaign:<front>`.
  */
 import { CODEX } from './codex'
-import { addDays, diffDays, weekOf } from './clock'
+import { addDays, campaignWeek, diffDays, weekOf } from './clock'
 import { COMBAT_HOOKS, armyValue, band, baseArmyValue, combatOf, defenseFor, effectiveGarrison, planConquest, withinReach, type Band } from './combat'
 import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
 import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, tradeValue } from './land'
-import { bandOf, borderHexesOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, touches } from './map'
+import { bandOf, borderHexesOf, depthOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, neighbors, touches, wildGarrison } from './map'
 import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
-import { extraConquests, wildWallCap, wildWalls } from './personalities'
+import { extraConquests, surgeOn, wildWallCap, wildWalls } from './personalities'
 import { marksFor, reaches, standingFor, weeklyRespect } from './respect'
-import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival } from './state'
+import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival, toWilds } from './state'
 import type { HostUnitEntry } from './codex'
 import {
   FRONT_IDS,
@@ -62,7 +62,6 @@ import {
   type Owner,
   type Pillars,
   type RivalId,
-  type RivalGrab,
   type RivalMemory,
   type RivalSpend,
   type RivalWall,
@@ -494,6 +493,8 @@ export function rivalTurn(input: CampaignState, w: RivalWeek): RivalTurnResult {
     state = turn.state
     if (turn.warhost) warhosts.push(turn.warhost)
   }
+  // Patch 7 (W1): the beasts take back some of what the Orc won from the wilds.
+  state = orcLosesToWilds(state, w)
   return { state, warhosts }
 }
 
@@ -595,14 +596,12 @@ function expansionCandidates(state: CampaignState, rival: RivalId): HexState[] {
 /**
  * Step 4 (A-25): up to one target (the Goblin two). The best affordable village by
  * (2 × ring) ÷ bid, bidding 1.1 × its loyalty (the Goblin 1.3 ×); the bid leaves the treasury now
- * and resolves at the next week close. With no village affordable, the most valuable beast den
- * that 0.5 × AV beats at an average roll. Patch 6 (D-50, C-91, N-23): the den is not taken at the close
- * but chosen, with a seeded day 1 to 7 days later (`RULES.rivalAi.grabDays`), and taken at that day's
- * close if 0.5 × his AV that day × roll(0.85–1.15) ≥ its garrison then (`rivalMovesDay`).
+ * and resolves at the next week close. Patch 7 (W1, D-56): beast dens are no longer chosen here; each
+ * rival besieges the wilds of his march day by day instead (`pressWildSiege`). A den chosen before
+ * 3.7.0 (Patch 6, C-91) is still taken or called off on its day (`rivalMovesDay`).
  */
 function expand(input: CampaignState, rival: RivalId, allowance: number, w: RivalWeek): Spending {
   const ex = RULES.rivals.expansion
-  const { seed } = input.campaign
   let state = input
   let left = allowance
   let spent = 0
@@ -628,16 +627,95 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
       spent += best.bid
       continue
     }
-    const av = armyValue(state, rival, addDays(w.day, 1))
-    const dens = candidates.filter((h) => !h.village && !h.mythic && ex.denArmyShare * av >= effectiveGarrison(h))
-    if (dens.length === 0) break
-    const den = dens.reduce((a, b) => (b.ring > a.ring || (b.ring === a.ring && effectiveGarrison(b) < effectiveGarrison(a)) ? b : a))
-    tried.add(den.id)
-    const gd = RULES.rivalAi.grabDays
-    const grab: RivalGrab = { hexId: den.id, day: addDays(w.day, int(seed, w.day, `rival:${rival}:grabDay:${i}`, gd.min, gd.max)), i }
-    state = patchMemory(state, rival, { grabs: [...(state.rivals[rival].ai?.grabs ?? []), grab] })
+    break
   }
   return { state, spent }
+}
+
+// ── Patch 7 (W1, D-56): each rival besieges the wilds of his own march ─────────────────────
+
+/** The wild hexes of `rival`'s own march he may besiege: neutral, touching his land, neither a village (he courts those) nor a mythic's. */
+function wildTargets(state: CampaignState, rival: RivalId): HexState[] {
+  return expansionCandidates(state, rival).filter((h) => !h.village && !h.mythic && (h.march === rival || h.seam === rival))
+}
+
+/**
+ * The hex he besieges next. The Orc spearheads toward the player: the weakest garrison, which lies
+ * shallowest. The others fill in their march: the hex touching most of their land, then the weakest.
+ * Ties to the first id.
+ */
+function nextWildTarget(state: CampaignState, rival: RivalId): HexState | undefined {
+  const byId = hexIndex(state.hexes)
+  const own = (h: HexState): number => (rival === 'orc' ? 0 : neighbors(h.id).filter((n) => byId.get(n)?.owner === rival).length)
+  return wildTargets(state, rival).sort((a, b) => own(b) - own(a) || a.garrison - b.garrison || a.id.localeCompare(b.id))[0]
+}
+
+/** His siege falls: the hex is his, the Dwarf's walled at once, and he presses none until the next day picks another. */
+function takeWildSiege(input: CampaignState, rival: RivalId, hex: HexState, emit: Emit): CampaignState {
+  const W = RULES.rivals.wildSieges
+  const taken = toRival(hex, rival)
+  let state = replaceHex(input, rival === 'dwarf' ? { ...taken, fortification: W.dwarfWalls as HexState['fortification'] } : taken)
+  emit('hexTransfer', { hexId: hex.id, from: 'neutral', to: rival, how: 'conquest' })
+  const ai: RivalMemory = { ...state.rivals[rival].ai }
+  delete ai.siege
+  state = patchRival(state, rival, { ai })
+  return state
+}
+
+/**
+ * Patch 7 (W1, D-56): at `day`'s close an active rival presses his siege of a wild hex of his own
+ * march, from week `RULES.personalities.fromWeek`: a hex touching his land (`nextWildTarget`), kept until
+ * it falls or can no longer be his (another took it, or it no longer touches his land). Each close adds
+ * `pressShare` × his army × his pace (the Archmage's × `archmageEbbMult` on a day his surge is an ebb);
+ * when the wear reaches the hex's garrison, it is his.
+ */
+export function pressWildSiege(input: CampaignState, rival: RivalId, day: ISODate, emit: Emit): CampaignState {
+  const W = RULES.rivals.wildSieges
+  if (!isActive(input, rival) || campaignWeek(input.campaign.startDate, day, input.campaign.weekStartsOn) < RULES.personalities.fromWeek) return input
+  let state = input
+  const held = state.rivals[rival].ai?.siege
+  const valid = held && wildTargets(state, rival).find((h) => h.id === held.hexId)
+  const hex = valid ?? nextWildTarget(state, rival)
+  if (!hex) {
+    if (held) {
+      const ai: RivalMemory = { ...state.rivals[rival].ai }
+      delete ai.siege
+      state = patchRival(state, rival, { ai })
+    }
+    return state
+  }
+  const ebb = rival === 'archmage' && surgeOn(state, day)?.surge === 'ebb' ? W.archmageEbbMult : 1
+  const wear = (valid && held ? held.wear : 0) + W.pressShare * armyValue(state, rival, day) * W.pace[rival] * ebb
+  if (wear >= hex.garrison) return takeWildSiege(state, rival, hex, emit)
+  const siege = { hexId: hex.id, wear, since: valid && held ? held.since : day }
+  return patchRival(state, rival, { ai: { ...state.rivals[rival].ai, siege } })
+}
+
+/** Patch 7 (W2): his siege of the wilds falls at once, on the strength of a war won. Nothing without one. */
+function finishWildSiege(state: CampaignState, rival: RivalId, emit: Emit): CampaignState {
+  const held = state.rivals[rival].ai?.siege
+  const hex = held && wildTargets(state, rival).find((h) => h.id === held.hexId)
+  return hex ? takeWildSiege(state, rival, hex, emit) : state
+}
+
+/**
+ * Patch 7 (W1, D-56): at the week close the beasts take back each hex the Orc won from the wilds (his
+ * land shallower than he held at the founding, not a Gate or capital, touching the wilds) with
+ * `orcLossChance`, seeded per hex and week.
+ */
+export function orcLosesToWilds(input: CampaignState, w: RivalWeek): CampaignState {
+  if (!isActive(input, 'orc') || w.week < RULES.personalities.fromWeek) return input
+  let state = input
+  const byId = hexIndex(state.hexes)
+  const won = state.hexes.filter(
+    (h) => h.owner === 'orc' && depthOf(h) < RULES.map.rivalHeldFromDepth && h.kind !== 'gate' && h.kind !== 'capital' && neighbors(h.id).some((n) => byId.get(n)?.owner === 'neutral')
+  )
+  for (const hex of won) {
+    if (!chance(state.campaign.seed, w.day, `orc:wilds:${hex.id}`, RULES.rivals.wildSieges.orcLossChance)) continue
+    state = replaceHex(state, toWilds(hex, wildGarrison(hex, hex.village !== undefined)))
+    w.emit('hexTransfer', { hexId: hex.id, from: 'orc', to: 'neutral', how: 'wilds' })
+  }
+  return state
 }
 
 /**
@@ -645,7 +723,8 @@ function expand(input: CampaignState, rival: RivalId, allowance: number, w: Riva
  * (the `rivalMoves` day phase). Each den a rival chose at the week close is taken on its day if it is still
  * neutral, still touches his land and is no mythic lair, and 0.5 × his AV that day × the roll beats its
  * garrison then; otherwise the grab is called off. Each wall level he bought for that day rises if he still
- * holds the hex. A move whose day has passed (none in play) is dropped.
+ * holds the hex. A move whose day has passed (none in play) is dropped. Patch 7 (W1, D-56): then each
+ * rival presses his siege of the wilds (`pressWildSiege`); no den is chosen at the week close any more.
  */
 export function rivalMovesDay(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
   let state = input
@@ -678,6 +757,8 @@ export function rivalMovesDay(input: CampaignState, day: ISODate, emit: Emit): C
     else delete next.walls
     state = patchRival(state, rival, { ai: next })
   }
+  // Patch 7 (W1): each rival presses his siege of the wilds.
+  for (const rival of RIVAL_IDS) state = pressWildSiege(state, rival, day, emit)
   return state
 }
 
@@ -1106,6 +1187,45 @@ export function settleFronts(input: CampaignState, w: RivalWeek): CampaignState 
       const track = front.track > 0 ? Math.max(0, front.track - fr.peaceStep) : Math.min(0, front.track + fr.peaceStep)
       state = withTrack(state, front, track)
     }
+  }
+  return frontBorders(state, w)
+}
+
+/**
+ * Patch 7 (W2, D-56): a rivals' war moves their borders. At each week close a front's marker stands at
+ * an end, with `borderChance` (seeded per front and week) the Emboldened rival gains on the Humbled
+ * one: he takes the Humbled one's hex touching his own land, the weakest garrison first, never a Gate,
+ * a capital or the heartland. Their lands seldom touch (each holds the far end of his own march), so
+ * where none touches, the Humbled rival's frontier hex in his march nearest the heartland falls to the
+ * wilds, and the Emboldened rival's own siege of the wilds falls at once. Coalition partners and a
+ * resolved rival are left alone.
+ */
+function frontBorders(input: CampaignState, w: RivalWeek): CampaignState {
+  let state = input
+  const fr = RULES.rivals.fronts
+  for (const id of FRONT_IDS) {
+    const front = state.fronts[id]
+    if (Math.abs(front.track) < fr.track.max) continue
+    const [a, b] = front.rivals
+    const [winner, loser] = front.track > 0 ? [a, b] : [b, a]
+    if (!isActive(state, winner) || !isActive(state, loser) || coalitionPartners(state, winner, loser, w.day)) continue
+    if (!chance(state.campaign.seed, w.day, `front:${id}:border`, fr.borderChance)) continue
+    const byId = hexIndex(state.hexes)
+    const gives = (h: HexState): boolean => h.owner === loser && h.kind !== 'gate' && h.kind !== 'capital' && isClaimableKind(h) && h.ring > RULES.land.protectedThroughRing
+    const touching = state.hexes.filter((h) => gives(h) && touches(byId, h.id, winner)).sort((x, y) => x.garrison - y.garrison || x.id.localeCompare(y.id))[0]
+    if (touching) {
+      state = replaceHex(state, toRival(touching, winner))
+      w.emit('hexTransfer', { hexId: touching.id, from: loser, to: winner, how: 'conquest' })
+      continue
+    }
+    const frontier = state.hexes
+      .filter((h) => gives(h) && h.march === loser && neighbors(h.id).some((n) => byId.get(n)?.owner === 'neutral'))
+      .sort((x, y) => depthOf(x) - depthOf(y) || x.garrison - y.garrison || x.id.localeCompare(y.id))[0]
+    if (frontier) {
+      state = replaceHex(state, toWilds(frontier, wildGarrison(frontier, frontier.village !== undefined)))
+      w.emit('hexTransfer', { hexId: frontier.id, from: loser, to: 'neutral', how: 'wilds' })
+    }
+    state = finishWildSiege(state, winner, w.emit)
   }
   return state
 }

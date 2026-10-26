@@ -129,6 +129,7 @@ function RealmCell({ hex }: { hex: MapHex }): React.JSX.Element {
   return (
     <>
       <polygon points={OUTLINE} fill={realmColor(hex)} stroke={hex.terrain ? realmColor(hex) : 'rgba(40, 28, 18, 0.28)'} strokeWidth={0.04} />
+      {hex.beyondReach !== undefined && <polygon className="hex__beyond-reach" points={OUTLINE} />}
       {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={0} size={0.8} color={OWNER_COLORS[hex.owner].edge} />}
       {hex.kind === 'castle' && <Mark icon={GiCastle} x={0} y={0} size={0.8} color={OWNER_COLORS.player.fill} />}
     </>
@@ -205,6 +206,7 @@ const HexCell = memo(
             strokeDasharray={hex.owner === 'neutral' ? '0.12 0.08' : undefined}
           />
         )}
+        {hex.beyondReach !== undefined && <polygon className="hex__beyond-reach" points={OUTLINE} />}
         <polygon className="hex__edge" points={OUTLINE} fill="none" />
         {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
         {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={-0.1} size={0.7} color={color.edge} />}
@@ -508,6 +510,10 @@ export function MapLegend(): React.JSX.Element {
             {o === 'player' ? 'You' : o === 'neutral' ? 'Unaligned' : rivalName(o)}
           </li>
         ))}
+        <li>
+          <span className="hexmap__swatch hexmap__swatch--beyond-reach" />
+          Beyond your reach
+        </li>
       </ul>
       <ul className="hexmap__marks">
         {marks.map(({ icon: Icon, label }) => (

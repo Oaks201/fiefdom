@@ -24,7 +24,7 @@ import { addDays, isWeekCloseDay } from '../src/renderer/src/lib/game/clock'
 import { assaultGarrison, tidings } from '../src/renderer/src/lib/game/combat'
 import { PURSE_SOURCES, sourcePrefix } from '../src/renderer/src/lib/game/dev/invariants'
 import { pathRank, pathTotals, renown } from '../src/renderer/src/lib/game/dominion'
-import { isClaimableKind, regionsOf } from '../src/renderer/src/lib/game/map'
+import { bandOf, isClaimableKind, regionsOf } from '../src/renderer/src/lib/game/map'
 import { marchesOf } from '../src/renderer/src/lib/game/marches'
 import { valorOn } from '../src/renderer/src/lib/game/settle'
 import { weekOn } from '../src/renderer/src/lib/game/state'
@@ -57,6 +57,11 @@ export interface WeekMeasure {
   respect?: (number | null)[]
   /** Patch 5 (G-20): each rival's standing toward the player at the close, one letter each in RIVAL_IDS order: p, t, w, or - once resolved. */
   standing?: string
+  /** Patch 7 (G-22): the week's defense battles, and those lost. */
+  defenses?: number
+  defensesLost?: number
+  /** Patch 7 (G-23): hexes that changed hands without the player this week (a rival's siege of the wilds, a won war, the wilds taking back). */
+  rivalMoves?: number
 }
 
 export interface Measures {
@@ -67,6 +72,12 @@ export interface Measures {
   week26Garrison?: Record<string, number>
   /** At the week-26 close: each rival march's preparation level, in RIVAL_IDS order (D-19). */
   week26Preparation?: number[]
+  /** Patch 7 (G-22): assault days per hex taken by daily assault in a rival march, by the hex's band (3 to 5): [days, hexes]. */
+  assaultDaysByBand?: Record<number, [number, number]>
+  /** Patch 7 (G-22): defenses on the player's hexes in a rival march, by the hex's band (3 to 5): [fought, lost]. */
+  defensesByBand?: Record<number, [number, number]>
+  /** Patch 7 (G-23): a fingerprint of the rivals' land at the week-26 close, to compare seeds. */
+  week26Rivals?: string
   /** At the end: each march's share of claimable hexes the player doesn't hold. */
   unheld: Record<string, number>
   /** The same at the week-`G05_WEEK` close (T-04: G-05's reading until Patch 5 sets victory). */
@@ -200,7 +211,9 @@ export class Recorder {
   private doubtHexes = new Set<string>()
   private logFrom = 0
   private purseFrom = 0
-  private week = { gained: 0, lost: 0, valor: [] as number[], doubtDefenses: 0 }
+  private week = { gained: 0, lost: 0, valor: [] as number[], doubtDefenses: 0, defenses: 0, defensesLost: 0, rivalMoves: 0 }
+  /** Patch 7 (G-22): each rival march hex's band. */
+  private bandOfHex = new Map<string, number>()
   /** Daily assaults on each hex since it last changed hands (for assault days per hex taken). */
   private pressed = new Map<string, number>()
 
@@ -234,7 +247,13 @@ export class Recorder {
   /** After `today` has settled. */
   close(state: CampaignState, today: ISODate, week: number): void {
     const events = state.log.slice(this.logFrom).filter((e) => e.day === today)
-    if (this.marchOf.size === 0) for (const h of state.hexes) if (h.march && (RIVAL_IDS as readonly string[]).includes(h.march)) this.marchOf.set(h.id, h.march as RivalId)
+    if (this.marchOf.size === 0) {
+      for (const h of state.hexes) {
+        if (!h.march || !(RIVAL_IDS as readonly string[]).includes(h.march)) continue
+        this.marchOf.set(h.id, h.march as RivalId)
+        this.bandOfHex.set(h.id, bandOf(h))
+      }
+    }
     let mask = this.mask
     for (const e of events) {
       mask |= this.labelOf(e)
@@ -253,6 +272,7 @@ export class Recorder {
       case 'hexTransfer':
         if (e.to === 'player') this.week.gained++
         if (e.from === 'player') this.week.lost++
+        if (e.from !== 'player' && e.to !== 'player') this.week.rivalMoves++
         this.pressed.delete(e.hexId)
         return e.to === 'player' || e.from === 'player' ? LABEL.land : 0
       case 'grandBattle':
@@ -269,6 +289,14 @@ export class Recorder {
         if (e.threat === 'counterattack') this.m.counterattacks[e.outcome === 'defeat' ? 'lost' : 'held']++
         const banded = this.doubtHexes.has(e.hexId)
         if (banded) this.week.doubtDefenses++
+        this.week.defenses++
+        if (e.outcome === 'defeat') this.week.defensesLost++
+        const band = this.bandOfHex.get(e.hexId)
+        if (band !== undefined) {
+          const byBand = (this.m.defensesByBand ??= {})
+          const [n, lost] = byBand[band] ?? [0, 0]
+          byBand[band] = [n + 1, lost + (e.outcome === 'defeat' ? 1 : 0)]
+        }
         return LABEL.auto | (banded || e.outcome === 'defeat' ? LABEL.doubt : 0)
       }
       case 'assault': {
@@ -286,6 +314,10 @@ export class Recorder {
         if (march) {
           this.m.marches[march].assaultDays += days
           this.m.marches[march].assaultTaken++
+          const band = this.bandOfHex.get(e.hexId) as number
+          const byBand = (this.m.assaultDaysByBand ??= {})
+          const [d, n] = byBand[band] ?? [0, 0]
+          byBand[band] = [d + days, n + 1]
         }
         this.pressed.delete(e.hexId)
         return 0
@@ -372,15 +404,22 @@ export class Recorder {
       claimableHeld: claimable.filter((h) => h.owner === 'player').length,
       claimable: claimable.length,
       respect: RIVAL_IDS.map((r) => (state.rivals[r].status === 'active' ? state.rivals[r].respect : null)),
-      standing: RIVAL_IDS.map((r) => (state.rivals[r].status === 'active' ? state.rivals[r].disposition.player[0] : '-')).join('')
+      standing: RIVAL_IDS.map((r) => (state.rivals[r].status === 'active' ? state.rivals[r].disposition.player[0] : '-')).join(''),
+      defenses: this.week.defenses,
+      defensesLost: this.week.defensesLost,
+      rivalMoves: this.week.rivalMoves
     })
     if (week === WEEK26) {
       this.m.week26Garrison = meanGarrisonByMarch(state, state.settledThrough.day)
       this.m.week26Preparation = RIVAL_IDS.map((r) => marchesOf(state).preparation[r])
+      this.m.week26Rivals = state.hexes
+        .filter((h) => (RIVAL_IDS as readonly string[]).includes(h.owner))
+        .map((h) => h.id + h.owner[0])
+        .join(',')
     }
     if (week === G05_WEEK) this.m.week60Unheld = unheldShares(state)
     if (this.m.rankV === undefined && RIVAL_IDS.some((r) => pathRank(state, r) >= RANK_V)) this.m.rankV = week
-    this.week = { gained: 0, lost: 0, valor: [], doubtDefenses: 0 }
+    this.week = { gained: 0, lost: 0, valor: [], doubtDefenses: 0, defenses: 0, defensesLost: 0, rivalMoves: 0 }
   }
 
   /** At the campaign's end. */

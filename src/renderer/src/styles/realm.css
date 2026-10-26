@@ -105,6 +105,12 @@
   stroke-width: 0.035;
 }
 
+/* Patch 7 (A2): the land past the realm's reach, shaded so the reach reads as a line across each march. */
+.hex__beyond-reach {
+  fill: rgba(60, 18, 14, 0.24);
+  pointer-events: none;
+}
+
 /* The land under each hex's picture, so the sea shows only past the coast. */
 .hex__ground {
   fill: #5e3d1d;
@@ -269,6 +275,15 @@
   height: 14px;
   border: 2px solid;
   border-radius: 3px;
+}
+
+.hexmap__swatch--beyond-reach {
+  background: rgba(60, 18, 14, 0.24);
+  border-color: rgba(60, 18, 14, 0.4);
+}
+
+.hex-panel .is-beyond-reach {
+  color: var(--crimson);
 }
 
 /* -- The hex panel -------------------------------------------------------- */

@@ -12,7 +12,7 @@ import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { combatOf } from '../../src/renderer/src/lib/game/combat'
 import { borderHexesOf, hexIndex, neighbors, touches } from '../../src/renderer/src/lib/game/map'
 import { migrateCampaign } from '../../src/renderer/src/lib/game/migrate'
-import { dailyStandings, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WeekHabits } from '../../src/renderer/src/lib/game/rivals'
+import { dailyStandings, orcLosesToWilds, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WeekHabits } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { bandOfScore, dailyStances, stanceOf, stanceScore } from '../../src/renderer/src/lib/game/terms'
 import { RIVAL_IDS, type CampaignState, type FrontId, type GameEvent, type RivalId } from '../../src/renderer/src/lib/game/types'
@@ -113,38 +113,100 @@ function strongOrc(): CampaignState {
   return withRival(state, 'orc', { companies: [{ ...state.rivals.orc.companies[0], power: 800 }], treasury: 0 })
 }
 
-test('C-91: a den is chosen at the week close, not taken there, on a seeded day in the coming week', () => {
-  const events: GameEvent[] = []
-  const turned = rivalTurn(strongOrc(), week(SUNDAY, 2, events)).state
-  assert.ok(!events.some((e) => e.kind === 'hexTransfer' && e.to === 'orc'), 'nothing changes hands at the close')
-  const grabs = turned.rivals.orc.ai?.grabs ?? []
-  assert.equal(grabs.length, RULES.rivals.expansion.targets.orc)
-  const [g] = grabs
-  assert.ok(g.day >= addDays(SUNDAY, RULES.rivalAi.grabDays.min) && g.day <= addDays(SUNDAY, RULES.rivalAi.grabDays.max), g.day)
-  assert.equal(hex(turned, g.hexId).owner, 'neutral')
-  assert.ok(touches(hexIndex(turned.hexes), g.hexId, 'orc'))
-})
+/** The first day of campaign week 3, when the rivals' own rules (and their sieges of the wilds) begin. */
+const WEEK3 = addDays(SUNDAY, 1)
 
-test('C-91: on its day the grab is taken (told by the Herald); a day before it waits; once the hex is gone it is called off', () => {
+test('Patch 7 W1: the week close chooses no den; from week 3 a rival besieges the weakest wild hex of his own march touching his land, and takes it when the wear reaches its garrison (told by the Herald)', () => {
   const turned = rivalTurn(strongOrc(), week(SUNDAY, 2)).state
-  const [g] = turned.rivals.orc.ai?.grabs ?? []
-  const early = rivalMovesDay(turned, addDays(g.day, -1), () => undefined)
-  assert.equal(hex(early, g.hexId).owner, 'neutral')
-  assert.deepEqual(early.rivals.orc.ai?.grabs, [g], 'still waiting')
-
+  assert.equal(turned.rivals.orc.ai?.grabs, undefined, 'no den is chosen at the close')
+  assert.equal(rivalMovesDay(turned, SUNDAY, () => undefined).rivals.orc.ai?.siege, undefined, 'none before week 3')
+  let state = rivalMovesDay(turned, WEEK3, () => undefined)
+  const siege = state.rivals.orc.ai?.siege
+  assert.ok(siege)
+  const target = hex(state, siege.hexId)
+  const byId = hexIndex(state.hexes)
+  const candidates = state.hexes.filter((h) => h.owner === 'neutral' && !h.village && !h.mythic && (h.march === 'orc' || h.seam === 'orc') && h.ring > 2 && touches(byId, h.id, 'orc'))
+  assert.equal(target.garrison, Math.min(...candidates.map((h) => h.garrison)), 'the weakest garrison')
+  assert.ok(siege.wear > 0 && siege.wear < target.garrison)
   const events: GameEvent[] = []
-  const taken = rivalMovesDay(early, g.day, emitter(events, g.day))
-  assert.equal(hex(taken, g.hexId).owner, 'orc')
+  let day = WEEK3
+  while (hex(state, siege.hexId).owner === 'neutral') {
+    day = addDays(day, 1)
+    state = rivalMovesDay(state, day, emitter(events, day))
+    assert.ok(day < addDays(WEEK3, 14), 'falls within two weeks')
+  }
+  assert.equal(hex(state, siege.hexId).owner, 'orc')
   const transfer = events.find((e) => e.kind === 'hexTransfer')
   assert.ok(transfer && transfer.kind === 'hexTransfer' && transfer.from === 'neutral' && transfer.to === 'orc' && transfer.how === 'conquest')
   assert.equal(resultLine(transfer)?.textId, 'herald.rival.grab')
-  assert.equal(taken.rivals.orc.ai?.grabs, undefined, 'done')
+  assert.notEqual(state.rivals.orc.ai?.siege?.hexId, siege.hexId, 'done with it')
+})
 
-  // The player took it first: called off.
-  const beaten = withOwner(early, [g.hexId], 'player')
-  const off = rivalMovesDay(beaten, g.day, () => undefined)
-  assert.equal(hex(off, g.hexId).owner, 'player')
-  assert.equal(off.rivals.orc.ai?.grabs, undefined)
+test('Patch 7 W1: a siege whose hex the player takes moves on to the next; a den chosen before 3.7.0 is still taken or called off on its day', () => {
+  const pressed = rivalMovesDay(strongOrc(), WEEK3, () => undefined)
+  const first = pressed.rivals.orc.ai?.siege?.hexId as string
+  const next = rivalMovesDay(withOwner(pressed, [first], 'player'), addDays(WEEK3, 1), () => undefined)
+  assert.notEqual(next.rivals.orc.ai?.siege?.hexId, first)
+  assert.equal(hex(next, first).owner, 'player')
+  // A 3.6 save's pending grab: taken on its day if his army beats it (C-91), else called off.
+  const den = first
+  const legacy = withRival(strongOrc(), 'orc', { ai: { grabs: [{ hexId: den, day: WEEK3, i: 0 }] } })
+  const events: GameEvent[] = []
+  const after = rivalMovesDay(legacy, WEEK3, emitter(events, WEEK3))
+  assert.equal(hex(after, den).owner, 'orc')
+  assert.equal(after.rivals.orc.ai?.grabs, undefined)
+})
+
+test('Patch 7 W1: the Dwarf walls each hex he takes from the wilds; the beasts take back some of what the Orc won, at the week close', () => {
+  const dwarf = withRival(realm(), 'dwarf', { companies: [{ ...realm().rivals.dwarf.companies[0], power: 800 }], treasury: 0 })
+  let state = rivalMovesDay(dwarf, WEEK3, () => undefined)
+  const target = state.rivals.dwarf.ai?.siege?.hexId as string
+  for (let day = WEEK3; hex(state, target).owner === 'neutral'; ) {
+    day = addDays(day, 1)
+    state = rivalMovesDay(state, day, () => undefined)
+  }
+  assert.equal(hex(state, target).fortification, RULES.rivals.wildSieges.dwarfWalls)
+  // The Orc's won hexes: shallower than his founding land, touching the wilds.
+  const byId = hexIndex(realm().hexes)
+  const won = realm().hexes.filter((h) => h.owner === 'neutral' && h.march === 'orc' && !h.village && touches(byId, h.id, 'orc')).map((h) => h.id)
+  const orc = withOwner(realm(), won, 'orc')
+  const lost: GameEvent[] = []
+  let s = orc
+  for (let k = 0; k < 12; k++) s = orcLosesToWilds(s, week(addDays(SUNDAY, 7 * (k + 1)), 3 + k, lost))
+  const back = lost.filter((e) => e.kind === 'hexTransfer' && e.from === 'orc' && e.to === 'neutral' && e.how === 'wilds')
+  assert.ok(back.length > 0 && back.length < won.length * 12, `${back.length} of ${won.length}`)
+  assert.equal(resultLine(back[0])?.textId, 'herald.rival.lostToWilds')
+})
+
+test('Patch 7 W2: a front at its end moves borders: the Emboldened rival takes a touching hex of the Humbled one, or else the Humbled one’s frontier hex falls to the wilds and the Emboldened one’s siege falls at once', () => {
+  const front = Object.values(realm().fronts).find((f) => f.rivals.includes('orc') && f.rivals.includes('goblin')) as CampaignState['fronts'][FrontId]
+  const [a, b] = front.rivals
+  // Ugrak Emboldened: the track at his end, his siege of the wilds under way.
+  const atEnd = (state: CampaignState): CampaignState => atWar(state, front.front, a === 'orc' ? RULES.rivals.fronts.track.max : -RULES.rivals.fronts.track.max)
+  const pressed = rivalMovesDay(strongOrc(), WEEK3, () => undefined)
+  const siege = pressed.rivals.orc.ai?.siege?.hexId as string
+  const fired = (state: CampaignState): { state: CampaignState; events: GameEvent[] } => {
+    for (let k = 0; k < 20; k++) {
+      const events: GameEvent[] = []
+      const day = addDays(SUNDAY, 7 * (k + 1))
+      const next = settleFronts(atEnd(state), week(day, 3 + k, events))
+      if (events.some((e) => e.kind === 'hexTransfer')) return { state: next, events }
+    }
+    throw new Error('the border never moved')
+  }
+  const apart = fired(pressed)
+  const toWilds = apart.events.find((e) => e.kind === 'hexTransfer' && e.from === 'goblin' && e.to === 'neutral')
+  assert.ok(toWilds && toWilds.kind === 'hexTransfer' && toWilds.how === 'wilds', 'the Goblin’s frontier hex falls to the wilds')
+  assert.equal(hex(apart.state, siege).owner, 'orc', 'Ugrak’s siege falls at once')
+  assert.ok(apart.state.fronts[front.front].rivals.includes(b))
+  // Their lands touch: Ugrak takes the Goblin's hex outright.
+  const byId = hexIndex(pressed.hexes)
+  const goblinHex = pressed.hexes.find((h) => h.owner === 'goblin' && h.kind !== 'gate' && h.kind !== 'capital' && neighbors(h.id).some((n) => byId.get(n)?.owner === 'neutral')) as CampaignState['hexes'][number]
+  const beside = neighbors(goblinHex.id).find((n) => byId.get(n)?.owner === 'neutral') as string
+  const touching = fired(withOwner(pressed, [beside], 'orc'))
+  const taken = touching.events.find((e) => e.kind === 'hexTransfer' && e.from === 'goblin' && e.to === 'orc')
+  assert.ok(taken && taken.kind === 'hexTransfer' && taken.how === 'conquest')
+  assert.equal(resultLine(taken)?.textId, 'herald.rival.takesFrom')
 })
 
 // ── Walls (C-92) ─────────────────────────────────────────────────────────────
