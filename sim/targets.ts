@@ -195,12 +195,12 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   })
   const full = mixes.every((m) => m.runs > 0)
   const spread = (v: number[]): number => Math.max(...v) - Math.min(...v)
-  const fullPass = full && spread(mixes.map((m) => m.share)) <= 0.05 && spread(mixes.map((m) => m.week)) <= 3
+  const fullPass = full && spread(mixes.map((m) => m.share)) <= 0.05 && spread(mixes.map((m) => m.week)) <= G07.weeks
   rows.push(
     row(
       'G-07',
       'Every mix can win',
-      `One-path players with all four buildings at Tier III by week 26; with hexes held rising every month to week 40 (the Patch 2 half). In full (Patch 5): the smarter player along ${MIXES.map((m) => m.label).join(', ')}: win shares within 5 points, median victory weeks within 3`,
+      `One-path players with all four buildings at Tier III by week 26; with hexes held rising every month to week 40 (the Patch 2 half). In full (Patch 5): the smarter player along ${MIXES.map((m) => m.label).join(', ')}: win shares within 5 points, median victory weeks within ${G07.weeks} (D-60)`,
       `${pct(tierIII)}; ${pct(rising)}${full ? `; in full: won ${mixes.map((m) => pct(m.share)).join(' / ')}, median week ${mixes.map((m) => m.week).join(' / ')}` : ''}`,
       tierIII >= 0.9 && rising >= 0.9 && (!full || fullPass)
     )
@@ -442,6 +442,8 @@ export function targetRows(results: readonly RunResult[]): Row[] {
 /** Patch 7 (D-58): Reach spreads Renown over every path (each defense won adds it to its rival's), so Rich retargeted G-06 from 2× and G-17 from 90%. */
 const G06 = { lead: 1.5 }
 const G17 = { told: 0.75 }
+/** Patch 7 (D-60): the Dominion marks read total Dominion, which a one-path player builds a little more slowly, so Rich widened G-07's victory weeks from 3. */
+const G07 = { weeks: 5 }
 /** Patch 7 (G-22, A2): defenses lost by a Steadfast player in the weeks the audit found hardest, and the bands assault days must rise across. */
 const G22 = { from: 9, to: 20, lostAtMost: 0.4, bands: [3, 4, 5] }
 /** Patch 7 (G-23, W1, W2): rival land moves a rival a month, and the share of seeds with a map of their own at week 26. */

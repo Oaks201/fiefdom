@@ -13,6 +13,29 @@
   margin-bottom: 0;
 }
 
+/* Patch 7 (C4): the road to victory, rivals resolved and the Dominion the next one needs. */
+.road-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 15px;
+  color: var(--ink-2);
+  background: rgba(255, 249, 232, 0.45);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.road-strip b {
+  color: var(--ink);
+}
+
+.road-strip.is-reached {
+  border-color: var(--crimson);
+}
+
 .courts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -398,6 +421,15 @@
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink-3);
+}
+
+/* Patch 7 (A1a): his end waiting on the realm’s next Dominion mark. */
+.court__waits {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--crimson);
 }
 
 /* Patch 4 (D-33): a rival’s stance, Defiant to Ready to yield. */

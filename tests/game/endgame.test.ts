@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buyTier } from '../../src/renderer/src/lib/game/buildings'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
-import { totalDominion } from '../../src/renderer/src/lib/game/dominion'
+import { pathsOf, totalDominion } from '../../src/renderer/src/lib/game/dominion'
 import { originalVillages } from '../../src/renderer/src/lib/game/land'
 import { addDays, diffDays } from '../../src/renderer/src/lib/game/clock'
 import { armyValue, baseArmyValue } from '../../src/renderer/src/lib/game/combat'
@@ -23,7 +23,7 @@ import type { CampaignState, GameEvent, GrandBattle, HexState, RivalId, WorldEve
 import { accordPaid, bendPrice, bendTheKnee, chronicleRecord, ultimatumView, worldWeek } from '../../src/renderer/src/lib/game/world'
 import { FOUNDED_AT, TZ, charter, chicago, ledgerWith } from './fixtures/ledgers'
 import { collector, withArmy } from './support/grand'
-import { realm, withArmory, withBuildings, withDominion, withGrace, withMilestones, withPurse } from './support/realm'
+import { realm, withArmory, withBuildings, withDominion, withGrace, withMilestones, withPurse, withRenown } from './support/realm'
 
 // ── Builders ─────────────────────────────────────────────────────────────────
 
@@ -97,24 +97,38 @@ function ultimatum(state: CampaignState = base()): { state: CampaignState; event
 
 // ── Pacing (Ch 14) ───────────────────────────────────────────────────────────
 
-test('Ch 14 pacing (D-41, N-06): with every rival ready from day 1, none is resolved before week 16, one per 12 weeks after; the Orc never defects (Patch 4, C-41)', () => {
+/** `state` with the Orc's path Renown set so the realm's total Dominion is `d` (Patch 7, A1a). */
+function atDominion(state: CampaignState, d: number): CampaignState {
+  return withRenown(state, 'orc', d - (totalDominion(state) - pathsOf(state).byRival.orc.renown))
+}
+
+test('Ch 14 pacing by progress (A1a, D-59): with every rival ready from day 1, none is resolved until the realm’s Dominion reaches the next mark, whatever the week; the Orc never defects (Patch 4, C-41)', () => {
+  const marks = RULES.world.resolution.dominionMarks
   const ready = allDefecting(realm(), '2026-10-08')
-  const { state, events } = weeks(ready, 1, 44)
-  const resolved = events.filter((e) => e.kind === 'rivalResolved').map((e) => e.week)
-  assert.deepEqual(resolved, [16, 28, 40])
-  assert.ok((['goblin', 'dwarf', 'archmage'] as const).every((r) => state.rivals[r].status === 'abdicated'))
-  assert.equal(state.rivals.orc.status, 'active', 'he yields only to his last battle (D-33)')
-  assert.equal(state.campaign.status, 'active')
+  const short = weeks(atDominion(ready, marks[0] - 1), 1, 30)
+  assert.equal(short.events.filter((e) => e.kind === 'rivalResolved').length, 0, 'no calendar lets them go')
+  const first = weeks(atDominion(short.state, marks[0]), 31, 31)
+  const fell = first.events.flatMap((e) => (e.kind === 'rivalResolved' ? [e] : []))
+  assert.equal(fell.length, 1, 'his land lifts Dominion, but not to the next mark')
+  assert.equal(fell[0].dominion, marks[0], 'the event records the Dominion that met the mark')
+  assert.equal(weeks(first.state, 32, 40).events.filter((e) => e.kind === 'rivalResolved').length, 0)
+  const rest = weeks(atDominion(first.state, marks[2]), 41, 41)
+  const later = rest.events.flatMap((e) => (e.kind === 'rivalResolved' ? [e] : []))
+  assert.equal(later.length, 2, 'Dominion past two marks resolves two at one close')
+  later.forEach((e, i) => assert.ok(Number(e.dominion) >= marks[i + 1]))
+  assert.ok((['goblin', 'dwarf', 'archmage'] as const).every((r) => rest.state.rivals[r].status === 'abdicated'))
+  assert.equal(weeks(atDominion(rest.state, marks[3]), 42, 44).state.rivals.orc.status, 'active', 'he yields only to his last battle (D-33)')
+  assert.equal(rest.state.campaign.status, 'active')
 })
 
-test('Ch 14 / A-168 (D-41): an Accord signed in week 8 is held, and the rival is allied at week 16’s close', () => {
+test('Ch 14 / A-168 (A1a, D-59): an Accord signed short of the mark is held, and the rival is allied at the first week close that finds the realm’s Dominion at it', () => {
   const c = collector()
   const signed = accordPaid({ ...realm(), rivals: { ...realm().rivals, archmage: { ...realm().rivals.archmage, respect: 60 } } }, { contractId: 'none', rival: 'archmage', curve: 1 }, closeOf(8), c.emit)
   assert.equal(signed.rivals.archmage.respect, 100)
   assert.equal(signed.rivals.archmage.status, 'active')
   assert.deepEqual(worldOf(signed).pending.map((p) => [p.rival, p.how]), [['archmage', 'allied']])
-  assert.equal(weeks(signed, 9, 15).state.rivals.archmage.status, 'active')
-  assert.equal(weeks(signed, 9, 16).state.rivals.archmage.status, 'allied')
+  assert.equal(weeks(signed, 9, 30).state.rivals.archmage.status, 'active')
+  assert.equal(weeks(atDominion(signed, RULES.world.resolution.dominionMarks[0]), 9, 9).state.rivals.archmage.status, 'allied')
 })
 
 // ── Ascendancy and the Ultimatum (Ch 14) ─────────────────────────────────────
@@ -314,13 +328,15 @@ test('Ch 14: victory sets Castle V and won; the Reign goes on settling, and a Ti
   const ledger = ledgerWith('2026-09-10', 480)
   let state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
   state = settle(state, ledger, chicago(addDays(closeOf(51), 1))).state
-  // Three rivals were resolved in weeks 16, 28 and 40 (D-41); the Dwarf has lost every village to influence.
+  // Three rivals were resolved in weeks 16, 28 and 40; the Dwarf has lost every village to influence.
   const resolved: [RivalId, 'conquered' | 'allied' | 'abdicated', number][] = [['orc', 'conquered', 16], ['goblin', 'allied', 28], ['archmage', 'abdicated', 40]]
   for (const [rival, how, n] of resolved) {
     state = logged(state, { day: closeOf(n), kind: 'rivalResolved', rival, how })
     state = { ...state, rivals: { ...state.rivals, [rival]: { ...state.rivals[rival], status: how, resolvedOn: closeOf(n) } } }
   }
   state = { ...state, world: { ...worldOf(state), resolvedSeen: 3 } }
+  // The realm's Dominion at the last mark (Patch 7, A1a).
+  state = withRenown(state, 'orc', RULES.world.resolution.dominionMarks[3])
   for (const id of originalVillages(7).dwarf) {
     const h = state.hexes.find((x) => x.id === id) as HexState
     if (h.owner === 'dwarf') {

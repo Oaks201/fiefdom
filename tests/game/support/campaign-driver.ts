@@ -23,6 +23,7 @@ import { realmEffects } from '../../../src/renderer/src/lib/game/effects'
 import { makeDeal, placeBid, resistance, trust } from '../../../src/renderer/src/lib/game/land'
 import { claimableBy, hexIndex, touches } from '../../../src/renderer/src/lib/game/map'
 import { chance, int } from '../../../src/renderer/src/lib/game/rng'
+import { RULES } from '../../../src/renderer/src/lib/game/rules'
 import { roster } from '../../../src/renderer/src/lib/game/roster'
 import { settle } from '../../../src/renderer/src/lib/game/settle'
 import { inCoalition } from '../../../src/renderer/src/lib/game/state'
@@ -215,7 +216,7 @@ export interface RunAudit {
   fallenWeek?: number
   /** The week the campaign was won, if it was. */
   wonWeek?: number
-  resolutions: { rival: RivalId; how: string; week: number }[]
+  resolutions: { rival: RivalId; how: string; week: number; dominion?: number }[]
   coalitions: { trigger: string; week: number }[]
   ultimatums: { week: number; grace: number }[]
   /** World events fired, by id. */
@@ -228,7 +229,7 @@ export interface RunAudit {
  * Checks a driven campaign against Test 10 (Ch 14, Ch 15 invariants, Ch 13): no Ultimatum before
  * week 36 (44 at Grace III), so no Fall before then; no hex in rings 0 to 2 ever passes to anyone
  * but the player; no Border Campaign targets a Gate, a capital or a player hex; never three rivals
- * allied at once; no coalition before week 12; Ch 14's pacing of resolutions and victory.
+ * allied at once; no coalition before week 12; Ch 14's pacing of resolutions (by Dominion marks from Patch 7) and victory.
  * Ownership is replayed from the founding map through every `hexTransfer` in the log.
  */
 export function auditRun(o: DriveOptions, run: DriveResult): RunAudit {
@@ -274,10 +275,11 @@ export function auditRun(o: DriveOptions, run: DriveResult): RunAudit {
     .map((e) => ({ trigger: e.trigger, week: weekOf(state, e.day) }))
   for (const c of coalitions) if (c.week < 12) violations.push(`a ${c.trigger} coalition formed in week ${c.week}`)
 
-  const resolutions = eventsOf(state, 'rivalResolved').map((e) => ({ rival: e.rival, how: e.how, week: weekOf(state, e.day) }))
+  // Patch 7 (A1a, D-59): each resolution met its Dominion mark, as its event records.
+  const resolutions = eventsOf(state, 'rivalResolved').map((e) => ({ rival: e.rival, how: e.how, week: weekOf(state, e.day), dominion: e.dominion }))
   resolutions.forEach((r, i) => {
-    if (r.week < 12) violations.push(`${r.rival} resolved in week ${r.week}`)
-    if (i > 0 && r.week - resolutions[i - 1].week < 8) violations.push(`${r.rival} resolved ${r.week - resolutions[i - 1].week} weeks after the last`)
+    const mark = RULES.world.resolution.dominionMarks[i]
+    if (r.dominion === undefined || r.dominion < mark) violations.push(`${r.rival} resolved at Dominion ${r.dominion ?? 'unknown'}, under the mark ${mark}`)
   })
   const end = eventsOf(state, 'campaignEnd')[0]
   const endWeek = end ? weekOf(state, end.day) : undefined

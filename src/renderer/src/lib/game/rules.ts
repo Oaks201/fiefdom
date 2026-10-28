@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.7.0',
+  ruleVersion: '3.8.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -121,7 +121,9 @@ const RULES_TABLE = {
       respectGainPerF: 50,
       respectGainPerFHigh: 60,
       highFromRespect: 75,
-      signedAtRespect: 100
+      signedAtRespect: 100,
+      /** Patch 7 (A1b, D-59): talks also need his path at this rank (rank I: Dominion 110 on it), so you can't ally with a ruler you have never dealt with. TUNE. */
+      pathRank: 1
     }
   },
 
@@ -661,8 +663,12 @@ const RULES_TABLE = {
       lastAllianceRefusalRespect: 60,
       graceIIIShortenWeeks: 2
     },
-    /** No rival resolved before week 16, and one per 12 weeks (Patch 5, D-41, R-19, N-06: the book's 12 and 8). */
-    resolution: { notBeforeWeek: 16, oncePerWeeks: 12 },
+    /**
+     * Patch 7 (A1a, D-59): pacing by the realm's progress, not the calendar. Each rival resolved needs the
+     * realm's total Dominion at a mark first: the first at `dominionMarks[0]`, the second at `[1]`, and so on.
+     * A rival ready before it waits. Replaces the calendar (none before week 16, then one per 12 weeks). TUNE.
+     */
+    resolution: { dominionMarks: [650, 1_800, 2_700, 3_650] },
     /** Ch 13: what a rival's fall does to the others. */
     fallout: { conqueredThreat: 15, abdicatedThreat: 10, alliedThreat: 5, conqueredLoyaltyMult: 0.5 },
     /** An allied rival may join one Grand Battle a month. */
@@ -1044,7 +1050,12 @@ const RULES_TABLE = {
     /** R-12: two thirds of his march held; the hexes he gave up restless for `restlessWeeks`, rising at `uprisingChance` a week, settled for `settlePerBand` × band. */
     dwarf: { marchShare: 0.67, restlessWeeks: 8, uprisingChance: 0.15, settlePerBand: 15 },
     /** R-11, C-40: a final Warhost below `respectBar` (his whole army), Ugrak's Challenge from it; `retryWeeks` after a loss. */
-    orc: { respectBar: 50, hostShare: 1, retryWeeks: 8 }
+    orc: { respectBar: 50, hostShare: 1, retryWeeks: 8 },
+    /**
+     * Patch 7 (A1b, D-59): no surrender without a war with him: at least `marchShare` of his march held, or a
+     * Grand Battle won for a hex of his (`hasFought`). The Dwarf's two thirds is already one; the Orc's last battle is a battle. TUNE.
+     */
+    war: { marchShare: 0.2 }
   },
 
   /**

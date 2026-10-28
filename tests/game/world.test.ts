@@ -38,7 +38,8 @@ import {
 } from '../../src/renderer/src/lib/game/world'
 import { FOUNDED_AT, TZ, charter, chicago, ledgerWith } from './fixtures/ledgers'
 import { collector, withArmy } from './support/grand'
-import { realm, withArmory, withCastle, withGrace, withMilestones, withPurse } from './support/realm'
+import { realm, withArmory, withCastle, withGrace, withMilestones, withPurse, withRenown } from './support/realm'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { foundCampaign } from '../../src/renderer/src/lib/game/campaign'
 
 // ── Builders ─────────────────────────────────────────────────────────────────
@@ -52,6 +53,14 @@ function closeOf(n: number): string {
 function worldAt(state: CampaignState, n: number, realmConsistency = 0.9): { state: CampaignState; c: ReturnType<typeof collector> } {
   const c = collector()
   return { state: worldWeek(state, { day: closeOf(n), week: n, days: 7, realmConsistency, emit: c.emit }), c }
+}
+
+/**
+ * Patch 7 (A1): the player has dealt with `rival`: his path at rank I, as Accord talks need (A1b), with
+ * Renown enough that the realm's Dominion meets the first mark, so his resolution needn't wait (A1a).
+ */
+function dealtWith(state: CampaignState, rival: RivalId): CampaignState {
+  return withRenown(state, rival, RULES.world.resolution.dominionMarks[0], 1)
 }
 
 function withRespect(state: CampaignState, rival: RivalId, respect: number): CampaignState {
@@ -101,7 +110,7 @@ function newEvents(before: CampaignState, after: CampaignState): WorldEvent[] {
 
 test('D-01: a 30-day Accord at Q = 0.90 from Respect 60 adds 41.7 Respect (→ 101.7, signed) and pays 500.0 before the reputation bonus', () => {
   const today = closeOf(14)
-  const start = withRespect(withPurse(withCastle(realm(), 3), 200), 'goblin', 60)
+  const start = dealtWith(withRespect(withPurse(withCastle(realm(), 3), 200), 'goblin', 60), 'goblin')
   const sealed = sealAccord(start, 'goblin', { id: 'accord-1' }, today)
   assert.ok(sealed.ok, sealed.reason)
   const accord = sealed.state.contracts.active
@@ -119,12 +128,12 @@ test('D-01: a 30-day Accord at Q = 0.90 from Respect 60 adds 41.7 Respect (→ 1
   const after = accordPaid({ ...sealed.state, contracts: paid.contracts, purse: paid.purse }, paid.accord, accord.endDate, c.emit)
   assert.equal(after.rivals.goblin.respect, 100, '101.7 is held at the cap of 100')
   assert.equal(after.rivals.goblin.status, 'allied', 'signed at 100')
-  assert.deepEqual(c.of('rivalResolved'), [{ rival: 'goblin', how: 'allied' }])
+  assert.deepEqual(c.of('rivalResolved'), [{ rival: 'goblin', how: 'allied', dominion: RULES.world.resolution.dominionMarks[0] }])
 })
 
 test('D-01: at Q = 0.70 the Accord adds 25.0 (→ 85) and pays 300.0; the rival is not allied and a new Accord can be sealed', () => {
   const today = closeOf(14)
-  const start = withRespect(withPurse(withCastle(realm(), 3), 200), 'goblin', 60)
+  const start = dealtWith(withRespect(withPurse(withCastle(realm(), 3), 200), 'goblin', 60), 'goblin')
   const sealed = sealAccord(start, 'goblin', { id: 'accord-1' }, today)
   const accord = sealed.state.contracts.active as NonNullable<CampaignState['contracts']['active']>
   const paid = settleContract(sealed.state.contracts, sealed.state.purse, 0.7, { date: accord.endDate, minPledgeReturn: 0, bonus: 0 })
@@ -138,7 +147,7 @@ test('D-01: at Q = 0.70 the Accord adds 25.0 (→ 85) and pays 300.0; the rival 
 })
 
 test('D-01: from Respect 75 or more the Accord adds 60 × f(Q), judged by the Respect recorded at its seal', () => {
-  const sealed = sealAccord(withRespect(withPurse(withCastle(realm(), 3), 200), 'dwarf', 75), 'dwarf', { id: 'a' }, closeOf(14))
+  const sealed = sealAccord(dealtWith(withRespect(withPurse(withCastle(realm(), 3), 200), 'dwarf', 75), 'dwarf'), 'dwarf', { id: 'a' }, closeOf(14))
   const accord = sealed.state.contracts.active as NonNullable<CampaignState['contracts']['active']>
   // Respect fell below 75 while it ran; the gain still uses 75 from the seal.
   const lowered = withRespect(sealed.state, 'dwarf', 70)
@@ -146,10 +155,13 @@ test('D-01: from Respect 75 or more the Accord adds 60 × f(Q), judged by the Re
   assert.equal(after.rivals.dwarf.respect, 70 + 30)
 })
 
-test('Ch 14 and D-43: an Accord needs Respect 55, Castle III, the rival active and in no coalition, and the contract slot free (Patch 4, R-13: never the Orc)', () => {
+test('Ch 14 and D-43: an Accord needs Respect 55, his path at rank I (Patch 7, A1b), Castle III, the rival active and in no coalition, and the contract slot free (Patch 4, R-13: never the Orc)', () => {
   assert.equal(accordGate(withRespect(withPurse(withCastle(realm(), 3), 200), 'orc', 55), 'orc', closeOf(14)).reason, 'orcNeverSigns')
-  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 55)
+  const unranked = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 55)
   const today = closeOf(14)
+  assert.equal(accordGate(unranked, 'archmage', today).reason, 'pathRank', 'never dealt with, never allied')
+  assert.equal(accordGate(withRenown(unranked, 'archmage', 110, 1), 'archmage', today).ok, true, 'rank I is enough')
+  const ready = dealtWith(unranked, 'archmage')
   assert.deepEqual(accordGate(ready, 'archmage', today), { ok: true, threshold: 55, respect: 55 })
   assert.equal(accordGate(withRespect(ready, 'archmage', 54), 'archmage', today).reason, 'respect')
   assert.equal(accordGate(withCastle(ready, 2), 'archmage', today).reason, 'castle')
@@ -165,7 +177,7 @@ test('Ch 14 and D-43: an Accord needs Respect 55, Castle III, the rival active a
 })
 
 test('Ch 14: while an Accord runs, that rival makes no raids', () => {
-  const ready = withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 60)
+  const ready = dealtWith(withRespect(withPurse(withCastle(realm(), 3), 200), 'archmage', 60), 'archmage')
   const today = closeOf(14)
   const sealed = sealAccord(ready, 'archmage', { id: 'a' }, today).state
   const during = addDays(today, 5)
@@ -179,7 +191,7 @@ test('D-01 / gap 2: the Accord’s Respect is added even when the settle call th
   let state = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger }, FOUNDED_AT)
   // Thirteen weeks pass; then the realm reaches Castle III with the Goblin at Respect 60.
   state = settle(state, ledger, chicago(addDays(closeOf(13), 1))).state
-  state = withRespect(withCastle(state, 3), 'goblin', 60)
+  state = dealtWith(withRespect(withCastle(state, 3), 'goblin', 60), 'goblin')
   const sealOn = addDays(closeOf(13), 1) // a Monday: the Accord runs Tuesday to the Wednesday 30 days on
   const sealed = sealAccord(state, 'goblin', { id: 'accord-1' }, sealOn)
   assert.ok(sealed.ok, sealed.reason)
@@ -226,9 +238,9 @@ test('Ch 14: courting the Dwarf’s last village, with half its villages won by 
   const courted = resolveCourtships(bid.state, { day: closeOf(16), realmConsistency: 1, emit: c.emit })
   assert.equal(hex(courted, gate).owner, 'player')
   assert.equal(defects(courted, 'dwarf'), true)
-  const { state, c: w } = worldAt(courted, 16)
+  const { state, c: w } = worldAt(dealtWith(courted, 'orc'), 16)
   assert.equal(state.rivals.dwarf.status, 'abdicated')
-  assert.deepEqual(w.of('rivalResolved'), [{ rival: 'dwarf', how: 'abdicated' }])
+  assert.deepEqual(w.of('rivalResolved').map((e) => [e.rival, e.how]), [['dwarf', 'abdicated']])
   assert.equal(hex(state, spare).owner, 'player', 'its remaining hexes pass to the player')
   assert.ok(state.hexes.every((h) => h.owner !== 'dwarf' || !isClaimableKind(h)))
   assert.equal(hex(state, capitals(state.hexes).dwarf).owner, 'dwarf', 'the rim stays put: its capital is never the player’s (A-175)')
@@ -255,17 +267,17 @@ test('Ch 14: with more than half of its villages conquered, a rival that holds n
   assert.equal(worldAt(courted, 14).state.rivals.dwarf.status, 'active')
 })
 
-test('Ch 14 pacing / A-168: a defection before week 16 waits for week 16’s close (D-41), checked again then', () => {
+test('Ch 14 pacing / A-168 (A1a, D-59): a defection short of the Dominion mark waits for the first week close that finds the realm at it, checked again then', () => {
   const { state: down, gate, marches } = dwarfDown('influence')
   const courted = setHex(logged(down, { day: closeOf(8), kind: 'hexTransfer', hexId: gate, from: 'dwarf', to: 'player', how: 'influence' }), gate, { owner: 'player' })
   const early = worldAt(courted, 8).state
   assert.equal(early.rivals.dwarf.status, 'active')
   assert.deepEqual(worldOf(early).pending.map((p) => [p.rival, p.how]), [['dwarf', 'abdicated']])
-  assert.equal(worldAt(early, 15).state.rivals.dwarf.status, 'active')
-  assert.equal(worldAt(early, 16).state.rivals.dwarf.status, 'abdicated')
+  assert.equal(worldAt(early, 30).state.rivals.dwarf.status, 'active', 'no calendar lets it go')
+  assert.equal(worldAt(dealtWith(early, 'orc'), 9).state.rivals.dwarf.status, 'abdicated')
   // Had it won a village back meanwhile, the held defection would lapse.
-  const regained = setHex(early, marches[0], { owner: 'dwarf' })
-  const later = worldAt(regained, 16).state
+  const regained = setHex(dealtWith(early, 'orc'), marches[0], { owner: 'dwarf' })
+  const later = worldAt(regained, 9).state
   assert.equal(later.rivals.dwarf.status, 'active')
   assert.deepEqual(worldOf(later).pending, [])
 })
@@ -435,7 +447,7 @@ test('Ch 13 / A-167: each fall adds Threat by how it fell: +15 conquered, +10 ab
 })
 
 test('Ch 13: a conquered rival’s capital and realm become ruins; its other hexes turn neutral with village loyalty halved', () => {
-  let state = withPurse(realm(), 100)
+  let state = dealtWith(withPurse(realm(), 100), 'orc')
   const orcGate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!.id
   state = setHex(state, orcGate, { owner: 'player' }) // the Orc's Gate is the player's
   const villages = state.hexes.filter((h) => h.owner === 'orc' && h.village).map((h) => h.id)
@@ -701,10 +713,10 @@ test('Appendix C: the Lost Heir: with one rival allied and another at Respect 80
   assert.deepEqual(newEvents(allied, worldAt(withRespect(allied, 'goblin', 79), 13).state), [])
   const { state } = worldAt(withRespect(allied, 'goblin', 80), 13)
   assert.deepEqual(newEvents(allied, state).map((e) => e.id), ['lostHeir'])
-  const lowered = withRespect(state, 'goblin', 50)
+  const lowered = withRespect(dealtWith(state, 'goblin'), 'goblin', 50)
   assert.equal(accordGate(lowered, 'goblin', addDays(closeOf(13), 1)).threshold, 50)
   assert.equal(accordGate(lowered, 'goblin', addDays(closeOf(13), 1)).ok, true)
-  assert.equal(accordGate(withRespect(state, 'dwarf', 50), 'dwarf', addDays(closeOf(13), 1)).reason, 'respect')
+  assert.equal(accordGate(withRespect(dealtWith(state, 'dwarf'), 'dwarf', 50), 'dwarf', addDays(closeOf(13), 1)).reason, 'respect')
 })
 
 test('Appendix C: Envoys: a rival at war with another asks for a company for a day: +10 Respect with it, −5 with its foe', () => {

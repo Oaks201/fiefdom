@@ -8,6 +8,8 @@
  * bend-the-knee price is a price, from a treasury estimate the player can know, A-172). The Fall
  * is told as chronicle, in the same plain words as the victory.
  */
+import { rankThresholds } from '../dominion'
+import { numeral } from '../effects'
 import { RULES } from '../rules'
 import { isPlayable, openDayOf, weekOn } from '../state'
 import { giftLabel, openTerms } from '../terms'
@@ -47,6 +49,10 @@ function accordRefusalLabel(code: AccordRefusal, rival: RivalId, threshold: numb
       return `${rivalName(rival)} is already resolved.`
     case 'respect':
       return `Accord talks open at Respect ${threshold}.`
+    case 'pathRank': {
+      const rank = RULES.contracts.accord.pathRank
+      return `Accord talks need his path at rank ${numeral(rank)} (Dominion ${rankThresholds()[rank - 1]} on it): hold land of his march, or win deeds against him.`
+    }
     case 'castle':
       return `An Accord needs the castle at Tier ${RULES.contracts.accord.castleTier}, the Citadel.`
     case 'coalition':

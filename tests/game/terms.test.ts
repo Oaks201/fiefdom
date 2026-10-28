@@ -12,11 +12,11 @@ import { ordersValidity } from '../../src/renderer/src/lib/game/combat'
 import { post } from '../../src/renderer/src/lib/game/economy'
 import { GRAND_HOOKS, pendingBattles } from '../../src/renderer/src/lib/game/grand'
 import { bidCheck, blocksRaids } from '../../src/renderer/src/lib/game/land'
-import { depthOf, isClaimableKind, neighbors } from '../../src/renderer/src/lib/game/map'
+import { depthOf, isClaimableKind, neighbors, pathShares } from '../../src/renderer/src/lib/game/map'
 import { pactHolds } from '../../src/renderer/src/lib/game/personalities'
 import { roster } from '../../src/renderer/src/lib/game/roster'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
-import { bandOfScore, marchShareHeld, openTerms, stanceOf, stanceScore, termsWeek, weighsMost } from '../../src/renderer/src/lib/game/terms'
+import { bandOfScore, hasFought, marchShareHeld, openTerms, stanceOf, stanceScore, termsWeek, weighsMost } from '../../src/renderer/src/lib/game/terms'
 import type { CampaignState, Emit, GameEventKind, GrandBattle, RivalId } from '../../src/renderer/src/lib/game/types'
 import { acceptTerms, accordGate, defects, refuseTerms } from '../../src/renderer/src/lib/game/world'
 import { realm } from './support/realm'
@@ -191,4 +191,27 @@ test('R-13, C-41: the Orc signs no Accord and never defects; the others still ma
   assert.notEqual(accordGate(s, 'dwarf').reason, 'orcNeverSigns')
   const noVillages = { ...s, hexes: s.hexes.map((h) => (h.owner === 'orc' && h.village ? { ...h, owner: 'player' as const } : h)) }
   assert.equal(defects(noVillages, 'orc'), false)
+})
+
+test('A1b (D-59): no surrender from a rival you have not fought: a fifth of his march held, or a Grand Battle won for a hex of his; his own attack beaten off is defense, not war on him', () => {
+  const base: CampaignState = { ...mighty(0), terms: { byRival: { goblin: { refused: T.goblin.surrenderAfterRefused } } } }
+  const surrenders = (s: CampaignState): RivalId[] =>
+    openTerms(termsWeek(s, { day: CLOSE, week: WEEK, emit: collect().emit }), addDays(CLOSE, 1))
+      .filter((o) => o.offer === 'surrender')
+      .map((o) => o.rival)
+      .sort()
+  assert.deepEqual(surrenders(base), [], 'never fought: neither the Goblin nor the Archmage surrenders')
+  const gate = base.hexes.find((h) => h.kind === 'gate' && h.owner === 'archmage')!
+  const won = (trigger: GrandBattle['trigger']): CampaignState => ({
+    ...base,
+    grandBattles: [...base.grandBattles, { id: `gb-${trigger}`, trigger, hexId: gate.id, announcedOn: '2026-11-01', battleDate: '2026-11-04', enemy: [], rival: 'archmage', result: 'victory' }]
+  })
+  assert.equal(hasFought(won('incursion'), 'archmage'), false)
+  assert.deepEqual(surrenders(won('incursion')), [], 'his incursion beaten off')
+  assert.equal(hasFought(won('gate'), 'archmage'), true)
+  assert.deepEqual(surrenders(won('gate')), ['archmage'])
+  const his = new Set(base.hexes.filter((h) => h.owner === 'neutral' && isClaimableKind(h) && (pathShares(h).goblin ?? 0) > 0).map((h) => h.id))
+  const held: CampaignState = { ...base, hexes: base.hexes.map((h) => (his.has(h.id) ? { ...h, owner: 'player' as const } : h)) }
+  assert.ok(marchShareHeld(held, 'goblin') >= T.war.marchShare)
+  assert.ok(surrenders(held).includes('goblin'))
 })

@@ -754,8 +754,8 @@ export interface GameEventMap {
   pathRank: { path: RivalId; rank: number }
   /** Patch 2 (D-19): a rival march's preparation level moved at the week close. */
   preparation: { march: RivalId; from: number; to: number }
-  /** Patch 3 (D-22): a standing siege ended without falling: its hex could no longer be assaulted at the close. */
-  standingSiege: { hexId: string; change: 'lapsed' }
+  /** Patch 3 (D-22): a standing siege ended without falling, its hex no longer assaultable at the close (`lapsed`); or, Patch 7 (D-60), its hex fell and the Marshal pressed on to `hexId` (`pressedOn`). */
+  standingSiege: { hexId: string; change: 'lapsed' | 'pressedOn' }
   /** Patch 3 (D-24): the garrison beaten at `hexId` fell back to `to`, adding `strength` there. */
   fallback: { hexId: string; to: string; holder: Owner; strength: number }
   /** Patch 4 (D-29): the player paid a hex's garrison in the Goblin's march to walk away; `garrison` is what an assault had to beat. */
@@ -825,8 +825,8 @@ export interface GameEventMap {
   ritual: { ritualId: string; until?: ISODate; hexId?: string; companyId?: string }
   /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). `until`: the Siege's day; `members`: a coalition's. */
   ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' | 'humbled'; until?: ISODate; members?: RivalId[]; price?: number }
-  /** A rival was resolved (Ch 14). */
-  rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied' }
+  /** A rival was resolved (Ch 14). `dominion`: the realm's total Dominion that met the mark (Patch 7, A1a), from 3.8.0. */
+  rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied'; dominion?: number }
   /** The campaign ended (Ch 14). */
   campaignEnd: { outcome: 'won' | 'fallen' }
   /** A campaign week closed (T06): its number and the behavior income it paid (tithes not included). */

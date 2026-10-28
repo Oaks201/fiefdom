@@ -18,7 +18,7 @@ import { contractPageView } from '../../src/renderer/src/lib/game/view/contract'
 import { accordPanel, coalitionBanners, endgameView, momentsFor, ultimatumBanners } from '../../src/renderer/src/lib/game/view/endgame'
 import { playOut } from './support/grand'
 import { chicago, ledgerWith } from './fixtures/ledgers'
-import { realm, withCastle } from './support/realm'
+import { realm, withCastle, withRenown } from './support/realm'
 
 const ledger = ledgerWith('2026-09-10', 160)
 
@@ -40,8 +40,13 @@ function numbersIn(value: unknown, out: number[] = []): number[] {
 
 test('D-01: proposing an Accord while a contract runs is refused with a clear reason; with the slot free it seals and shows on the Contract page', () => {
   // A week of good days settled, so Realm Consistency (and the Accord's expected Respect) is above 0.
-  const state = settle(respectful(withCastle(realm(7, ledger), 3), 60), ledger, chicago('2026-10-16')).state
-  const today = openDayOf(state)
+  const unranked = settle(respectful(withCastle(realm(7, ledger), 3), 60), ledger, chicago('2026-10-16')).state
+  const today = openDayOf(unranked)
+  // Patch 7 (A1b): talks need his path at rank I, and the panel says so with the Dominion it needs.
+  const never = accordPanel(unranked, 'archmage', today)
+  assert.equal(never.reason?.code, 'pathRank')
+  assert.match(never.reason?.label ?? '', /rank I \(Dominion 110 on it\)/)
+  const state = withRenown(unranked, 'archmage', 110, 1)
   const open = accordPanel(state, 'archmage', today)
   assert.equal(open.open, true)
   assert.ok(open.expectedGain > 0)

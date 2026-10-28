@@ -4,7 +4,7 @@
  */
 import { foundCampaign } from '../../../src/renderer/src/lib/game/campaign'
 import { balance, post } from '../../../src/renderer/src/lib/game/economy'
-import { totalDominion } from '../../../src/renderer/src/lib/game/dominion'
+import { pathsOf, totalDominion } from '../../../src/renderer/src/lib/game/dominion'
 import { hexWorth, pathShares, rivalOfRoad } from '../../../src/renderer/src/lib/game/map'
 import type {
   ArmoryState,
@@ -15,7 +15,8 @@ import type {
   CrossingId,
   CrossingStage,
   GraceLevel,
-  HexState
+  HexState,
+  RivalId
 } from '../../../src/renderer/src/lib/game/types'
 import type { Ledger } from '../../../src/renderer/src/lib/types'
 import { FOUNDED_AT, TZ, charter, emptyLedger } from '../fixtures/ledgers'
@@ -101,6 +102,13 @@ export function withDominion(state: CampaignState, building: BuildingId, target:
   const ids = pick(0, need)
   if (!ids) throw new Error(`No set of neutral hexes gives ${building} Dominion ${target}`)
   return { ...state, hexes: state.hexes.map((h) => (ids.includes(h.id) ? { ...h, owner: 'player' } : h)) }
+}
+
+/** `state` with `rival`'s path at `renown` Renown and at least `rank` (Patch 7: the Dominion marks and the Accord's rank). */
+export function withRenown(state: CampaignState, rival: RivalId, renown: number, rank = 0): CampaignState {
+  const paths = pathsOf(state)
+  const was = paths.byRival[rival]
+  return { ...state, paths: { ...paths, byRival: { ...paths.byRival, [rival]: { renown, rank: Math.max(was.rank, rank) } } } }
 }
 
 /** Hands every hex on `building`'s path back to neutral. */

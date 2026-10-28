@@ -181,7 +181,7 @@ export function grandRefusalLabel(code: GrandRefusal): string {
     case 'gateNotHeld':
       return 'The capital can be attacked only once you hold its Gate.'
     case 'pacing':
-      return 'The realm cannot resolve another rival yet.'
+      return 'The realm’s Dominion has not reached the mark for another rival yet.'
     case 'cooldown':
       return 'Too soon after the last battle with this rival.'
     case 'rivalResolved':

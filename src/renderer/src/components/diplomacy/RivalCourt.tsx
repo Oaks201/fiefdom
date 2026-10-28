@@ -89,6 +89,11 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide 
             </span>
           )}
         </p>
+        {panel.waits && (
+          <p className="court__waits">
+            {panel.waits} <HelpLink section="winning" label="The Dominion marks" />
+          </p>
+        )}
         {!resolved && panel.standingNote && (
           <p className="court__why">
             {panel.standingNote} <HelpLink section="diplomacy" label="Peace, Tension and War" />

@@ -131,7 +131,7 @@ export function HowToPlay(): React.JSX.Element | null {
   const map = RULES.map
   const ranks = rankThresholds()
   const tierGates = RULES.buildings.tierDominion.flatMap((n, i) => (i === 0 ? [] : [`Tier ${numeral(i + 1)}: ${formatNumber(n)}`]))
-  const pacing = RULES.world.resolution
+  const marks = RULES.world.resolution.dominionMarks.map((n) => formatNumber(n))
 
   const categories: Category[] = [
     {
@@ -632,7 +632,9 @@ export function HowToPlay(): React.JSX.Element | null {
                   <b>Siege:</b> a failed assault wears {pct(land.repulseWear)} of its strength off the garrison, and the wear stays (it fades {pct(sg.wearDecay.perDay)} a day while you
                   leave the hex alone). Keep pressing and it falls. The Herald reports a <b>Breach</b> when the same assault would now take it. <b>Lay siege</b> on a hex, or choose it in
                   the day’s orders, and it becomes your <b>standing siege</b>: on any day you set no orders of your own, the Marshal presses it with the companies best matched to it,
-                  and every other company defends. Orders of your own come first that day. It stands until it falls or you lift it; lifted, its wear stays and fades.
+                  and every other company defends. Orders of your own come first that day. It stands until it falls or you lift it; lifted, its wear stays and fades. When it falls,
+                  the Marshal <b>presses on</b>: the siege moves to the weakest hex beside it held by the same foe (the wilds, or the same rival), never a stronghold or a hex under
+                  a pact. With none, it ends.
                 </li>
                 <li>
                   <b>Flanking:</b> each hex you hold touching the target, beyond the first, adds {pct(sg.flanking.perNeighbor)} to your assault there, up to{' '}
@@ -857,18 +859,22 @@ export function HowToPlay(): React.JSX.Element | null {
                   <b>Conquest:</b> take his Gate, then his capital, each in a Grand Battle.
                 </li>
                 <li>
-                  <b>Terms:</b> accept his surrender, or win the Orc’s last battle.
+                  <b>Terms:</b> accept his surrender, or win the Orc’s last battle. A rival surrenders only once you have fought him: {pct(RULES.terms.war.marchShare)} of his march held, or a
+                  Grand Battle won for a hex of his (his Gate, a stronghold or his capital).
                 </li>
                 <li>
-                  <b>Accord</b> (never the Orc): raise his Respect to {RULES.respect.thresholds.accordTalks}, then keep {c.accord.days}-day Accord contracts (from Castle Tier{' '}
-                  {numeral(c.accord.castleTier)}) until his Respect reaches {c.accord.signedAtRespect}.
+                  <b>Accord</b> (never the Orc): raise his Respect to {RULES.respect.thresholds.accordTalks} and his path to rank {numeral(c.accord.pathRank)} (Dominion{' '}
+                  {formatNumber(ranks[c.accord.pathRank - 1])} on it), then keep {c.accord.days}-day Accord contracts (from Castle Tier {numeral(c.accord.castleTier)}) until his
+                  Respect reaches {c.accord.signedAtRespect}.
                 </li>
                 <li>
                   <b>Defection</b> (never the Orc): win his villages until he holds none, at least half of them by courting or trade.
                 </li>
               </ul>
               <p>
-                The realm can resolve only one rival at a time: none before week {pacing.notBeforeWeek}, then at most one every {pacing.oncePerWeeks} weeks.
+                <b>The realm’s Dominion sets the pace.</b> Each rival resolved needs your total Dominion at a mark first: {marks[0]} for the first, {marks[1]} for the second,{' '}
+                {marks[2]} for the third and {marks[3]} for the last. A rival ready to yield before then waits, and his court says so. Land lost lowers Dominion, so a mark
+                reached can slip away again.
               </p>
               <p>
                 <b>You can lose</b> only from week {RULES.defeat.ascendancy.fromWeek}, and only if a rival grows far stronger than you for weeks on end. He then issues an Ultimatum,

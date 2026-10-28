@@ -8,7 +8,9 @@
  * the Spy Network (or the Spymaster, for a neighbor's treasury), through `rivalView`. No income,
  * benchmark or event criteria ever reaches these objects.
  */
+import { formatNumber } from '../../format'
 import { CODEX } from '../codex'
+import { totalDominion } from '../dominion'
 import { realmEffects } from '../effects'
 import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer, type DealRefusalCode } from '../land'
 import { claimableBy, hexName } from '../map'
@@ -16,7 +18,7 @@ import { greedBand, orcTrackOf, pactHolds, surgeOn } from '../personalities'
 import { RULES } from '../rules'
 import { marksFor, marksOf, reaches, respectChange } from '../respect'
 import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
-import { openDayOf, weekOn } from '../state'
+import { openDayOf, resolutionAllowed, resolutionMark, resolutionsOf, weekOn, worldOf } from '../state'
 import { stanceOf, weighsMost } from '../terms'
 import { t } from '../text'
 import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type FrontState, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
@@ -66,6 +68,8 @@ export interface RivalPanel {
   orcWar?: OrcWar
   /** His stance toward the player from week 16 (D-33): a band, never the score or which measure is close. */
   stance?: { band: StanceBand; label: string }
+  /** Patch 7 (A1a): his end waiting on the realm's next Dominion mark, in plain words. */
+  waits?: string
   /** His march's state in plain lines (D-29 to D-31): the Goblin's prices and pact, the Dwarf's walls, the Archmage's surge (the Orc's war track is `orcWar`). */
   march: MarchLine[]
   /** Patch 5 (D-40, C-65): what his standing means, the marks that change it, and what moves his Respect, in plain words; empty once he is resolved. */
@@ -319,6 +323,7 @@ export function meterAt(marks: readonly { at: number }[], respect: number): numb
 export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effects = realmEffects(state), today: ISODate = openDayOf(state)): RivalPanel {
   const r = state.rivals[rival]
   const stance = stanceLine(state, rival, today)
+  const waits = waitsLine(state, rival)
   const entry = CODEX.rivals.find((x) => x.id === rival)
   const name = rivalName(rival)
   const view = rivalView(state, rival, effects)
@@ -349,9 +354,48 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
     fronts,
     ...(orcWar ? { orcWar } : {}),
     ...(stance ? { stance } : {}),
+    ...(waits ? { waits } : {}),
     march: marchLines(state, rival, today),
     standingNote: standingNote(state, rival)
   }
+}
+
+/** Patch 7 (C4, A1a): the road to victory, above the courts. Dominion and its marks are public. */
+export interface RoadToVictory {
+  resolved: number
+  of: number
+  dominion: number
+  /** The Dominion the next resolution needs; absent once every rival is resolved. */
+  mark?: number
+  /** Rivals whose resolution waits for the mark, by name. */
+  waiting: string[]
+}
+
+export function roadToVictory(state: CampaignState): RoadToVictory {
+  const mark = resolutionMark(state)
+  return {
+    resolved: resolutionsOf(state).length,
+    of: RIVAL_IDS.length,
+    dominion: Math.floor(totalDominion(state)),
+    ...(mark !== undefined ? { mark } : {}),
+    waiting: worldOf(state)
+      .pending.filter((p) => state.rivals[p.rival].status === 'active')
+      .map((p) => rivalName(p.rival))
+  }
+}
+
+/**
+ * Patch 7 (A1a): why his end waits on the realm's next Dominion mark, for his court: a resolution held
+ * for it, or his stance at Ready to yield while it holds his terms (or the Orc's last battle) back.
+ */
+function waitsLine(state: CampaignState, rival: RivalId): string | undefined {
+  const mark = resolutionMark(state)
+  if (state.rivals[rival].status !== 'active' || mark === undefined || resolutionAllowed(state)) return undefined
+  const need = `the realm’s Dominion reaches ${formatNumber(mark)} (${formatNumber(Math.floor(totalDominion(state)))} now)`
+  const held = worldOf(state).pending.find((p) => p.rival === rival)
+  if (held) return { allied: `His Accord is signed: he joins you once ${need}.`, abdicated: `He is ready to give up his land: he does once ${need}.`, conquered: `His capital has fallen: he is conquered once ${need}.` }[held.how]
+  if (stanceOf(state, rival) !== 'ready') return undefined
+  return rival === 'orc' ? `Ready for his last battle once ${need}.` : `Ready to yield, but he offers no terms until ${need}.`
 }
 
 /** All four courts. */

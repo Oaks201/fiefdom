@@ -388,12 +388,13 @@ function endsOf(rival: RivalId): GuideLine[] {
   const tm = RULES.terms
   const ac = RULES.contracts.accord
   const conquest: GuideLine = { term: 'Conquest', text: 'Take his Gate, then his capital, each in a Grand Battle.' }
+  const fought = `once you have fought him (${pct(tm.war.marchShare)} of his march held, or a Grand Battle won for a hex of his)`
   const accord: GuideLine =
     rival === 'orc'
       ? { term: 'Accord', text: 'He signs none.' }
       : {
           term: 'Accord',
-          text: `Raise his Respect to +${RULES.respect.thresholds.accordTalks} to open talks, then keep ${ac.days}-day Accord contracts (from Castle Tier ${numeral(ac.castleTier)}) until his Respect reaches +${ac.signedAtRespect}. He becomes your ally.`
+          text: `Raise his Respect to +${RULES.respect.thresholds.accordTalks} and his path to rank ${numeral(ac.pathRank)} to open talks, then keep ${ac.days}-day Accord contracts (from Castle Tier ${numeral(ac.castleTier)}) until his Respect reaches +${ac.signedAtRespect}. He becomes your ally.`
         }
   const defection: GuideLine =
     rival === 'orc' ? { term: 'Defection', text: 'Not him: winning his villages never brings him down.' } : { term: 'Defection', text: 'Win his villages until he holds none, at least half of them by courting or trade.' }
@@ -407,12 +408,12 @@ function endsOf(rival: RivalId): GuideLine[] {
       case 'goblin':
         return {
           term: 'His terms',
-          text: `Once he is Shaken, in a week you push his march he tries to buy his way out (a hex, an item or hired companies, for a ${tm.goblin.pactWeeks}-week pact to leave his march alone), at most every ${tm.goblin.buyOffEveryWeeks} weeks. Refuse ${tm.goblin.surrenderAfterRefused}, or bring him to Ready to yield, and he offers to surrender.`
+          text: `Once he is Shaken, in a week you push his march he tries to buy his way out (a hex, an item or hired companies, for a ${tm.goblin.pactWeeks}-week pact to leave his march alone), at most every ${tm.goblin.buyOffEveryWeeks} weeks. Refuse ${tm.goblin.surrenderAfterRefused}, or bring him to Ready to yield, and he offers to surrender ${fought}.`
         }
       case 'dwarf':
         return { term: 'His terms', text: `He surrenders, grudgingly, once you hold about ${pct(tm.dwarf.marchShare)} of his march. His villages stay restless for ${tm.dwarf.restlessWeeks} weeks after.` }
       case 'archmage':
-        return { term: 'His terms', text: 'He surrenders when he fears for his life: when you hold his Gate, or your army and victories frighten him enough.' }
+        return { term: 'His terms', text: `He surrenders when he fears for his life: when you hold his Gate, or, ${fought}, when your army and victories frighten him enough.` }
     }
   })()
   return [conquest, terms, accord, defection]

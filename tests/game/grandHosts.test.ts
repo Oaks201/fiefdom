@@ -23,7 +23,7 @@ import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
 import { near } from './support/assert'
 import { announced, collector, withArmy } from './support/grand'
-import { allBuildings, realm, withArmory, withBuildings, withCastle } from './support/realm'
+import { allBuildings, realm, withArmory, withBuildings, withCastle, withRenown } from './support/realm'
 import { START, fight, hex, holdStrongholds } from './support/war'
 import { FOUNDED_AT, TZ, charter, chicago, steadyLedger } from './fixtures/ledgers'
 
@@ -101,17 +101,19 @@ test('Ch 11: warnings are 2, 2, 3 and 2 days (Incursion, Gate, Capital, Mythic H
   assert.deepEqual(['incursion', 'gate', 'capital', 'mythicHunt', 'coalitionOffensive', 'siege'].map((t) => warningDays(t as never, tower)), [3, 3, 4, 3, 4, 15])
 })
 
-test('Ch 11: the Capital only while holding its Gate, and not before Ch 14’s pacing allows a resolution; one battle per hex at a time', () => {
+test('Ch 11: the Capital only while holding its Gate, and not before the realm’s Dominion reaches the next mark (A1a); one battle per hex at a time', () => {
   const state = withArmy(realm(), 'orc', [100])
   const capital = state.hexes.find((h) => h.kind === 'capital' && h.owner === 'orc')!
   const gate = state.hexes.find((h) => h.kind === 'gate' && h.owner === 'orc')!
-  const week16 = addDays(START, 7 * RULES.world.resolution.notBeforeWeek)
+  const week16 = addDays(START, 7 * 16)
   const c = collector()
   assert.equal(announceGrandBattle(state, { trigger: 'capital', hexId: capital.id, announcedOn: week16, rival: 'orc' }, c.emit).reason, 'gateNotHeld')
   assert.equal(c.of('grandBattle')[0].stage, 'refused')
   const held = { ...state, hexes: state.hexes.map((h) => (h.id === gate.id ? { ...h, owner: 'player' as const } : h)) }
-  assert.equal(announceGrandBattle(held, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' }, c.emit).reason, 'pacing', 'no rival is resolved before week 16 (D-41)')
-  const a = announced(held, { trigger: 'capital', hexId: capital.id, announcedOn: week16, rival: 'orc' })
+  assert.equal(announceGrandBattle(held, { trigger: 'capital', hexId: capital.id, announcedOn: week16, rival: 'orc' }, c.emit).reason, 'pacing', 'no rival is resolved before the first Dominion mark (D-59)')
+  const marked = withRenown(held, 'orc', RULES.world.resolution.dominionMarks[0])
+  assert.equal(announceGrandBattle(marked, { trigger: 'capital', hexId: capital.id, announcedOn: START, rival: 'orc' }, c.emit).ok, true, 'no calendar: the mark alone (D-59)')
+  const a = announced(marked, { trigger: 'capital', hexId: capital.id, announcedOn: week16, rival: 'orc' })
   assert.equal(addDays(week16, 3), a.battle.battleDate)
   assert.equal(announceGrandBattle(a.state, { trigger: 'capital', hexId: capital.id, announcedOn: week16, rival: 'orc' }, c.emit).reason, 'alreadyAnnounced')
 })

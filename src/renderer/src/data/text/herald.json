@@ -303,6 +303,10 @@
     "template": "The siege of {hex} is lifted: it can no longer be assaulted.",
     "final": null
   },
+  "herald.siege.pressedOn": {
+    "template": "The Marshal presses on: the siege moves to {hex}.",
+    "final": null
+  },
   "herald.deed.hexTaken": {
     "template": "{hex} taken: {value} Renown on {rival}’s path.",
     "final": null

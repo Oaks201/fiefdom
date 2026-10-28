@@ -10,25 +10,26 @@ import { availableDeals, makeDeal, placeBid } from '../../src/renderer/src/lib/g
 import { benchmarkConsistency, benchmarkContractMultiplier, benchmarkIncome, holdings, rivalIncome } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { settle } from '../../src/renderer/src/lib/game/settle'
-import { openDayOf } from '../../src/renderer/src/lib/game/state'
+import { openDayOf, withWorld } from '../../src/renderer/src/lib/game/state'
 import { hasText } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type Disposition, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
 import { withPersonalities } from '../../src/renderer/src/lib/game/personalities'
-import { courtableVillages, courtshipsView, dealsView, meterAt, moodOf, nextMarks, respectMarks, rivalPanel, rivalPanels, standingNote, standingRules } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { courtableVillages, courtshipsView, dealsView, meterAt, moodOf, nextMarks, respectMarks, rivalPanel, rivalPanels, roadToVictory, standingNote, standingRules } from '../../src/renderer/src/lib/game/view/diplomacy'
 import { suggestedBid } from '../../src/renderer/src/lib/game/view/realm'
 import { driveCampaign } from './support/campaign-driver'
 import { chicago, ledgerWith } from './fixtures/ledgers'
-import { realm, withCrossings, withPurse } from './support/realm'
+import { realm, withCrossings, withPurse, withRenown } from './support/realm'
 
 /**
  * Every number a rival panel shows outside its public fields (Respect, the Respect marks with the
  * rules they open, the front tracks drawn and explained, the Orc's war track against the player drawn and
  * explained, Patch 4's march lines: the Dwarf's walls, hired companies and their dates, C-49, and the
- * disposition note's Respect and weeks), with its path; numbers written inside its text count too.
+ * disposition note's Respect and weeks, and Patch 7's wait for the realm's public Dominion mark), with its
+ * path; numbers written inside its text count too.
  */
 function shownNumbers(value: unknown, path = '', out: { path: string; n: number }[] = []): { path: string; n: number }[] {
-  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.(track|tug|how|end)$/.test(path) || path === 'orcWar' || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote' || /^nextMarks\.\d+$/.test(path)) return out
+  if (path === 'respect' || /^marks\.\d+\.(at|labels)$/.test(path) || /^fronts\.\d+\.(track|tug|how|end)$/.test(path) || path === 'orcWar' || /^march\.\d+\.(label|until)$/.test(path) || path === 'standingNote' || /^nextMarks\.\d+$/.test(path) || path === 'waits') return out
   if (typeof value === 'number') out.push({ path, n: value })
   else if (typeof value === 'string') for (const m of value.matchAll(/\d+(?:\.\d+)?/g)) out.push({ path, n: Number(m[0]) })
   else if (Array.isArray(value)) value.forEach((v, i) => shownNumbers(v, `${path}.${i}`, out))
@@ -290,4 +291,25 @@ test('Patch 7 E2: a court shows the next mark each way from his Respect; his gui
   const low = respectMarks('goblin', 10)
   assert.match(nextMarks(low, 10)[1], /^At −25: .* \(35 to fall\)$/)
   assert.deepEqual(rivalPanel(realm(), 'goblin').nextMarks, nextMarks(rivalPanel(realm(), 'goblin').marks, rivalPanel(realm(), 'goblin').respect))
+})
+
+test('Patch 7 (C4, A1a): the road to victory counts the rivals resolved and sets the realm’s Dominion against the next mark; a court whose end waits on it says so', () => {
+  const marks = RULES.world.resolution.dominionMarks
+  const base = realm()
+  const ready: CampaignState = {
+    ...withWorld(base, { pending: [{ rival: 'dwarf', how: 'allied', since: '2026-10-08' }] }),
+    terms: { byRival: { goblin: { band: 'ready' }, orc: { band: 'ready' }, archmage: { band: 'shaken' } } }
+  }
+  assert.deepEqual(roadToVictory(ready), { resolved: 0, of: 4, dominion: 0, mark: marks[0], waiting: [rivalName('dwarf')] })
+  const need = `the realm’s Dominion reaches ${marks[0]} (0 now)`
+  assert.equal(rivalPanel(ready, 'dwarf').waits, `His Accord is signed: he joins you once ${need}.`)
+  assert.equal(rivalPanel(ready, 'goblin').waits, `Ready to yield, but he offers no terms until ${need}.`)
+  assert.equal(rivalPanel(ready, 'orc').waits, `Ready for his last battle once ${need}.`)
+  assert.equal(rivalPanel(ready, 'archmage').waits, undefined, 'Shaken: nothing waits on the mark yet')
+  // At the mark nothing waits on it; the strip shows the next mark once one is resolved.
+  const marked = withRenown(ready, 'orc', marks[0])
+  assert.ok(RIVAL_IDS.every((r) => rivalPanel(marked, r).waits === undefined))
+  const one = { ...marked, rivals: { ...marked.rivals, dwarf: { ...marked.rivals.dwarf, status: 'allied' as const, resolvedOn: '2026-10-11' } } }
+  assert.deepEqual(roadToVictory(withWorld(one, { pending: [] })), { resolved: 1, of: 4, dominion: marks[0], mark: marks[1], waiting: [] })
+  assert.equal(rivalPanel(withWorld(one, { pending: [] }), 'goblin').waits, `Ready to yield, but he offers no terms until the realm’s Dominion reaches ${marks[1].toLocaleString('en-US')} (${marks[0]} now).`)
 })

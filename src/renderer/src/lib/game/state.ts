@@ -5,6 +5,7 @@
  * exist so that combat, land, the rivals and settlement don't each keep a copy.
  */
 import { addDays, campaignWeek, diffDays } from './clock'
+import { totalDominion } from './dominion'
 import { bandOf } from './map'
 import { RULES } from './rules'
 import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
@@ -63,15 +64,20 @@ export function resolutionsOf(state: CampaignState): { rival: RivalId; how: Excl
 }
 
 /**
- * Ch 14 pacing: no rival is resolved before week 12, and at most one in any 8 weeks. Whether a
- * resolution may happen on `day`.
+ * Patch 7 (A1a, D-59): the total Dominion the next resolution needs, or undefined once all four are
+ * resolved. Dominion is public, so the mark and the realm's Dominion may both be shown.
  */
-export function resolutionAllowed(state: CampaignState, day: ISODate): boolean {
-  const pacing = RULES.world.resolution
-  const week = weekOn(state, day)
-  if (week < pacing.notBeforeWeek) return false
-  const last = resolutionsOf(state).at(-1)
-  return last === undefined || week - last.week >= pacing.oncePerWeeks
+export function resolutionMark(state: CampaignState): number | undefined {
+  return RULES.world.resolution.dominionMarks[resolutionsOf(state).length]
+}
+
+/**
+ * Ch 14 pacing by progress (Patch 7, A1a, D-59): a rival may be resolved once the realm's total Dominion
+ * reaches the next mark. Holdings fall with lost land, so a mark reached can be lost again.
+ */
+export function resolutionAllowed(state: CampaignState): boolean {
+  const mark = resolutionMark(state)
+  return mark !== undefined && totalDominion(state) >= mark
 }
 
 /** What the living world remembers (T12), empty until the first week close that needs it. */

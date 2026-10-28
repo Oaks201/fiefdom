@@ -215,7 +215,7 @@ function announceProblem(state: CampaignState, r: GrandRequest, hex: HexState | 
     case 'capital': {
       if (hex.kind !== 'capital' || !r.rival) return 'notGrandBattleHex'
       if (gateOf(state, r.rival)?.owner !== 'player') return 'gateNotHeld'
-      if (!resolutionAllowed(state, r.announcedOn)) return 'pacing'
+      if (!resolutionAllowed(state)) return 'pacing'
       break
     }
     case 'mythicHunt':

@@ -103,7 +103,7 @@ test('The Orc signs no Accord and never defects; the others can be won by both',
   assert.match(orc.find((l) => l.term === 'Defection')?.text ?? '', /^Not him/)
   for (const r of ['goblin', 'dwarf', 'archmage'] as RivalId[]) {
     const ends = rivalGuide(state, r).ends
-    assert.match(ends.find((l) => l.term === 'Accord')?.text ?? '', new RegExp(`\\+${RULES.respect.thresholds.accordTalks} to open talks`), r)
+    assert.match(ends.find((l) => l.term === 'Accord')?.text ?? '', new RegExp(`\\+${RULES.respect.thresholds.accordTalks} and his path to rank I to open talks`), r)
     assert.match(ends.find((l) => l.term === 'Defection')?.text ?? '', /until he holds none/, r)
   }
 })

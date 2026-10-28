@@ -26,7 +26,7 @@ import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { GRAND_HOOKS, announceGrandBattle, firstFreeDay, pendingBattles, siegeNotBefore, type OutcomeContext } from './grand'
 import { defectionTally, sellPrice } from './land'
-import { pathTotals } from './dominion'
+import { pathRank, pathTotals, totalDominion } from './dominion'
 import { bandOf, borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches, wildGarrison } from './map'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
@@ -68,21 +68,21 @@ function active(state: CampaignState): RivalId[] {
 // ── Resolving rivals (Ch 14) ─────────────────────────────────────────────────
 
 /**
- * Resolves `rival` now if Ch 14's pacing allows it on `day`, or holds it until the first week
- * close that does (A-168). A held defection is checked again before it resolves.
+ * Resolves `rival` now if the realm's Dominion has reached the next mark (Patch 7, A1a), or holds it
+ * until the first week close that finds it there (A-168). A held defection is checked again before it resolves.
  */
 export function resolveRival(state: CampaignState, rival: RivalId, how: ResolveHow, day: ISODate, emit: Emit): CampaignState {
   if (state.rivals[rival].status !== 'active') return state
   const world = worldOf(state)
-  if (!resolutionAllowed(state, day)) {
+  if (!resolutionAllowed(state)) {
     if (world.pending.some((p) => p.rival === rival)) return state
     return withWorld(state, { pending: [...world.pending, { rival, how, since: day }] })
   }
-  return applyResolution(withWorld(state, { pending: world.pending.filter((p) => p.rival !== rival) }), rival, how, day, emit)
+  return applyResolution(withWorld(state, { pending: world.pending.filter((p) => p.rival !== rival) }), rival, how, day, emit, Math.floor(totalDominion(state)))
 }
 
 /** What a fall does (Ch 13 "When a rival falls"), then victory if it was the last. */
-function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, day: ISODate, emit: Emit): CampaignState {
+function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, day: ISODate, emit: Emit, dominion: number): CampaignState {
   let state = input
   if (how === 'conquered') {
     // Its capital and realm become ruins; its other hexes turn neutral with village loyalty halved.
@@ -118,7 +118,7 @@ function applyResolution(input: CampaignState, rival: RivalId, how: ResolveHow, 
   const r = { ...state.rivals[rival] }
   delete r.ultimatumUntil
   state = { ...state, rivals: { ...state.rivals, [rival]: r } }
-  emit('rivalResolved', { rival, how })
+  emit('rivalResolved', { rival, how, dominion })
 
   // Its battles, attempts and bids end with it; so does any coalition it stood in.
   for (const b of pendingBattles(state)) {
@@ -162,7 +162,7 @@ export function defects(state: CampaignState, rival: RivalId): boolean {
 function resolutionsWeek(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
   let state = input
   for (const p of worldOf(state).pending) {
-    if (!resolutionAllowed(state, day)) break
+    if (!resolutionAllowed(state)) break
     if (p.how === 'abdicated' && !defects(state, p.rival)) {
       state = withWorld(state, { pending: worldOf(state).pending.filter((x) => x !== p) })
       continue
@@ -192,7 +192,7 @@ export function acceptGoblinOffer(state: CampaignState, hexId: string, today: IS
 
 // ── Accords (Ch 14, D-01) ────────────────────────────────────────────────────
 
-export type AccordRefusal = 'campaignOver' | 'rivalResolved' | 'respect' | 'castle' | 'coalition' | 'contractRunning' | 'orcNeverSigns'
+export type AccordRefusal = 'campaignOver' | 'rivalResolved' | 'respect' | 'pathRank' | 'castle' | 'coalition' | 'contractRunning' | 'orcNeverSigns'
 
 export interface AccordGate {
   ok: boolean
@@ -221,6 +221,8 @@ export function accordGate(state: CampaignState, rival: RivalId, today: ISODate 
   if (state.castleTier < RULES.contracts.accord.castleTier) return no('castle')
   if (inCoalition(state, rival, today)) return no('coalition')
   if (state.contracts.active || state.contracts.queued) return no('contractRunning')
+  // Patch 7 (A1b, D-59): his path at rank I as well, from land of his march held or deeds against him.
+  if (pathRank(state, rival) < RULES.contracts.accord.pathRank) return no('pathRank')
   if (respect < threshold) return no('respect')
   return { ok: true, threshold, respect }
 }

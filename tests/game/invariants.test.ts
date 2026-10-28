@@ -2,7 +2,7 @@
  * Test 10 (Ch 14, Ch 15 "Invariants", Ch 13) over 300 seeded 70-week campaigns, each settled day by
  * day through `settle` by the headless driver (support/campaign-driver.ts), in worker threads.
  * Steady and poor habits meet passive, greedy and diplomatic players, so the runs see conquests,
- * Accords, coalitions, Ultimatums, Sieges, victories and Falls.
+ * Accords, coalitions, Ultimatums, Sieges, resolutions at their Dominion marks, and Falls.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -60,8 +60,11 @@ test('Test 10: 300 seeded 70-week campaigns keep every endgame invariant', { tim
   // The runs reached the states the invariants are about, so the test is not vacuous.
   const fallen = audits.filter((a) => a.fallenWeek !== undefined)
   const won = audits.filter((a) => a.wonWeek !== undefined)
+  t.diagnostic(`resolutions a campaign: ${JSON.stringify([0, 1, 2, 3, 4].map((n) => audits.filter((a) => a.resolutions.length === n).length))}; won ${won.length}, fallen ${fallen.length}`)
   assert.ok(fallen.length > 0, 'some campaigns fell')
-  assert.ok(won.length > 0, 'some campaigns were won')
+  // Patch 7 (A1a, D-59): victory waits on Dominion 3,650 or so, past these crude players' 70 weeks; the
+  // simulator's G-11 and the endgame tests carry it. Two resolutions still meet two marks here.
+  assert.ok(audits.some((a) => a.resolutions.length >= 2), 'some campaigns resolved two rivals')
   assert.ok(audits.some((a) => a.coalitions.length > 0), 'coalitions formed')
   // D-16: a rival's land now lies deep in its march, so conquest rarely comes within 70 weeks (Patches 4 and 5);
   // Accords and defections still resolve rivals, under the same pacing.
@@ -69,7 +72,7 @@ test('Test 10: 300 seeded 70-week campaigns keep every endgame invariant', { tim
   t.diagnostic(`rivals conquered in ${audits.filter((a) => a.resolutions.some((r) => r.how === 'conquered')).length} of 300 campaigns`)
   assert.ok(audits.some((a) => a.resolutions.some((r) => r.how === 'allied')), 'rivals were allied')
   assert.ok(Math.min(...fallen.map((a) => a.fallenWeek as number)) >= 36)
-  assert.ok(Math.min(...won.map((a) => a.wonWeek as number)) >= 36)
+  if (won.length > 0) assert.ok(Math.min(...won.map((a) => a.wonWeek as number)) >= 36)
 
   const count = (pred: (a: RunAudit) => boolean): number => audits.filter(pred).length
   const events: Record<string, number> = {}

@@ -1483,9 +1483,10 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     if (h.garrisonDamage <= 0 || h.owner === 'player' || assaulted.has(id) || awaited.has(id)) continue
     setHex({ ...h, garrisonDamage: decayedWear(h.garrisonDamage, slowDecay * wearDecayOn(marchRule(state, h, day), isStronghold(state.hexes, id))) })
   }
-  // The standing siege ends when its hex falls.
+  // The standing siege ends when its hex falls; the Marshal presses on from it once the map is current (Patch 7, D-60).
   const besieged = standingSiegeOf(state)
-  if (besieged && taken.some((t) => t.hex.id === besieged.hexId)) state = withStandingSiege(state, undefined, day)
+  const fell = besieged && taken.find((t) => t.hex.id === besieged.hexId)
+  if (fell) state = withStandingSiege(state, undefined, day)
 
   // 4. Spoils, tribute and Respect.
   for (const g of gains) purse = g.kind === 'spoils' ? post(purse, { date: day, ...g }) : payTribute(purse, day, g.amount, g.source)
@@ -1508,11 +1509,34 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     ...fallbacksAfter(state.fallbacks, spentForces, new Set(taken.map((t) => t.hex.id)), fallen)
   }
   if (dissolved.length > 0) state = withPersonalities(state, { dissolved: [...(personalitiesOf(state).dissolved ?? []), ...dissolved] })
+  if (fell) state = pressOn(state, fell.hex.id, fell.from, day, emit)
   // Patch 4 (C-36): at the Orc's path rank V a repulse leaves no company Weary (iron ranks).
   if (wearied.size > 0 && pathRank(state, 'orc') < RULES.dominion.rankPerks.orc.ironRanksRank) state = weary(state, wearied, day, effects)
   // Led fights are kept a week for their replays (D-12).
   if (state.skirmishes) state = { ...state, skirmishes: state.skirmishes.filter((d) => d.day > addDays(day, -RULES.skirmish.keepDays)) }
   return { state, grandBattles }
+}
+
+/**
+ * Patch 7 (D-60): once the standing siege's hex falls, the Marshal presses on. The siege moves to the hex
+ * beside it held by the same foe (the wilds, or the same rival, so he never starts a fight on his own)
+ * that a daily assault may take tomorrow, with the weakest garrison an assault would face. Never a
+ * stronghold, a hex under a pact, or one a Grand Battle waits on; with none, the siege ends. The player
+ * names another target, or lifts it, any day.
+ */
+function pressOn(state: CampaignState, fell: string, foe: Owner, day: ISODate, emit: Emit): CampaignState {
+  const tomorrow = addDays(day, 1)
+  const byId = hexIndex(state.hexes)
+  const next = neighbors(fell)
+    .flatMap((id) => {
+      const h = byId.get(id)
+      if (!h || h.owner !== foe || !claimableBy(state.hexes, h.id, 'player', 'assault') || isStronghold(state.hexes, h.id) || pactBars(state, h, tomorrow)) return []
+      return state.grandBattles.some((b) => b.hexId === h.id && b.result === undefined) ? [] : [{ id: h.id, garrison: assaultGarrison(state, h, tomorrow) }]
+    })
+    .sort((a, b) => a.garrison - b.garrison || a.id.localeCompare(b.id))[0]
+  if (!next) return state
+  emit('standingSiege', { hexId: next.id, change: 'pressedOn' })
+  return withStandingSiege(state, next.id, day)
 }
 
 /** The fallen forces after a close (D-24): without the spent and those whose refuge fell, with today's. */

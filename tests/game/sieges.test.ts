@@ -7,9 +7,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { GREEDY, autoplay, expectedValor, pickAssault } from '../../src/renderer/src/lib/game/autoplay'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
-import { clearOrders, laySiege, liftSiege, ordersEstimate, ordersFor, setOrders, siegeOrders } from '../../src/renderer/src/lib/game/combat'
+import { assaultGarrison, clearOrders, laySiege, liftSiege, ordersEstimate, ordersFor, setOrders, siegeOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { neighbors } from '../../src/renderer/src/lib/game/map'
+import { claimableBy, isStronghold, neighbors } from '../../src/renderer/src/lib/game/map'
 import { needsRefounding } from '../../src/renderer/src/lib/game/refound'
 import { roster } from '../../src/renderer/src/lib/game/roster'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
@@ -71,7 +71,7 @@ test('D-22 (C-20): a worn hex left alone loses 10% of its wear at the close, a t
   assert.equal(hex(after, third.target).garrisonDamage, 0)
 })
 
-test('D-22: the hex falls once its worn garrison is within the Assault, and the standing siege ends with it', () => {
+test('D-22, D-60: the hex falls once its worn garrison is within the Assault, and the Marshal presses on to the weakest hex beside it held by the same foe', () => {
   const { state: s0, target } = setup(60)
   const state = send(withHex(s0, target, { garrisonDamage: 10 }), target)
   assert.equal(state.standingSiege?.hexId, target)
@@ -79,7 +79,21 @@ test('D-22: the hex falls once its worn garrison is within the Assault, and the 
   assert.equal(after.of('assault')[0].outcome, 'taken')
   assert.equal(hex(after.state, target).owner, 'player')
   assert.equal(hex(after.state, target).garrisonDamage, 0)
-  assert.equal(after.state.standingSiege, undefined)
+  const beside = freeNeighbors(after.state, target).filter((n) => hex(after.state, n).owner === 'neutral' && claimableBy(after.state.hexes, n, 'player', 'assault') && !isStronghold(after.state.hexes, n))
+  assert.ok(beside.length > 0)
+  const garrison = (id: string): number => assaultGarrison(after.state, hex(after.state, id), NEXT)
+  const weakest = [...beside].sort((a, b) => garrison(a) - garrison(b) || a.localeCompare(b))[0]
+  assert.deepEqual(after.state.standingSiege, { hexId: weakest, since: DAY })
+  assert.deepEqual(after.of('standingSiege'), [{ hexId: weakest, change: 'pressedOn' }])
+  assert.equal(ordersFor(after.state, NEXT)?.assaultTarget, weakest, 'tomorrow, with no orders of the player’s own, he presses it')
+  const e = { id: 'e2', day: DAY, kind: 'standingSiege', hexId: weakest, change: 'pressedOn' } as GameEvent
+  assert.equal(resultLine(e)?.textId, 'herald.siege.pressedOn')
+  // Only against the same foe: with every wild hex beside it a rival's, he starts no fight and the siege ends.
+  const ruled = withOwner(state, freeNeighbors(state, target).filter((n) => hex(state, n).owner === 'neutral'), 'orc')
+  const ended = fight(quiet(ruled), DAY, 1)
+  assert.equal(hex(ended.state, target).owner, 'player')
+  assert.equal(ended.state.standingSiege, undefined)
+  assert.deepEqual(ended.of('standingSiege'), [])
 })
 
 test('R-16 (D-22): only a hex a daily assault may take becomes the standing siege, and naming another moves it', () => {

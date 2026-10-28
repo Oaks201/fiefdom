@@ -6,7 +6,9 @@ import { WeekCloseNote } from '../components/game/WeekClose'
 import { RivalCourt } from '../components/diplomacy/RivalCourt'
 import { RivalGuide, RivalPicker } from '../components/diplomacy/RivalGuide'
 import { RIVAL_IDS, type RivalId } from '../lib/game/types'
-import { rivalPanels } from '../lib/game/view/diplomacy'
+import { rivalPanels, roadToVictory, type RoadToVictory } from '../lib/game/view/diplomacy'
+import { formatNumber } from '../lib/format'
+import { HelpLink } from '../components/game/HelpLink'
 import { rivalGuide } from '../lib/game/view/rivalGuide'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useUI } from '../state/ui'
@@ -17,6 +19,27 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'courts', label: 'The courts' },
   { id: 'rivals', label: 'How each rival works' }
 ]
+
+/**
+ * The road to victory (Patch 7, C4): rivals resolved, and the realm's Dominion against the mark the next
+ * resolution needs, with any rival waiting for it. Hidden once every rival is resolved.
+ */
+function RoadStrip({ road }: { road: RoadToVictory | null }): React.JSX.Element | null {
+  if (!road || road.mark === undefined) return null
+  const reached = road.dominion >= road.mark
+  return (
+    <p className={`road-strip ${reached ? 'is-reached' : ''}`}>
+      <span>
+        Rivals resolved <b>{road.resolved}</b> of {road.of}
+      </span>
+      <span>
+        Dominion <b>{formatNumber(road.dominion)}</b> of {formatNumber(road.mark)} for the next{reached ? ': reached' : ''}
+      </span>
+      {road.waiting.length > 0 && <span>{road.waiting.join(' and ')} waiting for it</span>}
+      <HelpLink section="winning" label="Winning, and the Dominion marks" />
+    </p>
+  )
+}
 
 /**
  * Diplomacy (T15, T16): the four rival courts and the courtships; above them the endgame: an
@@ -32,6 +55,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
   const [tab, setTab] = useState<Tab>('courts')
   const [guided, setGuided] = useState<RivalId>(RIVAL_IDS[0])
   const panels = useMemo(() => (campaign ? rivalPanels(campaign) : []), [campaign])
+  const road = useMemo(() => (campaign ? roadToVictory(campaign) : null), [campaign])
   const guide = useMemo(() => (campaign ? rivalGuide(campaign, guided) : null), [campaign, guided])
   const audiencePanel = panels.find((p) => p.rival === audience)
   const guidedPanel = panels.find((p) => p.rival === guided)
@@ -54,6 +78,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
       <UltimatumBanners campaign={campaign} today={today} />
       <CoalitionBanners campaign={campaign} today={today} />
       <TermsBanners campaign={campaign} today={today} />
+      <RoadStrip road={road} />
       <div className="realm-tabs" role="tablist" aria-label="Diplomacy">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`realm-tab ${tab === t.id ? 'is-on' : ''}`} onClick={() => setTab(t.id)}>

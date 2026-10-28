@@ -10,8 +10,8 @@
  *   grudging surrender once two thirds of his march are held; the Orc's last battle (a final Warhost,
  *   or Ugrak's Challenge when he respects the player). No offer from a rival in a coalition against the
  *   player or with an Ascendancy streak, none while the pacing would hold his resolution, none while
- *   the player is away. Offers stay open 7 days (A-171); refused or lapsed, they come back no sooner
- *   than 4 weeks later.
+ *   the player is away, and no surrender from a rival the player has not fought (Patch 7, `hasFought`).
+ *   Offers stay open 7 days (A-171); refused or lapsed, they come back no sooner than 4 weeks later.
  *
  * Accepting and refusing are world.ts's (`acceptTerms`, `refuseTerms`), which resolve the rival.
  * Hidden: every threshold, weight and score. Screens read the band only.
@@ -30,7 +30,7 @@ import { RULES } from './rules'
 import { pick } from './rng'
 import { playerArmyValue } from './rivals'
 import { awayOn, inCoalition, resolutionAllowed, withWorld, worldOf } from './state'
-import { RIVAL_IDS, STANCE_BANDS, type CampaignState, type Emit, type ISODate, type RivalId, type RivalTerms, type StanceBand, type TermsGift, type TermsState, type WorldOffer } from './types'
+import { RIVAL_IDS, STANCE_BANDS, type CampaignState, type Emit, type GrandTrigger, type ISODate, type RivalId, type RivalTerms, type StanceBand, type TermsGift, type TermsState, type WorldOffer } from './types'
 
 const T = RULES.terms
 
@@ -77,6 +77,18 @@ export function marchShareHeld(state: CampaignState, rival: RivalId): number {
     if (h.owner === 'player') held += s
   }
   return all > 0 ? held / all : 0
+}
+
+/** The Grand Battles the player brings against a rival's hexes. His own attacks, beaten off, are defense, not war on him. */
+const WAR_TRIGGERS: readonly GrandTrigger[] = ['gate', 'stronghold', 'capital']
+
+/**
+ * Patch 7 (A1b, D-59): whether the player has made war on `rival`: at least `war.marchShare` of his march
+ * held, or a Grand Battle won for a hex of his. No surrender without it.
+ */
+export function hasFought(state: CampaignState, rival: RivalId): boolean {
+  if (marchShareHeld(state, rival) >= T.war.marchShare) return true
+  return state.grandBattles.some((b) => b.rival === rival && WAR_TRIGGERS.includes(b.trigger) && b.result !== undefined && b.result !== 'defeat')
 }
 
 /** What every rival's measures share on a day: read once when all four read their stance (Patch 6, `dailyStances`). */
@@ -248,18 +260,18 @@ export function termsWeek(input: CampaignState, w: { day: ISODate; week: number;
     state = readStance(state, rival, day, week, emit)
     const band = stanceOf(state, rival)
     if (!mayOffer(state, rival, day, week) || openTerms(state, tomorrow).some((o) => o.rival === rival)) continue
-    const pacing = resolutionAllowed(state, tomorrow)
+    const pacing = resolutionAllowed(state)
     switch (rival) {
       case 'goblin': {
         const refused = rivalTerms(state, rival).refused ?? 0
-        if (pacing && (band === 'ready' || refused >= T.goblin.surrenderAfterRefused) && waited(state, rival, 'surrender', day, T.retryWeeks)) state = offer(state, rival, 'surrender', day, emit)
+        if (pacing && hasFought(state, rival) && (band === 'ready' || refused >= T.goblin.surrenderAfterRefused) && waited(state, rival, 'surrender', day, T.retryWeeks)) state = offer(state, rival, 'surrender', day, emit)
         else if (STANCE_BANDS.indexOf(band) >= T.goblin.buyOffFromBand && !pactHolds(state, tomorrow) && pushedMarches(state, weekOf(day, state.campaign.weekStartsOn), day).has('goblin') && waited(state, rival, 'buyOff', day, T.goblin.buyOffEveryWeeks)) {
           state = offer(state, rival, 'buyOff', day, emit, buyOffGift(state, day))
         }
         break
       }
       case 'archmage': {
-        if (!pacing || !waited(state, rival, 'surrender', day, T.retryWeeks)) break
+        if (!pacing || !hasFought(state, rival) || !waited(state, rival, 'surrender', day, T.retryWeeks)) break
         const gate = state.hexes.find((h) => h.kind === 'gate' && h.march === 'archmage')
         const danger = reading(measures(state, rival, tomorrow), T.archmageDanger) >= T.bands[T.bands.length - 1]
         const weak = armyValue(state, 'archmage', tomorrow) <= T.archmage.armyRatio * playerArmyValue(state)
@@ -286,7 +298,7 @@ function orcLastBattle(state: CampaignState, band: StanceBand, day: ISODate, emi
   const last = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active').length === 1
   if (band !== 'ready' && !last) return state
   const announcedOn = addDays(day, 1)
-  if (!resolutionAllowed(state, announcedOn) || pendingBattles(state).some((b) => b.final) || !waited(state, 'orc', 'lastBattle', day, T.orc.retryWeeks)) return state
+  if (!resolutionAllowed(state) || pendingBattles(state).some((b) => b.final) || !waited(state, 'orc', 'lastBattle', day, T.orc.retryWeeks)) return state
   const target = nearestTo(borderHexesOf(state.hexes, 'player').filter(isClaimableKind), state.hexes.filter((h) => h.owner === 'orc'))
   if (target.length === 0) return state
   const hexId = pick(state.campaign.seed, day, 'terms:orc:target', target.map((h) => h.id))

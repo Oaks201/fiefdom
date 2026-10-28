@@ -483,8 +483,8 @@ test('rules.ts marks each TUNE assumption with its decision id', () => {
   }
 })
 
-test('RULES is versioned 3.7.0 (Patch 6: D-46 on; the standing buffer, D-52; Milestones at the day close, D-53; the rest day, D-54; Patch 7 stages 1 and 2, D-55 to D-57), a 3.x campaign carried forward in place (C-33, C-48, C-50, C-94)', () => {
-  assert.equal(RULES.ruleVersion, '3.7.0')
+test('RULES is versioned 3.8.0 (Patch 6: D-46 on; the standing buffer, D-52; Milestones at the day close, D-53; the rest day, D-54; Patch 7 stages 1 to 3, D-55 to D-59), a 3.x campaign carried forward in place (C-33, C-48, C-50, C-94)', () => {
+  assert.equal(RULES.ruleVersion, '3.8.0')
   assert.equal(RULES.respect.standingBuffer, 5)
 })
 

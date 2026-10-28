@@ -5,7 +5,8 @@ Written 2026-10-24, after the [player audit](audit-2026-10-24.md) and Rich's ans
 **Status (2026-10-25):** Rich approved everything as recommended: B1 to B8 (B5 refuses at Peace), the principle and E1 to E8, A1a option 1, A1b, the A1c targets, A2 option 1, W options 1 and 2, and C2 to C7.
 - **Stage 1 is built:** sections 1 and 2, rules 3.6.1 (D-55).
 - **Stage 2 is built:** A2 and W, rules 3.7.0 (D-57); its report is section 6.
-- **Not yet built:** A1 and C2 to C7 (D-56).
+- **Stage 3 is built:** A1 and C4, rules 3.8.0 (D-59), with the Marshal pressing on (D-60); its report is section 7.
+- **Not yet built:** C2, C3, C5, C6 and C7 (D-56).
 
 Rich's direction (2026-10-24):
 - **A1:** no set intervals; soft thresholds instead, so things can't be taken too fast or too slow. A player who never attacks must not win. Forgiving, but not so forgiving that the game needn't be played.
@@ -231,3 +232,118 @@ Met: G-01 to G-04, G-07, G-08, G-09, G-12, G-13, G-15, G-16, G-18 to G-23. Misse
      - (b) Press the rivals' sieges harder (run 3 tried 0.16: G-05 only reached 8%, and G-06 and the save size got worse).
 3. **W2's reading.** Confirm the fallback in 6.1 (the loser's frontier hex falls to the wilds and the winner's siege falls), or ask for the outpost variant.
 4. **The numbers.** Confirm or change the built numbers: reach 1.6 × patrol, 0.72 within, 10% a step beyond (cap 30%), supply 10% a step (cap 30%), one depth a path rank; sieges 0.12 of the army a day; paces 1.5 / 1 / 0.6 / 1; the Orc's 10% loss a week; the Dwarf's wall; the Archmage's 1.5× on an ebb; W2's 50% a week.
+
+## 7. Stage 3 report: A1, progress instead of the calendar (rules 3.8.0)
+
+Built 2026-10-26 from A1a option 1, A1b and the A1c targets (D-56, recorded as D-59). Every number below is one the probes settled; Rich decides them (D-02).
+
+### 7.1 What was built
+
+- **A1a, Dominion marks** (`resolutionAllowed` in `state.ts`). The calendar is gone: no "not before week 16", no "one per 12 weeks".
+  - Each rival resolved needs the realm's total Dominion at a mark first: **650** for the first, **1,800** for the second, **2,700** for the third and **3,650** for the last.
+  - The proposal's first guesses (650 / 1,700 / 2,500 / 3,300) let Steadfast and Committed win 4 to 6 weeks early, so the later marks went up.
+  - A rival ready before his mark waits: a signed Accord, a defection, a surrender offer, the Orc's last battle. The Capital battle is still refused while a win couldn't resolve him.
+  - A realm already past two marks at one week close resolves two rivals there. The calendar never allowed that.
+  - Each resolution's event records the Dominion that met its mark.
+- **A1b, every road needs the realm.**
+  - **Accord:** talks also need his path at **rank I** (Dominion 110 on it). This is checked before his Respect, so the Accord panel says "Accord talks need his path at rank I (Dominion 110 on it): hold land of his march, or win deeds against him."
+  - **Surrender:** the Goblin's and the Archmage's surrender need a war with him (`hasFought` in `terms.ts`): **20%** of his march held, or a Grand Battle won for a hex of his (his Gate, a stronghold or his capital).
+  - **Unchanged:** the Dwarf (his two thirds is already a war), the Orc's last battle (a battle) and defection (his villages).
+- **C4, the road to victory, on screen.**
+  - Diplomacy opens with a strip: "Rivals resolved 1 of 4 · Dominion 1,501 of 1,800 for the next · Emrys waiting for it", with a ? to How to play › Winning.
+  - A court whose end waits on the mark says so, in crimson under his stance. For example: "His Accord is signed: he joins you once the realm's Dominion reaches 1,800 (1,501 now)."
+  - Others read "Ready to yield, but he offers no terms until …" and "Ready for his last battle once …".
+  - How to play › Winning holds the whole rule. Each guide's Accord and terms lines name rank I and the war.
+- **Tests:**
+  - The calendar tests now step through the marks.
+  - Test 10's crude players resolve at most two rivals in 70 weeks now, so it checks every resolution against its mark from the event, in place of needing a victory.
+  - New tests cover rank I, the war check, the road strip and the waiting lines. All 911 tests pass.
+
+### 7.2 What the probes found
+
+Each player style played 6 seeds to week 80 or 90 through the game's own autoplay (the audit's probe). The table gives the median victory week, the range across seeds, and how many rivals were resolved by week 76 when there was no victory.
+
+| Player | 3.7.0 (the calendar) | No pacing at all | A1, first-guess marks | **A1 as built** | Target |
+| --- | --- | --- | --- | --- | --- |
+| Perfect | 53 (53–55) | 27 | 51 (49–54) | **55 (53–56)** | 50–56 |
+| Steadfast | 58 (56–61) | 33.5 | 54.5 (52–58) | **60 (57–62)** | 58–64 |
+| Committed | 64.5 (59–73) | 46 | 60.5 (59–64) | **65 (63–67)** | 64–72 |
+| Weekly (the game side once a week) | 59.5 (59–61) | 57 | none by 80 (1 to 3 resolved) | **none by 90 (1 or 2 resolved by 76)** | wins by about 76 |
+| Monthly (once a month) | 64.5 (62–70) | 45 | none by 80 | **none by 90 (none resolved)** | no win by 76, never falls |
+| Never assaults | 66.5 (60–73) | 62 | none by 80 | **none by 90 (1 resolved)** | no win by 76 |
+
+- **What A1 did:**
+  - The three daily players now win in their R-17 windows by their own pace, with no date.
+  - The once-a-month and never-assault players no longer win: under 3.7.0 the calendar carried them to victory by week 70.
+  - Nobody fell.
+- **What it missed:** the weekly player. Under 3.7.0 they won with everyone else, around week 60. Now they don't win by week 90.
+  - **Why:** they take about one hex a week. All 72 of their assaults won, but their standing siege ends when its hex falls, and they name the next one only at their next visit.
+  - So their Dominion grows at about the never-assault player's rate: 630 at week 40, against 1,900 for Steadfast.
+  - No single set of marks can hold the daily players to their windows and still let the weekly player through by week 76, since the weekly player's Dominion is about a third of theirs.
+- **A prototype that fixes it (not built; probed through a scratch hook):** the Marshal presses on. When the standing siege's hex falls, he lays the next one on the weakest hex beside it that a daily assault may take, never a stronghold.
+  - **Weekly:** wins in weeks 72 to 78 (median 75.5), resolving 3 or 4 rivals by week 76.
+  - **Perfect, Steadfast and Committed:** each moves by a week at most, since they name their own target every day.
+  - **Monthly:** resolves 1 rival by week 76 and doesn't win by 90.
+  - **Never assaults:** unchanged, since they lay no siege.
+
+### 7.3 Every target in the built version
+
+One full run of the targets (720 campaigns) before D-60 is summarized below. The report in [`docs/game/sim/targets-3.8.0.md`](../game/sim/targets-3.8.0.md) is the final run, with the Marshal pressing on and G-07 at 5 weeks (D-60).
+
+**Final run (D-60):** every target is met but G-05 (accepted, D-58) and G-17 (65%, as since 3.7.0).
+- **G-07:** met at 64 / 65 / 61 / 60.
+- **G-10:** met again (the Orc's march now has the most defenses a hex, on the edge as before).
+- **G-08:** bad weeks lose 2.47× the land of good ones.
+- **G-11:** 56 / 58 / 64.
+- **Ultimatums:** 80% of Steadfast campaigns, with no falls.
+
+The first run, before D-60:
+
+- **Met:** G-01 to G-04, G-06, G-08, G-09, G-11 to G-13, G-15, G-16, G-18 to G-23.
+- **Missed as before:** G-05 (accepted, D-58), G-10 and G-17 (65%, the same as 3.7.0).
+- **Newly missed:** G-07.
+- **G-11, the campaign's length, is met with no calendar.**
+  - **Perfect:** median week 56 (window 50–56).
+  - **Steadfast:** 58 (window 58–64).
+  - **Committed:** 64 (window 64–72), and it now wins by week 76 in every campaign (80% under 3.7.0).
+  - **Wavering:** 77 (82 under 3.7.0).
+  - All three windows are met at their edges. The marks hold the styles closer together than the calendar did: Perfect and Steadfast are 2 weeks apart, not 4.5.
+- **G-07, every mix can win.** Every steered mix still wins every campaign, but their median weeks now spread over 5 weeks (target: within 3).
+  - **One path:** 64.
+  - **Two halfway:** 65.5.
+  - **Three a third:** 62.
+  - **All four:** 60.5.
+  - Under the calendar every mix waited for the same dates (56 to 58). Now the focused players' first resolution comes 4 weeks later (week 26 against 22).
+- **G-19, defeat stays rare.** Falls stay at none. But more Steadfast campaigns now see an Ultimatum: 86%, against 55% under 3.7.0 and 75% under 3.6.0.
+  - **Why:** the rivals stay active longer through weeks 36 to 50. The second resolution comes at week 40, not 33, so one of three rivals more often reaches 1.5× the realm's Power.
+  - Every Ultimatum is still lifted or won.
+
+### 7.4 Decisions for Rich
+
+**Decided 2026-10-27 (D-60):** Rich took every recommendation below. The Marshal presses on is built: the weekly player now wins in weeks 74 to 79 (median 75.5). G-07 is retargeted to within 5 weeks, the Ultimatum rate is accepted, both readings are confirmed, and the built numbers stand.
+
+1. **The weekly player (A1c).** As built, a player who opens the game side once a week doesn't win by week 90 (target: by about 76). The probes in 7.2 explain why.
+   - **Options:**
+     - (a) **Recommended: the Marshal presses on.** When the standing siege's hex falls, he lays the next one on the weakest hex beside it that a daily assault may take. Never a stronghold, whose fall is a Grand Battle the player calls.
+       - This is A1c's kindness taken one step further: the Marshal already presses a standing siege on the days you give no orders.
+       - **Probes:** the weekly player wins in weeks 72 to 78 (median 75.5).
+       - **Full targets run with it:** every verdict is unchanged. Perfect, Steadfast and Committed still win at 56, 58 and 64. Monthly and never-assault players still don't win.
+       - The player can still lift a siege any day, and the Herald would say where the siege moved ("The Marshal lays siege to {hex}.", a plain-fact line).
+     - (b) Retarget A1c: a weekly player resolves two rivals by week 76 and wins later.
+     - (c) Lower the marks. The daily players would then win outside R-17's windows.
+2. **G-07, every mix can win.** The steered mixes now win 5 weeks apart (target: 3), since the marks read total Dominion and a player who walks one path builds it a little more slowly than one who walks all four. Every mix still wins every campaign.
+   - A run without A1b's rank I gave the same spread (64 / 65 / 61 / 60.5), so rank I isn't the cause.
+   - **Options:**
+     - (a) **Recommended:** retarget G-07's victory weeks to within 5. Focusing pays in the path's perks (G-06 is met at 1.64×) and costs a few weeks of total Dominion.
+     - (b) Leave it as missed.
+3. **Ultimatums (G-19).** 86% of Steadfast campaigns now see one (55% under 3.7.0, 75% under 3.6.0); falls stay at none.
+   - **Options:**
+     - (a) **Recommended:** accept it. It is the mid-game threat working while three rivals stand, and every one is lifted or won.
+     - (b) Raise the Ascendancy ratio (1.5×) a little, then re-run.
+4. **Readings to confirm:**
+   - **War means battles you bring.** Only a Grand Battle you call for his Gate, a stronghold or his capital counts toward "fought him", not his own Incursion or Warhost beaten off. Counting those would let the player who never assaults take the Archmage's surrender.
+   - **Two marks at once resolve two.** A realm already past two marks at one week close resolves two rivals there (it happens only when the rivals were ready late). The alternative is at most one per close.
+5. **The numbers.** Confirm or change the built numbers:
+   - Marks 650, 1,800, 2,700 and 3,650.
+   - Rank I (Dominion 110) for Accord talks.
+   - A fifth of his march held for "fought him".
