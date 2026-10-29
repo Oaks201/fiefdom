@@ -6,7 +6,8 @@ import { hexName } from '../../lib/game/map'
 import type { CampaignState, DailyOrders, ISODate, RivalId } from '../../lib/game/types'
 import { liveValor } from '../../lib/game/view/chronicle'
 import { aimAssault, marshalOrders, moveCompany, ordersLock, ordersView, repeatYesterday, toggleDefender, withHelp, type OrdersView } from '../../lib/game/view/orders'
-import { amount, orderProblemLabel } from '../../lib/game/view/refusals'
+import { RULES } from '../../lib/game/rules'
+import { amount, orderProblemLabel, whole } from '../../lib/game/view/refusals'
 import { percent, rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
 import { campaignNow } from '../../state/campaignClock'
@@ -264,7 +265,7 @@ function SiegeLine({ view, locked, onLift }: { view: OrdersView; locked: boolean
   return (
     <div className="orders__siege">
       <p>
-        <GiSiegeTower aria-hidden="true" /> <strong>Standing siege: {s.label}</strong> · {Math.round(s.progress * 100)}% worn · garrison {amount(s.garrison)}
+        <GiSiegeTower aria-hidden="true" /> <strong>Standing siege: {s.label}</strong> · {Math.round(s.progress * 100)}% worn · garrison {whole(s.garrison)}
         {s.flank > 1 ? ` · flanked ${flankWord(s.flank)}` : ''}
         {s.pressedToday ? days : ''}
       </p>
@@ -280,6 +281,22 @@ function SiegeLine({ view, locked, onLift }: { view: OrdersView; locked: boolean
   )
 }
 
+const LONG_SIEGE = RULES.sieges.longSiegeDays
+
+/** Patch 7 (C2): the Assault list's groups, by assault days at today's Valor. */
+const TARGET_GROUPS: { label: string; holds(days: number): boolean }[] = [
+  { label: 'Falls today', holds: (d) => d <= 1 },
+  { label: `Falls within ${LONG_SIEGE} assault days`, holds: (d) => d > 1 && d <= LONG_SIEGE },
+  { label: 'Long sieges', holds: (d) => d > LONG_SIEGE }
+]
+
+/** How soon a target falls, in words (Patch 7, C2). */
+function whenFalls(days: number): string {
+  if (!Number.isFinite(days)) return 'no one to send'
+  if (days <= 1) return 'falls today'
+  return days <= LONG_SIEGE ? `about ${days} days` : 'a long siege'
+}
+
 function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot: OrdersView['assaults'][number]; locked: boolean; onTarget(hexId: string): void }): React.JSX.Element {
   const earlier = view.assaults[slot.index - 1]
   const blocked = slot.index > 0 && !earlier?.target
@@ -292,13 +309,23 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
         <span className="field__box">
           <select value={slot.target?.hexId ?? ''} disabled={locked || blocked} onChange={(e) => onTarget(e.target.value)}>
             <option value="">No target</option>
-            {view.targets.map((t) => (
-              <option key={t.hexId} value={t.hexId}>
-                {t.label} · {t.owner === 'neutral' ? 'unaligned' : rivalName(t.owner as RivalId)} · garrison {amount(t.garrison)}
-                {t.worn > 0 ? ` · ${Math.round(t.worn * 100)}% worn` : ''}
-                {t.flank > 1 ? ` · flanked ${flankWord(t.flank)}` : ''}
-              </option>
-            ))}
+            {/* Patch 7 (C2): soonest to fall first, grouped, with the path each feeds. */}
+            {TARGET_GROUPS.map((g) => {
+              const targets = view.targets.filter((t) => g.holds(t.days))
+              if (targets.length === 0) return null
+              return (
+                <optgroup key={g.label} label={g.label}>
+                  {targets.map((t) => (
+                    <option key={t.hexId} value={t.hexId}>
+                      {t.label} · {whenFalls(t.days)} · garrison {whole(t.garrison)}
+                      {t.worn > 0 ? ` · ${Math.round(t.worn * 100)}% worn` : ''}
+                      {t.flank > 1 ? ` · flanked ${flankWord(t.flank)}` : ''} · {t.owner === 'neutral' ? 'unaligned' : rivalName(t.owner as RivalId)}
+                      {t.path ? ` · ${t.path}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )
+            })}
           </select>
         </span>
       </label>
@@ -321,13 +348,13 @@ function Estimate({ view, name, held }: { view: OrdersView; name(id: string): st
         {e.defenses.map((d, i) => (
           <li key={`d${i}`}>
             {THREATS[d.kind]}
-            {d.rival ? ` (${rivalName(d.rival)})` : ''} at {hexName(d.hexId)}: Defense <strong>{amount(d.defense)}</strong> with {d.fielded.map(name).join(', ') || 'no one'}
+            {d.rival ? ` (${rivalName(d.rival)})` : ''} at {hexName(d.hexId)}: Defense <strong>{whole(d.defense)}</strong> with {d.fielded.map(name).join(', ') || 'no one'}
           </li>
         ))}
         {e.assaults.map((a, i) => (
           <li key={`a${i}`}>
-            Assault on {hexName(a.hexId)}: <strong>{amount(a.value)}</strong>
-            {a.flank > 1 ? ` (flanked ${flankWord(a.flank)})` : ''} against garrison {amount(a.garrison)}, {OUTCOMES[a.outcome]}
+            Assault on {hexName(a.hexId)}: <strong>{whole(a.value)}</strong>
+            {a.flank > 1 ? ` (flanked ${flankWord(a.flank)})` : ''} against garrison {whole(a.garrison)}, {OUTCOMES[a.outcome]}
           </li>
         ))}
       </ul>

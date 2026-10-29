@@ -8,6 +8,7 @@
  * bend-the-knee price is a price, from a treasury estimate the player can know, A-172). The Fall
  * is told as chronicle, in the same plain words as the victory.
  */
+import { addDays } from '../clock'
 import { rankThresholds } from '../dominion'
 import { numeral } from '../effects'
 import { RULES } from '../rules'
@@ -148,6 +149,21 @@ export function ultimatumBanners(state: CampaignState, today: ISODate = openDayO
   })
 }
 
+/**
+ * Patch 7 (C6): what an Ultimatum's card tells the player to do, with no number: the levers that bring the
+ * besieger's power back by a week close (the Diplomacy banner gives the rule), and bending the knee while
+ * it is still to be had.
+ */
+function ultimatumLevers(state: CampaignState, rival: RivalId, members: readonly RivalId[] | undefined, day: ISODate): string[] {
+  const his = (members ?? [rival]).length > 1 ? 'their' : 'his'
+  const bend = ultimatumView(state, addDays(day, 1)).find((u) => u.rival === rival)?.canBend
+  const weeks = RULES.defeat.bendTheKnee.delayWeeks
+  return [
+    `To lift it: beat ${his} raids, take ${his} land and win ${his} battles, so ${his} power falls back by a week close before the Siege.`,
+    ...(bend ? [`Or bend the knee on Diplomacy, once a campaign, to put the Siege off ${weeks === 1 ? 'a week' : `${weeks} weeks`}.`] : [])
+  ]
+}
+
 // ── Victory, the Reign and the Fall (Ch 14, Ch 16 "Shame") ───────────────────
 
 export interface EndgameView {
@@ -259,7 +275,7 @@ export function momentsFor(state: CampaignState, events: readonly GameEvent[]): 
       }
       case 'ascendancy': {
         if (e.stage !== 'ultimatum') break
-        out.push({ id: e.id, slot: 'moment.ultimatum', titleId: 'endings.ultimatum', facts: { rival: rivalNames(e.members ?? [e.rival]), date: e.until ?? '' }, sound: 'ultimatum' })
+        out.push({ id: e.id, slot: 'moment.ultimatum', titleId: 'endings.ultimatum', facts: { rival: rivalNames(e.members ?? [e.rival]), date: e.until ?? '' }, sound: 'ultimatum', lines: ultimatumLevers(state, e.rival, e.members, e.day) })
         break
       }
       case 'campaignEnd': {

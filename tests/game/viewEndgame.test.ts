@@ -6,6 +6,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
+import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { sealContract } from '../../src/renderer/src/lib/game/contractActions'
 import { applyScenario } from '../../src/renderer/src/lib/game/dev/scenarios'
 import { begin } from '../../src/renderer/src/lib/game/grand'
@@ -94,7 +95,15 @@ test('Ch 14 / Ch 16: the Ultimatum banner gives the day, the countdown, what lif
   assert.equal(after.canBend, false)
   const twice = bendTheKnee(bent.state, 'orc', today)
   assert.deepEqual([twice.ok, twice.reason], [false, 'used'])
-  assert.deepEqual(momentsFor(issued, issued.log.slice(state.log.length)).map((c) => c.slot), ['moment.ultimatum'])
+  const [card] = momentsFor(issued, issued.log.slice(state.log.length))
+  assert.equal(card.slot, 'moment.ultimatum')
+  // Patch 7 (C6): the card names what to do, with no number but the knee's weeks.
+  assert.deepEqual(card.lines, [
+    'To lift it: beat his raids, take his land and win his battles, so his power falls back by a week close before the Siege.',
+    `Or bend the knee on Diplomacy, once a campaign, to put the Siege off ${RULES.defeat.bendTheKnee.delayWeeks} weeks.`
+  ])
+  const again = momentsFor(bent.state, issued.log.slice(state.log.length))[0]
+  assert.equal(again.lines?.length, 1, 'the knee bent, the card offers it no more')
 })
 
 test('Ch 14 rule 5: a Siege won Humbles the besieger, and its card says so', () => {

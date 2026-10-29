@@ -9,16 +9,16 @@ import { GREEDY, autoplay, expectedValor, pickAssault } from '../../src/renderer
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { assaultGarrison, clearOrders, laySiege, liftSiege, ordersEstimate, ordersFor, setOrders, siegeOrders } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
-import { claimableBy, isStronghold, neighbors } from '../../src/renderer/src/lib/game/map'
+import { claimableBy, isStronghold, neighbors, pathShares } from '../../src/renderer/src/lib/game/map'
 import { needsRefounding } from '../../src/renderer/src/lib/game/refound'
 import { roster } from '../../src/renderer/src/lib/game/roster'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { flankingMult } from '../../src/renderer/src/lib/game/sieges'
 import { startSkirmishes, todaysFights } from '../../src/renderer/src/lib/game/skirmish'
-import type { CampaignState, GameEvent, HexState } from '../../src/renderer/src/lib/game/types'
+import type { CampaignState, GameEvent, HexState, RivalId } from '../../src/renderer/src/lib/game/types'
 import { ordersView } from '../../src/renderer/src/lib/game/view/orders'
 import { hexPanel, mapView } from '../../src/renderer/src/lib/game/view/realm'
-import { resultLine } from '../../src/renderer/src/lib/game/view/shell'
+import { resultLine, rivalName } from '../../src/renderer/src/lib/game/view/shell'
 import { near } from './support/assert'
 import { allBuildings, realm } from './support/realm'
 import { START, den, fight, hex, quiet, reachable, withHex, withOwner } from './support/war'
@@ -234,4 +234,34 @@ test('C-33: a 3.0.0 campaign settles under 3.1.0 in place: no re-founding, its w
   const day = fight(quiet(old), DAY, 1)
   assert.deepEqual(day.of('assault'), [])
   near(hex(day.state, target).garrisonDamage, 30 * (1 - RULES.sieges.wearDecay.perDay))
+})
+
+test('Patch 7 (C2): the Assault list runs soonest to fall first, each hex with its assault days and the path it feeds; the standing siege’s days agree', () => {
+  const { state: s0, target } = setup(100)
+  const state = clearOrders(send(withHex(s0, target, { garrisonDamage: 25 }), target), DAY)
+  const view = ordersView(state, 1, DAY)
+  assert.ok(view.targets.length > 1)
+  for (let i = 1; i < view.targets.length; i++) {
+    const [a, b] = [view.targets[i - 1], view.targets[i]]
+    assert.ok(a.days < b.days || (a.days === b.days && a.garrison <= b.garrison), `${a.hexId} before ${b.hexId}`)
+  }
+  const besieged = view.targets.find((t) => t.hexId === target)
+  assert.equal(besieged?.days, view.siege?.days, 'the list and the siege line read the same Marshal’s pick')
+  assert.ok(view.targets.every((t) => t.days >= 1))
+  // Each names the rivals whose paths its Dominion feeds, from its path shares.
+  for (const t of view.targets) {
+    const feeds = (Object.entries(pathShares(hex(state, t.hexId))) as [RivalId, number][]).filter(([, v]) => v > 0).map(([r]) => rivalName(r))
+    assert.equal(t.path === '', feeds.length === 0, t.hexId)
+    for (const name of feeds) assert.ok(t.path.includes(`${name}’s`), `${t.hexId}: ${t.path}`)
+  }
+})
+
+test('Patch 7 (C5): the Herald shows spoils and tribute whole; the purse keeps its tenths', () => {
+  const { target } = setup(100)
+  const held = { id: 'e3', day: DAY, kind: 'defense', hexId: target, threat: 'beasts', outcome: 'victory', spoils: 40.3 } as unknown as GameEvent
+  assert.equal(resultLine(held)?.facts?.spoils, 40)
+  const lost = { id: 'e4', day: DAY, kind: 'defense', hexId: target, threat: 'beasts', outcome: 'defeat', tribute: 1.5 } as unknown as GameEvent
+  assert.equal(resultLine(lost)?.facts?.tribute, 2)
+  const taken = { id: 'e5', day: DAY, kind: 'assault', hexId: target, owner: 'neutral', outcome: 'taken', spoils: 12.6 } as GameEvent
+  assert.equal(resultLine(taken)?.facts?.spoils, 13)
 })

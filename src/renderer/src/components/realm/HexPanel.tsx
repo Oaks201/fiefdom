@@ -12,7 +12,7 @@ import { keepVillage } from '../../lib/game/world/events'
 import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
 import { hexPanel, marchName, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
-import { amount } from '../../lib/game/view/refusals'
+import { amount, whole } from '../../lib/game/view/refusals'
 import { SURGE_WORDS, realmConsistencyNow, rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
 import { toast } from '../../state/toasts'
@@ -167,7 +167,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
         {view.garrison !== undefined && view.owner !== 'player' && (
           <div>
             <dt>Garrison</dt>
-            <dd title="What an assault must beat today, fortification, preparation and siege wear counted">{amount(view.garrison)}</dd>
+            <dd title="What an assault must beat today, fortification, preparation and siege wear counted">{whole(view.garrison)}</dd>
           </div>
         )}
         {view.stronghold && (

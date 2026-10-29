@@ -6,7 +6,7 @@ Written 2026-10-24, after the [player audit](audit-2026-10-24.md) and Rich's ans
 - **Stage 1 is built:** sections 1 and 2, rules 3.6.1 (D-55).
 - **Stage 2 is built:** A2 and W, rules 3.7.0 (D-57); its report is section 6.
 - **Stage 3 is built:** A1 and C4, rules 3.8.0 (D-59), with the Marshal pressing on (D-60); its report is section 7.
-- **Not yet built:** C2, C3, C5, C6 and C7 (D-56).
+- **The polish is built:** C2, C3, C5, C6 and C7 (D-61). Every approved item of Patch 7 is now built.
 
 Rich's direction (2026-10-24):
 - **A1:** no set intervals; soft thresholds instead, so things can't be taken too fast or too slow. A player who never attacks must not win. Forgiving, but not so forgiving that the game needn't be played.

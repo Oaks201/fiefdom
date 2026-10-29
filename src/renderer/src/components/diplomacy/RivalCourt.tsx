@@ -3,7 +3,7 @@ import { GiCoins, GiCrossedSwords, GiShakingHands, GiSpeaker, GiSpellBook } from
 import { formatShort } from '../../lib/dates'
 import { meterAt, type RivalPanel } from '../../lib/game/view/diplomacy'
 import { HelpLink } from '../game/HelpLink'
-import { amount } from '../../lib/game/view/refusals'
+import { amount, respectShown } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
 import { WarTrackBar } from './WarTrack'
 
@@ -12,6 +12,7 @@ const STATUSES: Record<string, string> = { active: '', conquered: 'Conquered', a
 const TREASURY: Record<string, string> = { meager: 'Meager', modest: 'Modest', prosperous: 'Prosperous', mighty: 'Mighty' }
 const ARMY: Record<string, string> = { weaker: 'Weaker than yours', matched: 'Matched with yours', stronger: 'Stronger than yours', overwhelming: 'Overwhelming' }
 const FRONTS: Record<string, string> = { north: 'North', south: 'South', west: 'West', east: 'East' }
+const signedRespect = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
 /**
  * Respect toward the player on a −100 to +100 meter (D-39), with his marks on both sides. `full` (his
@@ -22,7 +23,7 @@ export function RespectMeter({ panel, full = false, onMore }: { panel: RivalPane
   return (
     <div className="respect">
       <div className="respect__head">
-        <span>Respect</span> <strong>{panel.respect > 0 ? `+${panel.respect}` : panel.respect < 0 ? `−${-panel.respect}` : '0'}</strong>
+        <span>Respect</span> <strong>{signedRespect(respectShown(panel.respect))}</strong>
       </div>
       <div className="respect__bar" style={{ ['--fill' as string]: meterAt(panel.marks, panel.respect) }} role="meter" aria-valuemin={-100} aria-valuemax={100} aria-valuenow={panel.respect} aria-label="Respect">
         {panel.marks.map((m) => (

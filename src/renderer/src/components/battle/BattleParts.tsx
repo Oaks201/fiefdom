@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { GiNextButton, GiPauseButton, GiPlayButton, GiPreviousButton, GiReturnArrow } from 'react-icons/gi'
 import type { CampaignState, Lane } from '../../lib/game/types'
 import { fieldView, replayView, resultView, type ReplayView, type RoundView } from '../../lib/game/view/battle'
-import { factor } from '../../lib/game/view/refusals'
+import { whole } from '../../lib/game/view/refusals'
 import { useText } from '../../state/text'
 import { useUI } from '../../state/ui'
 import { GameArt } from '../game/GameArt'
@@ -39,9 +39,10 @@ export function RoundLog({ log }: { log: RoundView[] }): React.JSX.Element | nul
             <ul>
               {r.lines.map((l, i) => (
                 <li key={i}>
-                  {l.from} → {l.to}: {factor(l.amount)}
+                  {/* Patch 7 (C5): what was struck, and what the target took after its own Charge, Brace or shield. */}
+                  {l.from} → {l.to}:{' '}
+                  {l.dealt !== undefined && Math.round(l.dealt) !== Math.round(l.amount) ? `struck ${whole(l.dealt)}, took ${whole(l.amount)}` : `${whole(l.amount)} damage`}
                   {l.note ? ` (${l.note})` : ''}
-                  {l.dealt !== undefined && Math.abs(l.dealt - l.amount) > 1e-9 ? `, dealt ${factor(l.dealt)}` : ''}
                 </li>
               ))}
             </ul>

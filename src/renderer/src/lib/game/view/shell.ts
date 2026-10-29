@@ -224,7 +224,8 @@ export function resultLine(e: GameEvent): HeraldLine | null {
   switch (e.kind) {
     case 'defense': {
       const until = e.scorchedUntil ?? e.contestedUntil
-      const facts: TextFacts = { hex: hexName(e.hexId), spoils: e.spoils ?? 0, tribute: e.tribute ?? 0 }
+      // Patch 7 (C5): spoils and tribute whole on screen; the purse keeps its tenths.
+      const facts: TextFacts = { hex: hexName(e.hexId), spoils: Math.round(e.spoils ?? 0), tribute: Math.round(e.tribute ?? 0) }
       if (e.rival) facts.rival = rivalName(e.rival)
       if (until) facts.until = until
       const led = e.led ? { led: true } : {}
@@ -240,7 +241,7 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     case 'assault':
       if (e.outcome === 'revealed') return null
       // A repulse that wore the garrison within reach reads as a breach (D-22).
-      return line('result', `battle.assault.${e.breach ? 'breach' : e.outcome}`, { hex: hexName(e.hexId), spoils: e.spoils ?? 0 }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
+      return line('result', `battle.assault.${e.breach ? 'breach' : e.outcome}`, { hex: hexName(e.hexId), spoils: Math.round(e.spoils ?? 0) }, { hexId: e.hexId, ...(e.led ? { led: true } : {}) })
     case 'standingSiege':
       return line('result', `herald.siege.${e.change}`, { hex: hexName(e.hexId) }, { hexId: e.hexId })
     case 'fallback':

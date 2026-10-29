@@ -124,14 +124,23 @@ function realmColor(hex: MapHex): string {
   return mix(marchTint(hex.march), PARCHMENT, LAIR_TINTS[hex.march] ? 0.35 : 0.62)
 }
 
-/** One hex in the realm view: a flat color, a faint edge, and only the castle and capitals marked. */
-function RealmCell({ hex }: { hex: MapHex }): React.JSX.Element {
+/**
+ * One hex in the realm view: a flat color, a faint edge, the castle and capitals, and (Patch 7, C3) what
+ * the day asks of the player, a size larger than up close: today's threat, the assault target or standing
+ * siege, a stronghold and a Grand Battle. The terrain, villages and the rest wait for the zoom.
+ */
+function RealmCell({ hex, marks = false }: { hex: MapHex; marks?: boolean }): React.JSX.Element {
+  const threat = marks ? hex.threats?.[0] : undefined
   return (
     <>
       <polygon points={OUTLINE} fill={realmColor(hex)} stroke={hex.terrain ? realmColor(hex) : 'rgba(40, 28, 18, 0.28)'} strokeWidth={0.04} />
       {hex.beyondReach !== undefined && <polygon className="hex__beyond-reach" points={OUTLINE} />}
       {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={0} size={0.8} color={OWNER_COLORS[hex.owner].edge} />}
       {hex.kind === 'castle' && <Mark icon={GiCastle} x={0} y={0} size={0.8} color={OWNER_COLORS.player.fill} />}
+      {marks && hex.stronghold && <Mark icon={GiStoneTower} x={0} y={-0.42} size={0.6} color={hex.owner === 'player' ? OWNER_COLORS.player.edge : '#4d4234'} />}
+      {threat && <Mark icon={GiCrossedSwords} x={-0.38} y={0.34} size={0.62} color={threat.band ? BAND_COLORS[threat.band] : '#8b1e1a'} />}
+      {marks && hex.target && <Mark icon={hex.siege?.standing ? GiSiegeTower : GiArcheryTarget} x={0.38} y={0.34} size={0.62} color={SIEGE_COLOR} />}
+      {marks && hex.battle && <Mark icon={GiHornInternal} x={0} y={0.05} size={0.7} color="#d98424" />}
     </>
   )
 }
@@ -185,7 +194,7 @@ const HexCell = memo(
     if (realm) {
       return (
         <g className={`hex hex--realm${hex.decor ? ' hex--decor' : ''}${selected ? ' is-selected' : ''}`} transform={place} data-hex={hex.decor ? undefined : hex.id}>
-          <RealmCell hex={hex} />
+          <RealmCell hex={hex} marks />
           {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
         </g>
       )
@@ -196,13 +205,15 @@ const HexCell = memo(
         <GameArt slot={hex.regionSlot ?? hex.slot} orSlot={hex.slot} owner={hex.owner} place={TERRAIN} className="hex__terrain" />
         {hex.status === 'contested' && <GameArt slot="hex.overlay.contested" place={TERRAIN} />}
         {hex.status === 'scorched' && <GameArt slot="hex.overlay.scorched" place={TERRAIN} />}
+        {/* Patch 7 (C3): held land tinted in its owner's color over the busy terrain, under a thicker border. */}
+        {!unowned && hex.owner !== 'neutral' && <polygon className="hex__tint" points={OUTLINE} fill={color.fill} />}
         {!unowned && (
           <polygon
             className="hex__border"
             points={BORDER}
             fill="none"
             stroke={hex.owner === 'neutral' ? 'rgba(77,66,52,0.45)' : color.fill}
-            strokeWidth={hex.owner === 'neutral' ? 0.04 : 0.15}
+            strokeWidth={hex.owner === 'neutral' ? 0.04 : 0.2}
             strokeDasharray={hex.owner === 'neutral' ? '0.12 0.08' : undefined}
           />
         )}
@@ -468,7 +479,7 @@ export function HexMap({ campaign, today, selected, onSelect }: HexMapProps): Re
           {selected && places.has(selected) && <polygon className="hexmap__selected" points={OUTLINE} transform={places.get(selected)} />}
         </svg>
       </div>
-      {realm && <div className="hexmap__mode">Realm view · zoom in for the details</div>}
+      {realm && <div className="hexmap__mode">Realm view · today’s threats and sieges marked · zoom in for the rest</div>}
       <div className="hexmap__zoom" role="group" aria-label="Zoom the map">
         <button type="button" className="btn btn--icon" onClick={() => zoomBy(ZOOM_STEP)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in" title="Zoom in (or scroll up over the map)">
           +

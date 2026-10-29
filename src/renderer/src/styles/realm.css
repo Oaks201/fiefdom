@@ -105,6 +105,12 @@
   stroke-width: 0.035;
 }
 
+/* Patch 7 (C3): held land tinted in its owner’s color, so ownership reads over the terrain art. */
+.hex__tint {
+  opacity: 0.26;
+  pointer-events: none;
+}
+
 /* Patch 7 (A2): the land past the realm's reach, shaded so the reach reads as a line across each march. */
 .hex__beyond-reach {
   fill: rgba(60, 18, 14, 0.24);

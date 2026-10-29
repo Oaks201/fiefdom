@@ -2,7 +2,7 @@ import type { IconType } from 'react-icons'
 import { GiArrowsShield, GiBowArrow, GiCrossedSwords, GiFlame, GiHeavyArrow, GiMagicSwirl, GiSwordman } from 'react-icons/gi'
 import type { Intent, Lane, SlotKey } from '../../lib/game/types'
 import { intentName, intentText, type UnitView } from '../../lib/game/view/battle'
-import { amount, factor } from '../../lib/game/view/refusals'
+import { amount, whole } from '../../lib/game/view/refusals'
 import { GameArt } from '../game/GameArt'
 
 const LANES: Lane[] = ['left', 'center', 'right']
@@ -20,6 +20,11 @@ const STATUS_NAMES: Record<UnitView['status'][number], string> = { weary: 'Weary
 
 /** A company as the field shows it: in its slot, with this frame's health. */
 export type FieldUnit = Omit<UnitView, 'slot' | 'hp' | 'routed'> & { slot?: SlotKey; hp: number; routed: boolean }
+
+/** Patch 7 (C5): health whole on screen, a company still standing never shown at 0. */
+function hpShown(hp: number): string {
+  return hp <= 0 ? '0' : whole(Math.max(1, Math.round(hp)))
+}
 
 export interface Float {
   key: string
@@ -47,9 +52,9 @@ function UnitCard({ unit, floats, selected, onClick }: { unit: FieldUnit; floats
           <span className="unit__reach">{unit.reach}</span>
           {unit.tags.length > 0 && <span className="unit__tags">{unit.tags.join(' · ')}</span>}
         </span>
-        <span className="unit__health" style={{ ['--hp' as string]: share }} aria-label={`Health ${factor(unit.hp)} of ${factor(unit.maxHp)}`}>
+        <span className="unit__health" style={{ ['--hp' as string]: share }} aria-label={`Health ${hpShown(unit.hp)} of ${whole(unit.maxHp)}`}>
           <span className="unit__hp">
-            {factor(Math.max(0, unit.hp))} / {factor(unit.maxHp)}
+            {hpShown(unit.hp)} / {whole(unit.maxHp)}
           </span>
         </span>
         {unit.status.length > 0 && (
@@ -69,7 +74,7 @@ function UnitCard({ unit, floats, selected, onClick }: { unit: FieldUnit; floats
       )}
       {floats.map((f) => (
         <span key={f.key} className="float-dmg">
-          −{factor(f.amount)}
+          −{whole(f.amount)}
         </span>
       ))}
     </button>

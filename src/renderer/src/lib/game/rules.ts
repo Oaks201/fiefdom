@@ -992,6 +992,8 @@ const RULES_TABLE = {
      * `stronghold`, P3-02); wear below `clearBelow` is cleared. A day it is assaulted, it loses none.
      */
     wearDecay: { perDay: 0.1, stronghold: 0.05, clearBelow: 0.05 },
+    /** Patch 7 (C2): the Assault list calls a target "a long siege" past this many assault days. Words only. TUNE. */
+    longSiegeDays: 7,
     /** C-21: the daily assault gains `perNeighbor` for each hex the player holds beside its target beyond the first, at most `maxNeighbors` of them (+20%). */
     flanking: { perNeighbor: 0.05, maxNeighbors: 4 },
     /**

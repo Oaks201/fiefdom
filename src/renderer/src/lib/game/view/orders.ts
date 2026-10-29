@@ -9,14 +9,15 @@
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, assaultGarrison, defenseBanners, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
+import { assaultBanners, assaultGarrison, defenseBanners, garrisonType, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
 import { realmEffects } from '../effects'
 import { fortificationValue } from '../land'
-import { claimableBy, hexIndex, hexName } from '../map'
+import { claimableBy, hexIndex, hexName, pathShares } from '../map'
 import { RULES } from '../rules'
 import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
 import { openDayOf } from '../state'
+import { rivalName } from './shell'
 import { type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
 const MS_PER_SECOND = 1_000 // rules-ok: unit conversion
@@ -56,6 +57,13 @@ export interface AssaultTarget {
   worn: number
   /** The daily assault's flanking multiple on it today (1 = none; D-22). */
   flank: number
+  /**
+   * Patch 7 (C2): assault days, today included, that bring it down with the Marshal's pick for its kind of
+   * garrison at today's Valor so far, Weary aside (1: it falls today); Infinity with no one to send.
+   */
+  days: number
+  /** Patch 7 (C2): the path its Dominion feeds ("Ugrak’s path"; a seam names both), or empty off every path. */
+  path: string
 }
 
 /** The standing siege (D-22, R-16), as the orders panel shows it. */
@@ -136,12 +144,46 @@ export function wornShare(state: CampaignState, hex: HexState, date: ISODate): n
   return siegeProgress(hex.garrisonDamage, wearCap(hex, fortificationValue(hex), garrisonMult(state, hex, date)))
 }
 
-/** Every hex a daily assault may take today (Ch 6: adjacent, not a Gate, capital or Lair Mouth). */
-export function assaultTargets(state: CampaignState, date: ISODate = openDayOf(state)): AssaultTarget[] {
+/** Whose path a hex's Dominion feeds, by name (Patch 7, C2). */
+function pathLabel(hex: HexState): string {
+  const names = (Object.entries(pathShares(hex)) as [RivalId, number][]).filter(([, s]) => s > 0).map(([r]) => `${rivalName(r)}’s`)
+  return names.length === 0 ? '' : `${names.join(' and ')} path${names.length > 1 ? 's' : ''}`
+}
+
+/**
+ * Every hex a daily assault may take today (Ch 6: adjacent, not a Gate, capital or Lair Mouth), soonest to
+ * fall first (Patch 7, C2). Its days read the Marshal's pick for each kind of garrison at `valor`, scaled by
+ * each hex's flanking, against the garrison the panel shows: no figure the player can't already see.
+ */
+export function assaultTargets(state: CampaignState, date: ISODate = openDayOf(state), valor = 1, effects: Effects = realmEffects(state)): AssaultTarget[] {
   const byId = hexIndex(state.hexes)
+  const perKind = new Map<string, number>()
+  const valueOn = (h: HexState): number => {
+    const kind = garrisonType(h).matchup
+    if (!perKind.has(kind)) {
+      const est = ordersEstimate(state, siegeOrders(state, date, h.id, effects), date, valor, effects).assaults[0]
+      perKind.set(kind, est && est.flank > 0 ? est.value / est.flank : 0)
+    }
+    return (perKind.get(kind) ?? 0) * flankingMult(byId, h.id)
+  }
   return state.hexes
     .filter((h) => claimableBy(state.hexes, h.id, 'player', 'assault'))
-    .map((h) => ({ hexId: h.id, label: hexName(h), owner: h.owner, ring: h.ring, garrison: assaultGarrison(state, h, date), worn: wornShare(state, h, date), flank: flankingMult(byId, h.id) }))
+    .map((h) => {
+      const garrison = assaultGarrison(state, h, date)
+      const value = valueOn(h)
+      return {
+        hexId: h.id,
+        label: hexName(h),
+        owner: h.owner,
+        ring: h.ring,
+        garrison,
+        worn: wornShare(state, h, date),
+        flank: flankingMult(byId, h.id),
+        days: value > 0 ? assaultDays(value, garrison) : Number.POSITIVE_INFINITY,
+        path: pathLabel(h)
+      }
+    })
+    .sort((a, b) => a.days - b.days || a.garrison - b.garrison || a.hexId.localeCompare(b.hexId))
 }
 
 /** The standing siege as the panel shows it, with today's estimate (`estimate`, from today's orders) or the Marshal's pick at `valor`. */
@@ -206,7 +248,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
       }
     }),
     assaults,
-    targets: assaultTargets(state, date),
+    targets: assaultTargets(state, date, valor, effects),
     orders,
     fromSiege: orders !== null && own === undefined,
     ...(siege ? { siege } : {}),

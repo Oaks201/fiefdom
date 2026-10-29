@@ -1,7 +1,7 @@
 import { GiCastle, GiCrossedSwords, GiScales, GiScrollUnfurled, GiShakingHands, GiTrophy } from 'react-icons/gi'
 import { numeral } from '../../lib/game/effects'
 import type { RivalPanel } from '../../lib/game/view/diplomacy'
-import { amount } from '../../lib/game/view/refusals'
+import { amount, respectShown } from '../../lib/game/view/refusals'
 import type { GuideLine, RivalGuide as Guide } from '../../lib/game/view/rivalGuide'
 import { GameArt } from '../game/GameArt'
 import { RespectMeter } from './RivalCourt'
@@ -76,7 +76,7 @@ export function RivalGuide({ panel, guide, onAudience }: { panel: RivalPanel; gu
         <div className="rival-guide__now">
           <div className="rival-guide__figure">
             <span className="rival-guide__label">His Respect for you</span>
-            <strong className="rival-guide__big">{signed(panel.respect)}</strong>
+            <strong className="rival-guide__big">{signed(respectShown(panel.respect))}</strong>
             {resolved ? (
               <span className="court__status">{STATUSES[panel.status]}</span>
             ) : (

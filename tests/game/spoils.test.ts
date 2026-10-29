@@ -141,10 +141,12 @@ test('Spoils, led fights (D-12): the result card’s spoils count in “Earned a
     assert.ok(Number(r.report?.facts.spoils) > 0, r.label)
   }
   assert.equal(spoilsOn(s, today).size, 0)
-  // The Chronicle's open-day figure already counts them: the cards' spoils on top of the day's habits.
-  const due = roundPosting([...named.values()].reduce((sum, r) => sum + Number(r.report?.facts.spoils), 0))
+  // The Chronicle's open-day figure already counts them: the cards' spoils on top of the day's habits. Patch 7 (C5):
+  // each card shows its spoils whole, while the purse keeps its tenths.
+  const shown = [...named.values()].reduce((sum, r) => sum + Number(r.report?.facts.spoils), 0)
+  const due = daySpoils(s, today)
   assert.equal(daySpoils(started.state, today), 0, 'nothing won yet')
-  assert.equal(daySpoils(s, today), due)
+  assert.ok(due > 0 && Math.abs(due - shown) <= 0.5 * named.size, `the cards' ${shown} against ${due}`)
   assert.equal(roundPosting(dayProjection(s, kept(today)) - dayProjection(started.state, kept(today))), due)
 
   const after = through(s, today)
@@ -152,7 +154,7 @@ test('Spoils, led fights (D-12): the result card’s spoils count in “Earned a
   const posted = spoilsOn(after, today)
   for (const f of fights) {
     const source = f.side === 'assault' ? `assault:${f.hexId}` : `defense:${f.threat}:${f.hexId}`
-    assert.equal(posted.get(source), Number(named.get(f.id)!.report?.facts.spoils), `${source}: the card's spoils are what the purse got`)
+    assert.equal(Math.round(posted.get(source) ?? 0), Number(named.get(f.id)!.report?.facts.spoils), `${source}: the card's spoils are what the purse got, whole`)
     assert.equal(fightResult(after, today, f.id)?.posted, true)
     assert.equal(posted.get(source), expected(state, f.hexId, f.result === 'rout', f.spoils ?? 1), source)
   }

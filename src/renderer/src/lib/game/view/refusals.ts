@@ -24,6 +24,16 @@ export function amount(n: number): string {
   return nf.format(n)
 }
 
+/** Patch 7 (C5): a figure the screens show whole: a garrison, spoils, tribute, health, a hit. The rules keep their decimals. */
+export function whole(n: number): string {
+  return nf.format(Math.round(n))
+}
+
+/** Patch 7 (C5): Respect as the screens show it, whole and cut toward 0, so it never shows a mark it hasn't reached. */
+export function respectShown(n: number): number {
+  return Math.trunc(n)
+}
+
 const nf2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 
 /** A multiplier or share as the rules state it, to two decimals (×1.25). */

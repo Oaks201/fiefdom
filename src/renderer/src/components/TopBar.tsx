@@ -161,14 +161,18 @@ export function TopBar(): React.JSX.Element {
           <span className="streak__label">{streak === 1 ? 'day' : 'days'}</span>
         </div>
         {bar ? (
-          <div className="reputation reputation--campaign" title={`${bar.grace.text} Realm Consistency over the last 28 days: ${bar.realmConsistencyPercent}%.`}>
+          <div
+            className="reputation reputation--campaign"
+            title={`The purse: reputation to spend. Realm Consistency over the last 28 days: ${bar.realmConsistencyPercent}%. ${bar.grace.text}`}
+          >
             <GameArt slot="ui.icon.purse" width={46} fallback={<WaxSeal color="gold" icon={GiLaurelCrown} size={46} seed={5} />} />
             <span className="reputation__text">
               <span className="reputation__value">
                 <AnimatedNumber value={bar.purse} />
               </span>
+              {/* Patch 7 (C7): the parts named, not only on hover. */}
               <span className="reputation__label">
-                Purse · {bar.realmConsistencyPercent}% · Grace {bar.grace.level === 0 ? 'none' : NUMERALS[bar.grace.level - 1]}
+                Consistency {bar.realmConsistencyPercent}% · Grace {bar.grace.level === 0 ? 'none' : NUMERALS[bar.grace.level - 1]}
               </span>
             </span>
           </div>
