@@ -14,11 +14,12 @@ import { pendingBattles } from '../../src/renderer/src/lib/game/grand'
 import { realmConsistencyOn, restDayIncome, settle, snapshotOf, valorOn } from '../../src/renderer/src/lib/game/settle'
 import { isRestDay } from '../../src/renderer/src/lib/game/state'
 import type { BattleSetup, CampaignState, GrandBattle } from '../../src/renderer/src/lib/game/types'
-import { stepPace } from '../../src/renderer/src/lib/game/view/chronicle'
+import { liveValor, liveValorParts, stepPace } from '../../src/renderer/src/lib/game/view/chronicle'
 import { ordersView } from '../../src/renderer/src/lib/game/view/orders'
 import { heraldView } from '../../src/renderer/src/lib/game/view/shell'
 import type { Ledger } from '../../src/renderer/src/lib/types'
 import { START, chicago, goodDay, ledgerWith, steadyLedger, withDay } from './fixtures/ledgers'
+import { near } from './support/assert'
 import { realm, withPurse } from './support/realm'
 
 const LEDGER = steadyLedger('2026-09-10', 60)
@@ -97,6 +98,18 @@ test('D-54: the week’s step pool shrinks by a rest day’s share, and its pay 
   // The Chronicle's week bar: a 70,000 pool with one rest day asks 60,000.
   const pace = stepPace([], 70_000, '2026-10-14', 1, undefined, ['2026-10-13'])
   assert.deepEqual([pace.pool, pace.rested, pace.daysElapsed], [60_000, 1, 2])
+})
+
+test('D-54: the Chronicle’s live Valor leaves the week’s rest days out of the step pace, so the Valor today’s battles lock is the one the close settles', () => {
+  // 6,000 steps a day against a 50,000 pool; the rest day walks none.
+  const idle = blank(ledgerWith('2026-09-10', 60, () => goodDay({ steps: 6_000 })), TODAY)
+  const next = addDays(TODAY, 1)
+  const open = settle(restToday(opened(idle)), idle, chicago(next)).state
+  const parts = liveValorParts(open, idle, next)
+  near(parts.steps, 12_000 / ((50_000 * 2) / 7), 1e-12)
+  assert.equal(liveValor(open, idle, next), parts.valor)
+  const closed = settle(open, idle, chicago(addDays(next, 1))).state
+  near(valorOn(closed, next, 1), parts.valor, 1e-12)
 })
 
 test('D-54: the realm fights its day as usual, at a Valor of Realm Consistency, and the contract ends on its day', () => {
