@@ -102,7 +102,7 @@ function raidsHowOften(rival: RivalId): string {
 }
 
 /** The habit he prizes (A-38), as a week of it. */
-function prizedWeek(rival: RivalId): string {
+export function prizedHabit(rival: RivalId): string {
   switch (CODEX.rivals.find((r) => r.id === rival)?.prizes) {
     case 'noLostBattle':
       return 'A week with no battle lost'
@@ -286,7 +286,7 @@ function deedsOf(rival: RivalId): Deed[] {
     ...(m.sellsHex !== null ? [{ deed: 'A hex bought from him', respect: c.tradeOrTruce, renown: byDeal }] : []),
     { deed: 'A hex of yours sold to him', respect: c.hexSold },
     ...(truce !== 0 ? [{ deed: 'A Truce with him', respect: truce }] : []),
-    { deed: prizedWeek(rival), respect: c.prizedWeek },
+    { deed: prizedHabit(rival), respect: c.prizedWeek },
     { deed: 'Beasts beaten on a hex of his march', renown: `${signed(d.heldAgainstBeasts)} (a mythic ${signed(d.heldAgainstMythic)})` },
     { deed: 'Resolving him, by any way', renown: signed(d.resolved) }
   ]

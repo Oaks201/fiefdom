@@ -409,7 +409,7 @@ export interface WeekHabits {
 }
 
 /** A battle of any kind the player lost in the days `from` through `to`: a defense, a repulsed assault or a Grand Battle. */
-function lostBattle(state: CampaignState, from: ISODate, to: ISODate): boolean {
+export function lostBattle(state: CampaignState, from: ISODate, to: ISODate): boolean {
   return state.log.some((e) => {
     if (e.day < from || e.day > to) return false
     if (e.kind === 'defense') return e.outcome === 'defeat'

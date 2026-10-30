@@ -993,6 +993,118 @@
   color: var(--ink-3);
 }
 
+/* Patch 8 (A1 to A4): his words: the day's greeting, the thing on his mind, and his answer to the player. */
+.audience__speech p {
+  margin: 0;
+}
+
+.audience__speech p + p {
+  margin-top: 10px;
+}
+
+.audience__topic {
+  color: var(--ink-2);
+}
+
+.audience__reply {
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule);
+  font-weight: 600;
+}
+
+/* The rule his words rest on, plainly. */
+.audience__rule {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+/* Patch 8 (A3): what the player may ask him. */
+.audience__questions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: -6px 0 18px;
+}
+
+/* Patch 8 (A5): the offers, a card each; a hex trade is one card with its picker. */
+.offers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(255, 252, 242, 0.6);
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--court, #8a7a66);
+  border-radius: 10px;
+}
+
+.offer.is-shut {
+  border-top-color: var(--rule);
+}
+
+.offer.is-highlight {
+  box-shadow: 0 0 0 2px var(--crimson);
+}
+
+.offer__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.offer__title {
+  font: 700 16px/1.2 var(--font-caps);
+}
+
+.offer__price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.offer__pick {
+  width: 100%;
+}
+
+.offer__does,
+.offer__needs {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.offer__needs {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.offer__act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.offer__why {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
 .audience__options {
   display: flex;
   flex-direction: column;

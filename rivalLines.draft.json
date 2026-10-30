@@ -1,0 +1,297 @@
+{
+  "_about": "Claude's drafts for Patch 8 (D-62), for Rich to review. Development builds show them beside rivalLines.json; release builds never do. To approve a line, move it into rivalLines.json under the same ruler and key (and edit it as you like). Placeholders: {hex} a hex's name, {rival} a ruler's short name, {days} a span such as 'a day' or '2 days'.",
+  "rivals": {
+    "ugrak": {
+      "greetings": {
+        "-75": ["The crows already circle your banners, lordling. They know what comes.", "Ugrak sharpens one axe for one neck. Guess whose."],
+        "-50": ["You come to my tent unarmed? Brave. Or stupid. On the Steppe it is the same.", "Every raid on your land is a song at my fire. We have many songs now."],
+        "-25": ["Talk fast, lordling. My patience is a short horse, and it is tired.", "You owe the Steppe blood. Today, maybe only words."],
+        "0": ["Another soft lord with a castle. The Steppe has buried many.", "Ugrak listens. That is more than most get."],
+        "25": ["You hold your ground. Ugrak notices such things.", "Your soldiers fought well at the border. Not well enough. But well."],
+        "40": ["Sit. Drink. Do not spill it; it is the good kind.", "The Steppe is quiet toward you. Do not mistake quiet for soft."],
+        "50": ["My chieftains argue about you. The loud ones say you are strong. I let them win.", "You come again. Good. Ugrak likes a lord who returns."],
+        "60": ["When you fight, you fight to the end. That is the only thing Ugrak respects.", "Your name is carved on a war-post now. Small letters. Still."],
+        "75": ["Brother of the Steppe. Take the seat by the fire. No one else may.", "Ask, and the horns of the Steppe will sound for you. Ask rarely."]
+      },
+      "deals": {
+        "truce": "A truce. My axes rest. Count the days, lordling, because I will.",
+        "pact": "No war-bands on your border. Ugrak's word. Do not test it.",
+        "callToArms": "You pay for a war Ugrak wanted anyway. Good trade.",
+        "sellHex": "This land is the Steppe's now. The Steppe thanks you. Ugrak does not.",
+        "buyout": "Your coin is heavier than their promises. Ugrak walks away."
+      },
+      "refusals": {
+        "respect": "You have not earned this. Bleed for it first.",
+        "notYet": "Not yet, lordling. Come back stronger.",
+        "atWar": "We are at war. Ugrak does not bargain with axes raised.",
+        "atPeace": "There is no war to stop. Why pay for quiet you already have?",
+        "cooldown": "One trade a season. Ugrak is not a merchant.",
+        "inForce": "We already have this. Ugrak's word does not need saying twice.",
+        "reputation": "Your purse is empty. Words do not feed warriors.",
+        "neverSells": "The Steppe is not for sale. Take it, if you can.",
+        "other": "No. Ugrak has spoken."
+      },
+      "topics": {
+        "tookHex": "You took {hex} from me. Good fight. It will not happen again.",
+        "courted": "{hex} went to you for coin and sweet words. Cowards' land. Keep it.",
+        "raidBeaten": "My warriors came home from {hex} with nothing but bruises. You fight well. Annoying.",
+        "raidWon": "We burned {hex}. Do not cry; it grows back.",
+        "boughtHex": "{hex} is the Steppe's now. My warriors already sleep there.",
+        "tookFrom": "I took {hex} from {rival}. The Steppe grows.",
+        "lostTo": "{rival} took {hex} from me. Ugrak will take it back, and more.",
+        "tookWilds": "We cleared the beasts from {hex}. Their hides keep us warm.",
+        "lostToWilds": "The beasts took {hex} back. Even Ugrak cannot kill everything at once.",
+        "frontWar": "{rival} and I are at war. Finally. The Steppe was getting bored.",
+        "frontPeace": "Peace with {rival}. For now. Peace is only the space between wars.",
+        "neighborFell": "{rival} has fallen to you. Strong. Ugrak will not fall so easily.",
+        "neighborAllied": "{rival} kneels to you now? Soft. The Steppe kneels to no one.",
+        "siegeOnHim": "Your soldiers squat outside {hex}. Come in and take it, if you can.",
+        "truceEnding": "Our truce ends in {days}. Sharpen your blades.",
+        "pactHolds": "The pact holds for {days} more. Ugrak keeps his word, with his teeth clenched.",
+        "coalition": "{rival} and I have joined against you. Be honored. We do not band together for small lords.",
+        "emboldened": "I have {rival} on the run. The Steppe is hungry for more.",
+        "humbled": "{rival} beat my war-bands. Do not smile. It will not last.",
+        "habitKept": "No battle lost this week. You fight like you mean it.",
+        "habitSlipping": "You lost a battle this week. Get up. The Steppe only remembers who gets up."
+      },
+      "relations": {
+        "war": "{rival}? We are at war. I will wear their banner as a cloak.",
+        "tension": "{rival} and I growl at each other across the border. Nothing more. Yet.",
+        "peace": "{rival} keeps the peace with me. For now, that is enough.",
+        "partner": "{rival} fights beside me against you. Do not expect me to apologize.",
+        "fallen": "{rival} is finished. You did that. Ugrak remembers strength.",
+        "allied": "{rival} bends the knee to you now. Ugrak never will."
+      },
+      "of": {
+        "skivvet": "The rat counts coins while braver folk bleed. Never trust a smile with that many teeth.",
+        "hrodgar": "The stone-man hides behind walls. Walls fall. Ugrak has seen it.",
+        "emrys": "The sorcerer fights with smoke and words. Ugrak does not trust smoke."
+      },
+      "wishes": [
+        "Fight. Win. Lose no battle you can win. That is all the Steppe asks.",
+        "Come at my border with steel, not coin. Ugrak respects the ones who fight."
+      ],
+      "noNews": "No news. The Steppe is quiet. Ugrak does not like quiet."
+    },
+    "skivvet": {
+      "greetings": {
+        "-75": ["Guards, count the spoons. All of them. Twice.", "Landlord! Still alive? That's going to cost somebody money. Probably me."],
+        "-50": ["Interest on a grudge compounds, friend. Yours is looking very healthy.", "I'd offer you a seat, but I've sold them all to people who like me."],
+        "-25": ["Let's keep this short. Short meetings are cheap meetings.", "You're a bad investment, landlord. I've told my ledgers to stop hoping."],
+        "0": ["Welcome, welcome! Mind the floor, it's for sale.", "A new face in the Warren! New faces always pay full price."],
+        "25": ["You're starting to look like a customer, landlord. Don't spoil it.", "Business is business, and you, friend, are almost business."],
+        "40": ["Tea? First cup's free. The second is a negotiation.", "I like a neighbor who pays on time. Keep it up and we'll get along famously."],
+        "50": ["Friend! My clerks smile when your name comes up. Clerks never smile.", "I've put your name in the good ledger. The small one. With the gold edges."],
+        "60": ["For you, the friend's discount. It's the same price, but I say it warmly.", "If anyone asks, I never liked you. Bad for haggling. Between us, though..."],
+        "75": ["Partner! Every vault in the Warren knows your name. Most of them like it.", "You and me, landlord. The richest friendship this side of the Rim."]
+      },
+      "deals": {
+        "truce": "A truce! Peace is wonderful for business. Pleasure, as always.",
+        "pact": "Non-aggression, signed and sealed. My lawyers are thrilled. I don't have lawyers. Yet.",
+        "callToArms": "A war on a neighbor, paid in advance! My favorite kind of contract.",
+        "sellHex": "Sold! To me! Best deal you'll make all week. I checked.",
+        "buyout": "Out of the alliance and into profit. A fine morning's work.",
+        "accord": "An Accord! Partners in everything. Well, nearly everything."
+      },
+      "refusals": {
+        "respect": "Your credit's not good enough for that one, friend. Come back better thought of.",
+        "notYet": "Not yet! Good things come to those who invest.",
+        "atWar": "We're at war, landlord! Bad for business. Unless you're selling weapons.",
+        "atPeace": "We're already at peace! I can't sell you what you've got. Well, I could, but you'd notice.",
+        "cooldown": "One land deal a month, friend. My clerks need their sleep.",
+        "inForce": "You've already got one of those. Two would be greedy. That's my job.",
+        "reputation": "Lovely offer. Pity about your purse.",
+        "neverSells": "Buy it? Oh no, friend. You bribe it. Completely different paperwork.",
+        "other": "Can't do it, friend. Wish I could. Mostly."
+      },
+      "topics": {
+        "tookHex": "You took {hex} by force, landlord. I'm adding it to your bill.",
+        "courted": "You charmed {hex} away from me! Lovely technique. I'll be stealing it.",
+        "raidBeaten": "My lads came back from {hex} empty-handed. Bad for morale. Worse for profits.",
+        "raidWon": "We paid {hex} a visit. You'll find a receipt. Somewhere.",
+        "boughtHex": "{hex} is mine now. Fair and square. Mostly square.",
+        "tookFrom": "I relieved {rival} of {hex}. Bargain price, too: free.",
+        "lostTo": "{rival} took {hex} from me. I'll be sending an invoice.",
+        "tookWilds": "We cleared the beasts out of {hex}. Property values are up.",
+        "lostToWilds": "Beasts took {hex}. Terrible tenants. Never pay rent.",
+        "frontWar": "{rival} and I are at war. War's good business, until it isn't.",
+        "frontPeace": "Peace with {rival}! Trade routes open, prices fair. Well, fair-ish.",
+        "neighborFell": "{rival} is finished, I hear. Pity. Excellent customer.",
+        "neighborAllied": "{rival} signed with you? Hope you read the fine print. I always add fine print.",
+        "siegeOnHim": "Your camp outside {hex} is scaring off my customers, landlord.",
+        "truceEnding": "Our truce runs out in {days}. Want to extend? I can do you a price.",
+        "pactHolds": "Our pact has {days} to run. Peace and profit, friend.",
+        "coalition": "{rival} and I are in business together. Against you, I'm afraid. Nothing personal; it's profitable.",
+        "emboldened": "{rival} is losing to me on our border. Delightful. Their prices are already dropping.",
+        "humbled": "{rival} has my lads beaten on the border. Don't mention it. Ever.",
+        "habitKept": "Your food ledger's been neat and honest all week, friend. A lord who keeps good books keeps good coin. I like that.",
+        "habitSlipping": "Your food ledger's been a little patchy this week, landlord. A good merchant fills in every page. Even the boring ones."
+      },
+      "relations": {
+        "war": "{rival}? We're at war. Terrible for trade, wonderful for weapon sales.",
+        "tension": "{rival} and I have a complicated account. Neither of us pays on time.",
+        "peace": "{rival} and I are at peace. Peace means trade, and trade means me.",
+        "partner": "{rival} and I are partners right now. Against you. Strictly business.",
+        "fallen": "{rival} is out of business. You did that? Remind me never to owe you money.",
+        "allied": "{rival} went into partnership with you. Smart. I'd have charged more."
+      },
+      "of": {
+        "ugrak": "Great customer! Breaks everything, then buys new. A goblin could get rich just following him around.",
+        "hrodgar": "Hrodgar wouldn't spend a copper to save his own beard. Hard man to sell to.",
+        "emrys": "Emrys pays in riddles. I don't take riddles. I tried once. The ledger caught fire."
+      },
+      "wishes": [
+        "Keep your books tidy, friend, your food ledger too. A lord who keeps good accounts keeps good company.",
+        "Trade with me. Buy, sell, bribe, I'm not fussy. Just keep the coin moving."
+      ],
+      "noNews": "No news worth selling, friend. Ask me tomorrow."
+    },
+    "hrodgar": {
+      "greetings": {
+        "-75": ["Speak, outsider. Every word you say will be written down, and none of it forgiven.", "The anvil does not cool for you. Neither do I."],
+        "-50": ["Your banners hang as targets in every forge in Dun Kaldor.", "I grant you this audience as I grant the winter its due. Grudgingly."],
+        "-25": ["You walk on thin planks over a deep shaft, outsider. Mind your step.", "Another line in the book of grudges. Shall I read you the others?"],
+        "0": ["An outsider at the gate. State your business. Briefly.", "Dun Kaldor has seen lords come and go. Mostly go."],
+        "25": ["You have not broken your word yet. The clans have noticed.", "Stone weathers slowly. So does trust. Be patient."],
+        "40": ["Sit, outsider. The bench is old and so is the peace. Mind both.", "Your word has held this season. Mine will too."],
+        "50": ["The elders spoke your name in council, and no one left the hall.", "Stand by the hearth, outsider. It is warmer there than it was."],
+        "60": ["You keep faith like a dwarf. I say that of very few.", "The hammers of Dun Kaldor know your name. They ring a little lighter for it."],
+        "75": ["Friend of the stone. Your name will outlast us both in this hall.", "Sit at my right hand, friend. Few have sat there, and fewer were asked."]
+      },
+      "deals": {
+        "truce": "A truce, then. It holds as long as stone holds. See that it does.",
+        "pact": "Sworn on the anvil. Break it, and the book of grudges will need a new volume.",
+        "callToArms": "The hammers march at your word. Dun Kaldor settles its own scores too.",
+        "sellHex": "The land comes home to the mountain. A fair trade, outsider.",
+        "buyout": "The alliance is broken. Grudge or no grudge, a dwarf knows a fair price.",
+        "accord": "We shall carve this Accord in the great hall. Mind the letters; they last."
+      },
+      "refusals": {
+        "respect": "Trust is earned in years, outsider, not in coin.",
+        "notYet": "Not yet. Stone is not cut in a day.",
+        "atWar": "The forges ring for war. There is nothing to sign while they do.",
+        "atPeace": "We are at peace already. A dwarf does not buy what he has.",
+        "cooldown": "One trade of land at a time. The mountain moves slowly.",
+        "inForce": "That oath already stands. An oath is not sworn twice.",
+        "reputation": "You cannot pay it. Dwarves give no credit.",
+        "neverSells": "Dun Kaldor sells no stone. Not to you. Not to anyone.",
+        "other": "No. And a dwarf's no is the end of it."
+      },
+      "topics": {
+        "tookHex": "You took {hex} by force. It is written in the book. Every stone of it.",
+        "courted": "{hex} turned to you for coin. Stone bought is stone borrowed, outsider.",
+        "raidBeaten": "Your line at {hex} held against my clans. Good work. I will remember it.",
+        "raidWon": "The clans broke your line at {hex}. Build thicker walls.",
+        "boughtHex": "{hex} has come home to the mountain. It will not leave again.",
+        "tookFrom": "We took {hex} from {rival}. An old grudge, settled at last.",
+        "lostTo": "{rival} took {hex} from us. It is in the book. In red.",
+        "tookWilds": "We drove the beasts out of {hex} and raised a wall. Slowly. Properly.",
+        "lostToWilds": "The wilds took {hex} back. Even stone wears.",
+        "frontWar": "The hammers ring for war with {rival}. Grudges do not keep forever. Ours nearly do.",
+        "frontPeace": "Peace with {rival}. Sworn on the anvil. We shall see if it holds.",
+        "neighborFell": "{rival} has fallen to you. The mountain notes it. The mountain notes everything.",
+        "neighborAllied": "{rival} is sworn to you now. I hope they keep it better than they kept others.",
+        "siegeOnHim": "You besiege {hex}. Dwarven walls are patient. Are you?",
+        "truceEnding": "Our truce ends in {days}. Then we speak again, one way or the other.",
+        "pactHolds": "Our oath holds for {days} more. A dwarf counts every day of an oath.",
+        "coalition": "{rival} and I stand together against you. Even old grudges bend for a common one.",
+        "emboldened": "We have {rival} beaten on our border. The forges sing of it.",
+        "humbled": "{rival} has the better of us on our border. It is in the book. We will turn that page.",
+        "habitKept": "You have walked your measure this week. A dwarf respects a lord who keeps pace.",
+        "habitSlipping": "You are behind your measure of steps this week. There is time yet. The mountain is climbed one step at a time."
+      },
+      "relations": {
+        "war": "{rival}? We are at war. The hammers do not rest.",
+        "tension": "{rival} and I watch each other across the border. Neither trusts the other. Wisely.",
+        "peace": "{rival} keeps the peace with Dun Kaldor. Their word holds, so far.",
+        "partner": "{rival} stands with me against you. Old grudges set aside for a new one.",
+        "fallen": "{rival} has fallen. The book holds their name still. It holds every name.",
+        "allied": "{rival} is sworn to you now. An oath is a heavy thing. I hope they carry it."
+      },
+      "of": {
+        "ugrak": "The orc is a storm. Storms pass. Stone remains.",
+        "skivvet": "The goblin's word is worth exactly what he paid for it.",
+        "emrys": "The mage has lived long and remembers everything, except his promises."
+      },
+      "wishes": [
+        "Keep your word, outsider, and keep your feet moving. A lord who walks his measure keeps his oaths.",
+        "Do not break my walls, and do not break your promises. The rest can be talked about."
+      ],
+      "noNews": "Nothing new. The mountain does not gossip."
+    },
+    "emrys": {
+      "greetings": {
+        "-75": ["Ah, my favorite experiment. Do try to survive this one.", "Every star I read spells your ruin. I checked twice. Delightful."],
+        "-50": ["Your name keeps turning up in my curses. I really should vary them.", "I've had the tower's lightning rods turned toward your castle. Purely decorative. For now."],
+        "-25": ["Make it quick. I have centuries to waste, but not on you.", "Ah. The lord who keeps disappointing me. Do go on."],
+        "0": ["You've wandered into my tower. Do try not to touch anything that hums.", "I've seen empires rise and crumble. You are, so far, neither."],
+        "25": ["You're improving. Slowly. Like mold, but with ambition.", "I've stopped forgetting your name. Take that as a compliment."],
+        "40": ["Sit, if you must. The chair is enchanted, but only mildly.", "The stars are calm about you this season. I find that suspicious, but fine."],
+        "50": ["You again. Good. The others bore me terribly.", "I made tea. It may not be tea. Drink it anyway; you'll be fine. Probably."],
+        "60": ["My apprentices ask about you. I tell them you're a cautionary tale with promise.", "I've written you into my memoirs. A short chapter, but well lit."],
+        "75": ["Ah, my one tolerable acquaintance. Sit. I've been saving a good argument for you.", "Centuries of solitude, and now there's you. I suppose I'll allow it."]
+      },
+      "deals": {
+        "truce": "A truce. How quaint. I'll pencil it in.",
+        "pact": "Non-aggression. I wasn't going to aggress anyway, but it's nice to have it in writing.",
+        "callToArms": "You want me to unleash something on a neighbor? I thought you'd never ask.",
+        "sellHex": "I'll take it. The ley lines there are ghastly, but I enjoy a project.",
+        "buyHex": "It's yours. Do water the strange plants; they bite when neglected.",
+        "buyout": "Very well, I'll leave them. Coalitions are tedious anyway.",
+        "accord": "An Accord. Fine. Don't make me regret being pleasant."
+      },
+      "refusals": {
+        "respect": "I don't do that for people I barely tolerate. Try being less tedious.",
+        "notYet": "Not yet. Patience. I have centuries of it; borrow some.",
+        "atWar": "We're at war, my dear lord. Bargains come after the fireworks.",
+        "atPeace": "We're already at peace. Paying for it twice would be adorable, though.",
+        "cooldown": "Again? So soon? Land deals bore me. Come back in a month.",
+        "inForce": "We already have one of those. I remember things. It's rather my whole profession.",
+        "reputation": "You can't afford me. Few can.",
+        "neverSells": "That isn't for sale. Not even to you.",
+        "other": "No. I'd explain why, but you wouldn't follow."
+      },
+      "topics": {
+        "tookHex": "You took {hex}. Crude, but effective. I've seen worse taste.",
+        "courted": "You charmed {hex} away from me. I didn't know you could charm anything.",
+        "raidBeaten": "My little expedition to {hex} came back singed. Well done, I suppose.",
+        "raidWon": "My students tested a few spells on {hex}. Educational, for everyone.",
+        "boughtHex": "{hex} is mine now. The ley lines are already improving.",
+        "tookFrom": "I relieved {rival} of {hex}. They weren't using it properly.",
+        "lostTo": "{rival} took {hex} from me. How tiresome. I'll have it back by teatime. Or next century.",
+        "tookWilds": "I cleared the beasts from {hex}. They make wonderful reagents.",
+        "lostToWilds": "The wild magic took {hex} back. It does that. Rude, really.",
+        "frontWar": "{rival} and I are at war. Finally, something interesting.",
+        "frontPeace": "Peace with {rival}. Dull, but it frees my afternoons.",
+        "neighborFell": "{rival} has fallen to you. Impressive. I'll update my notes.",
+        "neighborAllied": "{rival} is your ally now? I'd have chosen better company. I am better company.",
+        "siegeOnHim": "You're besieging {hex}. My wards find it rather ticklish.",
+        "truceEnding": "Our truce ends in {days}. I've already chosen the first spell.",
+        "pactHolds": "Our pact has {days} to run. I'm being remarkably well behaved.",
+        "coalition": "{rival} and I have teamed up against you. Don't take it personally. Do take it seriously.",
+        "emboldened": "I've humbled {rival} on our border. They're still smoking.",
+        "humbled": "{rival} has the better of me on our border, for the moment. Moments pass.",
+        "habitKept": "You've kept every duty this week. Discipline! How unexpected. I approve.",
+        "habitSlipping": "A duty or two slipped this week. Consistency, my dear lord, is the only real magic. Pick it back up."
+      },
+      "relations": {
+        "war": "{rival}? We're at war. It's the most fun I've had in a decade.",
+        "tension": "{rival} and I exchange cold looks across the border. Mine are colder.",
+        "peace": "{rival} and I are at peace. They're tolerable at a distance.",
+        "partner": "{rival} and I are allied against you. An unlikely pair, I know. I'm the clever one.",
+        "fallen": "{rival} has fallen. I'd say I'll miss them, but I never lie before noon.",
+        "allied": "{rival} has thrown in with you? They always did like a sure thing."
+      },
+      "of": {
+        "ugrak": "Loud, sincere and dreadfully simple. I almost like him.",
+        "skivvet": "Skivvet would sell his own shadow. I suspect he already has, twice.",
+        "hrodgar": "Hrodgar has kept one grudge longer than most kingdoms have stood. I find it oddly efficient."
+      },
+      "wishes": [
+        "Keep every duty, every day. Consistency is the only real magic. Everything else is fireworks.",
+        "Leave my lands alone and keep your days in order. That's all. I'm very easy to please. Ask anyone. Actually, don't."
+      ],
+      "noNews": "Nothing of note. The world is being dreadfully dull this week."
+    }
+  }
+}

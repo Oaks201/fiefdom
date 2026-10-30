@@ -186,7 +186,7 @@ export function restDayIncome(state: CampaignState, day: ISODate, dutiesSworn: n
 }
 
 /** The terms weekly income and Realm Consistency are judged by: `day`'s Charter and the current Healer floor (A-124). */
-function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
+export function currentTerms(state: CampaignState, day: ISODate): ScoreTerms {
   return termsOf(charterOn(state, day), state.weight.healerFloor)
 }
 

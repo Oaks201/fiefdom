@@ -119,7 +119,7 @@ function factText(value: string | number): string {
   return `${WEEKDAYS_SHORT[weekdayOf(value)]}, ${MONTHS_SHORT[month - 1]} ${day}`
 }
 
-function fill(text: string, facts: TextFacts): string {
+export function fill(text: string, facts: TextFacts): string {
   return text.replace(PLACEHOLDER, (whole, name: string) => (name in facts ? factText(facts[name]) : whole))
 }
 
