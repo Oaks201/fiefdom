@@ -17,9 +17,10 @@
  *   T10 takes the money from the treasury when it bids; resolution refunds half to a rival that
  *   doesn't end up with the village (`outbidRefundShare`), and a counter-bid is never refunded.
  *   Rival bids that no player courtship took in resolve in `resolveRivalCourtships`, by the same rules.
- * - T08 and T10 read `blocksRaids`, `blocksConquest` (both include a running Accord) and
- *   `raidRateMult`; T10 reads `callToArmsOn` to hold a front at War, and fortifies rival hexes with
- *   `fortificationCost` and `fortificationCap`.
+ * - T08 and T10 read `blocksRaids` and `blocksConquest` (both include a running Accord); T10 reads
+ *   `callToArmsOn` to hold a front at War, and fortifies rival hexes with `fortificationCost` and
+ *   `fortificationCap`. Combat calls `breakDeals` when the player assaults the land of a rival whose
+ *   Truce, pact or oath binds them (Patch 8, D-64).
  *
  * Player actions taken outside settlement (bids, deals, fortifying, reclaiming) post their events
  * straight to `state.log`, dated the day they are taken. Refusals are codes with plain facts; deal
@@ -31,11 +32,11 @@ import { addDays, diffDays } from './clock'
 import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './map'
-import { pactBars } from './personalities'
+import { greedBand, pactBars } from './personalities'
 import { RULES, byTier } from './rules'
 import { marksFor, respectChange } from './respect'
-import { EventBuffer, adjustRespect, coalitionPartners, hexOf, inCoalition, isPlayable, openDayOf, replaceHex, toPlayer, toRival } from './state'
-import { RIVAL_IDS, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
+import { EventBuffer, adjustRespect, bindingDeals, coalitionPartners, dealOn, hexOf, inCoalition, isPlayable, openDayOf, patchRival, replaceHex, toPlayer, toRival, withHires } from './state'
+import { BARGAIN_CHOICES, RIVAL_IDS, type BargainChoice, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
 
 // ── Refusals and results ─────────────────────────────────────────────────────
 
@@ -361,6 +362,12 @@ export type DealRefusalCode =
   /** Patch 4 (D-33): a buy-off pact is the Goblin's to offer, never the player's to ask. */
   | 'offeredOnly'
   | 'reputation'
+  /** Patch 8 (D4, D-64): another ruler's own deal. */
+  | 'notOffered'
+  /** Patch 8 (D4): Ugrak's trial comes once every 4 weeks. */
+  | 'tooSoon'
+  /** Patch 8 (D4): Emrys's bargain needs a choice. */
+  | 'noChoice'
 
 export interface DealRefusal {
   code: DealRefusalCode
@@ -376,6 +383,8 @@ export interface DealRequest {
   hexId?: string
   /** The rival a call to arms is against. */
   target?: RivalId
+  /** Patch 8 (D4): what Emrys's bargain buys. */
+  choice?: BargainChoice
 }
 
 export interface DealOffer extends DealRequest {
@@ -390,9 +399,9 @@ function dealRefusal(code: DealRefusalCode, facts: { needed?: number; have?: num
   return { code, textId: `herald.deal.refused.${code}`, ...facts }
 }
 
-/** Whether an agreement of `kind` with `rival` holds on `day` (its `until` is its last day, A-123). */
+/** Whether an agreement of `kind` with `rival` holds on `day` (its `until` is its last day, A-123), unbroken. */
 function inForce(state: CampaignState, rival: RivalId, kind: DealKind, day: ISODate): boolean {
-  return state.deals.some((d) => d.rival === rival && d.kind === kind && d.madeOn <= day && (d.until === undefined || day <= d.until))
+  return dealOn(state, rival, kind, day) !== undefined
 }
 
 /** An Accord with `rival` runs on `day`: the contract in the slot is one (Ch 14, D-01). */
@@ -401,20 +410,66 @@ function accordOn(state: CampaignState, rival: RivalId, day: ISODate): boolean {
   return c !== undefined && c.kind === 'accord' && c.rival === rival && c.startDate <= day && day <= c.endDate
 }
 
-/** A Truce (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no raids from it. */
+/**
+ * A Truce (Ch 6), a non-aggression pact or oath of stone (Patch 8, D2: his raids stop altogether) or an Accord
+ * (Ch 14) with `rival` holds on `day`: no raids from it.
+ */
 export function blocksRaids(state: CampaignState, rival: RivalId, day: ISODate): boolean {
   // Patch 4 (C-35): a Goblin buy-off pact holds his raids too.
-  return inForce(state, rival, 'truce', day) || accordOn(state, rival, day) || inForce(state, rival, 'buyOff', day)
+  return (['truce', 'pact', 'oath', 'buyOff'] as const).some((k) => inForce(state, rival, k, day)) || accordOn(state, rival, day)
 }
 
-/** A Truce, a non-aggression pact (Ch 6) or an Accord (Ch 14) with `rival` holds on `day`: no conquest attempts from it. */
+/** Whatever stops his raids stops his conquest attempts (Ch 6, Ch 14). */
 export function blocksConquest(state: CampaignState, rival: RivalId, day: ISODate): boolean {
-  return blocksRaids(state, rival, day) || inForce(state, rival, 'pact', day)
+  return blocksRaids(state, rival, day)
 }
 
-/** A non-aggression pact halves a rival's raid rate (Ch 6): the multiplier on its raider weight. */
-export function raidRateMult(state: CampaignState, rival: RivalId, day: ISODate): number {
-  return inForce(state, rival, 'pact', day) ? RULES.trade.pact.raidRateMult : 1
+/**
+ * Patch 8 (D2, D-64): a pact or oath of stone holds with `rival` on `day`, so his army turns on his neighbors:
+ * the multiple on his Rim fronts' skirmishes and on his siege of the wilds.
+ */
+export function pactFreesArmy(state: CampaignState, rival: RivalId, day: ISODate): boolean {
+  return inForce(state, rival, 'pact', day) || inForce(state, rival, 'oath', day)
+}
+
+/**
+ * Patch 8 (D2, D3, D4, D-64): a deal's last day has closed. A pact or oath kept to its end pays its Respect; a
+ * call to arms reports the hexes its rival took from the target while it ran, and pays if he took any.
+ */
+export function dealEnds(input: CampaignState, d: Deal, day: ISODate, emit: Emit): CampaignState {
+  if (d.brokenOn !== undefined || input.rivals[d.rival].status !== 'active') return input
+  const t = RULES.trade
+  if (d.kind === 'pact' || d.kind === 'oath') {
+    emit('dealEnded', { rival: d.rival, deal: d.kind, how: 'kept' })
+    return adjustRespect(input, d.rival, d.kind === 'oath' ? t.oath.keptRespect : t.pact.keptRespect, `${d.kind}Kept`, emit)
+  }
+  if (d.kind === 'callToArms' && d.target) {
+    const taken = input.log.filter((e) => e.kind === 'hexTransfer' && e.from === d.target && e.to === d.rival && e.day >= d.madeOn && e.day <= day).length
+    emit('dealEnded', { rival: d.rival, deal: d.kind, how: 'kept', target: d.target, taken })
+    return taken > 0 ? adjustRespect(input, d.rival, t.callToArms.answeredRespect, 'callAnswered', emit) : input
+  }
+  return input
+}
+
+/**
+ * Patch 8 (D1, D2, D4, D-64): the player's assault on `rival`'s land on `day` breaks every deal of his that binds
+ * them: it ends that day and his Respect falls by its `brokenRespect`. A pact or oath also leaves him at War for
+ * `wrongedDays` whatever his Respect, and every other ruler hears of it; an oath opens his Book of Grudges.
+ */
+export function breakDeals(input: CampaignState, rival: RivalId, day: ISODate, emit: Emit): CampaignState {
+  const broken = bindingDeals(input, rival, day)
+  if (broken.length === 0) return input
+  const t = RULES.trade
+  let state: CampaignState = { ...input, deals: input.deals.map((d) => (broken.includes(d) ? { ...d, brokenOn: day, until: day } : d)) }
+  for (const d of broken) {
+    emit('dealEnded', { rival, deal: d.kind, how: 'broken' })
+    const loss = d.kind === 'truce' ? t.truce.brokenRespect : d.kind === 'oath' ? t.oath.brokenRespect : t.pact.brokenRespect
+    state = adjustRespect(state, rival, loss, `${d.kind}Broken`, emit)
+    if (d.kind === 'truce') continue
+    state = patchRival(state, rival, { wrongedUntil: addDays(day, t.pact.wrongedDays), ...(d.kind === 'oath' ? { grudge: true as const } : {}) })
+    for (const other of RIVAL_IDS) if (other !== rival && state.rivals[other].status === 'active') state = adjustRespect(state, other, t.pact.heardRespect, 'heardBroken', emit)
+  }
+  return state
 }
 
 /** The calls to arms in force on `day`: the rival at war with the target until `until` (T10 holds the front at War). */
@@ -504,7 +559,9 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
   const m = marksFor(rival)
   const t = RULES.trade
   const hex = request.hexId !== undefined ? hexOf(state, request.hexId) : undefined
-  const offer = (price: number): Omit<DealOffer, 'allowed' | 'reason'> => ({ ...request, rival, price })
+  // Patch 8 (D4): the Book of Grudges puts the Dwarf's prices up for the rest of the campaign.
+  const grudge = r.grudge && request.kind !== 'sellHex' ? t.oath.grudgeMult : 1
+  const offer = (price: number): Omit<DealOffer, 'allowed' | 'reason'> => ({ ...request, rival, price: price * grudge })
 
   switch (request.kind) {
     case 'buyHex': {
@@ -539,11 +596,39 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
         grandBattleWarning(state, today) ? dealRefusal('grandBattleWarning') : null,
         inForce(state, rival, 'truce', today) ? dealRefusal('inForce') : null
       ])
+    // Patch 8 (D2, D-64): a pact binds both sides, pays when kept and turns his army on his neighbors, so it is offered at Peace again (B5 holds for the Truce).
     case 'pact':
+      return judged(state, offer(t.pact.cost), [inForce(state, rival, 'pact', today) || inForce(state, rival, 'oath', today) ? dealRefusal('inForce') : null, respectBelow(state, rival, m.pact)])
+    case 'trial': {
+      const last = state.log.filter((e) => e.kind === 'deal' && e.rival === rival && e.deal === 'trial').at(-1)?.day
+      return judged(state, offer(0), [
+        rival !== 'orc' ? dealRefusal('notOffered') : null,
+        grandBattleWarning(state, today) ? dealRefusal('grandBattleWarning') : null,
+        last !== undefined && diffDays(last, today) < t.trial.everyWeeks * RULES.clock.daysPerWeek ? dealRefusal('tooSoon') : null
+      ])
+    }
+    case 'mercenaries': {
+      const hires = state.terms?.hires
+      const held = hires && today <= hires.until ? hires.count : 0
+      return judged(state, offer(t.mercenaries.cost * t.mercenaries.greedMult[greedBand(state)]), [
+        rival !== 'goblin' ? dealRefusal('notOffered') : null,
+        r.disposition.player === 'war' ? dealRefusal('atWar') : null,
+        respectBelow(state, rival, t.mercenaries.minRespect),
+        held >= RULES.terms.goblin.maxHires ? dealRefusal('inForce') : null
+      ])
+    }
+    case 'oath':
       return judged(state, offer(t.pact.cost), [
-        state.rivals[rival].disposition.player === 'peace' ? dealRefusal('atPeace') : null,
-        inForce(state, rival, 'pact', today) ? dealRefusal('inForce') : null,
+        rival !== 'dwarf' ? dealRefusal('notOffered') : null,
+        inForce(state, rival, 'oath', today) || inForce(state, rival, 'pact', today) ? dealRefusal('inForce') : null,
         respectBelow(state, rival, m.pact)
+      ])
+    case 'bargain':
+      return judged(state, offer(t.bargain.cost), [
+        rival !== 'archmage' ? dealRefusal('notOffered') : null,
+        request.choice === undefined ? dealRefusal('noChoice') : null,
+        inForce(state, rival, 'bargain', today) ? dealRefusal('inForce') : null,
+        respectBelow(state, rival, t.bargain.minRespect)
       ])
     case 'callToArms': {
       const target = request.target
@@ -581,6 +666,11 @@ export function availableDeals(state: CampaignState, rival: RivalId, today: ISOD
     ...hexDeals('sellHex', sellable),
     offerDeal(state, rival, { kind: 'truce' }, today),
     offerDeal(state, rival, { kind: 'pact' }, today),
+    // Patch 8 (D4, D-64): the deal only he offers.
+    ...(rival === 'orc' ? [offerDeal(state, rival, { kind: 'trial' }, today)] : []),
+    ...(rival === 'goblin' ? [offerDeal(state, rival, { kind: 'mercenaries' }, today)] : []),
+    ...(rival === 'dwarf' ? [offerDeal(state, rival, { kind: 'oath' }, today)] : []),
+    ...(rival === 'archmage' ? BARGAIN_CHOICES.map((choice) => offerDeal(state, rival, { kind: 'bargain', choice }, today)) : []),
     ...RIVAL_IDS.filter((x) => x !== rival).map((target) => offerDeal(state, rival, { kind: 'callToArms', target }, today)),
     ...(inCoalition(state, rival, today) ? [offerDeal(state, rival, { kind: 'buyout' }, today)] : [])
   ]
@@ -627,11 +717,36 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     }
     case 'truce':
       deal.until = lasting(t.truce.days)
+      deal.binds = true
       // Patch 5 (D-39): the Orc gives nothing for a Truce.
       if (respectChange(rival, 'truce', RULES.respect.change.tradeOrTruce) !== 0) next = adjustRespect(next, rival, respectChange(rival, 'truce', RULES.respect.change.tradeOrTruce), 'truce', emit)
       break
     case 'pact':
       deal.until = lasting(t.pact.days)
+      deal.binds = true
+      break
+    case 'oath': {
+      deal.until = lasting(t.oath.days)
+      deal.binds = true
+      // His walls on the wilds facing the player come down, and while it holds he raises none (`wildWallCap`).
+      next = { ...next, hexes: next.hexes.map((h) => (h.owner === 'neutral' && h.march === 'dwarf' && h.fortification > 0 && touchesOwner(next.hexes, h.id, 'player') ? { ...h, fortification: 0 } : h)) }
+      break
+    }
+    case 'trial':
+      // The challenge is on the record (once every 4 weeks); world.ts's `strikeDeal` announces its battle.
+      deal.until = today
+      break
+    case 'mercenaries': {
+      const hires = next.terms?.hires
+      const until = lasting(t.mercenaries.days)
+      const running = hires !== undefined && today <= hires.until
+      deal.until = until
+      next = withHires(next, { count: (running ? hires.count : 0) + 1, until: running && hires.until > until ? hires.until : until })
+      break
+    }
+    case 'bargain':
+      deal.until = lasting(t.bargain.days)
+      if (request.choice) deal.choice = request.choice
       break
     case 'callToArms': {
       deal.until = lasting(t.callToArms.days)
@@ -667,7 +782,7 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     case 'buyOff':
       break
   }
-  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}), ...(deal.until ? { until: deal.until } : {}) })
+  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}), ...(deal.until ? { until: deal.until } : {}), ...(deal.choice ? { choice: deal.choice } : {}) })
   next = events.flush({ ...next, deals: [...next.deals, deal] })
   return { ok: true, state: next, cost: offer.price, deal }
 }

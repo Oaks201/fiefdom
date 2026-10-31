@@ -436,8 +436,24 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       moves.length > 0 ? median(moves) >= G23.perMonth && distinct >= G23.distinct : null
     )
   )
+
+  // G-24 (Patch 8, D-64): every deal has a use. The smarter player strikes each kind in a share of its campaigns.
+  const dealt = (kind: string): number => smarterSteadfast.filter((r) => (r.measures.deals?.[kind] ?? 0) > 0).length / Math.max(1, smarterSteadfast.length)
+  const shares = G24.kinds.map((k) => ({ k, share: dealt(k) }))
+  rows.push(
+    row(
+      'G-24',
+      'Every deal has a use (Patch 8)',
+      `Steadfast smarter: the share of campaigns striking each deal at least once (at least ${pct(G24.atLeast)} each); binding deals broken a campaign (mean)`,
+      `${shares.map((s) => `${s.k} ${pct(s.share)}`).join(' · ')}; broken ${f2(mean(smarterSteadfast.map((r) => r.measures.dealsBroken ?? 0)))}`,
+      smarterSteadfast.length > 0 ? shares.every((s) => s.share >= G24.atLeast) : null
+    )
+  )
   return rows
 }
+
+/** Patch 8 (G-24, D-64): the deals every campaign should find a use for, and how often. */
+const G24 = { kinds: ['truce', 'pact', 'callToArms', 'trial', 'mercenaries', 'oath', 'bargain'], atLeast: 0.3 }
 
 /** Patch 7 (D-58): Reach spreads Renown over every path (each defense won adds it to its rival's), so Rich retargeted G-06 from 2× and G-17 from 90%. */
 const G06 = { lead: 1.5 }

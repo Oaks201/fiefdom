@@ -330,6 +330,7 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
         </span>
       </label>
       {slot.target && !slot.goesOut && <p className="muted">{slot.companies.length === 0 ? 'Send at least one company.' : 'This assault cannot go out as ordered.'}</p>}
+      {slot.breaks && <p className="orders__breaks">{slot.breaks}</p>}
       {!slot.target && slot.companies.length > 0 && <p className="muted">No target yet: these companies defend until one is named.</p>}
     </div>
   )

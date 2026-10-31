@@ -240,7 +240,7 @@
     "final": null
   },
   "herald.deal.refused.grandBattleWarning": {
-    "template": "No Truce while a Grand Battle is announced.",
+    "template": "Not while a Grand Battle is announced.",
     "final": null
   },
   "herald.deal.refused.inForce": {
@@ -269,6 +269,46 @@
   },
   "herald.deal.refused.reputation": {
     "template": "This deal costs {needed}.",
+    "final": null
+  },
+  "herald.deal.refused.notOffered": {
+    "template": "{rival} offers no such deal.",
+    "final": null
+  },
+  "herald.deal.refused.tooSoon": {
+    "template": "{rival} holds a trial of champions once every 4 weeks.",
+    "final": null
+  },
+  "herald.deal.refused.noChoice": {
+    "template": "Choose what the bargain buys.",
+    "final": null
+  },
+  "herald.deal.broken.truce": {
+    "template": "Your assault on {rival}’s land broke your Truce with him.",
+    "final": null
+  },
+  "herald.deal.broken.pact": {
+    "template": "Your assault on {rival}’s land broke your pact. He is at War with you, and every court has heard.",
+    "final": null
+  },
+  "herald.deal.broken.oath": {
+    "template": "Your assault on {rival}’s land broke your oath of stone. He is at War with you, every court has heard, and the Book of Grudges is open.",
+    "final": null
+  },
+  "herald.deal.kept.pact": {
+    "template": "Your pact with {rival} ran its course, kept.",
+    "final": null
+  },
+  "herald.deal.kept.oath": {
+    "template": "Your oath of stone with {rival} ran its course, kept.",
+    "final": null
+  },
+  "herald.deal.callToArms.took": {
+    "template": "{rival}’s war on {target}, at your call, is over: he took {count} of {target}’s hexes.",
+    "final": null
+  },
+  "herald.deal.callToArms.none": {
+    "template": "{rival}’s war on {target}, at your call, is over: he took no land.",
     "final": null
   },
   "herald.grandBattle.rout": {

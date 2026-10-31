@@ -137,7 +137,7 @@ export function acceptLine(rival: RivalId, lines: unknown = linesJson): Audience
 }
 
 /** The deals a ruler answers in his own words (Patch 8, A4), and the Accord sealed. */
-export type DealLineKind = 'truce' | 'pact' | 'callToArms' | 'sellHex' | 'buyHex' | 'buyout' | 'accord'
+export type DealLineKind = 'truce' | 'pact' | 'callToArms' | 'sellHex' | 'buyHex' | 'buyout' | 'accord' | 'trial' | 'mercenaries' | 'oath' | 'bargain'
 
 /** What `rival` says on striking `kind` (Patch 8, A4): his line for it, else his one accept line. */
 export function dealAcceptLine(rival: RivalId, kind: DealLineKind, lines: unknown = linesJson): AudienceLine {
@@ -158,6 +158,8 @@ export function refusalKey(code: string): RefusalKey {
     case 'inForce':
     case 'reputation':
       return code
+    case 'tooSoon':
+      return 'cooldown'
     case 'neverSells':
     case 'useBribe':
       return 'neverSells'

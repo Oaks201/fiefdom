@@ -20,7 +20,7 @@ import { hexIndex, isClaimableKind, isLairMarch, rulingMarch, touches } from './
 import { RULES } from './rules'
 import { isWeekCloseDay } from './clock'
 import { ownMark } from './respect'
-import { patchRival, weekOn } from './state'
+import { dealOn, openDayOf, patchRival, weekOn } from './state'
 import { type CampaignState, type Emit, type GameEvent, type HexState, type ISODate, type PersonalitiesState, type RivalId, type Surge } from './types'
 
 const P = RULES.personalities
@@ -98,7 +98,8 @@ export function pactBars(state: CampaignState, hex: Pick<HexState, 'id' | 'march
  * his own mark above, +75; higher at his own mark below, −75.
  */
 export function wildWallCap(state: CampaignState): number {
-  if (ownMark(state, 'dwarf', 'up')) return 0
+  // Patch 8 (D4): while an oath of stone holds he raises no walls on the wilds facing the player.
+  if (ownMark(state, 'dwarf', 'up') || dealOn(state, 'dwarf', 'oath', openDayOf(state))) return 0
   return ownMark(state, 'dwarf', 'down') ? RULES.respect.own.dwarfWildWallMax : P.dwarf.wildWallMax
 }
 

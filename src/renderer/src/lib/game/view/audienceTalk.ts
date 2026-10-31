@@ -49,6 +49,13 @@ export type TopicId =
   | 'humbled'
   | 'habitKept'
   | 'habitSlipping'
+  | 'truceBroken'
+  | 'pactBroken'
+  | 'heardBroken'
+  | 'calledAgainst'
+  | 'pactKept'
+  | 'trialWon'
+  | 'trialLost'
 
 /** Every topic, with the facts its line may name. */
 export const TOPICS: Record<TopicId, readonly string[]> = {
@@ -72,8 +79,21 @@ export const TOPICS: Record<TopicId, readonly string[]> = {
   emboldened: ['rival'],
   humbled: ['rival'],
   habitKept: [],
-  habitSlipping: []
+  habitSlipping: [],
+  truceBroken: [],
+  pactBroken: [],
+  heardBroken: ['rival'],
+  calledAgainst: ['rival'],
+  pactKept: [],
+  trialWon: [],
+  trialLost: []
 }
+
+/** Patch 8 (D4): topics only one ruler has, from his own deal. */
+export const RULER_TOPICS: Partial<Record<TopicId, RivalId>> = { trialWon: 'orc', trialLost: 'orc' }
+
+/** Deals broken are remembered a month, like a neighbor's fall. */
+const REMEMBERED: ReadonlySet<TopicId> = new Set<TopicId>(['neighborFell', 'neighborAllied', 'truceBroken', 'pactBroken', 'heardBroken'])
 
 /** One fact a ruler could speak of; `neighbor` when it is about his neighbors, the news he has of them. */
 export interface TopicFact {
@@ -148,6 +168,7 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
       if (e.rival !== rival || (e.threat !== 'raid' && e.threat !== 'conquest')) return undefined
       return at(e.outcome === 'defeat' ? 'raidWon' : 'raidBeaten', { hex: hexName(e.hexId) })
     case 'deal':
+      if (e.deal === 'callToArms' && e.target === rival) return at('calledAgainst', { rival: rivalName(e.rival) }, true)
       return e.rival === rival && e.deal === 'sellHex' && e.hexId ? at('boughtHex', { hex: hexName(e.hexId) }) : undefined
     case 'front': {
       const foe = frontFoe(state, rival, e.front)
@@ -157,6 +178,15 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
     case 'rivalResolved':
       if (e.rival === rival) return undefined
       return at(e.how === 'allied' ? 'neighborAllied' : 'neighborFell', { rival: rivalName(e.rival) }, true)
+    // Patch 8 (D-64): deals kept and broken, a call to arms against him, a trial of champions fought.
+    case 'dealEnded':
+      if (e.rival === rival && e.how === 'broken') return at(e.deal === 'truce' ? 'truceBroken' : 'pactBroken', {})
+      if (e.rival === rival && (e.deal === 'pact' || e.deal === 'oath')) return at('pactKept', {})
+      return e.how === 'broken' && (e.deal === 'pact' || e.deal === 'oath') ? at('heardBroken', { rival: rivalName(e.rival) }, true) : undefined
+    case 'grandBattle': {
+      if (e.stage !== 'fought' || e.rival !== rival || state.grandBattles.find((b) => b.id === e.battleId)?.eventId !== 'trial') return undefined
+      return at(e.result === 'defeat' ? 'trialLost' : 'trialWon', {})
+    }
     default:
       return undefined
   }
@@ -207,7 +237,7 @@ export function topicFacts(state: CampaignState, rival: RivalId, today: ISODate,
     if (e.day > today) continue
     if (e.day < fall) break
     const fact = eventFact(state, rival, e)
-    if (!fact || (e.day < recent && fact.id !== 'neighborFell' && fact.id !== 'neighborAllied')) continue
+    if (!fact || (e.day < recent && !REMEMBERED.has(fact.id))) continue
     const key = `${fact.id}:${fact.facts.rival ?? ''}`
     if (seen.has(key)) continue
     seen.add(key)

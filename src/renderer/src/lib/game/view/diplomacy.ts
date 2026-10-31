@@ -21,7 +21,7 @@ import { rivalView, type ArmyBand, type TreasuryBand } from '../rivals'
 import { openDayOf, resolutionAllowed, resolutionMark, resolutionsOf, weekOn, worldOf } from '../state'
 import { stanceOf, weighsMost } from '../terms'
 import { t } from '../text'
-import { RIVAL_IDS, type CampaignState, type Disposition, type Effects, type FrontId, type FrontState, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
+import { RIVAL_IDS, type BargainChoice, type CampaignState, type Disposition, type Effects, type FrontId, type FrontState, type ISODate, type Owner, type RivalId, type RivalState, type StanceBand } from '../types'
 import { suggestedBid, trustNow } from './realm'
 import { landRefusalLabel } from './refusals'
 import { STANCE_WORDS, SURGE_WORDS, rivalName } from './shell'
@@ -419,6 +419,8 @@ export interface DealLine {
   hexId?: string
   hexName?: string
   target?: RivalId
+  /** Patch 8 (D4): what Emrys's bargain buys. */
+  choice?: BargainChoice
   available: boolean
   /** The engine's reason, as its catalog text id and the words. */
   reason?: { code: string; textId: string; text: string }
@@ -441,7 +443,22 @@ export function dealName(kind: DealKind, hexId?: string, target?: RivalId): stri
       return 'Buy-out from its coalition'
     case 'buyOff':
       return 'Buy-off pact'
+    case 'trial':
+      return 'Trial of champions'
+    case 'mercenaries':
+      return 'Hire his mercenaries'
+    case 'oath':
+      return 'Oath of stone'
+    case 'bargain':
+      return 'A bargain of knowledge'
   }
+}
+
+/** Patch 8 (D4): what Emrys's bargain buys, in plain words. */
+export const BARGAIN_WORDS: Record<BargainChoice, string> = {
+  reveal: 'His treasury and army, shown',
+  foresight: 'His surges, foretold',
+  ward: 'A ward against his surge strikes'
 }
 
 function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: string } {
@@ -464,9 +481,32 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
       return { requires: 'Any time, except while a Grand Battle is announced', effect: `No raids or conquest attempts from it for ${tr.truce.days} days${gain !== 0 ? `; ${signed(gain)} Respect` : ''}` }
     }
     case 'pact':
-      return { requires: `Respect ${m.pact}`, effect: `No conquest attempts from it for ${tr.pact.days} days; its raids come half as often` }
+      return {
+        requires: `Respect ${m.pact}`,
+        effect: `For ${tr.pact.days} days, no raids or conquest attempts from him and none of your assaults on his land; his army turns on his neighbors. Kept, ${signed(tr.pact.keptRespect)} Respect; broken, ${signed(tr.pact.brokenRespect)} and War`
+      }
     case 'callToArms':
-      return { requires: `Respect ${m.callToArms}; a front between them; not coalition partners`, effect: `It declares war on the other for ${tr.callToArms.days} days` }
+      return {
+        requires: `Respect ${m.callToArms}; a front between them; not coalition partners`,
+        effect: `He campaigns against the other for ${tr.callToArms.days} days, and takes land if he leads their war. The other learns who paid`
+      }
+    case 'trial':
+      return {
+        requires: `Once every ${tr.trial.everyWeeks} weeks; no Grand Battle announced`,
+        effect: `Your best company against his champion, in ${RULES.world.events.minBattleWarningDays} days. Won: his raids stop for ${tr.trial.raidsStopDays} days, ${signed(RULES.respect.byRival.orc.grandBattleWon)} Respect. Lost: ${signed(RULES.respect.byRival.orc.grandBattleLost)} Respect and a tribute`
+      }
+    case 'mercenaries':
+      return {
+        requires: `Respect ${tr.mercenaries.minRespect}; not at war with you; at most ${RULES.terms.goblin.maxHires} of his companies at a time`,
+        effect: `One of his companies fights for you for ${tr.mercenaries.days} days, priced by his greed`
+      }
+    case 'oath':
+      return {
+        requires: `Respect ${m.pact}; no pact running`,
+        effect: `A pact of ${tr.oath.days / RULES.clock.daysPerWeek} weeks: his walls on the wilds facing you come down. Kept, ${signed(tr.oath.keptRespect)} Respect; broken, ${signed(tr.oath.brokenRespect)}, War and the Book of Grudges: his deals cost ${tr.oath.grudgeMult}× for good`
+      }
+    case 'bargain':
+      return { requires: `Respect ${tr.bargain.minRespect}; one at a time`, effect: `For ${tr.bargain.days} days, your choice: his treasury and army shown, his surges foretold, or no surge striking your hexes` }
     case 'buyout':
       return { requires: `Respect ${RULES.world.coalitions.buyout.minRespect}; it stands in a coalition against you`, effect: 'It walks away and the coalition ends today' }
     case 'buyOff':
@@ -481,7 +521,7 @@ function dealTerms(kind: DealKind, rival: RivalId): { requires: string; effect: 
  * struck as things stand, and the court doesn't list it. A Truce or pact refused at Peace (Patch 7, B5)
  * stays listed with its reason, so the player sees why it isn't needed.
  */
-const WITHIN_REACH: ReadonlySet<DealRefusalCode> = new Set<DealRefusalCode>(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied', 'atPeace'])
+const WITHIN_REACH: ReadonlySet<DealRefusalCode> = new Set<DealRefusalCode>(['respect', 'reputation', 'cooldown', 'atWar', 'inForce', 'grandBattleWarning', 'targetAllied', 'atPeace', 'tooSoon'])
 
 /** Every deal `rival` could strike today (`availableDeals`), and those it refuses for a reason within reach, with the engine's reason. */
 export function dealsView(state: CampaignState, rival: RivalId, today: ISODate = openDayOf(state)): DealLine[] {
@@ -495,6 +535,10 @@ export function dealsView(state: CampaignState, rival: RivalId, today: ISODate =
         line.hexName = hexName(d.hexId)
       }
       if (d.target) line.target = d.target
+      if (d.choice) {
+        line.choice = d.choice
+        line.name = BARGAIN_WORDS[d.choice]
+      }
       if (!d.allowed && d.reason) {
         const facts = {
           rival: name,

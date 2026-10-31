@@ -286,6 +286,11 @@ function deedsOf(rival: RivalId): Deed[] {
     ...(m.sellsHex !== null ? [{ deed: 'A hex bought from him', respect: c.tradeOrTruce, renown: byDeal }] : []),
     { deed: 'A hex of yours sold to him', respect: c.hexSold },
     ...(truce !== 0 ? [{ deed: 'A Truce with him', respect: truce }] : []),
+    // Patch 8 (D1, D2, D-64): deals that bind both sides, kept or broken.
+    { deed: 'A pact with him kept to its end', respect: RULES.trade.pact.keptRespect },
+    { deed: 'A Truce with him broken by your assault', respect: RULES.trade.truce.brokenRespect },
+    { deed: 'A pact with him broken by your assault (and War with him a while)', respect: RULES.trade.pact.brokenRespect },
+    { deed: 'A pact or oath with another ruler broken (word travels)', respect: RULES.trade.pact.heardRespect },
     { deed: prizedHabit(rival), respect: c.prizedWeek },
     { deed: 'Beasts beaten on a hex of his march', renown: `${signed(d.heldAgainstBeasts)} (a mythic ${signed(d.heldAgainstMythic)})` },
     { deed: 'Resolving him, by any way', renown: signed(d.resolved) }
@@ -298,7 +303,7 @@ function deedsOf(rival: RivalId): Deed[] {
         { deed: 'His counterattack held', respect: c.raidDefeated, renown: signed(d.counterattackHeld) },
         { deed: 'A Grand Battle against him lost', respect: own.orc.grandBattleLost, renown: signed(d.battleLost) },
         { deed: 'Your assault on his hex repulsed', renown: signed(d.battleLost) },
-        { deed: 'A hex he took from you, taken back', renown: `+${amount(d.retaken)} more` }
+        { deed: 'A hex he took from you, taken back', renown: `+${amount(d.retaken)} more` },
       ]
     case 'goblin':
       return [
@@ -315,7 +320,8 @@ function deedsOf(rival: RivalId): Deed[] {
         ...common,
         { deed: 'Each of his wall levels broken (a walled hex of his march taken)', respect: own.dwarf.wallBroken, respectPer: 'a level', renown: `+${amount(d.wallsBroken)} a level more` },
         { deed: 'A hex of his march taken by siege', renown: `+${amount(d.siegeEndured)} for each repulse before it, up to +${amount(d.siegeEndured * d.siegeEnduredCap)}` },
-        { deed: 'A pact with him kept to its end', respect: own.dwarf.pactKept }
+        { deed: 'An oath of stone with him kept to its end', respect: RULES.trade.oath.keptRespect },
+        { deed: 'An oath of stone with him broken (the Book of Grudges opens)', respect: RULES.trade.oath.brokenRespect }
       ]
     case 'archmage':
       return [

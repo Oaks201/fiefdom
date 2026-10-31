@@ -25,7 +25,8 @@ import { accordRespectGain, payoutCurve, type AccordPaid } from './contracts'
 import { balance, post, roundPosting, spend } from './economy'
 import { realmEffects } from './effects'
 import { GRAND_HOOKS, announceGrandBattle, firstFreeDay, pendingBattles, siegeNotBefore, type OutcomeContext } from './grand'
-import { defectionTally, sellPrice } from './land'
+import { rivalHost } from './grand/hosts'
+import { defectionTally, makeDeal, offerDeal, sellPrice, type DealRequest } from './land'
 import { pathRank, pathTotals, totalDominion } from './dominion'
 import { bandOf, borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind, touches, wildGarrison } from './map'
 import { RULES } from './rules'
@@ -50,7 +51,7 @@ import {
   worldOf
 } from './state'
 import { RIVAL_IDS, type CampaignState, type Coalition, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type RivalState, type TermsGift } from './types'
-import { eventInForce, eventsWeek } from './world/events'
+import { eventInForce, eventsWeek, playerHexNearest } from './world/events'
 import { pactBars, personalitiesOf, withPersonalities } from './personalities'
 import { giftLabel, openTerms, patchRivalTerms, termsWeek, withHires } from './terms'
 
@@ -171,6 +172,28 @@ function resolutionsWeek(input: CampaignState, day: ISODate, emit: Emit): Campai
   }
   for (const rival of active(state)) if (defects(state, rival)) state = resolveRival(state, rival, 'abdicated', day, emit)
   return state
+}
+
+/**
+ * Patch 8 (D4, D-64): strikes a deal from the Audience (and the automatic player): every deal is `makeDeal`'s, and
+ * Ugrak's trial of champions also announces its battle: his champion against the player's best company, an event
+ * battle of `companiesPerSide` a side at the player's border hex nearest his land.
+ */
+export function strikeDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate = openDayOf(state)): ReturnType<typeof makeDeal> {
+  if (request.kind !== 'trial' || !offerDeal(state, rival, request, today).allowed) return makeDeal(state, rival, request, today)
+  const T = RULES.trade.trial
+  const hex = playerHexNearest(state, state.hexes.filter((h) => h.owner === rival), today, 'deal:trial:pick')
+  if (!hex) return { ok: false, state, cost: 0 }
+  // The challenge goes on the record first: once announced, the battle itself would refuse it (a Grand Battle warning).
+  const dealt = makeDeal(state, rival, request, today)
+  if (!dealt.ok) return dealt
+  const events = new EventBuffer()
+  const announced = announceGrandBattle(
+    dealt.state,
+    { trigger: 'event', eventId: 'trial', hexId: hex.id, announcedOn: today, rival, enemy: rivalHost(dealt.state, rival, RULES.grandBattles.hostShare.rival, today, T.companiesPerSide), limit: T.companiesPerSide },
+    events.emitter(today)
+  )
+  return announced.ok ? { ...dealt, state: events.flush(announced.state) } : { ok: false, state, cost: 0 }
 }
 
 /** The player accepts the Goblin's offer for a hex that came by abdication (Ch 13): sold at its sale price, +5 Respect. */

@@ -16,7 +16,7 @@ import { claimableBy, hexIndex, hexName, pathShares } from '../map'
 import { RULES } from '../rules'
 import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
-import { openDayOf } from '../state'
+import { bindingDeals, isRival, openDayOf } from '../state'
 import { rivalName } from './shell'
 import { type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
@@ -44,6 +44,8 @@ export interface AssaultSlot {
   companies: string[]
   /** It goes out at the close: a target the daily assault may take, and companies of its own. */
   goesOut: boolean
+  /** Patch 8 (D1, D2): its target's holder has a Truce, pact or oath binding the player, which the assault would break: what it costs, in plain words. */
+  breaks?: string
 }
 
 export interface AssaultTarget {
@@ -119,6 +121,22 @@ export interface OrdersView {
   envoys: { rival: RivalId; available: boolean; chosen: boolean; costEach: number }[]
   /** At today's Valor so far; the close uses the day's final Valor. */
   estimate: OrdersEstimate & { valor: number }
+}
+
+/**
+ * Patch 8 (D1, D2, D-64): what assaulting `hexId` on `date` would break, in plain words: each Truce, pact or oath its
+ * holder has binding the player, with its cost. Undefined when nothing binds them.
+ */
+function breaksWords(state: CampaignState, hexId: string, date: ISODate): string | undefined {
+  const holder = state.hexes.find((h) => h.id === hexId)?.owner
+  if (!isRival(holder)) return undefined
+  const t = RULES.trade
+  const words = bindingDeals(state, holder, date).map((d) =>
+    d.kind === 'truce'
+      ? `your Truce (${t.truce.brokenRespect} Respect)`
+      : `your ${d.kind === 'oath' ? 'oath of stone' : 'pact'} (${d.kind === 'oath' ? t.oath.brokenRespect : t.pact.brokenRespect} Respect, War with him, ${t.pact.heardRespect} with every other court${d.kind === 'oath' ? ', and the Book of Grudges' : ''})`
+  )
+  return words.length > 0 ? `This assault breaks ${words.join(' and ')} with ${rivalName(holder)}.` : undefined
 }
 
 /** Whether `date`'s orders are locked at `now` (past the close, or held by the day's battles), and how long they have left. */
@@ -220,11 +238,13 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
   const assaults: AssaultSlot[] = Array.from({ length: allowed }, (_, index) => {
     const a = named[index]
     const target = a?.target
+    const breaks = target ? breaksWords(state, target, date) : undefined
     return {
       index,
       ...(target ? { target: { hexId: target, label: hexName(target) } } : {}),
       companies: a ? [...a.companies] : [],
-      goesOut: target !== undefined && validity.assaults.some((x) => x.target === target)
+      goesOut: target !== undefined && validity.assaults.some((x) => x.target === target),
+      ...(breaks ? { breaks } : {})
     }
   })
   const estimate = ordersEstimate(state, orders ?? undefined, date, valor, effects)

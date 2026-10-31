@@ -62,7 +62,7 @@ test('Test 10: 300 seeded 70-week campaigns keep every endgame invariant', { tim
   const won = audits.filter((a) => a.wonWeek !== undefined)
   t.diagnostic(`resolutions a campaign: ${JSON.stringify([0, 1, 2, 3, 4].map((n) => audits.filter((a) => a.resolutions.length === n).length))}; won ${won.length}, fallen ${fallen.length}`)
   assert.ok(fallen.length > 0, 'some campaigns fell')
-  // Patch 7 (A1a, D-59): victory waits on Dominion 3,650 or so, past these crude players' 70 weeks; the
+  // Patch 7 (A1a, D-59): victory waits on Dominion 3,350 or so (D-65), past these crude players' 70 weeks; the
   // simulator's G-11 and the endgame tests carry it. Two resolutions still meet two marks here.
   assert.ok(audits.some((a) => a.resolutions.length >= 2), 'some campaigns resolved two rivals')
   assert.ok(audits.some((a) => a.coalitions.length > 0), 'coalitions formed')

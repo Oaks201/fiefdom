@@ -33,7 +33,7 @@ import { RULES } from './rules'
 import { pick, shuffle } from './rng'
 import { refreshRoster, roster, rosterDetail } from './roster'
 import { respectChange } from './respect'
-import { adjustRespect, EventBuffer, hexOf, isPlayable, openDayOf, patchRival, replaceHex, resolutionAllowed, scaleArmy, toPlayer, toRival, weekOn } from './state'
+import { adjustRespect, bindingDeals, EventBuffer, hexOf, isPlayable, isRival, openDayOf, patchRival, replaceHex, resolutionAllowed, scaleArmy, toPlayer, toRival, weekOn } from './state'
 import {
   RIVAL_IDS,
   type BattleRoundLog,
@@ -100,9 +100,6 @@ export function pendingBattles(state: CampaignState): GrandBattle[] {
   return state.grandBattles.filter((b) => b.result === undefined).sort((a, b) => a.battleDate.localeCompare(b.battleDate) || a.id.localeCompare(b.id))
 }
 
-function isRival(owner: Owner): owner is RivalId {
-  return owner !== 'player' && owner !== 'neutral'
-}
 
 // ── Triggers and the queue ───────────────────────────────────────────────────
 
@@ -150,6 +147,8 @@ export type GrandRefusal =
   /** A stronghold of the march, shallower than this hex, still stands (D-23, P3-01). */
   | 'barred'
   | 'rivalResolved'
+  /** Patch 8 (D1, D2): a Truce, pact or oath with the hex's holder binds the player: no battle the player calls on his land while it holds. */
+  | 'bound'
   | 'notGrandBattleHex'
   | 'noHost'
   | 'notBattleDay'
@@ -204,6 +203,7 @@ function announceProblem(state: CampaignState, r: GrandRequest, hex: HexState | 
   )
   if (lostTooSoon) return 'retryTooSoon'
   if (r.rival && state.rivals[r.rival].status !== 'active') return 'rivalResolved'
+  if ((r.trigger === 'gate' || r.trigger === 'stronghold' || r.trigger === 'capital') && isRival(hex.owner) && bindingDeals(state, hex.owner, r.announcedOn).length > 0) return 'bound'
   switch (r.trigger) {
     case 'gate':
       if (hex.kind !== 'gate' || !isRival(hex.owner)) return 'notGrandBattleHex'

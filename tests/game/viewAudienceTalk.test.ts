@@ -9,7 +9,7 @@ import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { placeholders } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { dealAcceptLine, greetingFor, greetingPool, LINE_KEYS, lineTiers, refusalKey, refusalLine, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
-import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
+import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { emptyLedger } from './fixtures/ledgers'
 import { hexName } from '../../src/renderer/src/lib/game/map'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
@@ -68,6 +68,8 @@ test('the drafts: every ruler has a line for every topic, standing, deal and rea
     const e = drafts[LINE_KEYS[rival]]
     const part = (k: string): Record<string, string> => e[k] as Record<string, string>
     for (const [id, facts] of Object.entries(TOPICS)) {
+      const only = RULER_TOPICS[id as TopicId]
+      if (only && only !== rival) continue
       const line = part('topics')[id]
       assert.ok(typeof line === 'string' && line.trim(), `${rival}: topic ${id}`)
       for (const name of placeholders(line)) assert.ok(facts.includes(name), `${rival}: topic ${id} names {${name}}`)
@@ -75,7 +77,8 @@ test('the drafts: every ruler has a line for every topic, standing, deal and rea
     for (const r of relations) assert.deepEqual(placeholders(part('relations')[r] ?? ''), ['rival'], `${rival}: relation ${r}`)
     for (const r of reasons) assert.ok(part('refusals')[r], `${rival}: refusal ${r}`)
     for (const other of RIVAL_IDS.filter((x) => x !== rival)) assert.ok(part('of')[LINE_KEYS[other]], `${rival} on ${other}`)
-    const deals = ['truce', 'pact', 'callToArms', 'sellHex', 'buyout', ...(rival === 'orc' ? [] : ['accord']), ...(rival === 'archmage' ? ['buyHex'] : [])]
+    const own = { orc: 'trial', goblin: 'mercenaries', dwarf: 'oath', archmage: 'bargain' }[rival]
+    const deals = ['truce', 'pact', 'callToArms', 'sellHex', 'buyout', own, ...(rival === 'orc' ? [] : ['accord']), ...(rival === 'archmage' ? ['buyHex'] : [])]
     for (const d of deals) assert.ok(part('deals')[d], `${rival}: deal ${d}`)
     for (const d of Object.values(part('deals'))) assert.deepEqual(placeholders(d), [], `${rival}: a deal line names nothing`)
     assert.ok((e.wishes as string[]).length >= 2)

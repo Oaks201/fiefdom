@@ -192,6 +192,8 @@ export function grandRefusalLabel(code: GrandRefusal): string {
       return 'The capital can be attacked only once you hold its Gate.'
     case 'pacing':
       return 'The realm’s Dominion has not reached the mark for another rival yet.'
+    case 'bound':
+      return 'A Truce, pact or oath with its holder binds you: no battle you call on his land while it holds. An assault would break it.'
     case 'cooldown':
       return 'Too soon after the last battle with this rival.'
     case 'rivalResolved':

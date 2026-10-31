@@ -600,18 +600,18 @@ test('Test 9 (part): the rival turn is settled once — settling again for a wee
   assert.deepEqual(once.state.hexes, later.state.hexes)
 })
 
-test('D-39: a pact with the Dwarf kept to its end posts his +5 at the close of the week it ends, once, though its last day’s close has cleared the deal', () => {
+test('D-39, Patch 8 (D2): a pact with the Dwarf kept to its end posts his +5 at its last day’s close, once, as every ruler’s now does', () => {
   const ledger = steadyLedger('2026-09-10', 120)
   const base = withRival(withPurse(realm(11, ledger), 1_000), 'dwarf', { respect: RULES.respect.marks.dwarf.pact })
   const made = makeDeal(base, 'dwarf', { kind: 'pact' })
   assert.ok(made.ok)
   const until = made.deal?.until as string
   const close = addDays(weekOf(until, made.state.campaign.weekStartsOn), 6)
-  assert.ok(until < close, 'the pact ends mid-week, so the deal is gone before the week close')
   // Through the week after, to show it posts once.
   const result = settle(made.state, ledger, chicago(addDays(close, 8)))
   const kept = eventsOf(result.events, 'respect').filter((e) => e.rival === 'dwarf' && e.reason === 'pactKept')
-  assert.deepEqual(kept.map((e) => [e.day, e.change]), [[close, RULES.respect.byRival.dwarf.pactKept]])
+  assert.deepEqual(kept.map((e) => [e.day, e.change]), [[until, RULES.trade.pact.keptRespect]])
+  assert.deepEqual(eventsOf(result.events, 'dealEnded').map((e) => [e.day, e.rival, e.deal, e.how]), [[until, 'dwarf', 'pact', 'kept']])
   assert.ok(!result.state.deals.some((d) => d.kind === 'pact'))
 })
 

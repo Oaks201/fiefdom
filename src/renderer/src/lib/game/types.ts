@@ -226,6 +226,10 @@ export interface RivalState {
   resolvedOn?: ISODate
   /** Patch 4 (R-12): the Dwarf yielded as a grudging vassal: no levy company joins the player. */
   grudging?: boolean
+  /** Patch 8 (D2, D-64): a pact or oath he made was broken by the player: at War through this day, whatever his Respect. */
+  wrongedUntil?: ISODate
+  /** Patch 8 (D4, D-64): the Dwarf's Book of Grudges, opened by a broken oath of stone: his deals cost more for the rest of the campaign. */
+  grudge?: true
   specialFund: number
   /** −3..+3 per front, from this rival's side. */
   frontTracks: Record<string, number>
@@ -775,7 +779,12 @@ export interface GameEventMap {
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner; rivals?: RivalId[] }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. `until`: the last day of one that runs (the Dwarf's pact kept is read from it). */
-  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId; until?: ISODate }
+  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId; until?: ISODate; choice?: BargainChoice }
+  /**
+   * Patch 8 (D-64): a Truce, pact, oath or call to arms ended: `kept` to its last day, or `broken` by the player's
+   * assault on his land; a call to arms reports the hexes it took from its `target`.
+   */
+  dealEnded: { rival: RivalId; deal: Deal['kind']; how: 'kept' | 'broken'; target?: RivalId; taken?: number }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. */
@@ -885,14 +894,27 @@ export interface FrontState {
 export interface Deal {
   id: string
   rival: RivalId
-  /** T12 adds `buyout`: a coalition member paid to walk away (Ch 13). */
-  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout' | 'buyOff'
+  /**
+   * T12 adds `buyout`: a coalition member paid to walk away (Ch 13). Patch 8 (D4, D-64) adds each ruler's own: Ugrak's
+   * `trial` (its record holds his raids after a trial won), Skivvet's `mercenaries`, Hrodgar's `oath`, Emrys's `bargain`.
+   */
+  kind: 'buyHex' | 'sellHex' | 'truce' | 'pact' | 'callToArms' | 'buyout' | 'buyOff' | 'trial' | 'mercenaries' | 'oath' | 'bargain'
   madeOn: ISODate
   until?: ISODate
   hexId?: string
   target?: RivalId
   price: number
+  /** Patch 8 (D4): what Emrys's bargain buys. */
+  choice?: BargainChoice
+  /** Patch 8 (D1, D2): the deal binds the player too, so an assault on his land breaks it (deals made from 3.9.0). */
+  binds?: true
+  /** Patch 8: the day the player broke it. */
+  brokenOn?: ISODate
 }
+
+/** Patch 8 (D4, D-64): Emrys's bargain of knowledge: his treasury and army shown, his surges foretold, or a ward against his surge strikes. */
+export type BargainChoice = 'reveal' | 'foresight' | 'ward'
+export const BARGAIN_CHOICES: readonly BargainChoice[] = ['reveal', 'foresight', 'ward']
 
 export interface CampaignState {
   campaign: Campaign

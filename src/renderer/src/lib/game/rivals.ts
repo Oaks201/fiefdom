@@ -34,7 +34,7 @@ import { COMBAT_HOOKS, armyValue, band, baseArmyValue, combatOf, defenseFor, eff
 import { payoutCurve } from './contracts'
 import { balance, weekShare } from './economy'
 import { realmEffects } from './effects'
-import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, placeRivalBid, resistance, tradeValue } from './land'
+import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, pactFreesArmy, placeRivalBid, resistance, tradeValue } from './land'
 import { bandOf, borderHexesOf, depthOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, neighbors, touches, wildGarrison } from './map'
 import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle, weighted } from './rng'
@@ -43,7 +43,7 @@ import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
 import { extraConquests, surgeOn, wildWallCap, wildWalls } from './personalities'
 import { marksFor, reaches, standingFor, weeklyRespect } from './respect'
-import { adjustRespect, coalitionPartners, inCoalition, patchRival, replaceHex, toRival, toWilds } from './state'
+import { adjustRespect, bargainOn, coalitionPartners, inCoalition, openDayOf, patchRival, replaceHex, toRival, toWilds } from './state'
 import type { HostUnitEntry } from './codex'
 import {
   FRONT_IDS,
@@ -289,6 +289,8 @@ export interface DispositionInput {
   inCoalition: boolean
   /** The standing he holds, which the buffer holds (T-10, `RULES.respect.standingBuffer`); without it the lines alone decide. */
   from?: Disposition
+  /** Patch 8 (D2, D-64): a pact or oath of his the player broke still holds him at War, whatever his Respect. */
+  wronged?: boolean
 }
 
 /**
@@ -297,7 +299,13 @@ export interface DispositionInput {
  * The day's close and the week close both read it here, from the standing he holds, so one buffer holds both (T-10).
  */
 export function dispositionFor(i: DispositionInput): Disposition {
-  return standingFor(i.rival, i.respect, i.inCoalition, i.from)
+  return i.wronged ? 'war' : standingFor(i.rival, i.respect, i.inCoalition, i.from)
+}
+
+/** Patch 8 (D2): whether `rival` is still wronged on `day` by a broken pact or oath (`wrongedUntil`). */
+function wrongedOn(state: CampaignState, rival: RivalId, day: ISODate): boolean {
+  const until = state.rivals[rival].wrongedUntil
+  return until !== undefined && day <= until
 }
 
 /** The `days` days ending `end` (inclusive): a test for an event's day. */
@@ -685,7 +693,9 @@ export function pressWildSiege(input: CampaignState, rival: RivalId, day: ISODat
     return state
   }
   const ebb = rival === 'archmage' && surgeOn(state, day)?.surge === 'ebb' ? W.archmageEbbMult : 1
-  const wear = (valid && held ? held.wear : 0) + W.pressShare * armyValue(state, rival, day) * W.pace[rival] * ebb
+  // Patch 8 (D2): a pact with the player turns his army on the wilds and his neighbors.
+  const freed = pactFreesArmy(state, rival, day) ? RULES.trade.pact.wildSiegeMult : 1
+  const wear = (valid && held ? held.wear : 0) + W.pressShare * armyValue(state, rival, day) * W.pace[rival] * ebb * freed
   if (wear >= hex.garrison) return takeWildSiege(state, rival, hex, emit)
   const siege = { hexId: hex.id, wear, since: valid && held ? held.since : day }
   return patchRival(state, rival, { ai: { ...state.rivals[rival].ai, siege } })
@@ -727,7 +737,7 @@ export function orcLosesToWilds(input: CampaignState, w: RivalWeek): CampaignSta
  * rival presses his siege of the wilds (`pressWildSiege`); no den is chosen at the week close any more.
  */
 export function rivalMovesDay(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
-  let state = input
+  let state = calledAgainst(input, day, emit)
   const ex = RULES.rivals.expansion
   for (const rival of RIVAL_IDS) {
     const ai = state.rivals[rival].ai
@@ -1007,7 +1017,7 @@ function setDisposition(state: CampaignState, rival: RivalId, w: RivalWeek, effe
   // Threat is still kept (the Last Alliance's order, A-174); it no longer sets the standing (D-40).
   const threat = threatOf(state, rival, w.day, effects)
   const from = r.disposition.player
-  const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, w.day), from })
+  const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, w.day), from, wronged: wrongedOn(state, rival, w.day) })
   if (from !== to) w.emit('disposition', { rival, from, to })
   return patchRival(state, rival, { threat, disposition: { ...r.disposition, player: to } })
 }
@@ -1028,7 +1038,7 @@ export function dailyStandings(input: CampaignState, day: ISODate, emit: Emit, w
   for (const rival of RIVAL_IDS) {
     const r = state.rivals[rival]
     if (r.status !== 'active') continue
-    const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, day), from: r.disposition.player })
+    const to = dispositionFor({ rival, respect: r.respect, inCoalition: inCoalition(state, rival, day), from: r.disposition.player, wronged: wrongedOn(state, rival, day) })
     if (to === r.disposition.player) continue
     emit('disposition', { rival, from: r.disposition.player, to })
     state = patchRival(state, rival, { disposition: { ...r.disposition, player: to } })
@@ -1137,6 +1147,31 @@ function clampTrack(track: number): number {
 }
 
 /**
+ * Patch 8 (D3, D-64): a call to arms' target learns who paid: each of its first `targetDays` days, his Respect
+ * for the player falls by `targetRespectPerDay`.
+ */
+function calledAgainst(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let state = input
+  const c = RULES.trade.callToArms
+  for (const d of state.deals) {
+    if (d.kind !== 'callToArms' || !d.target || !isActive(state, d.target) || d.madeOn > day || diffDays(d.madeOn, day) >= c.targetDays || (d.until !== undefined && day > d.until)) continue
+    state = adjustRespect(state, d.target, c.targetRespectPerDay, 'calledAgainst', emit)
+  }
+  return state
+}
+
+/**
+ * Patch 8 (D2, D3, D-64): the multiple on `rival`'s army in a front's skirmishes against `foe` on `day`: freed by a
+ * pact or oath with the player, and campaigning on the player's call to arms against that foe.
+ */
+function frontArmyMult(state: CampaignState, rival: RivalId, foe: RivalId, day: ISODate): number {
+  const t = RULES.trade
+  const freed = pactFreesArmy(state, rival, day) ? t.pact.frontArmyMult : 1
+  const called = callToArmsOn(state, day).some((c) => c.rival === rival && c.target === foe) ? t.callToArms.frontArmyMult : 1
+  return freed * called
+}
+
+/**
  * Patch 6 (D-50, C-89, N-21): each front at War settles its skirmishes through `day`, one a day (A-153),
  * each drawn on its own day and won at the rival's share of the two AVs, moving the track a step toward the
  * winner, from −3 to +3. The `fronts` day phase calls it at each day's close, so the wars between rivals
@@ -1158,8 +1193,8 @@ export function skirmishFronts(input: CampaignState, day: ISODate, weekStartsOn:
     if (next > day) continue
     let track = front.track
     for (let d = next; d <= day; d = addDays(d, 1)) {
-      const avA = armyValue(state, a, d)
-      const avB = armyValue(state, b, d)
+      const avA = armyValue(state, a, d) * frontArmyMult(state, a, b, d)
+      const avB = armyValue(state, b, d) * frontArmyMult(state, b, a, d)
       const share = avA + avB > 0 ? avA / (avA + avB) : 1 / 2
       const was = track
       track = clampTrack(track + (chance(state.campaign.seed, d, `skirmish:${id}`, share) ? fr.skirmishesPerDay : -fr.skirmishesPerDay))
@@ -1205,9 +1240,11 @@ function frontBorders(input: CampaignState, w: RivalWeek): CampaignState {
   const fr = RULES.rivals.fronts
   for (const id of FRONT_IDS) {
     const front = state.fronts[id]
-    if (Math.abs(front.track) < fr.track.max) continue
     const [a, b] = front.rivals
     const [winner, loser] = front.track > 0 ? [a, b] : [b, a]
+    // Patch 8 (D3): a rival campaigning on the player's call to arms takes land while he merely leads the war.
+    const called = front.track !== 0 && callToArmsOn(state, w.day).some((c) => c.rival === winner && c.target === loser)
+    if (Math.abs(front.track) < fr.track.max && !called) continue
     if (!isActive(state, winner) || !isActive(state, loser) || coalitionPartners(state, winner, loser, w.day)) continue
     if (!chance(state.campaign.seed, w.day, `front:${id}:border`, fr.borderChance)) continue
     const byId = hexIndex(state.hexes)
@@ -1322,6 +1359,8 @@ export function rivalView(state: CampaignState, rival: RivalId, effects: Effects
   const av = armyValue(state, rival)
   const shows = (what: 'treasury' | 'army'): boolean => {
     const whom = effects.reveals[what].whom
+    // Patch 8 (D4): Emrys's bargain shows his own, for its days.
+    if (rival === 'archmage' && bargainOn(state, 'reveal', openDayOf(state))) return true
     return whom === 'all' || (whom === 'neighbors' && isNeighbor(state, rival))
   }
   const view: RivalView = {

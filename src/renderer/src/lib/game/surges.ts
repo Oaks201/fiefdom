@@ -19,7 +19,7 @@ import { marchRule, personalitiesOf, rulesHarden, surgeOn, withPersonalities } f
 import { ownMark } from './respect'
 import { RULES } from './rules'
 import { pick, roll, weighted } from './rng'
-import { awayOn, isPlayable, openDayOf, weekOn } from './state'
+import { awayOn, bargainOn, isPlayable, openDayOf, weekOn } from './state'
 import { SURGE_KINDS, type CampaignState, type HexState, type ISODate, type Surge } from './types'
 
 const A = RULES.personalities.archmage
@@ -32,8 +32,8 @@ export function surgesOf(state: CampaignState): Surge[] {
 
 /** Whether the realm foresees tomorrow's surge (P4-04): Mage Tower IV, or the Archmage's path at rank I or more. */
 export function foreseesSurges(state: CampaignState): boolean {
-  // Patch 5 (D-39): or the Archmage's own mark above, +75.
-  return state.buildings.mageTower >= RULES.buildings.mageTower.foresight.tier || pathRank(state, 'archmage') >= PERK.foresightRank || ownMark(state, 'archmage', 'up')
+  // Patch 5 (D-39): or the Archmage's own mark above, +75. Patch 8 (D4): or his bargain of foresight.
+  return state.buildings.mageTower >= RULES.buildings.mageTower.foresight.tier || pathRank(state, 'archmage') >= PERK.foresightRank || ownMark(state, 'archmage', 'up') || bargainOn(state, 'foresight', openDayOf(state))
 }
 
 /** The Archmage's path at rank III turns a curse drawn against the player into a blessing (C-36). */
@@ -71,7 +71,8 @@ export function drawSurge(state: CampaignState, date: ISODate): Surge | null {
   const companies = state.roster.map((c) => c.id).sort()
   const mine = state.hexes.filter((h) => h.owner === 'player' && h.ring > RULES.land.protectedThroughRing && isClaimableKind(h) && marchRule(state, h, date) === 'archmage')
   if ((kind === 'blessing' || kind === 'curse') && companies.length === 0) kind = 'swell'
-  if (kind === 'strike' && (mine.length === 0 || awayOn(state, date))) kind = 'swell'
+  // Patch 8 (D4): his bargain's ward keeps his strikes off the player's hexes.
+  if (kind === 'strike' && (mine.length === 0 || awayOn(state, date) || bargainOn(state, 'ward', date))) kind = 'swell'
   if (kind === 'curse' && cursesBlocked(state)) kind = 'blessing'
   const spots = pool.filter((h) => h.owner === 'neutral' && !h.village && !h.mythic)
   if (kind === 'summoning' && spots.length === 0) kind = 'swell'

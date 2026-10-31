@@ -86,7 +86,7 @@ test('Ch 6: every deal shown as available is accepted by makeDeal; every unavail
       const today = openDayOf(state)
       for (const r of RIVAL_IDS) {
         for (const line of dealsView(state, r, today)) {
-          const request = { kind: line.kind, ...(line.hexId ? { hexId: line.hexId } : {}), ...(line.target ? { target: line.target } : {}) } as Parameters<typeof makeDeal>[2]
+          const request = { kind: line.kind, ...(line.hexId ? { hexId: line.hexId } : {}), ...(line.target ? { target: line.target } : {}), ...(line.choice ? { choice: line.choice } : {}) } as Parameters<typeof makeDeal>[2]
           if (line.available) {
             assert.ok(makeDeal(state, r, request, today).ok, `${r} ${line.kind} ${line.hexId ?? line.target ?? ''}`)
             shownAvailable++

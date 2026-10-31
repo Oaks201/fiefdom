@@ -3,22 +3,50 @@
   "rivals": {
     "ugrak": {
       "greetings": {
-        "-75": ["The crows already circle your banners, lordling. They know what comes.", "Ugrak sharpens one axe for one neck. Guess whose."],
-        "-50": ["You come to my tent unarmed? Brave. Or stupid. On the Steppe it is the same.", "Every raid on your land is a song at my fire. We have many songs now."],
-        "-25": ["Talk fast, lordling. My patience is a short horse, and it is tired.", "You owe the Steppe blood. Today, maybe only words."],
-        "0": ["Another soft lord with a castle. The Steppe has buried many.", "Ugrak listens. That is more than most get."],
-        "25": ["You hold your ground. Ugrak notices such things.", "Your soldiers fought well at the border. Not well enough. But well."],
-        "40": ["Sit. Drink. Do not spill it; it is the good kind.", "The Steppe is quiet toward you. Do not mistake quiet for soft."],
-        "50": ["My chieftains argue about you. The loud ones say you are strong. I let them win.", "You come again. Good. Ugrak likes a lord who returns."],
-        "60": ["When you fight, you fight to the end. That is the only thing Ugrak respects.", "Your name is carved on a war-post now. Small letters. Still."],
-        "75": ["Brother of the Steppe. Take the seat by the fire. No one else may.", "Ask, and the horns of the Steppe will sound for you. Ask rarely."]
+        "0": [
+          "Another soft lord with a castle. The Steppe has buried many.",
+          "Ugrak listens. That is more than most get."
+        ],
+        "25": [
+          "You hold your ground. Ugrak notices such things.",
+          "Your soldiers fought well at the border. Not well enough. But well."
+        ],
+        "40": [
+          "Sit. Drink. Do not spill it; it is the good kind.",
+          "The Steppe is quiet toward you. Do not mistake quiet for soft."
+        ],
+        "50": [
+          "My chieftains argue about you. The loud ones say you are strong. I let them win.",
+          "You come again. Good. Ugrak likes a lord who returns."
+        ],
+        "60": [
+          "When you fight, you fight to the end. That is the only thing Ugrak respects.",
+          "Your name is carved on a war-post now. Small letters. Still."
+        ],
+        "75": [
+          "Brother of the Steppe. Take the seat by the fire. No one else may.",
+          "Ask, and the horns of the Steppe will sound for you. Ask rarely."
+        ],
+        "-75": [
+          "The crows already circle your banners, lordling. They know what comes.",
+          "Ugrak sharpens one axe for one neck. Guess whose."
+        ],
+        "-50": [
+          "You come to my tent unarmed? Brave. Or stupid. On the Steppe it is the same.",
+          "Every raid on your land is a song at my fire. We have many songs now."
+        ],
+        "-25": [
+          "Talk fast, lordling. My patience is a short horse, and it is tired.",
+          "You owe the Steppe blood. Today, maybe only words."
+        ]
       },
       "deals": {
         "truce": "A truce. My axes rest. Count the days, lordling, because I will.",
         "pact": "No war-bands on your border. Ugrak's word. Do not test it.",
         "callToArms": "You pay for a war Ugrak wanted anyway. Good trade.",
         "sellHex": "This land is the Steppe's now. The Steppe thanks you. Ugrak does not.",
-        "buyout": "Your coin is heavier than their promises. Ugrak walks away."
+        "buyout": "Your coin is heavier than their promises. Ugrak walks away.",
+        "trial": "A trial! Good. Bring your best. Ugrak brings his."
       },
       "refusals": {
         "respect": "You have not earned this. Bleed for it first.",
@@ -52,7 +80,14 @@
         "emboldened": "I have {rival} on the run. The Steppe is hungry for more.",
         "humbled": "{rival} beat my war-bands. Do not smile. It will not last.",
         "habitKept": "No battle lost this week. You fight like you mean it.",
-        "habitSlipping": "You lost a battle this week. Get up. The Steppe only remembers who gets up."
+        "habitSlipping": "You lost a battle this week. Get up. The Steppe only remembers who gets up.",
+        "truceBroken": "You broke our truce, lordling. Ugrak remembers whose word bends.",
+        "pactBroken": "You broke our pact. Ugrak gave his word, you gave yours. Only one of us kept it.",
+        "heardBroken": "I hear you broke your word to {rival}. Words mean little to you. Noted.",
+        "calledAgainst": "You paid {rival} to bring war to the Steppe. I know whose coin it was.",
+        "pactKept": "Our pact ran its course and you kept it. The Steppe noticed.",
+        "trialWon": "Your champion beat mine. My warriors still talk of it. My raids can wait.",
+        "trialLost": "My champion broke yours. Train harder. Then come back."
       },
       "relations": {
         "war": "{rival}? We are at war. I will wear their banner as a cloak.",
@@ -75,15 +110,42 @@
     },
     "skivvet": {
       "greetings": {
-        "-75": ["Guards, count the spoons. All of them. Twice.", "Landlord! Still alive? That's going to cost somebody money. Probably me."],
-        "-50": ["Interest on a grudge compounds, friend. Yours is looking very healthy.", "I'd offer you a seat, but I've sold them all to people who like me."],
-        "-25": ["Let's keep this short. Short meetings are cheap meetings.", "You're a bad investment, landlord. I've told my ledgers to stop hoping."],
-        "0": ["Welcome, welcome! Mind the floor, it's for sale.", "A new face in the Warren! New faces always pay full price."],
-        "25": ["You're starting to look like a customer, landlord. Don't spoil it.", "Business is business, and you, friend, are almost business."],
-        "40": ["Tea? First cup's free. The second is a negotiation.", "I like a neighbor who pays on time. Keep it up and we'll get along famously."],
-        "50": ["Friend! My clerks smile when your name comes up. Clerks never smile.", "I've put your name in the good ledger. The small one. With the gold edges."],
-        "60": ["For you, the friend's discount. It's the same price, but I say it warmly.", "If anyone asks, I never liked you. Bad for haggling. Between us, though..."],
-        "75": ["Partner! Every vault in the Warren knows your name. Most of them like it.", "You and me, landlord. The richest friendship this side of the Rim."]
+        "0": [
+          "Welcome, welcome! Mind the floor, it's for sale.",
+          "A new face in the Warren! New faces always pay full price."
+        ],
+        "25": [
+          "You're starting to look like a customer, landlord. Don't spoil it.",
+          "Business is business, and you, friend, are almost business."
+        ],
+        "40": [
+          "Tea? First cup's free. The second is a negotiation.",
+          "I like a neighbor who pays on time. Keep it up and we'll get along famously."
+        ],
+        "50": [
+          "Friend! My clerks smile when your name comes up. Clerks never smile.",
+          "I've put your name in the good ledger. The small one. With the gold edges."
+        ],
+        "60": [
+          "For you, the friend's discount. It's the same price, but I say it warmly.",
+          "If anyone asks, I never liked you. Bad for haggling. Between us, though..."
+        ],
+        "75": [
+          "Partner! Every vault in the Warren knows your name. Most of them like it.",
+          "You and me, landlord. The richest friendship this side of the Rim."
+        ],
+        "-75": [
+          "Guards, count the spoons. All of them. Twice.",
+          "Landlord! Still alive? That's going to cost somebody money. Probably me."
+        ],
+        "-50": [
+          "Interest on a grudge compounds, friend. Yours is looking very healthy.",
+          "I'd offer you a seat, but I've sold them all to people who like me."
+        ],
+        "-25": [
+          "Let's keep this short. Short meetings are cheap meetings.",
+          "You're a bad investment, landlord. I've told my ledgers to stop hoping."
+        ]
       },
       "deals": {
         "truce": "A truce! Peace is wonderful for business. Pleasure, as always.",
@@ -91,7 +153,8 @@
         "callToArms": "A war on a neighbor, paid in advance! My favorite kind of contract.",
         "sellHex": "Sold! To me! Best deal you'll make all week. I checked.",
         "buyout": "Out of the alliance and into profit. A fine morning's work.",
-        "accord": "An Accord! Partners in everything. Well, nearly everything."
+        "accord": "An Accord! Partners in everything. Well, nearly everything.",
+        "mercenaries": "One fine company, freshly sharpened, yours for the week. No refunds, friend. Mostly no refunds."
       },
       "refusals": {
         "respect": "Your credit's not good enough for that one, friend. Come back better thought of.",
@@ -125,7 +188,12 @@
         "emboldened": "{rival} is losing to me on our border. Delightful. Their prices are already dropping.",
         "humbled": "{rival} has my lads beaten on the border. Don't mention it. Ever.",
         "habitKept": "Your food ledger's been neat and honest all week, friend. A lord who keeps good books keeps good coin. I like that.",
-        "habitSlipping": "Your food ledger's been a little patchy this week, landlord. A good merchant fills in every page. Even the boring ones."
+        "habitSlipping": "Your food ledger's been a little patchy this week, landlord. A good merchant fills in every page. Even the boring ones.",
+        "truceBroken": "You broke our truce, landlord. I've added a fee for that. A large one.",
+        "pactBroken": "You broke our pact! Terrible for your credit. The whole Warren heard.",
+        "heardBroken": "Word is you broke your deal with {rival}. Bad for business, friend. Very bad for business.",
+        "calledAgainst": "So you paid {rival} to come at me. Clever. I'll remember the invoice.",
+        "pactKept": "Our pact is done and you kept every line of it. A customer who honors contracts! Rare as rubies."
       },
       "relations": {
         "war": "{rival}? We're at war. Terrible for trade, wonderful for weapon sales.",
@@ -148,15 +216,42 @@
     },
     "hrodgar": {
       "greetings": {
-        "-75": ["Speak, outsider. Every word you say will be written down, and none of it forgiven.", "The anvil does not cool for you. Neither do I."],
-        "-50": ["Your banners hang as targets in every forge in Dun Kaldor.", "I grant you this audience as I grant the winter its due. Grudgingly."],
-        "-25": ["You walk on thin planks over a deep shaft, outsider. Mind your step.", "Another line in the book of grudges. Shall I read you the others?"],
-        "0": ["An outsider at the gate. State your business. Briefly.", "Dun Kaldor has seen lords come and go. Mostly go."],
-        "25": ["You have not broken your word yet. The clans have noticed.", "Stone weathers slowly. So does trust. Be patient."],
-        "40": ["Sit, outsider. The bench is old and so is the peace. Mind both.", "Your word has held this season. Mine will too."],
-        "50": ["The elders spoke your name in council, and no one left the hall.", "Stand by the hearth, outsider. It is warmer there than it was."],
-        "60": ["You keep faith like a dwarf. I say that of very few.", "The hammers of Dun Kaldor know your name. They ring a little lighter for it."],
-        "75": ["Friend of the stone. Your name will outlast us both in this hall.", "Sit at my right hand, friend. Few have sat there, and fewer were asked."]
+        "0": [
+          "An outsider at the gate. State your business. Briefly.",
+          "Dun Kaldor has seen lords come and go. Mostly go."
+        ],
+        "25": [
+          "You have not broken your word yet. The clans have noticed.",
+          "Stone weathers slowly. So does trust. Be patient."
+        ],
+        "40": [
+          "Sit, outsider. The bench is old and so is the peace. Mind both.",
+          "Your word has held this season. Mine will too."
+        ],
+        "50": [
+          "The elders spoke your name in council, and no one left the hall.",
+          "Stand by the hearth, outsider. It is warmer there than it was."
+        ],
+        "60": [
+          "You keep faith like a dwarf. I say that of very few.",
+          "The hammers of Dun Kaldor know your name. They ring a little lighter for it."
+        ],
+        "75": [
+          "Friend of the stone. Your name will outlast us both in this hall.",
+          "Sit at my right hand, friend. Few have sat there, and fewer were asked."
+        ],
+        "-75": [
+          "Speak, outsider. Every word you say will be written down, and none of it forgiven.",
+          "The anvil does not cool for you. Neither do I."
+        ],
+        "-50": [
+          "Your banners hang as targets in every forge in Dun Kaldor.",
+          "I grant you this audience as I grant the winter its due. Grudgingly."
+        ],
+        "-25": [
+          "You walk on thin planks over a deep shaft, outsider. Mind your step.",
+          "Another line in the book of grudges. Shall I read you the others?"
+        ]
       },
       "deals": {
         "truce": "A truce, then. It holds as long as stone holds. See that it does.",
@@ -164,7 +259,8 @@
         "callToArms": "The hammers march at your word. Dun Kaldor settles its own scores too.",
         "sellHex": "The land comes home to the mountain. A fair trade, outsider.",
         "buyout": "The alliance is broken. Grudge or no grudge, a dwarf knows a fair price.",
-        "accord": "We shall carve this Accord in the great hall. Mind the letters; they last."
+        "accord": "We shall carve this Accord in the great hall. Mind the letters; they last.",
+        "oath": "Swear it on the anvil, then. My walls come down. Break it, and they go back up for good."
       },
       "refusals": {
         "respect": "Trust is earned in years, outsider, not in coin.",
@@ -198,7 +294,12 @@
         "emboldened": "We have {rival} beaten on our border. The forges sing of it.",
         "humbled": "{rival} has the better of us on our border. It is in the book. We will turn that page.",
         "habitKept": "You have walked your measure this week. A dwarf respects a lord who keeps pace.",
-        "habitSlipping": "You are behind your measure of steps this week. There is time yet. The mountain is climbed one step at a time."
+        "habitSlipping": "You are behind your measure of steps this week. There is time yet. The mountain is climbed one step at a time.",
+        "truceBroken": "You broke our truce. It is in the book. In red, and underlined.",
+        "pactBroken": "You broke an oath sworn on the anvil. Dun Kaldor will not forget. Ever.",
+        "heardBroken": "The clans hear you broke your word to {rival}. An oath broken anywhere is broken everywhere.",
+        "calledAgainst": "You paid {rival} to march on Dun Kaldor. It is written down, outsider.",
+        "pactKept": "Our oath ran its full length, kept. That is worth more than gold under the mountain."
       },
       "relations": {
         "war": "{rival}? We are at war. The hammers do not rest.",
@@ -221,15 +322,42 @@
     },
     "emrys": {
       "greetings": {
-        "-75": ["Ah, my favorite experiment. Do try to survive this one.", "Every star I read spells your ruin. I checked twice. Delightful."],
-        "-50": ["Your name keeps turning up in my curses. I really should vary them.", "I've had the tower's lightning rods turned toward your castle. Purely decorative. For now."],
-        "-25": ["Make it quick. I have centuries to waste, but not on you.", "Ah. The lord who keeps disappointing me. Do go on."],
-        "0": ["You've wandered into my tower. Do try not to touch anything that hums.", "I've seen empires rise and crumble. You are, so far, neither."],
-        "25": ["You're improving. Slowly. Like mold, but with ambition.", "I've stopped forgetting your name. Take that as a compliment."],
-        "40": ["Sit, if you must. The chair is enchanted, but only mildly.", "The stars are calm about you this season. I find that suspicious, but fine."],
-        "50": ["You again. Good. The others bore me terribly.", "I made tea. It may not be tea. Drink it anyway; you'll be fine. Probably."],
-        "60": ["My apprentices ask about you. I tell them you're a cautionary tale with promise.", "I've written you into my memoirs. A short chapter, but well lit."],
-        "75": ["Ah, my one tolerable acquaintance. Sit. I've been saving a good argument for you.", "Centuries of solitude, and now there's you. I suppose I'll allow it."]
+        "0": [
+          "You've wandered into my tower. Do try not to touch anything that hums.",
+          "I've seen empires rise and crumble. You are, so far, neither."
+        ],
+        "25": [
+          "You're improving. Slowly. Like mold, but with ambition.",
+          "I've stopped forgetting your name. Take that as a compliment."
+        ],
+        "40": [
+          "Sit, if you must. The chair is enchanted, but only mildly.",
+          "The stars are calm about you this season. I find that suspicious, but fine."
+        ],
+        "50": [
+          "You again. Good. The others bore me terribly.",
+          "I made tea. It may not be tea. Drink it anyway; you'll be fine. Probably."
+        ],
+        "60": [
+          "My apprentices ask about you. I tell them you're a cautionary tale with promise.",
+          "I've written you into my memoirs. A short chapter, but well lit."
+        ],
+        "75": [
+          "Ah, my one tolerable acquaintance. Sit. I've been saving a good argument for you.",
+          "Centuries of solitude, and now there's you. I suppose I'll allow it."
+        ],
+        "-75": [
+          "Ah, my favorite experiment. Do try to survive this one.",
+          "Every star I read spells your ruin. I checked twice. Delightful."
+        ],
+        "-50": [
+          "Your name keeps turning up in my curses. I really should vary them.",
+          "I've had the tower's lightning rods turned toward your castle. Purely decorative. For now."
+        ],
+        "-25": [
+          "Make it quick. I have centuries to waste, but not on you.",
+          "Ah. The lord who keeps disappointing me. Do go on."
+        ]
       },
       "deals": {
         "truce": "A truce. How quaint. I'll pencil it in.",
@@ -238,7 +366,8 @@
         "sellHex": "I'll take it. The ley lines there are ghastly, but I enjoy a project.",
         "buyHex": "It's yours. Do water the strange plants; they bite when neglected.",
         "buyout": "Very well, I'll leave them. Coalitions are tedious anyway.",
-        "accord": "An Accord. Fine. Don't make me regret being pleasant."
+        "accord": "An Accord. Fine. Don't make me regret being pleasant.",
+        "bargain": "Knowledge, for a price. Still the best trade in the world. Do try to use it wisely."
       },
       "refusals": {
         "respect": "I don't do that for people I barely tolerate. Try being less tedious.",
@@ -272,7 +401,12 @@
         "emboldened": "I've humbled {rival} on our border. They're still smoking.",
         "humbled": "{rival} has the better of me on our border, for the moment. Moments pass.",
         "habitKept": "You've kept every duty this week. Discipline! How unexpected. I approve.",
-        "habitSlipping": "A duty or two slipped this week. Consistency, my dear lord, is the only real magic. Pick it back up."
+        "habitSlipping": "A duty or two slipped this week. Consistency, my dear lord, is the only real magic. Pick it back up.",
+        "truceBroken": "You broke our truce. How predictable. I'd hoped for something more original.",
+        "pactBroken": "You broke our pact. I'll admit I'm disappointed. I so rarely am, these days.",
+        "heardBroken": "I hear you broke your word to {rival}. Interesting. I'll keep my own wards up.",
+        "calledAgainst": "So you paid {rival} to come after me. Bold. Unwise, but bold.",
+        "pactKept": "Our pact has run its course, kept to the letter. You're more reliable than you look."
       },
       "relations": {
         "war": "{rival}? We're at war. It's the most fun I've had in a decade.",

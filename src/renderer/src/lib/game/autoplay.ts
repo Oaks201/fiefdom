@@ -38,7 +38,7 @@ import { balance } from './economy'
 import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
 import { isOver, marshalPlay } from './grand/field'
-import { bidCheck, fortify, makeDeal, offerDeal, placeBid, resistance } from './land'
+import { bidCheck, fortify, makeDeal, offerDeal, placeBid, resistance, type DealRequest } from './land'
 import { claimableBy, hexIndex, isStronghold, touches } from './map'
 import { RULES } from './rules'
 import { rivalView } from './rivals'
@@ -46,13 +46,13 @@ import { roster } from './roster'
 import { readinessValors, valorOn } from './settle'
 import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
-import { inCoalition } from './state'
+import { bindingDeals, inCoalition, isRival } from './state'
 import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId } from './types'
 import { trustNow } from './view/realm'
 import { realmConsistencyNow } from './view/shell'
 import { marchRule, surgeMult } from './personalities'
 import { bidSways, bribe, bribePrice, bribeProblem, goblinBidsOf, holdVillage, holdWeight } from './goblin'
-import { accordGate, acceptGoblinOffer, acceptTerms, bendTheKnee, refuseTerms, sealAccord, ultimatumView } from './world'
+import { accordGate, acceptGoblinOffer, acceptTerms, bendTheKnee, refuseTerms, sealAccord, strikeDeal, ultimatumView } from './world'
 import { openTerms, termsOf } from './terms'
 import { keepVillage } from './world/events'
 
@@ -345,7 +345,8 @@ function assaultOptions(state: CampaignState, today: ISODate, effects: Effects, 
   const byId = hexIndex(state.hexes)
   // A hex whose Grand Battle waits can't be assaulted until it is fought (S-14): no target while it waits.
   const waiting = new Set(pendingBattles(state).map((b) => b.hexId))
-  const candidates = frontier(state).filter((h) => (!only || only.has(h.id)) && !waiting.has(h.id) && claimableBy(state.hexes, h.id, 'player', 'assault'))
+  // Patch 8 (D1, D2): the player keeps its word: no assault on the land of a ruler whose Truce, pact or oath binds it.
+  const candidates = frontier(state).filter((h) => (!only || only.has(h.id)) && !waiting.has(h.id) && claimableBy(state.hexes, h.id, 'player', 'assault') && !(isRival(h.owner) && bindingDeals(state, h.owner, today).length > 0))
   const pool = new Map<string, { base: number; fielded: string[] }>()
   const out: AssaultOption[] = []
   for (const h of candidates) {
@@ -598,6 +599,42 @@ function smarterDaily(input: CampaignState, today: ISODate, day: AutoplayDay): C
     const done = bendTheKnee(state, u.rival, today)
     if (done.ok) state = done.state
   }
+  // Patch 8 (D4): Skivvet's mercenaries hired just before a Grand Battle, one company while none serves.
+  const hires = state.terms?.hires
+  const hiring = hires !== undefined && today <= hires.until
+  if (!hiring && pendingBattles(state).some((b) => b.battleDate >= today && diffDays(today, b.battleDate) <= A.mercenaryDays)) state = tryDeal(state, 'goblin', { kind: 'mercenaries' }, today)
+  return state
+}
+
+/** Strikes a deal if it is open and leaves `dealReserve` in the purse (Patch 8). */
+function tryDeal(state: CampaignState, rival: RivalId, request: DealRequest, today: ISODate): CampaignState {
+  const offer = offerDeal(state, rival, request, today)
+  if (!offer.allowed || balance(state.purse) - offer.price < A.dealReserve) return state
+  const done = strikeDeal(state, rival, request, today)
+  return done.ok ? done.state : state
+}
+
+/**
+ * Patch 8 (D-64): the smarter player's deals, once a week: a pact (the Dwarf's oath) with a ruler whose raids hit it
+ * and whose land it left alone; a call to arms on a ruler at War with it or raiding it, from a neighbor who will answer; Ugrak's
+ * trial when its best company can face his champion; Emrys's ward when his surges strike it.
+ */
+function weeklyDeals(input: CampaignState, today: ISODate): CampaignState {
+  let state = input
+  const since = addDays(today, -A.dealMemoryDays)
+  const attacksBy = (r: RivalId): number => state.log.filter((e) => e.kind === 'defense' && e.rival === r && e.day >= since).length
+  const assaulted = (r: RivalId): boolean => state.log.some((e) => e.kind === 'assault' && e.owner === r && e.day >= since)
+  const active = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active')
+  for (const r of active) if (attacksBy(r) >= A.pactRaids && !assaulted(r)) state = tryDeal(state, r, { kind: r === 'dwarf' ? 'oath' : 'pact' }, today)
+  // A ruler at War with it, or one whose raids keep coming, is worth setting a neighbor on.
+  for (const target of active.filter((t) => state.rivals[t].disposition.player === 'war' || attacksBy(t) >= A.pactRaids)) {
+    const caller = active.find((r) => r !== target && offerDeal(state, r, { kind: 'callToArms', target }, today).allowed)
+    if (caller) state = tryDeal(state, caller, { kind: 'callToArms', target }, today)
+  }
+  const champion = CODEX.hosts.find((h) => h.rival === 'orc')?.commander.power ?? Number.POSITIVE_INFINITY
+  const best = Math.max(0, ...roster(state, { day: today }).map((c) => c.power))
+  if (active.includes('orc') && attacksBy('orc') > 0 && best >= champion) state = tryDeal(state, 'orc', { kind: 'trial' }, today)
+  if (active.includes('archmage') && state.log.some((e) => e.kind === 'defense' && e.threat === 'surge' && e.day >= since)) state = tryDeal(state, 'archmage', { kind: 'bargain', choice: 'ward' }, today)
   return state
 }
 
@@ -609,6 +646,7 @@ function smarterWeekly(input: CampaignState, today: ISODate): CampaignState {
       if (done.ok) state = done.state
     }
   }
+  state = weeklyDeals(state, today)
   const lastVillages = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active' && state.hexes.filter((h) => h.owner === r && h.village).length <= 2)
   if (lastVillages.length > 0) state = courtVillages(state, today, A.defectionMargin, (h) => lastVillages.includes(h.owner as RivalId))
   return state

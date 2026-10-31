@@ -284,6 +284,13 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       if (e.from !== 'neutral' && e.to !== 'neutral' && e.how === 'conquest') return line('world', 'herald.rival.takesFrom', { rival: rivalName(e.to), hex: hexName(e.hexId), other: rivalName(e.from) }, { hexId: e.hexId, rival: e.to })
       if (e.from !== 'neutral' && e.to === 'neutral' && e.how === 'wilds') return line('world', 'herald.rival.lostToWilds', { rival: rivalName(e.from), hex: hexName(e.hexId) }, { hexId: e.hexId, rival: e.from })
       return null
+    case 'dealEnded': {
+      // Patch 8 (D-64): a binding deal broken by the player's assault, a pact or oath kept, a call to arms' result.
+      const facts: TextFacts = { rival: rivalName(e.rival), ...(e.target ? { target: rivalName(e.target), count: e.taken ?? 0 } : {}) }
+      if (e.how === 'broken') return line('world', `herald.deal.broken.${e.deal}`, facts, { rival: e.rival })
+      if (e.deal === 'callToArms') return line('world', (e.taken ?? 0) > 0 ? 'herald.deal.callToArms.took' : 'herald.deal.callToArms.none', facts, { rival: e.rival })
+      return e.deal === 'pact' || e.deal === 'oath' ? line('world', `herald.deal.kept.${e.deal}`, facts, { rival: e.rival }) : null
+    }
     case 'disposition':
       // Patch 6 (C-88): a standing that changes, read each day (D-49), is told the next morning.
       return line('world', `herald.standing.${e.to}`, { rival: rivalName(e.rival) }, { rival: e.rival })

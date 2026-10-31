@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.8.0',
+  ruleVersion: '3.9.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -339,10 +339,39 @@ const RULES_TABLE = {
     /** Selling pays 0.7 × the buy price, never for bands 1 to 2 (the heartland). */
     sellShare: 0.7,
     sellMinRing: 3,
-    /** Truce: 30 × the highest ring that rival borders; no raids or conquest for 7 days. */
-    truce: { costPerRing: 30, days: 7 },
-    pact: { cost: 250, days: 28, raidRateMult: 0.5 },
-    callToArms: { cost: 200, days: 14 },
+    /**
+     * Truce: 30 × the highest ring that rival borders; no raids or conquest for 7 days. Patch 8 (D1, D-64): it
+     * binds the player too; an assault on his land breaks it, at `brokenRespect`. TUNE.
+     */
+    truce: { costPerRing: 30, days: 7, brokenRespect: -10 },
+    /**
+     * Patch 8 (D2, D-64): a treaty both keep for 28 days: no raids or conquest attempts from him, no assault on his
+     * land from the player. His army turns on his neighbors (`frontArmyMult` on his Rim fronts' skirmishes,
+     * `wildSiegeMult` on his siege of the wilds). Kept to its end, `keptRespect`; broken, `brokenRespect`, he is at
+     * War for `wrongedDays` whatever his Respect, and every other ruler hears of it (`heardRespect`). TUNE.
+     */
+    pact: { cost: 250, days: 28, keptRespect: 5, brokenRespect: -20, heardRespect: -5, wrongedDays: 14, frontArmyMult: 1.25, wildSiegeMult: 1.33 },
+    /**
+     * Patch 8 (D3, D-64): the rival called campaigns against the target for 14 days: `frontArmyMult` on their
+     * front's skirmishes, and leading its track is enough for him to take land (W2). The target learns who paid:
+     * `targetRespectPerDay` for its first `targetDays` days. Land taken by its end: `answeredRespect` with the
+     * rival called. TUNE.
+     */
+    callToArms: { cost: 200, days: 14, frontArmyMult: 1.25, targetRespectPerDay: -1, targetDays: 7, answeredRespect: 3 },
+    /**
+     * Patch 8 (D4, D-64): each ruler's own deal. Ugrak's trial of champions: a Grand Battle of one company a side
+     * at the player's border, once every `everyWeeks`; won, his raids stop for `raidsStopDays`; lost, a
+     * tribute of `loseTributePerRing` × band; his Respect moves as for any Grand Battle against him. Skivvet's mercenaries: one hired company for `days`
+     * at `cost` × his greed, while hires stay under the buy-off's `maxHires`. Hrodgar's oath of stone: a pact of
+     * `days` that takes down his walls on the wilds facing the player; kept `keptRespect`, broken `brokenRespect`
+     * and the Book of Grudges (his deals cost `grudgeMult` × for the rest of the campaign). Emrys's bargain of
+     * knowledge: for `days`, his treasury and army shown, his surges foretold, or no surge striking the
+     * player's hexes. TUNE.
+     */
+    trial: { everyWeeks: 4, companiesPerSide: 1, loseTributePerRing: 5, raidsStopDays: 14 },
+    mercenaries: { cost: 80, days: 7, minRespect: 0, greedMult: { fair: 1, dear: 1.25, gouging: 1.5 } },
+    oath: { days: 56, keptRespect: 10, brokenRespect: -30, grudgeMult: 2 },
+    bargain: { cost: 150, days: 7, minRespect: 25 },
     hexDealEveryWeeks: 4
   },
 
@@ -588,7 +617,7 @@ const RULES_TABLE = {
     byRival: {
       orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5 },
       goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: -5, bidHeld: -2 },
-      dwarf: { pactKept: 5, wallBroken: -1 },
+      dwarf: { wallBroken: -1 },
       archmage: { constantWeek: 1, surgeHeld: 2, ritualEndured: 2 }
     } as PerRival<Record<string, number>>,
     constantWeekAt: 0.85,
@@ -666,9 +695,10 @@ const RULES_TABLE = {
     /**
      * Patch 7 (A1a, D-59): pacing by the realm's progress, not the calendar. Each rival resolved needs the
      * realm's total Dominion at a mark first: the first at `dominionMarks[0]`, the second at `[1]`, and so on.
-     * A rival ready before it waits. Replaces the calendar (none before week 16, then one per 12 weeks). TUNE.
+     * A rival ready before it waits. Replaces the calendar (none before week 16, then one per 12 weeks). Patch 8 (D-65):
+     * the third and fourth lowered from 2,700 and 3,650, as the deals of D-64 slow Dominion two to three weeks. TUNE.
      */
-    resolution: { dominionMarks: [650, 1_800, 2_700, 3_650] },
+    resolution: { dominionMarks: [650, 1_800, 2_500, 3_350] },
     /** Ch 13: what a rival's fall does to the others. */
     fallout: { conqueredThreat: 15, abdicatedThreat: 10, alliedThreat: 5, conqueredLoyaltyMult: 0.5 },
     /** An allied rival may join one Grand Battle a month. */
@@ -960,6 +990,15 @@ const RULES_TABLE = {
     bribeShare: 0.5,
     /** Patch 4 (C-46, G-08): the share of the next build's price (tier, castle tier or Crossing stage) its bribes leave in the purse. TUNE. */
     bribeReserve: 0.5,
+    /**
+     * Patch 8 (D-64): the smarter player's deals keep this much in the purse; it strikes a pact (the Dwarf's oath) with a
+     * ruler whose raids or attacks hit it `pactRaids` times in the last `dealMemoryDays` and whose land it left alone
+     * that long, and hires Skivvet's mercenaries `mercenaryDays` before a Grand Battle. A habit of play. TUNE.
+     */
+    dealReserve: 300,
+    pactRaids: 2,
+    dealMemoryDays: 14,
+    mercenaryDays: 3,
     /** Patch 4 (C-46): it holds a village the Goblin bids for while the hold needed is at most this share of the purse. TUNE. */
     holdShare: 0.25,
     /**

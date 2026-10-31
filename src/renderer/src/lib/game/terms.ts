@@ -51,12 +51,8 @@ export function patchRivalTerms(state: CampaignState, rival: RivalId, patch: Par
   return { ...state, terms: { ...t, byRival: { ...t.byRival, [rival]: { ...t.byRival[rival], ...patch } } } }
 }
 
-/** The state with the Goblin's hired companies from a buy-off (C-35). */
-export function withHires(state: CampaignState, hires: TermsState['hires']): CampaignState {
-  const t = termsOf(state)
-  const { hires: _old, ...rest } = t
-  return { ...state, terms: hires ? { ...rest, hires } : rest }
-}
+/** The state with the Goblin's hired companies (C-35): `state.ts`'s, where his mercenaries for hire set them too (Patch 8). */
+export { withHires } from './state'
 
 // ── The measures (C-38) ──────────────────────────────────────────────────────
 

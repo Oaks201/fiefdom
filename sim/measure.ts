@@ -90,6 +90,9 @@ export interface Measures {
   deeds?: number[]
   /** Renown posted by the end, by deed kind, every path summed (P2-13's mix; Patch 3's stronghold and counterattack deeds, D-25). */
   deedMix?: Record<string, number>
+  /** Patch 8 (G-24): deals struck by the end, by kind, and binding deals broken. */
+  deals?: Record<string, number>
+  dealsBroken?: number
   /** Daily assaults won, by a rout and without one (Patch 3: G-09's share counts fallbacks against the non-rout wins). */
   assaultWins: { rout: number; nonRout: number }
   /** Hexes taken by daily assault, by the assault days spent on each (index 1 to `SIEGE_DAYS_CAP`; the last counts longer sieges too). */
@@ -431,6 +434,10 @@ export class Recorder {
     const mix: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deed') mix[e.deed] = (mix[e.deed] ?? 0) + e.value
     this.m.deedMix = mix
+    const deals: Record<string, number> = {}
+    for (const e of state.log) if (e.kind === 'deal') deals[e.deal] = (deals[e.deal] ?? 0) + 1
+    this.m.deals = deals
+    this.m.dealsBroken = state.log.filter((e) => e.kind === 'dealEnded' && e.how === 'broken').length
     const reasons = Object.fromEntries(RIVAL_IDS.map((r) => [r, {}])) as Record<RivalId, Record<string, [number, number]>>
     const eventWeeks: Record<string, number> = {}
     const flips = RIVAL_IDS.map(() => 0)

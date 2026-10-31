@@ -8,7 +8,7 @@ import { addDays, campaignWeek, diffDays } from './clock'
 import { totalDominion } from './dominion'
 import { bandOf } from './map'
 import { RULES } from './rules'
-import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type RivalId, type RivalState, type WorldState } from './types'
+import { RIVAL_IDS, type BargainChoice, type CampaignState, type Deal, type Emit, type GameEvent, type GameEventKind, type HexState, type ISODate, type Owner, type RivalId, type RivalState, type WorldState } from './types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +96,36 @@ export function openDayOf(state: CampaignState): ISODate {
 
 export function hexOf(state: CampaignState, id: string): HexState | undefined {
   return state.hexes.find((h) => h.id === id)
+}
+
+/** Whether `owner` is one of the four rivals (not the player, nor the wilds). */
+export function isRival(owner: Owner | undefined): owner is RivalId {
+  return owner !== undefined && (RIVAL_IDS as readonly string[]).includes(owner)
+}
+
+/** The state with the Goblin's hired companies: a buy-off's (C-35), or his mercenaries for hire (Patch 8, D4). */
+export function withHires(state: CampaignState, hires: NonNullable<CampaignState['terms']>['hires']): CampaignState {
+  const t = state.terms ?? { byRival: {} }
+  const { hires: _old, ...rest } = t
+  return { ...state, terms: hires ? { ...rest, hires } : rest }
+}
+
+/** `rival`'s deal of `kind` holding on `day`: struck by then, its last day not past (A-123), and not broken (Patch 8, D-64). */
+export function dealOn(state: CampaignState, rival: RivalId, kind: Deal['kind'], day: ISODate): Deal | undefined {
+  return state.deals.find((d) => d.rival === rival && d.kind === kind && d.brokenOn === undefined && d.madeOn <= day && (d.until === undefined || day <= d.until))
+}
+
+/** Patch 8 (D4, D-64): Emrys's bargain of `choice` holds on `day`. */
+export function bargainOn(state: CampaignState, choice: BargainChoice, day: ISODate): boolean {
+  return dealOn(state, 'archmage', 'bargain', day)?.choice === choice
+}
+
+/** Patch 8 (D1, D2, D-64): the deals with `rival` that bind the player on `day` (a Truce, pact or oath struck from 3.9.0): an assault on his land breaks them. */
+export function bindingDeals(state: CampaignState, rival: RivalId, day: ISODate): Deal[] {
+  return (['truce', 'pact', 'oath'] as const).flatMap((kind) => {
+    const d = dealOn(state, rival, kind, day)
+    return d?.binds ? [d] : []
+  })
 }
 
 /** Whether `rival` belongs to a coalition in force on `day` (one without an end lasts until it is broken). */

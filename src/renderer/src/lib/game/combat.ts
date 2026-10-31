@@ -37,7 +37,7 @@ import { CODEX, type Matchup, type MatchupId } from './codex'
 import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
-import { blocksConquest, blocksRaids, fortificationValue, raidRateMult, sellPrice } from './land'
+import { blocksConquest, blocksRaids, breakDeals, fortificationValue, sellPrice } from './land'
 import { bandOf, borderHexesOf, claimableBy, depthOf, hexDistance, hexIndex, isClaimableKind, isStronghold, nearestTo, neighbors, strongholdBarring, touches, wildBase, wildGarrison } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
@@ -46,7 +46,7 @@ import { pathRank } from './dominion'
 import { dissolves, fallbackShareOn, pactBars, personalitiesOf, surgeOn, withPersonalities, inMarchOf, marchRule, orcStrikeMult, raidWeight, rulesHarden, strikeChance, wearDecayOn, wildsMayReclaim } from './personalities'
 import { decayedWear, fortificationShare, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
 import { envoyFee, marksFor, ownMark, raidRespectMult, respectChange } from './respect'
-import { adjustRespect, awayOn, heldHex, inCoalition, isPlayable, openDayOf, toPlayer, toRival, toWilds, withWorld, worldOf } from './state'
+import { adjustRespect, awayOn, bindingDeals, heldHex, inCoalition, isPlayable, isRival, openDayOf, toPlayer, toRival, toWilds, withWorld, worldOf } from './state'
 import { strikeMult } from './reach'
 import {
   RIVAL_IDS,
@@ -206,7 +206,6 @@ export function raiderWeights(state: CampaignState, date: ISODate): { rival: Riv
     let weight = RULES.rivals.raidFrequency[rival] * (1 + touching)
     if (Object.values(state.fronts).some((f) => f.rivals.includes(rival) && f.state === 'war')) weight *= RULES.rivals.raiderWeight.atWarWithRival
     if (inCoalition(state, rival, date)) weight *= RULES.rivals.raiderWeight.inCoalition
-    weight *= raidRateMult(state, rival, date)
     weight = COMBAT_HOOKS.raiderWeight(state, rival, date, weight)
     if (weight > 0) out.push({ rival, weight })
   }
@@ -984,6 +983,9 @@ export function ordersFor(state: CampaignState, day: ISODate, effects: Effects =
   const own = state.orders.find((o) => o.date === day)
   if (own) return own
   const siege = standingSiegeOf(state)
+  // Patch 8 (D1, D2): a siege on the land of a rival whose Truce, pact or oath binds the player waits; the Marshal won't break it.
+  const holder = siege && state.hexes.find((h) => h.id === siege.hexId)?.owner
+  if (holder && isRival(holder) && bindingDeals(state, holder, day).length > 0) return undefined
   return siege && siegeIsLive(state, siege.hexId) ? siegeOrders(state, day, siege.hexId, effects) : undefined
 }
 
@@ -1510,6 +1512,8 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   }
   if (dissolved.length > 0) state = withPersonalities(state, { dissolved: [...(personalitiesOf(state).dissolved ?? []), ...dissolved] })
   if (fell) state = pressOn(state, fell.hex.id, fell.from, day, emit)
+  // Patch 8 (D1, D2, D-64): an assault on the land of a rival whose Truce, pact or oath binds the player breaks it.
+  for (const rival of new Set(validity.assaults.flatMap((a) => (isRival(byId.get(a.target)?.owner) ? [byId.get(a.target)?.owner as RivalId] : [])))) state = breakDeals(state, rival, day, emit)
   // Patch 4 (C-36): at the Orc's path rank V a repulse leaves no company Weary (iron ranks).
   if (wearied.size > 0 && pathRank(state, 'orc') < RULES.dominion.rankPerks.orc.ironRanksRank) state = weary(state, wearied, day, effects)
   // Led fights are kept a week for their replays (D-12).

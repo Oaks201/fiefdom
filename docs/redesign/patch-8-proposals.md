@@ -2,7 +2,7 @@
 
 Written 2026-10-29, on branch `patch-8` (from Patch 7, 0db00d4, rules 3.8.0).
 
-**Status (2026-10-29):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Its lines are drafts in `rivalLines.draft.json`, waiting for Rich's review; until he approves them, a release build shows none. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
+**Status (2026-10-29):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Its lines are drafts in `rivalLines.draft.json`, waiting for Rich's review; until he approves them, a release build shows none. Stage 2, each deal its own, is built (D-64, rules 3.9.0), with the last two Dominion marks lowered (D-65); its report is section 10. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
 
 Rich's direction (2026-10-29):
 - Make diplomacy and the rivals more exciting, with more interactions with them.
@@ -163,3 +163,73 @@ New simulator targets, after the automatic player learns the new deals:
 5. **Requests (R1, R2):** yes? And habit challenges among them?
 6. **The writing (section 5):** option 1, 2 or 3?
 7. **The order (section 8)?**
+
+## 10. Stage 2 report: each deal its own (rules 3.9.0)
+
+Built 2026-10-29 and 30 from D1 to D4 (D-62, recorded as D-64). Every number below is a first guess the simulator checked; Rich decides them (D-02).
+
+### 10.1 What was built
+
+- **D1, the Truce binds both sides.** For its 7 days the Marshal's standing siege on his land waits, and no battle you call there is announced. An assault on his land breaks it: −10 Respect, and his raids are free from the next dawn. The orders panel warns before the close: "This assault breaks your Truce (−10 Respect) with Ugrak."
+- **D2, the pact is a treaty.**
+  - **Both keep it:** for 28 days his raids stop altogether, and you make no assaults on his land.
+  - **His army turns on his neighbors:** ×1.25 in his Rim fronts' skirmishes, ×1.33 on his siege of the wilds.
+  - **Kept to its end:** +5 at its last day's close, for every ruler. Hrodgar's weekly +5 now posts there.
+  - **Broken:** −20, he is at War for 14 days whatever his Respect, and −5 with every other ruler.
+  - **At Peace:** it is offered again. B5 still refuses the Truce at Peace, but at Peace a pact now binds you, pays and moves the map. Before this, Emrys's pact could never be struck: his pact mark and his Peace mark are both 40.
+- **D3, the call to arms campaigns.** The rival you call fights at ×1.25 on that front, and takes land while he merely leads its war. The rival it's aimed at loses 1 Respect a day for the first week. At the end the Herald reports the hexes taken, and land taken pays +3 with the rival you called.
+- **D4, each ruler's own deal.**
+  - **Ugrak's trial of champions:** your best company against his champion, a one-company-a-side battle at your border, once every 4 weeks. Won, a Truce of his own stops his raids for 14 days; it binds only him. Lost, a tribute. His Respect moves ±5, as for any Grand Battle against him, so it isn't paid twice.
+  - **Skivvet's mercenaries:** one of his companies for 7 days at 80 × his greed (fair 1, dear 1.25, gouging 1.5), up to 3 at a time, never at War.
+  - **Hrodgar's oath of stone:** a pact of 8 weeks at the pact's price.
+    - His walls on the wilds facing you come down, and none rise while it holds.
+    - Kept, +10.
+    - Broken, −30, War, word travels to every other court, and his Book of Grudges doubles his prices for good.
+  - **Emrys's bargain of knowledge:** 150 for 7 days, from Respect 25. Pick one: his treasury and army shown, his surges foretold, or no surge striking your hexes.
+- **The Audience:** offer cards for the new deals; Emrys's three choices share one card with a picker. Rulers now also speak of deals kept and broken, of a call to arms aimed at them, and Ugrak of his trial. Stage 2 adds about 25 draft lines to `rivalLines.draft.json`.
+- **Save compatibility:** deals struck before 3.9.0 keep their old terms; they don't bind you.
+- **The simulator:**
+  - **The automatic player keeps its word:** no assault on the land of a ruler bound to it.
+  - **It strikes each deal:**
+    - a pact (Hrodgar's oath) with a ruler whose attacks hit it twice in two weeks and whose land it left alone;
+    - a call to arms on a ruler at War with it or raiding it;
+    - the trial when its best company can face Ugrak's champion;
+    - Emrys's ward when his surges strike it;
+    - Skivvet's mercenaries just before a Grand Battle.
+  - **New target G-24:** each deal struck in at least 30% of the smarter player's campaigns.
+- **Tests:** 8 new tests in `tests/game/deals.test.ts`; all 929 pass.
+
+### 10.2 What the simulator found
+
+Four full runs (720 campaigns each). The report in [`docs/game/sim/targets-3.9.0.md`](../game/sim/targets-3.9.0.md) is the last row's, with the marks as decided (D-65).
+
+| Run | Perfect (50–56) | Steadfast (58–64) | Committed (64–72) | G-07 mixes' spread (5) | G-24 | Missed |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3.8.0 (before) | 56 | 58 | 64 | 5 | – | G-05, G-17 |
+| 3.9.0 as built (marks 650 / 1,800 / 2,700 / 3,650) | **59** | 63 | 70 | 5.5 | met | G-05, G-07, G-11, G-17 |
+| marks … 2,550 / 3,450 | 57 | 61 | 68 | 4.5 | met | G-05, G-11, G-17 |
+| **marks … 2,500 / 3,350** | **55** | **59** | **67** | **3.5** | met | G-05, G-17 |
+
+- **Every deal now has a use.** In the smarter player's campaigns:
+  - **Truces, pacts and calls to arms:** each struck in 100% of campaigns.
+  - **Ugrak's trial:** 98 to 100%.
+  - **Hrodgar's oath:** 78%.
+  - **Skivvet's mercenaries:** 75%.
+  - **Emrys's bargain:** 63%.
+
+  The automatic player broke none.
+- **Victory comes two to three weeks later.** Pacts stop raids, so there are fewer defenses won and less Renown, hence slower Dominion. A call to arms also costs Respect with its target, which slows that ruler's Accord.
+- **Other changes:**
+  - Ultimatums fall to 74% of Steadfast campaigns (from 80%).
+  - Three Wavering campaigns in 40 fall, against none before. Ch 15 expects many more for Wavering, and G-19 doesn't target it.
+  - The save grows to 1.81 MB (from 1.69), still under 2 MB.
+
+### 10.3 Decisions for Rich
+
+**Decided 2026-10-30 (D-65):** Rich took option (a): the third and fourth marks are now 2,500 and 3,350, and the report in `docs/game/sim/targets-3.9.0.md` is that run's.
+
+1. **The last two Dominion marks.** As built, Perfect wins at 59 (window 50–56), and the path mixes spread past 5 weeks.
+   - **Options:**
+     - (a) **Recommended:** lower the third and fourth marks to 2,500 and 3,350 (from 2,700 and 3,650). Every style is back in its window (55 / 59 / 67), and G-07 is met.
+     - (b) Keep the marks D-60 confirmed, and accept Perfect three weeks over its window.
+2. **The new lines.** About 25 drafts for the new deals and topics join stage 1's in `rivalLines.draft.json`, for your review with the rest.

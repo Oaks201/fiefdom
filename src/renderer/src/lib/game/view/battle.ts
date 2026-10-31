@@ -69,6 +69,8 @@ const TRIGGER_NAMES: Record<GrandTrigger, string> = {
 
 /** What raised a battle, in plain words (an event battle by its event's name). */
 export function triggerName(battle: Pick<GrandBattle, 'trigger' | 'eventId'>): string {
+  // Patch 8 (D4): Ugrak's trial of champions is an event battle of the player's own asking.
+  if (battle.trigger === 'event' && battle.eventId === 'trial') return 'Trial of champions'
   if (battle.trigger === 'event') return CODEX.events.find((e) => e.id === battle.eventId)?.name ?? TRIGGER_NAMES.event
   return TRIGGER_NAMES[battle.trigger]
 }

@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { GiShakingHands } from 'react-icons/gi'
 import { sfx } from '../../audio'
-import { makeDeal } from '../../lib/game/land'
+import { strikeDeal } from '../../lib/game/world'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
-import { dealsView, type DealLine } from '../../lib/game/view/diplomacy'
+import { dealName, dealsView, type DealLine } from '../../lib/game/view/diplomacy'
 import { amount } from '../../lib/game/view/refusals'
 import { rivalName } from '../../lib/game/view/shell'
 import { useCampaign } from '../../state/campaign'
 
-/** One offer card (Patch 8, A5): a deal, or every hex of one trade with a picker. */
+/** One offer card (Patch 8, A5): a deal, or every hex of one trade (or every choice of Emrys's bargain) with a picker. */
 interface OfferCard {
   key: string
   title: string
@@ -19,11 +19,11 @@ interface OfferCard {
 function cardsOf(deals: readonly DealLine[]): OfferCard[] {
   const out: OfferCard[] = []
   for (const d of deals) {
-    if (d.kind === 'buyHex' || d.kind === 'sellHex') {
+    if (d.kind === 'buyHex' || d.kind === 'sellHex' || d.kind === 'bargain') {
       const key = d.kind
       const card = out.find((c) => c.key === key)
       if (card) card.lines.push(d)
-      else out.push({ key, title: d.kind === 'buyHex' ? 'Buy a hex' : 'Sell a hex', lines: [d] })
+      else out.push({ key, title: d.kind === 'buyHex' ? 'Buy a hex' : d.kind === 'sellHex' ? 'Sell a hex' : dealName('bargain'), lines: [d] })
     } else out.push({ key: `${d.kind}:${d.target ?? ''}`, title: d.name, lines: [d] })
   }
   return out
@@ -57,7 +57,7 @@ export function DealsList({
   const [picked, setPicked] = useState<Record<string, string>>({})
 
   const strike = (d: DealLine): void => {
-    const done = act((s) => makeDeal(s, rival, { kind: d.kind, ...(d.hexId ? { hexId: d.hexId } : {}), ...(d.target ? { target: d.target } : {}) }, today))
+    const done = act((s) => strikeDeal(s, rival, { kind: d.kind, ...(d.hexId ? { hexId: d.hexId } : {}), ...(d.target ? { target: d.target } : {}), ...(d.choice ? { choice: d.choice } : {}) }, today))
     setConfirming(null)
     if (!done) return
     sfx('coin')
@@ -77,21 +77,23 @@ export function DealsList({
       ) : (
         <div className="offers">
           {cards.map((card) => {
-            const choice = picked[card.key] ?? (card.lines.find((l) => l.hexId === highlight) ?? card.lines.find((l) => l.available) ?? card.lines[0]).hexId
-            const d = card.lines.find((l) => l.hexId === choice) ?? card.lines[0]
-            const k = `${card.key}:${d.hexId ?? ''}`
-            const hexes = card.lines.filter((l) => l.hexId !== undefined)
+            const optionOf = (l: DealLine): string => l.hexId ?? l.choice ?? ''
+            const choice = picked[card.key] ?? optionOf(card.lines.find((l) => l.hexId !== undefined && l.hexId === highlight) ?? card.lines.find((l) => l.available) ?? card.lines[0])
+            const d = card.lines.find((l) => optionOf(l) === choice) ?? card.lines[0]
+            const k = `${card.key}:${optionOf(d)}`
+            const options = card.lines.length > 1 ? card.lines : []
             return (
               <article key={card.key} className={`offer ${d.available ? 'is-open' : 'is-shut'} ${highlight && card.lines.some((l) => l.hexId === highlight) ? 'is-highlight' : ''}`}>
                 <header className="offer__head">
                   <strong className="offer__title">{card.title}</strong>
-                  <span className="offer__price">{d.kind === 'sellHex' ? `+${amount(d.price)}` : amount(d.price)}</span>
+                  <span className="offer__price">{d.kind === 'sellHex' ? `+${amount(d.price)}` : d.price === 0 ? 'No price' : amount(d.price)}</span>
                 </header>
-                {hexes.length > 0 && (
-                  <select className="offer__pick" value={d.hexId} onChange={(e) => setPicked({ ...picked, [card.key]: e.target.value })} aria-label={`${card.title}: which hex`}>
-                    {hexes.map((l) => (
-                      <option key={l.hexId} value={l.hexId}>
-                        {l.hexName} · {l.kind === 'sellHex' ? `+${amount(l.price)}` : amount(l.price)}
+                {options.length > 0 && (
+                  <select className="offer__pick" value={optionOf(d)} onChange={(e) => setPicked({ ...picked, [card.key]: e.target.value })} aria-label={`${card.title}: which`}>
+                    {options.map((l) => (
+                      <option key={optionOf(l)} value={optionOf(l)}>
+                        {l.hexName ?? l.name}
+                        {l.hexId ? ` · ${l.kind === 'sellHex' ? `+${amount(l.price)}` : amount(l.price)}` : ''}
                         {l.available ? '' : ' (not now)'}
                       </option>
                     ))}

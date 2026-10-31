@@ -34,7 +34,7 @@ import { RULES, type DeepReadonly } from '../rules'
 import { chance, pick } from '../rng'
 import { RIVAL_HOOKS } from '../rivals'
 import { EventBuffer, adjustRespect, hexOf, isPlayable, openDayOf, patchRival, replaceHex, toPlayer, toRival, withWorld, worldOf } from '../state'
-import { RIVAL_IDS, type CampaignState, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type WorldEvent } from '../types'
+import { RIVAL_IDS, type CampaignState, type Deal, type Emit, type GrandBattle, type GrandOutcome, type HexState, type ISODate, type RivalId, type WorldEvent } from '../types'
 
 // ── Reading ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ function lairMouth(state: CampaignState, lairId: string): HexState | undefined {
 }
 
 /** The player's hex nearest `to` (a lair's mouth, a rival's land), ties drawn: where an event's battle strikes (A-169). */
-function playerHexNearest(state: CampaignState, to: readonly HexState[], day: ISODate, label: string): HexState | undefined {
+export function playerHexNearest(state: CampaignState, to: readonly HexState[], day: ISODate, label: string): HexState | undefined {
   const mine = borderHexesOf(state.hexes, 'player').filter((h) => isClaimableKind(h))
   const pool = mine.length > 0 ? mine : state.hexes.filter((h) => h.owner === 'player' && h.ring > 0)
   const nearest = nearestTo(pool, to)
@@ -514,6 +514,7 @@ export function auctionBid(state: CampaignState, hexId: string, bid: number, tod
  * 150; either lost, a Mythic Hunt's 5 × ring tribute and the hex scorched. No land is lost.
  */
 export function eventBattleOutcome(input: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome } {
+  if (battle.eventId === 'trial') return trialOutcome(input, battle, ctx)
   let state = input
   const outcome: GrandOutcome = {}
   const hex = hexOf(state, battle.hexId) as HexState
@@ -552,6 +553,21 @@ export function eventBattleOutcome(input: CampaignState, battle: GrandBattle, ct
     outcome.hexScorched = hex.id
   }
   return { state, outcome }
+}
+
+/**
+ * Patch 8 (D4, D-64): Ugrak's trial of champions fought. Won, his raids stop for `raidsStopDays` (a Truce of his,
+ * binding only him); lost, a tribute of `loseTributePerRing` × band. His Respect moves as for any Grand Battle
+ * against him, at the week's close (`weeklyRespect`).
+ */
+function trialOutcome(input: CampaignState, battle: GrandBattle, ctx: OutcomeContext): { state: CampaignState; outcome: GrandOutcome } {
+  const T = RULES.trade.trial
+  if (ctx.won) {
+    const truce: Deal = { id: `deal-trial-${battle.id}`, rival: 'orc', kind: 'truce', madeOn: addDays(ctx.day, 1), until: addDays(ctx.day, T.raidsStopDays), price: 0 }
+    return { state: { ...input, deals: [...input.deals, truce] }, outcome: {} }
+  }
+  const paid = postTribute(input, ctx.day, T.loseTributePerRing, hexOf(input, battle.hexId) as HexState, `grandBattle:${battle.id}`)
+  return { state: paid.state, outcome: { tribute: paid.amount } }
 }
 
 // ── The Scrying Pool (gap 7) ─────────────────────────────────────────────────

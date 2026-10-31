@@ -938,3 +938,11 @@
     position: static;
   }
 }
+
+/* Patch 8 (D1, D2): an assault that would break a Truce, pact or oath. */
+.orders__breaks {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--crimson);
+}

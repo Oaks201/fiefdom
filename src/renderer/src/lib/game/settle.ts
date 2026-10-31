@@ -19,7 +19,7 @@ import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { chronicle } from './dominion'
-import { recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
+import { dealEnds, recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
 import { resolveGoblinBids } from './goblin'
 // Patch 4 (D-31): installs the Archmage's surges into combat's dawn.
@@ -269,8 +269,8 @@ const contractsAndDaily: Phase = (state, ctx) => {
 
 /**
  * Expires the timers that end with this day: Weary companies, scorched and contested hexes,
- * Settling villages, and Truces, pacts and calls to arms. A timer's date is the last day it
- * holds; at that day's close it is gone.
+ * Settling villages, and every deal with a last day but the Goblin's buy-off (Patch 8: kept, it pays). A
+ * timer's date is the last day it holds; at that day's close it is gone.
  */
 const expireTimers: Phase = (state, ctx) => {
   const ended = (until: ISODate | undefined): boolean => until !== undefined && until <= ctx.day
@@ -293,8 +293,11 @@ const expireTimers: Phase = (state, ctx) => {
     delete company.wearyUntil
     return company
   })
-  const deals = state.deals.filter((d) => !((d.kind === 'truce' || d.kind === 'pact' || d.kind === 'callToArms') && ended(d.until)))
-  return { ...state, hexes, roster, deals }
+  // Patch 8 (D-64): every deal with a last day ends at its close; a pact or oath kept pays, a call to arms reports (`dealEnds`).
+  const ending = state.deals.filter((d) => d.kind !== 'buyOff' && ended(d.until))
+  let next: CampaignState = { ...state, hexes, roster, deals: state.deals.filter((d) => !ending.includes(d)) }
+  for (const d of ending) next = dealEnds(next, d, ctx.day, ctx.emit)
+  return next
 }
 
 /**

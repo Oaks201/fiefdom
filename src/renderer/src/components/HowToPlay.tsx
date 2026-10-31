@@ -782,11 +782,33 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>Tension</b> between: raids only. Once he is at Peace or War he holds it until his Respect is {RULES.respect.standingBuffer} past that line the other way, so a
                 ruler on a line doesn’t flip back and forth. Who raids is drawn each week, so a ruler who comes to Peace stops raiding the next day, and one who leaves it raids again from the
                 next week. A ruler who goes to War plans his conquest attempts that day; each strikes {RULES.rivalAi.conquestDays.min} to {RULES.rivalAi.conquestDays.max} days
-                later, and the Herald announces it the day before. A Truce, which stops his raids for a while, is open at any Respect.
+                later, and the Herald announces it the day before. A Truce, which stops his raids for a while, is open at any Respect. A pact or oath you broke holds him at War a while, whatever his Respect.
               </li>
               <li>
-                <b>Deals</b> (a court’s Audience): Truces, pacts, calls to arms, buying and selling hexes. Each shows what it costs and needs; a deal that can’t be struck as
-                things stand, such as a call to arms against a rival he shares no front with, isn’t listed.
+                <b>Deals</b> (a court’s Audience): Truces, pacts, calls to arms, buying and selling hexes, and one deal each ruler alone offers. Each shows what it costs and
+                needs; a deal that can’t be struck as things stand, such as a call to arms against a rival he shares no front with, isn’t listed.
+                <ul>
+                  <li>
+                    <b>A Truce</b> stops his raids and conquest attempts for {RULES.trade.truce.days} days, and <b>binds you too</b>: no assault on his land while it holds
+                    (your siege on him waits, and no battle you call there). An assault breaks it: {RULES.trade.truce.brokenRespect} Respect.
+                  </li>
+                  <li>
+                    <b>A pact</b> is a treaty you both keep for {RULES.trade.pact.days} days: no raids or conquest attempts from him, none of your assaults on his land, and his
+                    army turns on his neighbors. Kept to its end, +{RULES.trade.pact.keptRespect} Respect. Broken, {RULES.trade.pact.brokenRespect} Respect, he is at War for{' '}
+                    {RULES.trade.pact.wrongedDays} days whatever his Respect, and every other court hears of it ({RULES.trade.pact.heardRespect} with each).
+                  </li>
+                  <li>
+                    <b>A call to arms</b> sends him campaigning against a neighbor for {RULES.trade.callToArms.days} days: he fights harder on their front and takes land
+                    while he leads it. The rival it is aimed at learns who paid, and likes you less each day of its first week.
+                  </li>
+                  <li>
+                    <b>Each ruler’s own:</b> Ugrak’s <b>trial of champions</b> (your best company against his champion; won, his raids stop for{' '}
+                    {RULES.trade.trial.raidsStopDays} days), Skivvet’s <b>mercenaries</b> (one of his companies for {RULES.trade.mercenaries.days} days, priced by his greed),
+                    Hrodgar’s <b>oath of stone</b> (a pact of {RULES.trade.oath.days / RULES.clock.daysPerWeek} weeks that takes down his walls facing you; broken, his deals
+                    cost {RULES.trade.oath.grudgeMult}× for good) and Emrys’s <b>bargain of knowledge</b> (for {RULES.trade.bargain.days} days, his treasury and army shown, his
+                    surges foretold, or none striking your hexes).
+                  </li>
+                </ul>
               </li>
               <li>
                 <b>Stance:</b> from week {RULES.terms.fromWeek} each court shows how near its ruler is to yielding: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what
@@ -800,7 +822,7 @@ export function HowToPlay(): React.JSX.Element | null {
                 steps back toward the middle each week. At either end the winner is <b>Emboldened</b>, his raids on you {pct(RULES.rivals.fronts.emboldenedRaid)} harder, and the
                 loser <b>Humbled</b>, his {pct(RULES.rivals.fronts.humbledRaid)} weaker. While the marker stands at an end, each week the winner may gain on the loser: he takes
                 the loser’s hex touching his own land, or, where their lands don’t touch, the loser’s frontier hex falls to the wilds and the winner’s own siege of the wilds falls at
-                once. A call to arms puts a front at War for {RULES.trade.callToArms.days} days: a way to set two rivals on each other.
+                once. A call to arms puts a front at War for {RULES.trade.callToArms.days} days, and the rival you call campaigns: a way to set two rivals on each other.
               </li>
               <li>
                 <b>The rivals take land too:</b> from week {RULES.personalities.fromWeek} each rival besieges one wild hex of his own march touching his land at a time, and takes it
