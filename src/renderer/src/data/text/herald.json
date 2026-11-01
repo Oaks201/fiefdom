@@ -531,6 +531,46 @@
     "template": "{rival} offers to buy back {hex} for {price}.",
     "final": null
   },
+  "herald.request.dare": {
+    "template": "{rival} sends you a dare for the week, through {date}. See his Audience.",
+    "final": null
+  },
+  "herald.request.itemOffer": {
+    "template": "{rival} offers you {item} for {price}, until {date}. Answer in his Audience.",
+    "final": null
+  },
+  "herald.request.hexOffer": {
+    "template": "{rival} offers you {hex} for {price}, until {date}. Answer in his Audience.",
+    "final": null
+  },
+  "herald.request.liftSiege": {
+    "template": "{rival} demands you lift your siege of {hex}. Answer in his Audience by {date}; silence counts as a refusal.",
+    "final": null
+  },
+  "herald.request.spareHex": {
+    "template": "{rival} demands you leave {hex} alone for {days} days. Answer in his Audience by {date}; silence counts as a refusal.",
+    "final": null
+  },
+  "herald.request.toll": {
+    "template": "{rival} demands a toll of {price}. Answer in his Audience by {date}; silence counts as a refusal.",
+    "final": null
+  },
+  "herald.request.met": {
+    "template": "You met {rival}’s dare.",
+    "final": null
+  },
+  "herald.request.missed": {
+    "template": "You missed {rival}’s dare.",
+    "final": null
+  },
+  "herald.request.lapsed": {
+    "template": "{rival} took your silence as a refusal.",
+    "final": null
+  },
+  "herald.request.broken": {
+    "template": "Your assault on {hex} broke your promise to {rival}.",
+    "final": null
+  },
   "herald.deed.battleLost": {
     "template": "A battle with {rival} at {hex}: {value} Renown on {rival}’s path.",
     "final": null

@@ -61,9 +61,9 @@ export function RespectMeter({ panel, full = false, onMore }: { panel: RivalPane
  * disposition, who it is, how it feels about you, its Respect and what it opens, its treasury and
  * army as bands (numbers only when revealed), its war tracks drawn as tugs of war (the Orc's against you,
  * and each Rim front) with what they mean, and the rumors. The portrait and the Audience button open an
- * audience with it, where its deals are.
+ * audience with it, where its deals are. Patch 8 (R1): `request` says a request of his waits, or a promise to him stands.
  */
-export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide }: { panel: RivalPanel; onAudience(): void; onGuide(): void }): React.JSX.Element {
+export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience, onGuide }: { panel: RivalPanel; request?: string; onAudience(): void; onGuide(): void }): React.JSX.Element {
   const resolved = panel.status !== 'active'
   return (
     <article className={`court court--${panel.rival} ${resolved ? 'is-resolved' : ''}`} aria-label={panel.ruler}>
@@ -100,6 +100,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, onAudience, onGuide 
             {panel.standingNote} <HelpLink section="diplomacy" label="Peace, Tension and War" />
           </p>
         )}
+        {request && <p className="court__request">{request}</p>}
         <p className="court__audience">
           <button type="button" className="btn btn--small" onClick={onAudience}>
             <GiShakingHands aria-hidden="true" /> Audience

@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.9.0',
+  ruleVersion: '3.10.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -705,6 +705,23 @@ const RULES_TABLE = {
     allyBattlesPerMonth: 1,
     events: { maxNewPerWeek: 1, minBattleWarningDays: 2 }
   },
+
+  /**
+   * Patch 8 (R1, D-66): the rulers come to the player. From `fromWeek`, at a week close with `chance`, one active
+   * ruler with nothing open (the one who asked least lately) sends a request, open `answerDays`:
+   * - a **dare** (a ruler at Respect 0 or more): keep the habit he prizes for the week ahead; judged at its close,
+   *   met `dare.met`, missed `dare.missed`; nothing to answer.
+   * - his **offer**, in turn with his dares (Skivvet: an Armory item; Emrys: a hex of his beside the player's land),
+   *   at `offerDiscount` off.
+   * - a **demand** (any ruler): lift the siege on his hex while one stands, or leave alone a hex of his the player
+   *   assaulted in the last `spareAfterDays`; from a ruler below 0, else a toll of `tollPerBand` × the band of his
+   *   land facing the player. Granted `demand.granted`; a siege lifted or a hex spared is then a promise to leave
+   *   that hex alone for `spareDays`, and an assault on it breaks the promise as a refusal would.
+   *   Refused, left unanswered or broken `demand.refused`, and he acts on it: Ugrak is wronged (at War with the
+   *   player) for `demand.wrongedDays`; every other ruler walls the hex in question a level.
+   * TUNE.
+   */
+  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
 
   defeat: {
     ascendancy: {

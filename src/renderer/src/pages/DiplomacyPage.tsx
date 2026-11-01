@@ -7,6 +7,7 @@ import { RivalCourt } from '../components/diplomacy/RivalCourt'
 import { RivalGuide, RivalPicker } from '../components/diplomacy/RivalGuide'
 import { RIVAL_IDS, type RivalId } from '../lib/game/types'
 import { rivalPanels, roadToVictory, type RoadToVictory } from '../lib/game/view/diplomacy'
+import { requestNote } from '../lib/game/view/requests'
 import { formatNumber } from '../lib/format'
 import { HelpLink } from '../components/game/HelpLink'
 import { rivalGuide } from '../lib/game/view/rivalGuide'
@@ -93,6 +94,7 @@ export function DiplomacyPage(): React.JSX.Element | null {
               <RivalCourt
                 key={p.rival}
                 panel={p}
+                request={requestNote(campaign, p.rival, today)}
                 onAudience={() => setAudience(p.rival)}
                 onGuide={() => {
                   setGuided(p.rival)

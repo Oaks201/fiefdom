@@ -114,6 +114,34 @@
   border-left-color: var(--amber);
 }
 
+/* Patch 8 (R2): the rulers' words on a piece of news, quoted under it. */
+.herald__quotes {
+  margin: 4px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.herald__quote {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.herald__quote q {
+  quotes: '“' '”';
+}
+
+.herald__quote cite {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.herald__quote cite::before {
+  content: '— ';
+}
+
 /* -- The Homecoming ------------------------------------------------------- */
 .modal--homecoming {
   width: min(720px, 100%);

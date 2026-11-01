@@ -785,6 +785,8 @@ export interface GameEventMap {
    * assault on his land; a call to arms reports the hexes it took from its `target`.
    */
   dealEnded: { rival: RivalId; deal: Deal['kind']; how: 'kept' | 'broken'; target?: RivalId; taken?: number }
+  /** Patch 8 (R1, D-66): a ruler's request made, and how it ended. */
+  request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken'; hexId?: string; itemId?: string; price?: number; until?: ISODate }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. */
@@ -1159,6 +1161,28 @@ export interface WorldState {
   lent?: { companyId: string; day: ISODate }[]
   /** The Grand Auction's lots, open until `until` (Appendix C). Bids are sealed: screens show only the player's. */
   auction?: { until: ISODate; lots: { hexId: string; bids: Partial<Record<'player' | RivalId, number>> }[] }
+  /** Patch 8 (R1, D-66): the rulers' open requests, and the hexes the player promised to leave alone (`granted`); ended ones are in the log. */
+  requests?: RulerRequest[]
+}
+
+/** Patch 8 (R1, D-66): what a ruler asks of the player: a dare in the habit he prizes, an offer of his own, or a demand. */
+export type RequestKind = 'dare' | 'itemOffer' | 'hexOffer' | 'liftSiege' | 'spareHex' | 'toll'
+export const REQUEST_KINDS: readonly RequestKind[] = ['dare', 'itemOffer', 'hexOffer', 'liftSiege', 'spareHex', 'toll']
+
+export interface RulerRequest {
+  id: string
+  rival: RivalId
+  kind: RequestKind
+  /** The week close it came at; it can be answered from the next day through `until` (a dare covers those days). */
+  madeOn: ISODate
+  /** Its last day open; for a promise (`granted`), the promise's last day. */
+  until: ISODate
+  hexId?: string
+  itemId?: string
+  /** A toll, or an offer's price after its discount. */
+  price?: number
+  /** `granted`: a demand to lift a siege or leave a hex alone, granted, standing as the player's promise to leave `hexId` alone through `until`. */
+  outcome?: 'granted'
 }
 
 // ── Daily combat (T08) ───────────────────────────────────────────────────────

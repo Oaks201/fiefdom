@@ -35,8 +35,8 @@ import { bandOf, buildMap, claimableBy, isClaimableKind, touchesOwner } from './
 import { greedBand, pactBars } from './personalities'
 import { RULES, byTier } from './rules'
 import { marksFor, respectChange } from './respect'
-import { EventBuffer, adjustRespect, bindingDeals, coalitionPartners, dealOn, hexOf, inCoalition, isPlayable, openDayOf, patchRival, replaceHex, toPlayer, toRival, withHires } from './state'
-import { BARGAIN_CHOICES, RIVAL_IDS, type BargainChoice, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId } from './types'
+import { EventBuffer, adjustRespect, bindingDeals, coalitionPartners, dealOn, hexOf, inCoalition, isPlayable, openDayOf, patchRival, replaceHex, toPlayer, toRival, withHires, withWorld, worldOf } from './state'
+import { BARGAIN_CHOICES, RIVAL_IDS, type BargainChoice, type CampaignState, type Courtship, type Deal, type Effects, type Emit, type FrontId, type HexState, type ISODate, type Owner, type RivalId, type RulerRequest } from './types'
 
 // ── Refusals and results ─────────────────────────────────────────────────────
 
@@ -468,6 +468,49 @@ export function breakDeals(input: CampaignState, rival: RivalId, day: ISODate, e
     if (d.kind === 'truce') continue
     state = patchRival(state, rival, { wrongedUntil: addDays(day, t.pact.wrongedDays), ...(d.kind === 'oath' ? { grudge: true as const } : {}) })
     for (const other of RIVAL_IDS) if (other !== rival && state.rivals[other].status === 'active') state = adjustRespect(state, other, t.pact.heardRespect, 'heardBroken', emit)
+  }
+  return state
+}
+
+/** Patch 8 (R1, D-66): the player's promises standing on `day`: a siege lifted or a hex spared at a ruler's demand, that hex left alone through `until`. */
+export function promisesOn(state: CampaignState, day: ISODate): RulerRequest[] {
+  return (worldOf(state).requests ?? []).filter((q) => q.outcome === 'granted' && q.hexId !== undefined && day <= q.until)
+}
+
+/** The hex a refused demand walls: the one in question while he holds it, or (a toll) his least walled facing the player's land. */
+function wallTarget(state: CampaignState, q: RulerRequest): HexState | undefined {
+  if (q.hexId) {
+    const hex = hexOf(state, q.hexId)
+    return hex?.owner === q.rival ? hex : undefined
+  }
+  return state.hexes
+    .filter((h) => h.owner === q.rival && isClaimableKind(h) && h.kind !== 'gate' && touchesOwner(state.hexes, h.id, 'player'))
+    .sort((a, b) => a.fortification - b.fortification || a.id.localeCompare(b.id))[0]
+}
+
+/**
+ * Patch 8 (R1, D-66): a ruler's demand refused, left unanswered or (a promise) broken on `day`: his Respect falls by
+ * `demand.refused` and he acts on it. Ugrak is wronged (at War with the player) for `demand.wrongedDays`; every other
+ * ruler walls the hex in question a level, up to his cap.
+ */
+export function demandRefused(input: CampaignState, q: RulerRequest, day: ISODate, emit: Emit, reason: 'requestRefused' | 'promiseBroken' = 'requestRefused'): CampaignState {
+  if (input.rivals[q.rival].status !== 'active') return input
+  const d = RULES.requests.demand
+  let state = adjustRespect(input, q.rival, d.refused, reason, emit)
+  if (q.rival === 'orc') return patchRival(state, q.rival, { wrongedUntil: addDays(day, d.wrongedDays) })
+  const wall = wallTarget(state, q)
+  if (wall && wall.fortification < fortificationCap(q.rival)) state = replaceHex(state, { ...wall, fortification: (wall.fortification + 1) as HexState['fortification'] })
+  return state
+}
+
+/** Patch 8 (R1, D-66): the player's assaults on `day` on hexes promised to be left alone break those promises, as a refusal would. */
+export function breakPromises(input: CampaignState, targets: readonly string[], day: ISODate, emit: Emit): CampaignState {
+  const broken = promisesOn(input, day).filter((q) => targets.includes(q.hexId as string))
+  if (broken.length === 0) return input
+  let state = withWorld(input, { requests: (worldOf(input).requests ?? []).filter((q) => !broken.includes(q)) })
+  for (const q of broken) {
+    emit('request', { rival: q.rival, request: q.kind, stage: 'broken', hexId: q.hexId })
+    state = demandRefused(state, q, day, emit, 'promiseBroken')
   }
   return state
 }

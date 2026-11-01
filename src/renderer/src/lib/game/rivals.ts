@@ -38,6 +38,7 @@ import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, pact
 import { bandOf, borderHexesOf, depthOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, neighbors, touches, wildGarrison } from './map'
 import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle, weighted } from './rng'
+import { settleDare } from './requests'
 import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
@@ -428,6 +429,14 @@ export function lostBattle(state: CampaignState, from: ISODate, to: ISODate): bo
 }
 
 /**
+ * Patch 8 (R1, D-66): whether the player lost a battle to `rival`'s raids or conquests from `from` to `to`:
+ * Ugrak's dare, narrower than his prized week, which any lost battle spoils.
+ */
+export function lostToRaids(state: CampaignState, rival: RivalId, from: ISODate, to: ISODate): boolean {
+  return state.log.some((e) => e.kind === 'defense' && e.rival === rival && e.outcome === 'defeat' && e.day >= from && e.day <= to)
+}
+
+/**
  * Whether the week ending `day` was one of the habit `rival` prizes (A-38): the Orc, no lost battle
  * of any kind; the Goblin, the budget score at 100% with food logged on 5 days or more; the
  * Archmage, every sworn duty kept every day; the Dwarf, the step pool met.
@@ -491,7 +500,10 @@ export function rivalTurn(input: CampaignState, w: RivalWeek): RivalTurnResult {
   const effects = realmEffects(state)
   const active = RIVAL_IDS.filter((r) => isActive(state, r))
   for (const rival of active) {
-    if (prizedWeek(state, rival, w.habits, w.day, w.weekStartsOn)) state = adjustRespect(state, rival, RULES.respect.change.prizedWeek, 'prizedWeek', w.emit)
+    const prized = prizedWeek(state, rival, w.habits, w.day, w.weekStartsOn)
+    if (prized) state = adjustRespect(state, rival, RULES.respect.change.prizedWeek, 'prizedWeek', w.emit)
+    // Patch 8 (R1, D-66): his dare for the week, kept or not: Ugrak's, no battle lost to his raids.
+    state = settleDare(state, rival, w.day, rival === 'orc' ? !lostToRaids(state, rival, weekOf(w.day, w.weekStartsOn), w.day) : prized, w.emit)
   }
   // Patch 5 (D-39): what each rival alone values, read from the week's log.
   state = weeklyRespect(state, w)

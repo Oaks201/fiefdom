@@ -38,11 +38,12 @@ import { balance } from './economy'
 import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
 import { isOver, marshalPlay } from './grand/field'
-import { bidCheck, fortify, makeDeal, offerDeal, placeBid, resistance, type DealRequest } from './land'
+import { bidCheck, fortify, makeDeal, offerDeal, placeBid, promisesOn, resistance, type DealRequest } from './land'
 import { claimableBy, hexIndex, isStronghold, touches } from './map'
 import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
+import { answerRequest, requestOf } from './requests'
 import { readinessValors, valorOn } from './settle'
 import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
@@ -282,6 +283,24 @@ function answerTerms(input: CampaignState, today: ISODate, plan: AutoplayPlan): 
   return state
 }
 
+/**
+ * Patch 8 (R1, D-66): answers the rulers' requests. An offer or a toll is taken when it leaves `dealReserve` in the
+ * purse; a demand to lift a siege or spare a hex is granted only to a ruler off the plan's paths, or the one it is
+ * courting for an Accord, and refused to the rest. A dare needs no answer.
+ */
+function answerRequests(input: CampaignState, today: ISODate, plan: AutoplayPlan): CampaignState {
+  let state = input
+  for (const r of RIVAL_IDS) {
+    const q = requestOf(state, r, today)
+    if (!q || q.kind === 'dare') continue
+    const cost = q.kind === 'itemOffer' ? itemOffer(state, q.itemId as string).cost : (q.price ?? 0)
+    const grants = q.kind === 'liftSiege' || q.kind === 'spareHex' ? (plan.paths !== null && !plan.paths.includes(r)) || accordRival(state, today) === r : balance(state.purse) - cost >= A.dealReserve
+    const done = answerRequest(state, r, grants ? 'grant' : 'refuse', today)
+    if (done.ok) state = done.state
+  }
+  return state
+}
+
 /** Takes the world's offers the purse can pay for: keeping a rising village, the Goblin buying an abdicated hex. */
 function takeOffers(input: CampaignState, today: ISODate): CampaignState {
   let state = input
@@ -345,8 +364,10 @@ function assaultOptions(state: CampaignState, today: ISODate, effects: Effects, 
   const byId = hexIndex(state.hexes)
   // A hex whose Grand Battle waits can't be assaulted until it is fought (S-14): no target while it waits.
   const waiting = new Set(pendingBattles(state).map((b) => b.hexId))
-  // Patch 8 (D1, D2): the player keeps its word: no assault on the land of a ruler whose Truce, pact or oath binds it.
-  const candidates = frontier(state).filter((h) => (!only || only.has(h.id)) && !waiting.has(h.id) && claimableBy(state.hexes, h.id, 'player', 'assault') && !(isRival(h.owner) && bindingDeals(state, h.owner, today).length > 0))
+  // Patch 8 (D1, D2): the player keeps its word: no assault on the land of a ruler whose Truce, pact or oath binds it,
+  // nor (R1) on a hex it promised a ruler to leave alone.
+  const promised = new Set(promisesOn(state, today).map((q) => q.hexId))
+  const candidates = frontier(state).filter((h) => (!only || only.has(h.id)) && !waiting.has(h.id) && !promised.has(h.id) && claimableBy(state.hexes, h.id, 'player', 'assault') && !(isRival(h.owner) && bindingDeals(state, h.owner, today).length > 0))
   const pool = new Map<string, { base: number; fielded: string[] }>()
   const out: AssaultOption[] = []
   for (const h of candidates) {
@@ -668,6 +689,7 @@ export function autoplay(input: CampaignState, today: ISODate, plan: AutoplayPla
     if (plan.contracts === 'longest' && (!plan.smarter || !accordRival(state, today))) state = sealLongest(state, today, day)
     if (!armFirst) state = useArmory(state, today)
     if (plan.offers === 'accept') state = takeOffers(state, today)
+    if (plan.smarter || plan.offers === 'accept') state = answerRequests(state, today, plan)
   }
   if (plan.smarter) state = smarterDaily(state, today, day)
   state = answerTerms(state, today, plan)

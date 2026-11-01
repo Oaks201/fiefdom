@@ -93,6 +93,11 @@ export interface Measures {
   /** Patch 8 (G-24): deals struck by the end, by kind, and binding deals broken. */
   deals?: Record<string, number>
   dealsBroken?: number
+  /**
+   * Patch 8 (G-25, D-66): the rulers' requests: made, by kind; how they ended, by stage; the 4-week months from
+   * week `REQUEST_FROM_WEEK` and those with none made; dares met and settled; prized weeks paid and ruler-weeks judged.
+   */
+  requests?: { made: Record<string, number>; ended: Record<string, number>; months: number; monthsWithout: number; daresMet: number; daresSettled: number; prized: number; judged: number }
   /** Daily assaults won, by a rout and without one (Patch 3: G-09's share counts fallbacks against the non-rout wins). */
   assaultWins: { rout: number; nonRout: number }
   /** Hexes taken by daily assault, by the assault days spent on each (index 1 to `SIEGE_DAYS_CAP`; the last counts longer sieges too). */
@@ -438,6 +443,7 @@ export class Recorder {
     for (const e of state.log) if (e.kind === 'deal') deals[e.deal] = (deals[e.deal] ?? 0) + 1
     this.m.deals = deals
     this.m.dealsBroken = state.log.filter((e) => e.kind === 'dealEnded' && e.how === 'broken').length
+    this.m.requests = requestsMeasure(state, this.m.weeks.length)
     const reasons = Object.fromEntries(RIVAL_IDS.map((r) => [r, {}])) as Record<RivalId, Record<string, [number, number]>>
     const eventWeeks: Record<string, number> = {}
     const flips = RIVAL_IDS.map(() => 0)
@@ -489,4 +495,38 @@ function meanGarrisonByMarch(state: CampaignState, day: ISODate): Record<string,
     n[k] = (n[k] ?? 0) + 1
   }
   return Object.fromEntries(Object.keys(sum).map((k) => [k, sum[k] / n[k]]))
+}
+
+/** Patch 8 (G-25): requests are counted from week 8, in 4-week months, as the proposal reads "a month". */
+const REQUEST_FROM_WEEK = 8
+const REQUEST_MONTH = 4
+
+/** Patch 8 (G-25, D-66): the rulers' requests over a campaign of `weeks` weeks, from its log. */
+function requestsMeasure(state: CampaignState, weeks: number): NonNullable<Measures['requests']> {
+  const made: Record<string, number> = {}
+  const ended: Record<string, number> = {}
+  const monthsMade = new Set<number>()
+  for (const e of state.log) {
+    if (e.kind !== 'request') continue
+    if (e.stage === 'made') {
+      made[e.request] = (made[e.request] ?? 0) + 1
+      const week = weekOn(state, e.day)
+      if (week >= REQUEST_FROM_WEEK) monthsMade.add(Math.floor((week - REQUEST_FROM_WEEK) / REQUEST_MONTH))
+    } else ended[`${e.request}:${e.stage}`] = (ended[`${e.request}:${e.stage}`] ?? 0) + 1
+  }
+  const months = Math.max(0, Math.floor((weeks - REQUEST_FROM_WEEK + 1) / REQUEST_MONTH))
+  let monthsWithout = 0
+  for (let m = 0; m < months; m++) if (!monthsMade.has(m)) monthsWithout++
+  const resolvedOn = new Map(state.log.flatMap((e) => (e.kind === 'rivalResolved' ? [[e.rival, weekOn(state, e.day)] as const] : [])))
+  const judged = RIVAL_IDS.reduce((sum, r) => sum + Math.min(weeks, resolvedOn.get(r) ?? weeks), 0)
+  return {
+    made,
+    ended,
+    months,
+    monthsWithout,
+    daresMet: ended['dare:met'] ?? 0,
+    daresSettled: (ended['dare:met'] ?? 0) + (ended['dare:missed'] ?? 0),
+    prized: state.log.filter((e) => e.kind === 'respect' && e.reason === 'prizedWeek').length,
+    judged
+  }
 }

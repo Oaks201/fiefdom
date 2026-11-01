@@ -17,6 +17,7 @@ import { RULES } from '../rules'
 import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
 import { bindingDeals, isRival, openDayOf } from '../state'
+import { promiseBreaks } from './requests'
 import { rivalName } from './shell'
 import { type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
@@ -125,7 +126,7 @@ export interface OrdersView {
 
 /**
  * Patch 8 (D1, D2, D-64): what assaulting `hexId` on `date` would break, in plain words: each Truce, pact or oath its
- * holder has binding the player, with its cost. Undefined when nothing binds them.
+ * holder has binding the player, with its cost, and (R1) a promise to leave the hex alone. Undefined when nothing binds them.
  */
 function breaksWords(state: CampaignState, hexId: string, date: ISODate): string | undefined {
   const holder = state.hexes.find((h) => h.id === hexId)?.owner
@@ -136,7 +137,10 @@ function breaksWords(state: CampaignState, hexId: string, date: ISODate): string
       ? `your Truce (${t.truce.brokenRespect} Respect)`
       : `your ${d.kind === 'oath' ? 'oath of stone' : 'pact'} (${d.kind === 'oath' ? t.oath.brokenRespect : t.pact.brokenRespect} Respect, War with him, ${t.pact.heardRespect} with every other court${d.kind === 'oath' ? ', and the Book of Grudges' : ''})`
   )
-  return words.length > 0 ? `This assault breaks ${words.join(' and ')} with ${rivalName(holder)}.` : undefined
+  const deals = words.length > 0 ? `This assault breaks ${words.join(' and ')} with ${rivalName(holder)}.` : undefined
+  // Patch 8 (R1): and a promise to leave the hex alone.
+  const promise = promiseBreaks(state, hexId, date)
+  return deals && promise ? `${deals} ${promise}` : (deals ?? promise)
 }
 
 /** Whether `date`'s orders are locked at `now` (past the close, or held by the day's battles), and how long they have left. */

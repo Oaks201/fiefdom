@@ -16,7 +16,7 @@ import { balance, roundPosting, spend } from './economy'
 import { milestoneBroken, realmEffects } from './effects'
 import { RULES } from './rules'
 import { refreshRoster } from './roster'
-import { EventBuffer, isPlayable, openDayOf } from './state'
+import { EventBuffer, isPlayable, openDayOf, worldOf } from './state'
 import type { ArmoryState, CampaignState, Effects, ISODate, Tag } from './types'
 
 const UNLOCKS = RULES.milestones.unlocks
@@ -146,20 +146,25 @@ export function caravanDiscount(state: CampaignState, itemId: string, day: ISODa
   return 0
 }
 
-/** An item's price and whether it can be bought now (Appendix C "Items"): the Great Forge and the Merchant Caravan discount it. */
-export function itemOffer(state: CampaignState, itemId: string, effects: Effects = realmEffects(state)): ItemOffer {
+/** The price Skivvet named for `itemId` in his offer open on `day` (Patch 8, R1, D-66), if he made one. */
+export function requestPrice(state: CampaignState, itemId: string, day: ISODate): number | undefined {
+  return (worldOf(state).requests ?? []).find((q) => q.kind === 'itemOffer' && q.itemId === itemId && q.madeOn < day && day <= q.until)?.price
+}
+
+/** An item's price and whether it can be bought now (Appendix C "Items"): the Great Forge and the Merchant Caravan discount it, and a ruler's offer (R1) holds it at the price he named when that is lower. */
+export function itemOffer(state: CampaignState, itemId: string, effects: Effects = realmEffects(state), day: ISODate = openDayOf(state)): ItemOffer {
   const item = CODEX.items.find((i) => i.id === itemId)
   if (!item) return { ok: false, reason: { code: 'unknown' }, cost: 0 }
   const milestone = rankMilestone(item.rank)
   if (milestone === null || item.cost === null) return { ok: false, reason: { code: 'trophy' }, cost: 0 }
-  const cost = roundPosting(item.cost * effects.costs.items.value * (1 - caravanDiscount(state, itemId, openDayOf(state))))
+  const cost = Math.min(roundPosting(item.cost * effects.costs.items.value * (1 - caravanDiscount(state, itemId, day))), requestPrice(state, itemId, day) ?? Infinity)
   const problem = checkCommon(state, milestone) ?? (isUnique(item.rank) && heldItems(state).includes(itemId) ? { code: 'unique' as const } : null) ?? afford(state, cost)
   return problem ? { ok: false, reason: problem, cost } : { ok: true, cost }
 }
 
 /** Buys an item into the stash. */
 export function buyItem(state: CampaignState, itemId: string, today: ISODate = openDayOf(state)): ArmoryAction {
-  const offer = itemOffer(state, itemId)
+  const offer = itemOffer(state, itemId, realmEffects(state), today)
   if (!offer.ok) return no(state, offer.reason as ArmoryRefusal, offer.cost)
   const armory = armoryOf(state)
   return done(withArmory(state, { ...armory, stash: [...armory.stash, itemId] }), today, offer.cost, { action: 'buy', id: itemId }, `item:${itemId}`)

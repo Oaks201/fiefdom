@@ -113,7 +113,7 @@ export function placeholders(text: string): string[] {
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /** A fact as the line prints it: a date as players read it, "Thu, Feb 11" (Patch 7, B3); anything else as it is. */
-function factText(value: string | number): string {
+export function factText(value: string | number): string {
   if (typeof value !== 'string' || !ISO_DAY.test(value)) return String(value)
   const [, month, day] = value.split('-').map(Number)
   return `${WEEKDAYS_SHORT[weekdayOf(value)]}, ${MONTHS_SHORT[month - 1]} ${day}`

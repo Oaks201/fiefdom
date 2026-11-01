@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react'
+import { GiScrollUnfurled } from 'react-icons/gi'
+import { sfx } from '../../audio'
+import { answerRequest } from '../../lib/game/requests'
 import type { CampaignState, ISODate } from '../../lib/game/types'
-import { dealAcceptLine, greetingFor, lineTiers, refusalLine, withDrafts, type DealLineKind } from '../../lib/game/view/audience'
-import { audienceQuestions, audienceTopic, prizedSoFar, type AudienceQuestion } from '../../lib/game/view/audienceTalk'
+import { dealAcceptLine, greetingFor, lineTiers, refusalLine, type DealLineKind } from '../../lib/game/view/audience'
+import { audienceQuestions, audienceTopic, dareSoFar, prizedSoFar, type AudienceQuestion } from '../../lib/game/view/audienceTalk'
 import type { RivalPanel } from '../../lib/game/view/diplomacy'
+import { promiseLines, requestCard, requestRefusalText, requestReply, type RequestCard } from '../../lib/game/view/requests'
 import { getPlayerPortrait } from '../../state/art'
+import { useCampaign } from '../../state/campaign'
 import { useLedgerData } from '../../state/hooks'
 import { AccordPanel } from '../endgame/Endgame'
 import { GameArt, OWNER_COLORS } from '../game/GameArt'
@@ -11,16 +16,13 @@ import { PlayerPortrait } from '../game/PlayerPortrait'
 import { Modal } from '../Modal'
 import { AudienceDebug } from './AudienceDebug' // TEMPORARY: the dev Respect override
 import { DealsList } from './DealsList'
+import { RULER_LINES } from './rulerLines'
 
 /** Twice the portraits' 128-pixel drawing (their files are 4×), so the pixel art stays even. */
 const PORTRAIT_WIDTH = 256
 
-/**
- * Patch 8 (D-62): the lines the Audience reads. A development build lays Claude's drafts beside Rich's
- * lines so they can be read in the game; a release build reads Rich's file alone (`undefined` here
- * lets every function use it), so no draft shows until he approves it.
- */
-const LINES: unknown = import.meta.env.DEV ? withDrafts() : undefined
+/** Patch 8 (D-62): the lines the Audience reads, Claude's drafts beside Rich's in a development build. */
+const LINES = RULER_LINES
 
 /** What the ruler said last in answer to the player: a question, a deal struck or one he turned down. */
 interface Reply {
@@ -33,9 +35,10 @@ interface Reply {
  * An audience with one rival court, opened from its card on the Diplomacy page: the player's
  * portrait facing the ruler's, and between them what he says (Patch 8, D-62): a greeting for his
  * Respect tier that changes by the day (A1), a word on the freshest thing that concerns him (A2), and
- * his answer to whatever the player last asked or offered (A3, A4). Below them the questions the
- * player may put to him, then that court's Accord (none for the Orc, who signs none) and its offers,
- * with `highlight` picking out a hex. The close button and Escape (Modal) return to the page.
+ * his answer to whatever the player last asked or offered (A3, A4), and what he asks of the player
+ * (R1, D-66). Below them the questions the player may put to him, his request to answer, then that
+ * court's Accord (none for the Orc, who signs none) and its offers, with `highlight` picking out a
+ * hex. The close button and Escape (Modal) return to the page.
  */
 export function Audience({ campaign, today, panel, highlight, onClose }: { campaign: CampaignState; today: ISODate; panel: RivalPanel; highlight?: string; onClose(): void }): React.JSX.Element {
   const rival = panel.rival
@@ -48,6 +51,8 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
   const habit = useMemo(() => prizedSoFar(campaign, rival, ledger, today), [campaign, rival, ledger, today])
   const topic = useMemo(() => audienceTopic(campaign, rival, today, LINES, habit), [campaign, rival, today, habit])
   const questions = useMemo(() => audienceQuestions(campaign, rival, today, LINES, topic?.id), [campaign, rival, today, topic])
+  const request = useMemo(() => requestCard(campaign, rival, today, LINES), [campaign, rival, today])
+  const promises = useMemo(() => promiseLines(campaign, rival, today), [campaign, rival, today])
   const playerName = profile ? `${profile.title} ${profile.name}`.trim() : 'A New Noble'
   const colors = { ['--court' as string]: OWNER_COLORS[rival].fill, ['--player' as string]: OWNER_COLORS.player.fill }
 
@@ -58,6 +63,11 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
   const answered = (kind: DealLineKind): void => {
     setAsked(null)
     setReply({ text: dealAcceptLine(rival, kind, LINES).text })
+  }
+  const settled = (answer: 'grant' | 'refuse'): void => {
+    setAsked(null)
+    const words = requestReply(rival, answer, LINES)
+    setReply(words ? { text: words } : null)
   }
 
   return (
@@ -74,6 +84,11 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
           {topic && (
             <p className="audience__topic" data-topic={topic.id}>
               {topic.text}
+            </p>
+          )}
+          {request?.words && (
+            <p className="audience__ask" data-request={request.kind}>
+              {request.words}
             </p>
           )}
           {reply && (
@@ -111,6 +126,8 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
           }}
         />
       )}
+      {request && <RequestPanel campaign={campaign} today={today} card={request} onAnswered={settled} />}
+      {promises.length > 0 && <p className="audience__promises">{promises.join(' ')}</p>}
       <div className="audience__options" style={colors}>
         <AccordPanel campaign={campaign} today={today} rival={rival} onSealed={() => answered('accord')} />
         <DealsList
@@ -127,5 +144,48 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
         />
       </div>
     </Modal>
+  )
+}
+
+/**
+ * Patch 8 (R1, D-66): the ruler's request, under the stage: what he asks in plain terms, what each answer
+ * does, and (a dare) how the week stands so far; an offer or a demand with its two answers. Answering asks
+ * nothing more: the card says what each does.
+ */
+function RequestPanel({ campaign, today, card, onAnswered }: { campaign: CampaignState; today: ISODate; card: RequestCard; onAnswered(answer: 'grant' | 'refuse'): void }): React.JSX.Element {
+  const act = useCampaign((s) => s.act)
+  const ledger = useLedgerData()
+  const soFar = useMemo(() => (card.kind === 'dare' ? dareSoFar(campaign, card.rival, ledger, today) : undefined), [campaign, card, ledger, today])
+  const answer = (choice: 'grant' | 'refuse'): void => {
+    const done = act((s) => {
+      const r = answerRequest(s, card.rival, choice, today)
+      return r.ok ? r : { ...r, reason: requestRefusalText(r.reason) }
+    })
+    if (!done) return
+    if (choice === 'grant') sfx('coin')
+    onAnswered(choice)
+  }
+  return (
+    <section className={`panel audience__request audience__request--${card.kind}`} aria-label={card.title}>
+      <header className="panel__head">
+        <h3 className="panel__title">
+          <GiScrollUnfurled aria-hidden="true" /> {card.title}
+        </h3>
+        <span className="panel__aside">Until {card.until}</span>
+      </header>
+      <p className="audience__asks">{card.asks}</p>
+      {soFar && <p className={`audience__so-far is-${soFar}`}>{soFar === 'kept' ? 'So far this week: kept.' : card.rival === 'orc' ? 'This week: a battle already lost to his raids.' : 'So far this week: not kept yet.'}</p>}
+      <p className="muted audience__request-rule">{card.rule}</p>
+      {card.grantLabel && (
+        <p className="audience__request-actions">
+          <button type="button" className="btn btn--small btn--primary" onClick={() => answer('grant')}>
+            {card.grantLabel}
+          </button>{' '}
+          <button type="button" className="btn btn--small btn--ghost" onClick={() => answer('refuse')}>
+            {card.refuseLabel}
+          </button>
+        </p>
+      )}
+    </section>
   )
 }

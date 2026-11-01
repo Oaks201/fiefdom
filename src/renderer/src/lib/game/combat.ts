@@ -37,7 +37,7 @@ import { CODEX, type Matchup, type MatchupId } from './codex'
 import { addDays, campaignWeek, diffDays, weekCloseDay, weekdayOf, weekOf } from './clock'
 import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } from './economy'
 import { mythicMultFor, realmEffects, wallsFor } from './effects'
-import { blocksConquest, blocksRaids, breakDeals, fortificationValue, sellPrice } from './land'
+import { blocksConquest, blocksRaids, breakDeals, breakPromises, fortificationValue, sellPrice } from './land'
 import { bandOf, borderHexesOf, claimableBy, depthOf, hexDistance, hexIndex, isClaimableKind, isStronghold, nearestTo, neighbors, strongholdBarring, touches, wildBase, wildGarrison } from './map'
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
@@ -1514,6 +1514,8 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   if (fell) state = pressOn(state, fell.hex.id, fell.from, day, emit)
   // Patch 8 (D1, D2, D-64): an assault on the land of a rival whose Truce, pact or oath binds the player breaks it.
   for (const rival of new Set(validity.assaults.flatMap((a) => (isRival(byId.get(a.target)?.owner) ? [byId.get(a.target)?.owner as RivalId] : [])))) state = breakDeals(state, rival, day, emit)
+  // Patch 8 (R1, D-66): and one on a hex promised to a ruler breaks that promise.
+  state = breakPromises(state, validity.assaults.map((a) => a.target), day, emit)
   // Patch 4 (C-36): at the Orc's path rank V a repulse leaves no company Weary (iron ranks).
   if (wearied.size > 0 && pathRank(state, 'orc') < RULES.dominion.rankPerks.orc.ironRanksRank) state = weary(state, wearied, day, effects)
   // Led fights are kept a week for their replays (D-12).

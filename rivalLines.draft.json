@@ -87,7 +87,13 @@
         "calledAgainst": "You paid {rival} to bring war to the Steppe. I know whose coin it was.",
         "pactKept": "Our pact ran its course and you kept it. The Steppe noticed.",
         "trialWon": "Your champion beat mine. My warriors still talk of it. My raids can wait.",
-        "trialLost": "My champion broke yours. Train harder. Then come back."
+        "trialLost": "My champion broke yours. Train harder. Then come back.",
+        "heardTook": "{rival} took {hex} from {other}. Someone on the Rim still knows how to fight.",
+        "heardFront": "{rival} beat {other} on the front. Ugrak watched. Ugrak learned.",
+        "dareMet": "You took my dare and lost no battle to my raids. Ugrak is impressed. Do not let it go to your head.",
+        "dareMissed": "My raids got the better of you this week. Get up. The Steppe dares you again soon.",
+        "demandRefused": "You said no to Ugrak. Fine. The war-bands will come and ask instead.",
+        "promiseBroken": "You swore to leave {hex} alone, and your soldiers came anyway. Ugrak remembers."
       },
       "relations": {
         "war": "{rival}? We are at war. I will wear their banner as a cloak.",
@@ -106,7 +112,15 @@
         "Fight. Win. Lose no battle you can win. That is all the Steppe asks.",
         "Come at my border with steel, not coin. Ugrak respects the ones who fight."
       ],
-      "noNews": "No news. The Steppe is quiet. Ugrak does not like quiet."
+      "noNews": "No news. The Steppe is quiet. Ugrak does not like quiet.",
+      "requests": {
+        "dare": "A dare, lordling. One week. My raids come, and you lose no battle to them. Do it, and Ugrak will speak well of you.",
+        "liftSiege": "Your soldiers squat around {hex}. Pull them back. Ugrak asks once.",
+        "spareHex": "You hit {hex}. Leave it be for {days} days, and Ugrak forgets it.",
+        "toll": "You stand in the Steppe's shadow. Pay {price}, and Ugrak will think better of you.",
+        "granted": "Good. Ugrak sees you.",
+        "refused": "No? Then the war-bands will come and ask instead."
+      }
     },
     "skivvet": {
       "greetings": {
@@ -193,7 +207,13 @@
         "pactBroken": "You broke our pact! Terrible for your credit. The whole Warren heard.",
         "heardBroken": "Word is you broke your deal with {rival}. Bad for business, friend. Very bad for business.",
         "calledAgainst": "So you paid {rival} to come at me. Clever. I'll remember the invoice.",
-        "pactKept": "Our pact is done and you kept every line of it. A customer who honors contracts! Rare as rubies."
+        "pactKept": "Our pact is done and you kept every line of it. A customer who honors contracts! Rare as rubies.",
+        "heardTook": "{rival} took {hex} off {other}. No receipt, I bet. Shocking way to do business.",
+        "heardFront": "{rival} has {other} on the run, I hear. I'm selling to both sides, naturally.",
+        "dareMet": "Your food ledger balanced all week, just as I wagered. Lovely bookkeeping, friend.",
+        "dareMissed": "Your food ledger didn't quite balance this week. No matter, friend. Every merchant has a slow week. New page tomorrow.",
+        "demandRefused": "You wouldn't pay. Fine. I'll spend the difference on walls, friend.",
+        "promiseBroken": "You promised to leave {hex} alone, and here we are. I'm adding interest."
       },
       "relations": {
         "war": "{rival}? We're at war. Terrible for trade, wonderful for weapon sales.",
@@ -212,7 +232,16 @@
         "Keep your books tidy, friend, your food ledger too. A lord who keeps good accounts keeps good company.",
         "Trade with me. Buy, sell, bribe, I'm not fussy. Just keep the coin moving."
       ],
-      "noNews": "No news worth selling, friend. Ask me tomorrow."
+      "noNews": "No news worth selling, friend. Ask me tomorrow.",
+      "requests": {
+        "dare": "A wager, friend! Keep your food ledger balanced all week, every page filled in, and I'll think very fondly of you.",
+        "itemOffer": "I've a {item} in the back. For you, {price}. Don't tell the others; they pay full.",
+        "liftSiege": "Your camp outside {hex} is scaring my customers. Pack it up, and we'll call it square.",
+        "spareHex": "You knocked on {hex} rather hard. Leave it be for {days} days, eh? Good for both our ledgers.",
+        "toll": "There's a toll on the border now, friend. {price}. Nothing personal. Strictly business.",
+        "granted": "Pleasure doing business, friend!",
+        "refused": "No? Shame. I'll make a note. I always make a note."
+      }
     },
     "hrodgar": {
       "greetings": {
@@ -299,7 +328,13 @@
         "pactBroken": "You broke an oath sworn on the anvil. Dun Kaldor will not forget. Ever.",
         "heardBroken": "The clans hear you broke your word to {rival}. An oath broken anywhere is broken everywhere.",
         "calledAgainst": "You paid {rival} to march on Dun Kaldor. It is written down, outsider.",
-        "pactKept": "Our oath ran its full length, kept. That is worth more than gold under the mountain."
+        "pactKept": "Our oath ran its full length, kept. That is worth more than gold under the mountain.",
+        "heardTook": "{rival} took {hex} from {other}. Another line in someone's book of grudges.",
+        "heardFront": "{rival} has the better of {other}, the scouts say. The mountain watches who stands.",
+        "dareMet": "You met your step pool, as I dared. A dwarf honors a measure kept.",
+        "dareMissed": "You fell short of your step pool this week. The mountain was not climbed in a day. Walk again.",
+        "demandRefused": "You refused Dun Kaldor. Then our walls grow a course higher.",
+        "promiseBroken": "You swore to leave {hex} be, and you broke it. It is in the book."
       },
       "relations": {
         "war": "{rival}? We are at war. The hammers do not rest.",
@@ -318,7 +353,15 @@
         "Keep your word, outsider, and keep your feet moving. A lord who walks his measure keeps his oaths.",
         "Do not break my walls, and do not break your promises. The rest can be talked about."
       ],
-      "noNews": "Nothing new. The mountain does not gossip."
+      "noNews": "Nothing new. The mountain does not gossip.",
+      "requests": {
+        "dare": "A challenge, outsider. Meet your step pool this week. Keep pace with a dwarf, if you can.",
+        "liftSiege": "Your camp sits under the walls of {hex}. Strike it, and we will speak as neighbors.",
+        "spareHex": "You struck at {hex}. Leave it be for {days} days, and the matter is closed.",
+        "toll": "Passage past Dun Kaldor's border costs {price}. Dwarves give no credit.",
+        "granted": "So. You can be reasoned with. It is noted, in black ink.",
+        "refused": "Refused. The masons are already at work."
+      }
     },
     "emrys": {
       "greetings": {
@@ -406,7 +449,13 @@
         "pactBroken": "You broke our pact. I'll admit I'm disappointed. I so rarely am, these days.",
         "heardBroken": "I hear you broke your word to {rival}. Interesting. I'll keep my own wards up.",
         "calledAgainst": "So you paid {rival} to come after me. Bold. Unwise, but bold.",
-        "pactKept": "Our pact has run its course, kept to the letter. You're more reliable than you look."
+        "pactKept": "Our pact has run its course, kept to the letter. You're more reliable than you look.",
+        "heardTook": "{rival} took {hex} from {other}. Neither of them knew what it was for, of course.",
+        "heardFront": "{rival} is beating {other} on the front, I'm told. I'd intervene, but it's so entertaining.",
+        "dareMet": "Every duty kept, every day, just as I dared. I may have to revise my opinion of you. Upward. Slightly.",
+        "dareMissed": "A duty slipped this week, so the dare is lost. Never mind. Begin again tomorrow; that is all discipline ever is.",
+        "demandRefused": "You said no. Very well. I'll ward the place more thoroughly.",
+        "promiseBroken": "You promised to leave {hex} alone. I wrote it down. Then you didn't. Tiresome."
       },
       "relations": {
         "war": "{rival}? We're at war. It's the most fun I've had in a decade.",
@@ -425,7 +474,16 @@
         "Keep every duty, every day. Consistency is the only real magic. Everything else is fireworks.",
         "Leave my lands alone and keep your days in order. That's all. I'm very easy to please. Ask anyone. Actually, don't."
       ],
-      "noNews": "Nothing of note. The world is being dreadfully dull this week."
+      "noNews": "Nothing of note. The world is being dreadfully dull this week.",
+      "requests": {
+        "dare": "A small experiment, my dear lord: keep every duty, every day, this week. I'm curious whether you can.",
+        "hexOffer": "I have a spare corner, {hex}, that bores me. {price}, and it's yours. Do mind the ley lines.",
+        "liftSiege": "Your little camp outside {hex} is ruining the view. Do move it along.",
+        "spareHex": "You rattled the doors of {hex}. Leave it alone for {days} days, and I'll pretend I didn't notice.",
+        "toll": "Crossing my borders costs {price} now. Think of it as a tuition fee.",
+        "granted": "There. Wasn't that easy? Sensible people are so rare.",
+        "refused": "No? How bold. And how unwise."
+      }
     }
   }
 }

@@ -292,6 +292,11 @@ function deedsOf(rival: RivalId): Deed[] {
     { deed: 'A pact with him broken by your assault (and War with him a while)', respect: RULES.trade.pact.brokenRespect },
     { deed: 'A pact or oath with another ruler broken (word travels)', respect: RULES.trade.pact.heardRespect },
     { deed: prizedHabit(rival), respect: c.prizedWeek },
+    // Patch 8 (R1, D-66): his requests.
+    { deed: `His dare met (${rival === 'orc' ? 'a week with no battle lost to his raids' : 'his prized habit'})`, respect: RULES.requests.dare.met },
+    { deed: 'His dare missed', respect: RULES.requests.dare.missed },
+    { deed: 'His request granted (an offer taken, a demand met)', respect: RULES.requests.demand.granted },
+    { deed: `His demand refused, left unanswered, or a promise to him broken (and ${rival === 'orc' ? 'War with him a while' : 'he walls the hex'})`, respect: RULES.requests.demand.refused },
     { deed: 'Beasts beaten on a hex of his march', renown: `${signed(d.heldAgainstBeasts)} (a mythic ${signed(d.heldAgainstMythic)})` },
     { deed: 'Resolving him, by any way', renown: signed(d.resolved) }
   ]

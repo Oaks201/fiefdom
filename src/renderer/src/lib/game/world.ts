@@ -32,6 +32,7 @@ import { bandOf, borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { holdings, playerPower, rivalIncome, rivalPower, sharedBorder, threatOf, treasuryBand } from './rivals'
+import { requestsWeek } from './requests'
 import { refreshRoster } from './roster'
 import {
   EventBuffer,
@@ -758,6 +759,8 @@ export function worldWeek(input: CampaignState, w: WorldWeek): CampaignState {
   state = restlessWeek(state, w)
   state = coalitionsWeek(state, w)
   state = eventsWeek(state, w)
+  // Patch 8 (R1, D-66): the rulers' requests.
+  state = requestsWeek(state, w)
   if (state.campaign.status === 'active') state = ascendancyWeek(state, w)
   return rosterInStep(state)
 }

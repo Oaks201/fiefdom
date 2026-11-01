@@ -2,7 +2,7 @@
 
 Written 2026-10-29, on branch `patch-8` (from Patch 7, 0db00d4, rules 3.8.0).
 
-**Status (2026-10-29):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Its lines are drafts in `rivalLines.draft.json`, waiting for Rich's review; until he approves them, a release build shows none. Stage 2, each deal its own, is built (D-64, rules 3.9.0), with the last two Dominion marks lowered (D-65); its report is section 10. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
+**Status (2026-10-30):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Its lines are drafts in `rivalLines.draft.json`, waiting for Rich's review; until he approves them, a release build shows none. Stage 2, each deal its own, is built (D-64, rules 3.9.0), with the last two Dominion marks lowered (D-65); its report is section 10. Stage 3, rivals that come to you, is built (D-66, rules 3.10.0); its report is section 11. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
 
 Rich's direction (2026-10-29):
 - Make diplomacy and the rivals more exciting, with more interactions with them.
@@ -233,3 +233,76 @@ Four full runs (720 campaigns each). The report in [`docs/game/sim/targets-3.9.0
      - (a) **Recommended:** lower the third and fourth marks to 2,500 and 3,350 (from 2,700 and 3,650). Every style is back in its window (55 / 59 / 67), and G-07 is met.
      - (b) Keep the marks D-60 confirmed, and accept Perfect three weeks over its window.
 2. **The new lines.** About 25 drafts for the new deals and topics join stage 1's in `rivalLines.draft.json`, for your review with the rest.
+
+## 11. Stage 3 report: rivals that come to you (rules 3.10.0)
+
+Built 2026-10-30 from R1 and R2 (D-62, recorded as D-66). Every number below is a first guess the simulator checked; Rich decides them (D-02).
+
+### 11.1 What was built
+
+- **R1, a ruler's request.** From week 4, at about one week close in two, one ruler sends a request. He must have nothing else open; among those, the one who asked least lately goes, by lot among equals. The Herald tells it each day it is open, and his court says it waits. You answer in his Audience within 7 days: he says it in his speech, and a card under it says what each answer does.
+  - **A dare** (from a ruler at Respect 0 or more): keep the habit he prizes for the week ahead.
+    - Ugrak's is narrower than his prized week, as the proposal worded it: lose no battle to his raids.
+    - Judged at the week's close: met +6, missed −2.
+    - There is nothing to answer. The card shows how the week stands so far.
+  - **An offer:**
+    - Skivvet's dares alternate with an Armory item, and Emrys's with a hex of his beside your land, each 25% below the usual price. The Armory honors Skivvet's price all week.
+    - Taken, +5. Declined or left, nothing is lost.
+    - Ugrak and Hrodgar offer nothing, so they only dare.
+  - **A demand** (from any ruler):
+    - **What he asks:** lift your siege on his hex while one stands, or leave alone a hex of his you assaulted in the last week. A ruler below 0 otherwise asks a toll of 20 × the band of his land facing you.
+    - **Granted:** +5. A siege lifted or a hex spared then stands as a promise for 14 days, which an assault on that hex breaks.
+    - **Refused, left unanswered, or a promise broken:** −5, and he acts on it. Ugrak goes to War for 14 days whatever his Respect (the proposal's "Ugrak raids it"). The others wall the hex a level: Hrodgar's answer in the proposal, given to Skivvet and Emrys too.
+  - **Absence never costs anything (X-17):** no ruler asks while you are away, and a demand or a dare that runs out then ends quietly.
+- **R2, rivals react to each other.** The Herald quotes every other ruler under the line when:
+  - one rival takes another's land (the loser speaks too);
+  - one wins a front's war;
+  - one falls to you or is allied;
+  - one has a pact broken.
+
+  While the news is fresh (the day the Herald tells it and the next), it is the first thing each of them says in his Audience.
+- **What he remembers:** a dare met or missed, a demand refused and a promise broken become topics he raises. A promise broken stays a topic for a month.
+- **The orders panel** names a promise an assault would break, as it names a Truce.
+- **The guide and How to Play** list the requests and their Respect.
+- **The writing:** 50 new drafts in `rivalLines.draft.json`, in the four voices.
+  - Each ruler's request lines (`requests`): his dare, his offer, each demand, and his answer when you grant or refuse.
+  - Six new topics: `heardTook`, `heardFront`, `dareMet`, `dareMissed`, `demandRefused` and `promiseBroken`.
+  - The dare and habit lines encourage and never shame; Skivvet's speak of the food ledger, not of eating less.
+- **A fix to stage 1:** a release build passed no lines file to the topics and questions, so even approved topic lines would never have shown. The Audience and the Herald now read one `RULER_LINES`: the drafts beside Rich's lines in development, his file alone in a release.
+- **Save compatibility:** the requests are new optional state, so a 3.x save carries forward in place. The rules version is 3.10.0.
+- **The simulator:**
+  - **The automatic player answers.** It takes an offer or pays a toll when that leaves its deal reserve. It grants a demand to lift a siege or spare a hex only to a ruler off its plan's paths, or to the one it is courting for an Accord, and refuses the rest. It never assaults a promised hex.
+  - **New target G-25:** a request in at least 90% of the 4-week months from week 8, and dares met at least as often as prized weeks are kept.
+- **Tests:** 8 new tests in `tests/game/requests.test.ts`.
+
+### 11.2 What the simulator found
+
+One full run (720 campaigns) on the final code; the report is [`docs/game/sim/targets-3.10.0.md`](../game/sim/targets-3.10.0.md).
+
+| Run | Perfect (50–56) | Steadfast (58–64) | Committed (64–72) | G-24 | G-25 | Missed |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3.9.0 (stage 2) | 55 | 59 | 67 | met | – | G-05, G-17 |
+| **3.10.0 (stage 3)** | **55.5** | **60** | **68** | met | met | G-05, G-17 |
+
+- **The rulers come often.** In the smarter Steadfast player's campaigns, 96% of the months from week 8 bring a request. A campaign averages:
+  - 17.5 dares;
+  - 5.2 tolls;
+  - 2.1 hex offers from Emrys;
+  - 1.5 demands to lift a siege;
+  - 1.4 item offers from Skivvet;
+  - 0.4 demands to spare a hex (the automatic player mostly takes land by siege, not single assaults).
+- **Dares are met 54% of the time,** against 16% for prized weeks. A dare comes only from a ruler who likes you, and Ugrak's narrower dare is often met.
+- **Victory comes about half a week to a week later** than stage 2, every style still inside its window.
+- **Nothing else moved:** G-24 is still met (each deal in 60 to 100% of campaigns), and only G-05 (accepted, D-58) and G-17 are missed, as before. The save is 1.85 MB at its largest (from 1.80), still under 2 MB.
+
+### 11.3 Decisions for Rich
+
+1. **The readings I made of R1** (all in D-66; any can change):
+   - Ugrak's "raids it" is War for 14 days.
+   - Skivvet and Emrys wall the hex like Hrodgar.
+   - Granting a lifted siege also promises 14 days' peace on that hex.
+   - Skivvet and Emrys alternate dares with their offers.
+   - Ugrak's dare is his own raids only.
+   - Nothing is lost while you are away.
+2. **How often.** About one request every two weeks, mostly dares. The options are to keep it (recommended) or lower the chance from 1 in 2 to 1 in 3.
+3. **The new lines.** 50 drafts join the others in `rivalLines.draft.json`, for your review.

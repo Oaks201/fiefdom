@@ -56,6 +56,14 @@ export function withDrafts(approved: unknown = linesJson, drafts: unknown = draf
   return merge(approved, drafts)
 }
 
+/**
+ * The lines the screens read (Patch 8, D-62): Rich's lines with Claude's drafts beside them in a development
+ * build (`dev`), his file alone in a release build, so no draft shows until he approves it.
+ */
+export function rulerLines(dev: boolean): unknown {
+  return dev ? withDrafts() : linesJson
+}
+
 /** The tier floors the file lists; empty when `tiers` is missing or malformed. */
 export function lineTiers(lines: unknown = linesJson): number[] {
   const tiers = isRecord(lines) ? lines.tiers : undefined

@@ -432,6 +432,19 @@
   color: var(--crimson);
 }
 
+/* Patch 8 (R1): a request of his waiting for an answer, or a promise to him standing. */
+.court__request {
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: rgba(217, 132, 36, 0.12);
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+}
+
 /* Patch 4 (D-33): a rival’s stance, Defiant to Ready to yield. */
 .court__stance {
   font-weight: 700;
@@ -1006,6 +1019,11 @@
   color: var(--ink-2);
 }
 
+/* Patch 8 (R1): what he asks of the player, in his words. */
+.audience__ask {
+  font-weight: 600;
+}
+
 .audience__reply {
   padding-top: 10px;
   border-top: 1px dashed var(--rule);
@@ -1109,6 +1127,51 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Patch 8 (R1, D-66): his request to answer, under the stage; a demand edged in crimson, an offer or a dare in gold. */
+.audience__request {
+  margin: 0 0 16px;
+  border-left: 4px solid var(--gold);
+}
+
+.audience__request--liftSiege,
+.audience__request--spareHex,
+.audience__request--toll {
+  border-left-color: var(--crimson);
+}
+
+.audience__asks {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.audience__so-far {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.audience__so-far.is-kept {
+  color: var(--forest);
+}
+
+.audience__request-rule {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.audience__request-actions {
+  margin: 10px 0 0;
+}
+
+.audience__promises {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
 }
 
 /* TEMPORARY, development builds only: the Respect override (AudienceDebug). */

@@ -198,7 +198,13 @@ test('D-01 / gap 2: the Accord’s Respect is added even when the settle call th
   const end = (sealed.state.contracts.active as NonNullable<CampaignState['contracts']['active']>).endDate
   assert.equal(new Date(`${end}T12:00:00Z`).getUTCDay(), 3, 'it ends on a Wednesday')
   const before = settle(sealed.state, ledger, chicago(end)).state
-  assert.equal(before.rivals.goblin.respect, 60 + 4 * 4, 'four prized weeks (A-38) while it ran')
+  // Patch 8 (R1): his dares move his Respect too, so the prized weeks are counted from the log.
+  const prized = before.log.filter((e) => e.kind === 'respect' && e.rival === 'goblin' && e.reason === 'prizedWeek' && e.day > sealOn)
+  assert.equal(
+    prized.reduce((sum, e) => sum + (e.kind === 'respect' ? e.change : 0), 0),
+    4 * 4,
+    'four prized weeks (A-38) while it ran'
+  )
   const last = settle(before, ledger, chicago(addDays(end, 1)))
   assert.equal(last.summary.weeksClosed.length, 0, 'the paying call closes no week')
   const contract = last.events.find((e) => e.kind === 'contract')

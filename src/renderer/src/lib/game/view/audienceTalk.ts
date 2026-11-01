@@ -4,6 +4,10 @@
  * his beaten, his front's war with a neighbor, land changing hands between the rivals, a neighbor
  * fallen, a deal running, the habit he prizes this week. No hidden number reaches a line.
  *
+ * Patch 8 (R1, R2, D-66): his dares and demands answered, and his neighbors' news: land one took from
+ * another, a front's war won, a ruler fallen or allied, a pact broken. News that fresh is the first thing
+ * he speaks of (`audienceTopic`), and the Herald quotes every other ruler on it (`reactionsTo`).
+ *
  * The words are each ruler's own templates in the lines file (`audience.ts`): `topics` by topic,
  * `relations` and `of` for what he thinks of his neighbors, `wishes` and `noNews`. A slot with no line
  * is left out, so the Audience speaks only lines the file has.
@@ -12,7 +16,8 @@ import { addDays, diffDays } from '../clock'
 import { CODEX } from '../codex'
 import { hexName } from '../map'
 import { RULES } from '../rules'
-import { lostBattle } from '../rivals'
+import { isDemand } from '../requests'
+import { lostBattle, lostToRaids } from '../rivals'
 import { weekPillars } from '../score'
 import { charterOn, currentTerms } from '../settle'
 import { standingSiegeOf } from '../sieges'
@@ -56,6 +61,12 @@ export type TopicId =
   | 'pactKept'
   | 'trialWon'
   | 'trialLost'
+  | 'heardTook'
+  | 'heardFront'
+  | 'dareMet'
+  | 'dareMissed'
+  | 'demandRefused'
+  | 'promiseBroken'
 
 /** Every topic, with the facts its line may name. */
 export const TOPICS: Record<TopicId, readonly string[]> = {
@@ -86,14 +97,26 @@ export const TOPICS: Record<TopicId, readonly string[]> = {
   calledAgainst: ['rival'],
   pactKept: [],
   trialWon: [],
-  trialLost: []
+  trialLost: [],
+  heardTook: ['rival', 'other', 'hex'],
+  heardFront: ['rival', 'other'],
+  dareMet: [],
+  dareMissed: [],
+  demandRefused: [],
+  promiseBroken: ['hex']
 }
 
 /** Patch 8 (D4): topics only one ruler has, from his own deal. */
 export const RULER_TOPICS: Partial<Record<TopicId, RivalId>> = { trialWon: 'orc', trialLost: 'orc' }
 
-/** Deals broken are remembered a month, like a neighbor's fall. */
-const REMEMBERED: ReadonlySet<TopicId> = new Set<TopicId>(['neighborFell', 'neighborAllied', 'truceBroken', 'pactBroken', 'heardBroken'])
+/** Deals broken are remembered a month, like a neighbor's fall, and (R1) a promise broken. */
+const REMEMBERED: ReadonlySet<TopicId> = new Set<TopicId>(['neighborFell', 'neighborAllied', 'truceBroken', 'pactBroken', 'heardBroken', 'promiseBroken'])
+
+/** Patch 8 (R2): his neighbors' news, which the Herald quotes him on and which he raises first while it is fresh. */
+const REACTIONS: ReadonlySet<TopicId> = new Set<TopicId>(['heardTook', 'lostTo', 'heardFront', 'neighborFell', 'neighborAllied', 'heardBroken'])
+
+/** How long news stays the first thing he speaks of: the day the Herald tells it and the next (R2, "his next Audience"). */
+const FRESH_DAYS = 2 // rules-ok: words only, which topic leads
 
 /** One fact a ruler could speak of; `neighbor` when it is about his neighbors, the news he has of them. */
 export interface TopicFact {
@@ -162,6 +185,8 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
       if (e.to === rival && e.from === 'neutral' && e.how === 'conquest') return at('tookWilds', { hex })
       if (e.to === rival && RIVAL_IDS.includes(e.from as RivalId)) return at('tookFrom', { rival: rivalName(e.from as RivalId), hex }, true)
       if (e.from === rival && RIVAL_IDS.includes(e.to as RivalId)) return at('lostTo', { rival: rivalName(e.to as RivalId), hex }, true)
+      // Patch 8 (R2): one neighbor's land taken by another.
+      if (e.how === 'conquest' && RIVAL_IDS.includes(e.from as RivalId) && RIVAL_IDS.includes(e.to as RivalId)) return at('heardTook', { rival: rivalName(e.to as RivalId), other: rivalName(e.from as RivalId), hex }, true)
       return undefined
     }
     case 'defense':
@@ -171,6 +196,12 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
       if (e.deal === 'callToArms' && e.target === rival) return at('calledAgainst', { rival: rivalName(e.rival) }, true)
       return e.rival === rival && e.deal === 'sellHex' && e.hexId ? at('boughtHex', { hex: hexName(e.hexId) }) : undefined
     case 'front': {
+      // Patch 8 (R2): a front's war won between two neighbors, its track at its end.
+      const pair = CODEX.fronts.find((f) => f.id === e.front)?.rivals
+      if (e.turned && pair && !pair.includes(rival)) {
+        const [winner, loser] = e.track > 0 ? pair : [pair[1], pair[0]]
+        return at('heardFront', { rival: rivalName(winner), other: rivalName(loser) }, true)
+      }
       const foe = frontFoe(state, rival, e.front)
       if (!foe || (e.state !== 'war' && e.state !== 'peace')) return undefined
       return at(e.state === 'war' ? 'frontWar' : 'frontPeace', { rival: rivalName(foe) }, true)
@@ -187,6 +218,12 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
       if (e.stage !== 'fought' || e.rival !== rival || state.grandBattles.find((b) => b.id === e.battleId)?.eventId !== 'trial') return undefined
       return at(e.result === 'defeat' ? 'trialLost' : 'trialWon', {})
     }
+    // Patch 8 (R1): his dare met or missed, his demand refused (by word or silence), a promise to him broken.
+    case 'request':
+      if (e.rival !== rival) return undefined
+      if (e.stage === 'met' || e.stage === 'missed') return at(e.stage === 'met' ? 'dareMet' : 'dareMissed', {})
+      if (e.stage === 'broken' && e.hexId) return at('promiseBroken', { hex: hexName(e.hexId) })
+      return (e.stage === 'refused' || e.stage === 'lapsed') && isDemand({ kind: e.request }) ? at('demandRefused', {}) : undefined
     default:
       return undefined
   }
@@ -255,13 +292,47 @@ function topicLine(lines: unknown, rival: RivalId, fact: TopicFact): string | un
 /** How many of the freshest facts a day's topic is drawn from, so he doesn't say the same thing every day. */
 const TOPIC_CHOICE = 3 // rules-ok: words only, how varied a day's topic is
 
-/** What `rival` speaks of on `today` after his greeting (A2): one of his three freshest facts with a line, by the day. */
+/**
+ * What `rival` speaks of on `today` after his greeting (A2): his neighbors' news while it is fresh (R2), else one of
+ * his three freshest facts with a line, by the day.
+ */
 export function audienceTopic(state: CampaignState, rival: RivalId, today: ISODate, lines: unknown, habit?: HabitSoFar): { id: TopicId; text: string } | undefined {
+  const fresh = addDays(today, -FRESH_DAYS)
   const spoken = topicFacts(state, rival, today, habit).flatMap((fact) => {
     const text = topicLine(lines, rival, fact)
-    return text ? [{ id: fact.id, text }] : []
+    return text ? [{ id: fact.id, text, news: REACTIONS.has(fact.id) && fact.day !== undefined && fact.day >= fresh }] : []
   })
-  return dailyPick(state, today, `topic:${rival}`, spoken.slice(0, TOPIC_CHOICE))
+  const chosen = spoken.find((s) => s.news) ?? dailyPick(state, today, `topic:${rival}`, spoken.slice(0, TOPIC_CHOICE))
+  return chosen && { id: chosen.id, text: chosen.text }
+}
+
+/** One ruler's words on the realm's news, as the Herald quotes him (R2). */
+export interface Reaction {
+  rival: RivalId
+  text: string
+}
+
+/**
+ * Patch 8 (R2, D-66): what every other active ruler says of event `e` in the Herald, in his topic line for it: land
+ * one rival took from another (its loser too), a front's war won, a ruler conquered or allied, a pact broken.
+ * Only rulers whose file has the line speak.
+ */
+export function reactionsTo(state: CampaignState, e: GameEvent, lines: unknown): Reaction[] {
+  return RIVAL_IDS.filter((r) => state.rivals[r].status === 'active').flatMap((r) => {
+    const fact = eventFact(state, r, e)
+    const text = fact && REACTIONS.has(fact.id) ? topicLine(lines, r, fact) : undefined
+    return text ? [{ rival: r, text }] : []
+  })
+}
+
+/**
+ * Patch 8 (R1): how `rival`'s dare stands so far this week: his prized habit's reading, but Ugrak's is narrower, no
+ * battle lost to his raids (kept until one is).
+ */
+export function dareSoFar(state: CampaignState, rival: RivalId, ledger: Ledger, today: ISODate): HabitSoFar | undefined {
+  if (rival !== 'orc') return prizedSoFar(state, rival, ledger, today)
+  const week = liveWeek(state, ledger, today)
+  return week.length > 0 ? (lostToRaids(state, rival, week[0].date, today) ? 'slipping' : 'kept') : undefined
 }
 
 /** How `rival` stands with `other` (A3): resolved, coalition partners, or his standing toward him. */

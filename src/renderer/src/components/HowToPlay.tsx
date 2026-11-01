@@ -811,6 +811,28 @@ export function HowToPlay(): React.JSX.Element | null {
                 </ul>
               </li>
               <li>
+                <b>Requests:</b> from week {RULES.requests.fromWeek}, at about one week close in {Math.round(1 / RULES.requests.chance)}, one ruler sends a request. The Herald
+                tells it, and you answer it in his Audience within {RULES.requests.answerDays} days; silence counts as refusing it. Rulers who like you ask; those who don’t, demand.
+                <ul>
+                  <li>
+                    <b>A dare:</b> keep the habit he prizes for the week ahead (Ugrak’s is narrower: lose no battle to his raids). Met, +{RULES.requests.dare.met} Respect;
+                    missed, {RULES.requests.dare.missed}. There is nothing to answer.
+                  </li>
+                  <li>
+                    <b>An offer:</b> Skivvet sells an Armory item, and Emrys a hex of his beside your land, {Math.round(RULES.requests.offerDiscount * 100)}% below the usual price.
+                    Taken, +{RULES.requests.demand.granted} Respect; declined, nothing lost.
+                  </li>
+                  <li>
+                    <b>A demand:</b> lift your siege on his hex, leave a hex of his you assaulted alone for {RULES.requests.spareDays} days, or, from a ruler below 0, pay a toll.
+                    Granted, +{RULES.requests.demand.granted} Respect; a siege lifted or a hex spared is then a promise, and an assault on that hex within{' '}
+                    {RULES.requests.spareDays} days breaks it. Refused, unanswered or broken, {RULES.requests.demand.refused} Respect and he acts on it: Ugrak goes to War for{' '}
+                    {RULES.requests.demand.wrongedDays} days; the others wall the hex a level.
+                  </li>
+                </ul>
+                The rulers also speak of each other: when one takes another’s land, wins a front’s war, or falls to you, the Herald quotes the others on it, and it is the first
+                thing they mention in their next Audience.
+              </li>
+              <li>
                 <b>Stance:</b> from week {RULES.terms.fromWeek} each court shows how near its ruler is to yielding: Defiant, Wary, Shaken or Ready to yield. The Herald’s rumors say what
                 he watches; no number is shown.
               </li>

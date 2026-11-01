@@ -1,11 +1,13 @@
 import type { IconType } from 'react-icons'
 import { GiCrossedSwords, GiHornInternal, GiScrollQuill, GiSwordClash, GiSpeaker } from 'react-icons/gi'
 import type { ISODate } from '../../lib/game/types'
+import { reactionsTo } from '../../lib/game/view/audienceTalk'
 import { battleNotices } from '../../lib/game/view/battle'
-import { heraldView, type HeraldSection } from '../../lib/game/view/shell'
+import { heraldView, rivalName, type HeraldSection } from '../../lib/game/view/shell'
 import { ledYesterday } from '../../lib/game/view/skirmish'
 import { useCampaignState } from '../../state/campaignHooks'
 import { useUI } from '../../state/ui'
+import { RULER_LINES } from '../diplomacy/rulerLines'
 
 const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
   { id: 'threat', title: 'Today’s threats', icon: GiCrossedSwords },
@@ -19,14 +21,14 @@ const SECTIONS: { id: HeraldSection; title: string; icon: IconType }[] = [
 /**
  * The Herald's dawn tidings (Ch 2): today's threats with their targets and bands, Grand Battle
  * warnings, yesterday's results (a battle the player led marked, with a link to its result and
- * replay, D-12), the world's news and rumors. In-app only (D-04): no
+ * replay, D-12), the world's news and rumors, with the rulers' words on it quoted beneath (Patch 8, R2). In-app only (D-04): no
  * notification ever leaves the window. `bare` leaves out the panel's own heading, for the Dawn
  * tidings card that carries its own (D-47).
  */
 export function Herald({ today, compact = false, bare = false }: { today: ISODate; compact?: boolean; bare?: boolean }): React.JSX.Element | null {
   const campaign = useCampaignState()
   if (!campaign) return null
-  const view = heraldView(campaign, today)
+  const view = heraldView(campaign, today, (e) => reactionsTo(campaign, e, RULER_LINES))
   const notices = battleNotices(campaign, today)
   const led = ledYesterday(campaign, today)
   return (
@@ -69,6 +71,15 @@ export function Herald({ today, compact = false, bare = false }: { today: ISODat
                   <li key={`${l.textId}-${i}`} className="herald__line" data-text-id={l.textId}>
                     {l.text}
                     {l.led && <span className="chip-mini chip-mini--led">You led it</span>}
+                    {l.quotes && (
+                      <ul className="herald__quotes">
+                        {l.quotes.map((q) => (
+                          <li key={q.rival} className={`herald__quote herald__quote--${q.rival}`}>
+                            <q>{q.text}</q> <cite>{rivalName(q.rival)}</cite>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>

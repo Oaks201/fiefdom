@@ -12,6 +12,7 @@ import { addDays, diffDays, isWeekCloseDay, weekCloseDay } from '../clock'
 import { tidings, type ThreatNotice } from '../combat'
 import { displayBalance } from '../economy'
 import { pendingBattles } from '../grand'
+import { isDemand, requestOf } from '../requests'
 import { hostView } from '../grand/hosts'
 import { hexName } from '../map'
 import { surgeOn } from '../personalities'
@@ -121,6 +122,14 @@ export interface HeraldLine {
   rival?: RivalId
   /** A battle the player led on the battle map (D-12). */
   led?: boolean
+  /** Patch 8 (R2, D-66): what the other rulers say of it, in their own words. */
+  quotes?: HeraldQuote[]
+}
+
+/** One ruler quoted under a Herald line (R2). */
+export interface HeraldQuote {
+  rival: RivalId
+  text: string
 }
 
 export interface HeraldView {
@@ -201,6 +210,16 @@ function buyBackLines(state: CampaignState, today: ISODate): HeraldLine[] {
   return worldOf(state)
     .offers.flatMap((o) => (o.kind === 'buyBack' && today <= o.until ? [o] : []))
     .map((o) => line('warning', 'herald.buyBack', { rival: rivalName('goblin'), hex: hexName(o.hexId), price: o.price }, { hexId: o.hexId, rival: 'goblin' }))
+}
+
+/** Patch 8 (R1, D-66): each ruler's request open today, with the day it closes. */
+function requestLines(state: CampaignState, today: ISODate): HeraldLine[] {
+  return RIVAL_IDS.flatMap((r) => {
+    const q = requestOf(state, r, today)
+    if (!q) return []
+    const facts: TextFacts = { rival: rivalName(r), date: q.until, ...(q.hexId ? { hex: hexName(q.hexId) } : {}), ...(q.price !== undefined ? { price: q.price } : {}), ...(q.itemId ? { item: CODEX.items.find((i) => i.id === q.itemId)?.name ?? q.itemId } : {}), ...(q.kind === 'spareHex' ? { days: RULES.requests.spareDays } : {}) }
+    return [line('warning', `herald.request.${q.kind}`, facts, { rival: r, ...(q.hexId ? { hexId: q.hexId } : {}) })]
+  })
 }
 
 function warningLines(state: CampaignState, today: ISODate): HeraldLine[] {
@@ -309,6 +328,11 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     }
     case 'restless':
       return e.stage === 'uprising' ? line('warning', 'herald.restless.uprising', { hex: hexName(e.hexId) }, { hexId: e.hexId }) : null
+    case 'request':
+      // Patch 8 (R1, D-66): a dare met or missed, a demand left unanswered, a promise broken; the player's own answers and an offer lapsing go untold.
+      if (e.stage === 'met' || e.stage === 'missed') return line('result', `herald.request.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
+      if (e.stage === 'broken' && e.hexId) return line('result', 'herald.request.broken', { rival: rivalName(e.rival), hex: hexName(e.hexId) }, { rival: e.rival, hexId: e.hexId })
+      return e.stage === 'lapsed' && isDemand({ kind: e.request }) ? line('world', 'herald.request.lapsed', { rival: rivalName(e.rival) }, { rival: e.rival }) : null
     default:
       return null
   }
@@ -319,12 +343,20 @@ export function resultLine(e: GameEvent): HeraldLine | null {
  * targets and bands (the exact strength only when revealed), what is coming up, and yesterday's
  * results, all through the text catalog. The courts' rumors change once a week, at the rivals'
  * turn, so the Herald tells them on the week's first day only (Patch 7, B8); the courts show them all week.
+ * Patch 8 (R2, D-66): `reactions` gives what the rulers say of a result, quoted under its line.
  */
-export function heraldView(state: CampaignState, today: ISODate = openDayOf(state)): HeraldView {
+export function heraldView(state: CampaignState, today: ISODate = openDayOf(state), reactions?: (e: GameEvent) => HeraldQuote[]): HeraldView {
   const yesterday = addDays(today, -1)
   const threats = isPlayable(state) ? threatLines(state, today) : { hidden: false, lines: [] }
-  const results = state.log.filter((e) => e.day === yesterday).flatMap((e) => resultLine(e) ?? [])
-  const live = isPlayable(state) ? [...surgeLines(state, today), ...warningLines(state, today), ...buyBackLines(state, today)] : []
+  const results = state.log
+    .filter((e) => e.day === yesterday)
+    .flatMap((e) => {
+      const said = resultLine(e)
+      if (!said) return []
+      const quotes = reactions?.(e) ?? []
+      return [quotes.length > 0 ? { ...said, quotes } : said]
+    })
+  const live = isPlayable(state) ? [...surgeLines(state, today), ...warningLines(state, today), ...buyBackLines(state, today), ...requestLines(state, today)] : []
   const weekBegins = today === state.campaign.startDate || isWeekCloseDay(yesterday, state.campaign.weekStartsOn)
   return { date: today, hidden: threats.hidden, lines: [...threats.lines, ...live, ...(weekBegins ? rumorLines(state) : []), ...results] }
 }

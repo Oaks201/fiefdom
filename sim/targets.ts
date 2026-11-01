@@ -449,8 +449,30 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       smarterSteadfast.length > 0 ? shares.every((s) => s.share >= G24.atLeast) : null
     )
   )
+
+  // G-25 (Patch 8, D-66): the rulers come to the player, a request a month from week 8, and a dare is met at least
+  // as often as the habit it names (the prized week) is kept.
+  const reqs = smarterSteadfast.flatMap((r) => (r.measures.requests ? [r.measures.requests] : []))
+  const sum = (f: (q: NonNullable<Measures['requests']>) => number): number => reqs.reduce((s, q) => s + f(q), 0)
+  const monthShare = sum((q) => q.months - q.monthsWithout) / Math.max(1, sum((q) => q.months))
+  const dareShare = sum((q) => q.daresMet) / Math.max(1, sum((q) => q.daresSettled))
+  const prizedShare = sum((q) => q.prized) / Math.max(1, sum((q) => q.judged))
+  const made: Record<string, number> = {}
+  for (const q of reqs) for (const [k, n] of Object.entries(q.made)) made[k] = (made[k] ?? 0) + n
+  rows.push(
+    row(
+      'G-25',
+      'Requests answered (Patch 8)',
+      `Steadfast smarter: the 4-week months from week 8 with a request (at least ${pct(G25.months)}); dares met against prized weeks kept (at least as often); requests a campaign by kind (mean)`,
+      `${pct(monthShare)}; dares ${pct(dareShare)} vs prized ${pct(prizedShare)}; ${Object.entries(made).map(([k, n]) => `${k} ${f2(n / Math.max(1, reqs.length))}`).join(' · ')}`,
+      reqs.length > 0 ? monthShare >= G25.months && dareShare >= prizedShare : null
+    )
+  )
   return rows
 }
+
+/** Patch 8 (G-25, D-66): the share of months from week 8 with a request; the proposal's "at least one a month", across the seeds. */
+const G25 = { months: 0.9 }
 
 /** Patch 8 (G-24, D-64): the deals every campaign should find a use for, and how often. */
 const G24 = { kinds: ['truce', 'pact', 'callToArms', 'trial', 'mercenaries', 'oath', 'bargain'], atLeast: 0.3 }
