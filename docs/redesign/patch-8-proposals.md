@@ -2,7 +2,7 @@
 
 Written 2026-10-29, on branch `patch-8` (from Patch 7, 0db00d4, rules 3.8.0).
 
-**Status (2026-10-30):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Its lines are drafts in `rivalLines.draft.json`, waiting for Rich's review; until he approves them, a release build shows none. Stage 2, each deal its own, is built (D-64, rules 3.9.0), with the last two Dominion marks lowered (D-65); its report is section 10. Stage 3, rivals that come to you, is built (D-66, rules 3.10.0); its report is section 11. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
+**Status (2026-10-31):** Rich approved everything as recommended (D-62): A1 to A5, D1 to D4, R1 and R2 with habit challenges, writing option 1 and the suggested order. Stage 1, the Audience made alive, is built (D-63). Rich approved every Patch 8 line on 2026-10-31 (D-67), and all of them are now in `rivalLines.json`. Stage 2, each deal its own, is built (D-64, rules 3.9.0), with the last two Dominion marks lowered (D-65); its report is section 10. Stage 3, rivals that come to you, is built (D-66, rules 3.10.0); its report is section 11. All of Patch 8 was installed as the live game on 2026-10-31. Each item says what would change, where and why. Every number is a first guess (TUNE) for the simulator to settle.
 
 Rich's direction (2026-10-29):
 - Make diplomacy and the rivals more exciting, with more interactions with them.
@@ -232,7 +232,7 @@ Four full runs (720 campaigns each). The report in [`docs/game/sim/targets-3.9.0
    - **Options:**
      - (a) **Recommended:** lower the third and fourth marks to 2,500 and 3,350 (from 2,700 and 3,650). Every style is back in its window (55 / 59 / 67), and G-07 is met.
      - (b) Keep the marks D-60 confirmed, and accept Perfect three weeks over its window.
-2. **The new lines.** About 25 drafts for the new deals and topics join stage 1's in `rivalLines.draft.json`, for your review with the rest.
+2. **The new lines.** About 25 drafts for the new deals and topics join stage 1's in `rivalLines.draft.json`, for your review with the rest. **Approved 2026-10-31 (D-67).**
 
 ## 11. Stage 3 report: rivals that come to you (rules 3.10.0)
 
@@ -305,4 +305,4 @@ One full run (720 campaigns) on the final code; the report is [`docs/game/sim/ta
    - Ugrak's dare is his own raids only.
    - Nothing is lost while you are away.
 2. **How often.** About one request every two weeks, mostly dares. The options are to keep it (recommended) or lower the chance from 1 in 2 to 1 in 3.
-3. **The new lines.** 50 drafts join the others in `rivalLines.draft.json`, for your review.
+3. **The new lines.** 50 drafts join the others in `rivalLines.draft.json`, for your review. **Approved 2026-10-31 (D-67).**

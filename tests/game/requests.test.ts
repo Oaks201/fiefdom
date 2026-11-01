@@ -24,7 +24,7 @@ import { audienceTopic, reactionsTo } from '../../src/renderer/src/lib/game/view
 import { ordersView } from '../../src/renderer/src/lib/game/view/orders'
 import { requestCard, requestNote } from '../../src/renderer/src/lib/game/view/requests'
 import { heraldView } from '../../src/renderer/src/lib/game/view/shell'
-import draftJson from '../../rivalLines.draft.json'
+import linesJson from '../../rivalLines.json'
 import { realm, withMilestones, withPurse } from './support/realm'
 import { START, fight, front, quiet } from './support/war'
 
@@ -215,8 +215,8 @@ test('R2: land one rival takes from another: the other rulers react in the Heral
   assert.equal(reactionsTo(state, e, {}).length, 0, 'no line, no quote')
 })
 
-test('R1, R2: every ruler has a draft line for each request he makes and each answer, naming only its facts', () => {
-  const rivals = (draftJson as unknown as { rivals: Record<string, { requests: Record<string, string> }> }).rivals
+test('R1, R2: every ruler has a line for each request he makes and each answer, naming only its facts', () => {
+  const rivals = (linesJson as unknown as { rivals: Record<string, { requests: Record<string, string> }> }).rivals
   const facts: Record<string, string[]> = { dare: [], itemOffer: ['item', 'price'], hexOffer: ['hex', 'price'], liftSiege: ['hex'], spareHex: ['hex', 'days'], toll: ['price'], granted: [], refused: [] }
   for (const rival of RIVAL_IDS) {
     const own = rival === 'goblin' ? ['itemOffer'] : rival === 'archmage' ? ['hexOffer'] : []

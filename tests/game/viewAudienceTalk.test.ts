@@ -2,25 +2,25 @@
  * Patch 8 stage 1 (D-62): the Audience made alive. Greetings that change by the day (A1), a word on
  * the freshest thing that concerns the ruler (A2), the questions the player may ask (A3), his words for
  * a deal struck or turned down (A4), and the drafts kept out of a release build until Rich approves them.
+ * Rich approved every Patch 8 draft (D-67), so the lines below are read from his file.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { placeholders } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { dealAcceptLine, greetingFor, greetingPool, LINE_KEYS, lineTiers, refusalKey, refusalLine, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
+import { dealAcceptLine, greetingFor, greetingPool, LINE_KEYS, lineTiers, refusalKey, refusalLine, rulerLines, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
 import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { emptyLedger } from './fixtures/ledgers'
 import { hexName } from '../../src/renderer/src/lib/game/map'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
-import draftJson from '../../rivalLines.draft.json'
 import linesJson from '../../rivalLines.json'
 import { realm } from './support/realm'
 import { START } from './support/war'
 
 const DEV = withDrafts()
 type Entry = Record<string, unknown>
-const drafts = (draftJson as unknown as { rivals: Record<string, Entry> }).rivals
+const approved = (linesJson as unknown as { rivals: Record<string, Entry> }).rivals
 
 function logged(state: CampaignState, events: Record<string, unknown>[]): CampaignState {
   return { ...state, log: [...state.log, ...events.map((e, i) => ({ id: `t-${state.log.length + i + 1}`, ...e }) as GameEvent)] }
@@ -46,26 +46,30 @@ test('A1: a greeting holds all day, changes the next, and is always one of its t
   }
 })
 
-test('D-62: a release build reads Rich’s file alone, so no draft line shows until he moves it in', () => {
+test('D-62, D-67: a release build reads Rich’s file alone, so a draft shows only once he moves it in; his approved lines show in both', () => {
   const state = realm()
-  const draftTexts = new Set(JSON.stringify(drafts).match(/"[^"]{12,}"/g)?.map((s) => JSON.parse(s) as string))
+  assert.equal(rulerLines(false), linesJson, 'a release build: his file alone')
+  const drafted = { rivals: { ugrak: { wishes: ['A draft wish'] } } }
+  const wishes = (lines: unknown): string[] => ((lines as { rivals: { ugrak: Entry } }).rivals.ugrak.wishes as string[]) ?? []
+  assert.ok(wishes(withDrafts(linesJson, drafted)).includes('A draft wish'))
+  assert.ok(!wishes(rulerLines(false)).includes('A draft wish'))
   for (const rival of RIVAL_IDS) {
-    for (const tier of lineTiers()) assert.ok(!draftTexts.has(greetingFor(state, rival, tier, START).text), `${rival} at ${tier}`)
-    assert.equal(dealAcceptLine(rival, 'truce').text, (linesJson as unknown as { rivals: Record<string, Entry> }).rivals[LINE_KEYS[rival]].accept, 'his one accept line')
-    assert.equal(refusalLine(rival, 'respect'), undefined)
-    assert.equal(audienceTopic(state, rival, START, undefined), undefined)
-    assert.deepEqual(audienceQuestions(state, rival, START, undefined), [])
+    // The approved lines read the same in a release build as in development.
+    for (const tier of lineTiers()) assert.equal(greetingFor(state, rival, tier, START, rulerLines(false)).text, greetingFor(state, rival, tier, START, DEV).text, `${rival} at ${tier}`)
+    assert.equal(dealAcceptLine(rival, 'truce', rulerLines(false)).text, (approved[LINE_KEYS[rival]].deals as Record<string, string>).truce)
+    assert.ok(refusalLine(rival, 'respect', rulerLines(false)))
+    assert.ok(audienceQuestions(state, rival, START, rulerLines(false)).length > 0)
   }
   // Rich's line wins over a draft; lists are joined, his first.
   const merged = withDrafts({ rivals: { ugrak: { accept: 'Rich', wishes: ['R'] } } }, { rivals: { ugrak: { accept: 'Draft', wishes: ['D'], noNews: 'N' } } }) as { rivals: { ugrak: Entry } }
   assert.deepEqual(merged.rivals.ugrak, { accept: 'Rich', wishes: ['R', 'D'], noNews: 'N' })
 })
 
-test('the drafts: every ruler has a line for every topic, standing, deal and reason, with only the facts each may name', () => {
+test('the lines: every ruler has a line for every topic, standing, deal and reason, with only the facts each may name', () => {
   const relations = ['war', 'tension', 'peace', 'partner', 'fallen', 'allied']
   const reasons = ['respect', 'notYet', 'atWar', 'atPeace', 'cooldown', 'inForce', 'reputation', 'neverSells', 'other']
   for (const rival of RIVAL_IDS) {
-    const e = drafts[LINE_KEYS[rival]]
+    const e = approved[LINE_KEYS[rival]]
     const part = (k: string): Record<string, string> => e[k] as Record<string, string>
     for (const [id, facts] of Object.entries(TOPICS)) {
       const only = RULER_TOPICS[id as TopicId]
@@ -87,13 +91,13 @@ test('the drafts: every ruler has a line for every topic, standing, deal and rea
 })
 
 test('A4: his words for a deal struck, and for each reason he turns one down', () => {
-  assert.equal(dealAcceptLine('dwarf', 'pact', DEV).text, (drafts.hrodgar.deals as Record<string, string>).pact)
-  assert.equal(dealAcceptLine('orc', 'accord', DEV).text, (drafts.ugrak as Entry).accept ?? (linesJson as unknown as { rivals: Record<string, Entry> }).rivals.ugrak.accept, 'none of his own: his accept line')
+  assert.equal(dealAcceptLine('dwarf', 'pact', DEV).text, (approved.hrodgar.deals as Record<string, string>).pact)
+  assert.equal(dealAcceptLine('orc', 'accord', DEV).text, approved.ugrak.accept, 'none of his own: his accept line')
   assert.deepEqual(
     ['respect', 'useBribe', 'neverSells', 'pathRank', 'castle', 'contractRunning', 'cooldown', 'grandBattleWarning'].map(refusalKey),
     ['respect', 'neverSells', 'neverSells', 'notYet', 'notYet', 'notYet', 'cooldown', 'other']
   )
-  assert.equal(refusalLine('goblin', 'grandBattleWarning', DEV)?.text, (drafts.skivvet.refusals as Record<string, string>).other)
+  assert.equal(refusalLine('goblin', 'grandBattleWarning', DEV)?.text, (approved.skivvet.refusals as Record<string, string>).other)
 })
 
 test('A2: the facts a ruler speaks of, freshest first: his land taken, land he took from a neighbor, a Truce ending', () => {
@@ -128,11 +132,11 @@ test('A3: what he thinks of each neighbor follows his real standing with him; wh
   let state = realm()
   const day = addDays(START, 10)
   const of = (s: CampaignState, rival: RivalId, other: RivalId): string => audienceQuestions(s, rival, day, DEV).find((q) => q.id === `of:${other}`)?.answer ?? ''
-  const relations = (r: RivalId): Record<string, string> => drafts[LINE_KEYS[r]].relations as Record<string, string>
+  const relations = (r: RivalId): Record<string, string> => approved[LINE_KEYS[r]].relations as Record<string, string>
   state = { ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, disposition: { ...state.rivals.orc.disposition, goblin: 'war' } } } }
   assert.equal(relationTo(state, 'orc', 'goblin', day), 'war')
   assert.ok(of(state, 'orc', 'goblin').startsWith(relations('orc').war.replace('{rival}', rivalName('goblin'))))
-  assert.ok(of(state, 'orc', 'goblin').endsWith((drafts.ugrak.of as Record<string, string>).skivvet))
+  assert.ok(of(state, 'orc', 'goblin').endsWith((approved.ugrak.of as Record<string, string>).skivvet))
   const fallen = { ...state, rivals: { ...state.rivals, dwarf: { ...state.rivals.dwarf, status: 'conquered' as const } } }
   assert.equal(relationTo(fallen, 'orc', 'dwarf', day), 'fallen')
   const allied = { ...state, rivals: { ...state.rivals, dwarf: { ...state.rivals.dwarf, status: 'allied' as const } } }
@@ -140,12 +144,12 @@ test('A3: what he thinks of each neighbor follows his real standing with him; wh
   const partners = { ...state, coalitions: [{ members: ['orc', 'goblin'] as RivalId[], trigger: 'risingCrown' as const, warChest: 0, formedOn: START }] }
   assert.equal(relationTo(partners, 'orc', 'goblin', day), 'partner')
   const wish = audienceQuestions(state, 'dwarf', day, DEV).find((q) => q.id === 'wish')
-  assert.ok(wish && (drafts.hrodgar.wishes as string[]).includes(wish.answer))
+  assert.ok(wish && (approved.hrodgar.wishes as string[]).includes(wish.answer))
   assert.match(wish.rule ?? '', /^He prizes a week meeting your step pool\./)
   const news = audienceQuestions(state, 'orc', day, DEV).find((q) => q.id === 'news')
-  assert.equal(news?.answer, drafts.ugrak.noNews, 'no news of his neighbors yet')
+  assert.equal(news?.answer, approved.ugrak.noNews, 'no news of his neighbors yet')
   const warred = logged(state, [{ day: addDays(day, -2), kind: 'front', front: 'north', state: 'war', track: 0 }])
-  assert.equal(audienceQuestions(warred, 'orc', day, DEV, 'tookHex').find((q) => q.id === 'news')?.answer, (drafts.ugrak.topics as Record<string, string>).frontWar.replace('{rival}', rivalName('goblin')))
+  assert.equal(audienceQuestions(warred, 'orc', day, DEV, 'tookHex').find((q) => q.id === 'news')?.answer, (approved.ugrak.topics as Record<string, string>).frontWar.replace('{rival}', rivalName('goblin')))
   // Talking changes nothing: the state is the same object.
   assert.equal(audienceQuestions(state, 'orc', day, DEV).length, 5)
 })
