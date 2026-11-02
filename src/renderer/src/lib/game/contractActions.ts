@@ -180,14 +180,33 @@ export function charterLocked(state: CampaignState, today: ISODate = openDayOf(s
   return active.endDate !== today || queued !== undefined
 }
 
-/** Revises the campaign's Charter between contracts or on a contract's last day, checked against the Healer's floor (or medical supervision). */
+/**
+ * Rules 3.12.0 (D-72, H5): the Charter's figures the Healer has set, which only she changes: each one
+ * she has a figure for, unless medical supervision is confirmed (then her terms stay advice).
+ */
+export function healerSetTerms(state: CampaignState): { calorieLimit: boolean; stepPool: boolean } {
+  const c = state.weight.counsel
+  const binds = c !== undefined && state.campaign.medicalSupervision !== true
+  return { calorieLimit: binds && c.calorieLimit !== undefined, stepPool: binds && c.stepPool !== undefined }
+}
+
+/**
+ * Revises the campaign's Charter between contracts or on a contract's last day, checked against the
+ * Healer's floor (or medical supervision). A figure the Healer has set stays hers (D-72).
+ */
 export function reviseCharter(state: CampaignState, charter: Charter, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
     if (charterLocked(state, today)) return refused(state, 'The Charter can be revised only between contracts, or on a contract’s last day before the next is sealed.')
+    const set = healerSetTerms(state)
+    const asked: Charter = {
+      ...charter,
+      calorieLimit: set.calorieLimit ? state.charter.calorieLimit : charter.calorieLimit,
+      stepPool: set.stepPool ? state.charter.stepPool : charter.stepPool
+    }
     const floor = state.weight.healerFloor ?? 0
-    const errors = validateCharter(charter, { floor, ...(state.campaign.medicalSupervision ? { medicalSupervision: true } : {}) })
+    const errors = validateCharter(asked, { floor, ...(state.campaign.medicalSupervision ? { medicalSupervision: true } : {}) })
     if (errors.length > 0) return refused(state, errors.join(' '))
-    const next: Charter = { stepPool: charter.stepPool, calorieLimit: charter.calorieLimit, duties: [...charter.duties], calorieFloor: floor }
+    const next: Charter = { stepPool: asked.stepPool, calorieLimit: asked.calorieLimit, duties: [...asked.duties], calorieFloor: floor }
     const events = new EventBuffer()
     events.emitter(today)('charter', { stepPool: next.stepPool, calorieLimit: next.calorieLimit, duties: [...next.duties] })
     return { ok: true, state: events.flush({ ...state, charter: next }) }

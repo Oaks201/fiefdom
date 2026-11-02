@@ -1,132 +1,132 @@
 {
   "healer.crashDieting": {
     "template": "Healer check-in: the logged calorie average for the last two weeks is below the calorie floor of {floor} kcal.",
-    "final": null,
+    "final": "Two weeks under {floor} kcal. That is not discipline; it is harm, and I will not watch it. Eat to the floor.",
     "approved": false
   },
   "healer.tooFast": {
     "template": "Healer check-in: weight is coming off faster than the safe pace. Momentum is held at half and Milestones are paused until the trend slows.",
-    "final": null,
+    "final": "Too fast. Weight lost at this speed costs more than it gives, so Momentum is held at half and the Milestones wait until you slow. Eat more; that is an order.",
     "approved": false
   },
   "healer.plateau": {
     "template": "Healer check-in: the weight trend is flat. Consistency this week was {consistency}%, so the plateau floor keeps Momentum.",
-    "final": null,
+    "final": "The scale has stalled. Your habits have not: {consistency}% this week, and the plateau floor keeps your Momentum for it. Hold the line and the scale will follow.",
     "approved": false
   },
   "healer.regain": {
     "template": "Healer check-in: weight is up this week. Broken Milestones stay broken, and Momentum never goes below zero.",
-    "final": null,
+    "final": "Up this week. It happens, and it takes nothing you have earned: broken Milestones stay broken, and Momentum never goes below zero. Back to work tomorrow.",
     "approved": false
   },
   "healer.unsafeGoal": {
     "template": "Healer check-in: a goal of {goal} {unit} is below BMI 18.5 for the height given, so it was not set.",
-    "final": null,
+    "final": "No. {goal} {unit} is below a healthy weight for your height, and I will not set it. Choose a goal I can stand behind.",
     "approved": false
   },
   "healer.overtraining": {
     "template": "Healer check-in: the step pool is met. Steps beyond the pool add nothing to the score.",
-    "final": null,
+    "final": "Your step pool is met. Steps past it earn nothing, so rest before your body forces you to.",
     "approved": false
   },
   "healer.illnessAndTravel": {
     "template": "Healer check-in: the last {days} days scored low. {respite} Respite days are banked and can pause the contract.",
-    "final": null,
+    "final": "{days} hard days in a row. If you are ill or on the road, take a Respite day; you have {respite} banked, and that is what they are for. Rest is not failure.",
     "approved": false
   },
   "healer.fearOfLosing": {
     "template": "Healer check-in: no rival can win before week {week}, and the heartland can never be taken.",
-    "final": null,
+    "final": "Stop worrying. No rival can win before week {week}, and no one will ever take the heartland. Mind your habits and let the war be the war.",
     "approved": false
   },
   "healer.comingBack": {
     "template": "Healer check-in: away for {days} days. The heartland held. A short contract can be sealed.",
-    "final": null,
+    "final": "{days} days away. The heartland held without you, as it always will. Seal a short contract and start again; I do not care how long you were gone, only that you are back.",
     "approved": false
   },
   "healer.shame": {
     "template": "Healer check-in: {what} was lost on {date}. It is recorded in the Chronicle.",
-    "final": null,
+    "final": "{what} fell on {date}. It is in the Chronicle, and that is the end of it. One loss is a fact, not a verdict on you.",
     "approved": false
   },
   "healer.compulsiveChecking": {
     "template": "Healer check-in: today's orders are set. Nothing else is due before the day closes at {closeTime}.",
-    "final": null,
+    "final": "Your orders are set. Nothing else is due before {closeTime}, so close this and go live your day.",
     "approved": false
   },
   "healer.payingOrRushing": {
     "template": "Healer check-in: nothing in the realm can be bought with money, and no timer can be skipped.",
-    "final": null,
+    "final": "Nothing here can be bought with money, and no timer can be skipped. The only way through is the work. Do it.",
     "approved": false
   },
   "healer.privacy": {
     "template": "Healer check-in: the ledger, weigh-ins and goals are stored only on this computer.",
-    "final": null,
+    "final": "Your ledger, your weigh-ins and your goals stay on this computer, and nowhere else.",
     "approved": false
   },
   "healer.report.notEnough": {
     "template": "Healer's report: there is no trend yet. It needs two weekly weigh-ins at least {days} days apart.",
-    "final": null,
+    "final": "I cannot read a trend yet. Give me two weekly weigh-ins at least {days} days apart, and do not skip them.",
     "approved": false
   },
   "healer.report.tooFast": {
     "template": "Healer's report: the trend is {trend} {unit} a week, over the safe pace of {limit} {unit}. Momentum is held at half and Milestones wait until it slows.",
-    "final": null,
+    "final": "{trend} {unit} a week is over the safe pace of {limit} {unit}. Slow down: Momentum is held at half and the Milestones wait until you do.",
     "approved": false
   },
   "healer.report.nearGoal": {
     "template": "Healer's report: the weight is within {share}% of the goal. Momentum pays in full while it stays there.",
-    "final": null,
+    "final": "You are within {share}% of your goal. Momentum pays in full while you stay there, and staying is the hard part.",
     "approved": false
   },
   "healer.report.up": {
     "template": "Healer's report: the trend is up {trend} {unit} a week. Broken Milestones stay broken, and Momentum never goes below zero.",
-    "final": null,
+    "final": "Up {trend} {unit} a week. Broken Milestones stay broken and Momentum never goes below zero, so steady yourself and keep to the terms.",
     "approved": false
   },
   "healer.report.flat": {
     "template": "Healer's report: the trend is flat at {trend} {unit} a week, against a target pace of {target} {unit}. While habits hold, the plateau floor keeps part of Momentum.",
-    "final": null,
+    "final": "Flat: {trend} {unit} a week against a target of {target} {unit}. While your habits hold, the plateau floor keeps part of your Momentum, so do not let them slip now.",
     "approved": false
   },
   "healer.report.behind": {
     "template": "Healer's report: the trend is {trend} {unit} a week, against a target pace of {target} {unit}.",
-    "final": null,
+    "final": "{trend} {unit} a week against a target of {target} {unit}. Behind, not lost. Keep to the terms and the pace will come.",
     "approved": false
   },
   "healer.report.onPace": {
     "template": "Healer's report: the trend is {trend} {unit} a week, at the target pace of {target} {unit}. Momentum pays in full.",
-    "final": null,
+    "final": "{trend} {unit} a week, at the target pace of {target} {unit}. This is exactly right, and Momentum pays in full. Do not get clever and try to beat it.",
     "approved": false
   },
   "healer.report.ahead": {
     "template": "Healer's report: the trend is {trend} {unit} a week, ahead of the target pace of {target} {unit}. Going faster earns nothing more.",
-    "final": null,
+    "final": "{trend} {unit} a week, ahead of the target pace of {target} {unit}. Faster earns you nothing, and I would rather you eat than burn out.",
     "approved": false
   },
   "healer.terms.calories": {
-    "template": "Healer's terms: a calorie limit of {limit}, from an estimated maintenance of {maintenance} less {deficit} for a pace of {aim} {unit} a week.",
-    "final": null,
+    "template": "Healer's terms: a calorie limit of {limit}, from an estimated maintenance of {maintenance} less {deficit} for a pace of {aim} {unit} a week and {rest} to cover a Respite day a week.",
+    "final": "Your limit is {limit} a day. You burn about {maintenance}; {deficit} comes off for a pace of {aim} {unit} a week, and {rest} more pays for your Respite day.",
     "approved": false
   },
   "healer.terms.maintenance": {
-    "template": "Healer's terms: a calorie limit of {limit}, the estimated maintenance of {maintenance}, to hold the weight near the goal.",
-    "final": null,
+    "template": "Healer's terms: a calorie limit of {limit}, the estimated maintenance of {maintenance} less {rest} to cover a Respite day a week, to hold the weight near the goal.",
+    "final": "Your limit is {limit} a day: about {maintenance} to hold your weight, less {rest} to pay for your Respite day. The losing is done; now we keep it.",
     "approved": false
   },
   "healer.terms.noEstimate": {
     "template": "Healer's terms: no calorie figure yet. It needs {weighIns} weekly weigh-ins and {days} days of food logged in {window} days, or Fitbit's calories burned.",
-    "final": null,
+    "final": "I have no calorie figure for you yet. Give me {weighIns} weekly weigh-ins and {days} days of food logged in {window} days, or let Fitbit tell me what you burn.",
     "approved": false
   },
   "healer.terms.steps": {
     "template": "Healer's terms: a step pool of {pool}. The pool was met in {met} of the last {weeks} weeks.",
-    "final": null,
+    "final": "Your pool is {pool} steps a week. You met it in {met} of the last {weeks} weeks, and I have set it by that.",
     "approved": false
   },
   "healer.terms.noSteps": {
     "template": "Healer's terms: no step figure until {weeks} weeks have closed.",
-    "final": null,
+    "final": "No step figure until {weeks} weeks have closed. Walk, and I will tell you how far.",
     "approved": false
   }
 }

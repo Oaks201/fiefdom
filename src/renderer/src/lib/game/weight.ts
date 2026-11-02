@@ -554,36 +554,53 @@ export interface CounselWindow {
 }
 
 /**
- * Maintenance as the Healer's terms read it: the logged average plus the trend × 500 over the terms'
- * window (35 days), with 3 weekly weigh-ins and 21 logged days in it; else the floor's own fallbacks
- * (Fitbit's total burned, else Mifflin–St Jeor × 1.4). Weigh-ins in lb, weekly. The simulator reads
- * the floor's shorter window beside it (G-26).
+ * Maintenance as the Healer's terms read it: what was eaten plus the trend × 500 over the terms' window
+ * (35 days), with 3 weekly weigh-ins and 21 logged days in it; else the floor's own fallbacks (Fitbit's
+ * total burned, else Mifflin–St Jeor × 1.4). Weigh-ins in lb, weekly. From rules 3.12.0 (D-72, H6) each
+ * Respite day in the window (`restDays`) counts as eaten at the logged average plus the rest surplus,
+ * whatever was logged on it; `logged` is the average of the other days. The simulator reads the floor's
+ * shorter window beside it (G-26).
  */
 export function counselMaintenance(
   days: readonly HealerDay[],
   weighIns: readonly WeighIn[],
   day: ISODate,
   profile: HealerProfile = {},
-  c: CounselWindow = RULES.healer.counsel
+  c: CounselWindow = RULES.healer.counsel,
+  restDays: readonly ISODate[] = []
 ): CounselMaintenance {
-  const { average, count } = loggedAverage(days, day, c.windowDays)
-  const logged = count >= c.minLoggedDays ? average : null
+  const rest = new Set(restDays)
+  const window = daysIn(days, day, c.windowDays)
+  const eaten = window.filter((d) => !rest.has(d.date) && d.eaten !== undefined && d.eaten > 0).map((d) => d.eaten as number)
+  const average = mean(eaten)
+  const logged = eaten.length >= c.minLoggedDays ? average : null
   const r = inWindow(weighIns, day, c.windowDays).length >= c.minWeighIns ? trend(weighIns, day, c.windowDays) : null
-  if (logged !== null && r !== null) return { source: 'logs', maintenance: logged + r * kcalPerLbWeek(), logged }
+  if (logged !== null && r !== null) {
+    const after = addDays(day, -c.windowDays)
+    const rested = restDays.filter((d) => d > after && d <= day).length
+    const intake = (logged * eaten.length + rested * (logged + RULES.healer.counsel.rest.surplus)) / (eaten.length + rested)
+    return { source: 'logs', maintenance: intake + r * kcalPerLbWeek(), logged }
+  }
   const boot = bootstrapTdee(days, day, profile)
   return { source: boot.source, maintenance: boot.tdee, logged }
 }
 
+/** D-72 (H6): the Respite days a week the Healer's plan assumes: one for each the week earns. */
+export function plannedRestPerWeek(): number {
+  return RULES.clock.daysPerWeek / RULES.respite.earnEveryDays
+}
+
 /**
  * The calorie limit the Healer suggests: maintenance − 500 × `aim` (the target pace, or 0 near the
- * goal), never more than 500 under the logged average, rounded to 50. The last suggestion stands
- * while the fresh figure is within 150 of it (D-70), and otherwise moves at most 100 kcal toward it;
- * never under `floor`. Null without a maintenance estimate.
+ * goal), less a share of the Respite days she plans for (D-72, H6: `restPerWeek` of them, each at the
+ * limit plus the rest surplus, so the week keeps its pace), never more than 500 under the logged
+ * average, rounded to 50. The last suggestion stands while the fresh figure is within 150 of it (D-70),
+ * and otherwise moves at most 100 kcal toward it; never under `floor`. Null without a maintenance estimate.
  */
-export function counselCalories(m: CounselMaintenance, aim: number, floor: number, previous?: number): number | null {
+export function counselCalories(m: CounselMaintenance, aim: number, floor: number, previous?: number, restPerWeek: number = plannedRestPerWeek()): number | null {
   if (m.maintenance === null) return null
   const h = RULES.healer
-  let limit = m.maintenance - aim * kcalPerLbWeek()
+  let limit = m.maintenance - aim * kcalPerLbWeek() - (restPerWeek * h.counsel.rest.surplus) / RULES.clock.daysPerWeek
   if (m.logged !== null) limit = Math.max(limit, m.logged - h.counsel.maxBelowLogged)
   limit = Math.round(limit / h.roundTo) * h.roundTo
   if (previous !== undefined) {
@@ -616,7 +633,8 @@ export function counselSteps(pool: number, weeks: readonly StepWeek[]): number |
   if (met >= s.holdMet) return pool
   const half = walked.length / 2
   const median = walked.length % 2 === 1 ? walked[Math.floor(half)] : (walked[half - 1] + walked[half]) / 2
-  return Math.min(pool, Math.max(down(median), up(pool * (1 - s.easeShare))))
+  // Never under the Charter's least pool, since from rules 3.12.0 the figure becomes the Charter's (D-72).
+  return Math.max(RULES.contracts.charter.stepPool.min, Math.min(pool, Math.max(down(median), up(pool * (1 - s.easeShare)))))
 }
 
 // ── Healer check-ins (Ch 16) ─────────────────────────────────────────────────
@@ -690,7 +708,7 @@ export function healerText(note: HealerNote): string {
 /** The Healer's terms at a weight week (H2): the calorie limit aimed at the target pace (maintenance near the goal), and the step pool. */
 function healerCounsel(previous: HealerCounsel | undefined, momentum: Momentum, floor: number, profile: HealerProfile, input: WeightWeekInput): HealerCounsel {
   const aim = momentum.maintenance ? 0 : momentum.target
-  const m = counselMaintenance(input.days, input.weighIns, input.day, profile)
+  const m = counselMaintenance(input.days, input.weighIns, input.day, profile, RULES.healer.counsel, input.restDays)
   const calorieLimit = counselCalories(m, aim, floor, previous?.calorieLimit)
   const stepPool = input.steps ? counselSteps(input.steps.pool, input.steps.weeks) : null
   const read = input.steps?.weeks.slice(0, RULES.healer.counsel.steps.weeks) ?? []
@@ -724,6 +742,8 @@ export interface WeightWeekInput {
   realmConsistency: number
   /** For the Healer's step pool (D-69): the Charter's pool now, and the last closed weeks, newest first. */
   steps?: { pool: number; weeks: readonly StepWeek[] }
+  /** The Respite days spent so far, which the Healer counts high (D-72, H6). */
+  restDays?: readonly ISODate[]
 }
 
 export interface WeightWeekResult {

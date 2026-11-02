@@ -2,7 +2,7 @@
 
 Written 2026-10-31, on branch `patch-8` (from Patch 8, 258be21, rules 3.10.0).
 
-**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70).
+**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0), and her drafted lines wait for his approval.
 
 Rich's direction (2026-10-31):
 - Improve the weight-loss side of the game.
@@ -304,3 +304,40 @@ Built on branch `patch-9` (2026-11-01). The decision log has it as D-69. [Target
 - **T-11, G-26:** recommended: **keep the 35-day window and add "hold within 150"** (`RULES.healer.counsel.holdWithin`). The suggestion then turns around in about 20% of weeks and moves in about half of them, so it reads as advice, not a ticker. The alternative is a 49-day window with "hold within 100" (18 to 20%), which reacts a week or two later to a real change.
 - **T-12, G-07:** recommended: **accept it for now and read it again after stage 2**, whose requests add income of their own. If it still misses then, probe it before changing anything.
 - **T-13, G-10:** recommended: **accept it as a near-tie.** The Orc's march still changes hands most both ways, and the Goblin's leads on defenses by 0.28.
+
+## 12. Rich's additions (2026-11-02): Remedy, and her terms bind
+
+Rich, on 2026-11-02:
+- The Healer is a woman named **Remedy**: strict and severe-looking, serious about health, genuine and caring, and able to come across a bit aggressive.
+- Her terms should **override the contract's conditions**, set by her advice on what keeps a good pace.
+- She should **account for Respite days**, assuming high calorie intake and a low step count on them, since they slow the trend.
+
+The decision log has it as D-72. What it means here:
+
+### H5. Her terms bind
+- At each weight week, her calorie limit and step pool become the Charter's. Every contract sealed from then on carries them. "Use these terms" is gone, and the Charter's form keeps only the duties.
+- **Claude's readings,** which Rich may overturn:
+  - a contract already running keeps the terms it was sealed with (A-124), so new terms start with the next contract;
+  - a figure she can't set yet (too little data) stays as the Charter has it;
+  - with medical supervision confirmed, her terms stay advice, since a doctor's plan outranks hers.
+- **What follows from it:** her step pool rises 5% after 3 of 4 weeks met, never past the best week, so the pool now climbs on its own as the walking does, and eases after misses.
+
+### H6. Respite days in her arithmetic
+- **The assumption:** a Respite day runs about 600 kcal over a usual day, between eating more and walking less (TUNE, Claude's first guess).
+- **Reading the past:** in her 35-day window each Respite day counts at the logged average plus 600, so unlogged rest days don't make her misread maintenance.
+- **Planning ahead:** she assumes one Respite day a week (the rate they're earned) at 600 over the limit, and lowers the other days' limit so the week keeps the target pace: by 600 ÷ 7, about 85 kcal.
+- **Steps:** a Respite day still asks nothing of the step pool (D-54); its fewer steps are part of the 600.
+- **Unchanged:** a rest day pays exactly as before (D-54). Only her advice plans for it.
+
+### Remedy's lines
+Claude drafts every Healer line in her voice: the 13 check-ins, the report and the terms. Each draft sits in its `final` with `approved: false`, so the game shows the plain template until Rich approves it. The drafts are listed for review in [patch-9-remedy-lines.md](patch-9-remedy-lines.md).
+
+### Order
+- **Stage 2a:** H5, H6 and Remedy's drafts (rules 3.12.0).
+- **Stage 2b:** H3 (her requests) and H4 (her Audience, with her portrait).
+
+### Stage 2a, built (2026-11-02, D-73)
+- **H5 and H6** are built as above (rules 3.12.0). Her terms became the sample campaign's Charter at its weigh-in, and a contract sealed after carries them.
+- **Remedy's 26 drafts** are in the catalog, unapproved, and listed for review in [patch-9-remedy-lines.md](patch-9-remedy-lines.md).
+- **Simulator:** it can't play her terms, since its players eat a fixed share of the journey's terms and their weight doesn't follow what they eat, so its campaigns take her terms as advice. Every target reads as on 3.11.0. G-26 is 21% with the Respite planning (20% before).
+- **Tests:** 957 pass, 4 of them new for stage 2a.

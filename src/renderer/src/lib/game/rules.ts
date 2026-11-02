@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.11.1',
+  ruleVersion: '3.12.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -784,6 +784,12 @@ const RULES_TABLE = {
       maxBelowLogged: 500,
       /** D-70 (T-11): last week's figure stands unless the fresh one is this far from it, so it reads as advice, not a ticker (G-26). */
       holdWithin: 150,
+      /**
+       * Rules 3.12.0 (D-72, H6): a Respite day is assumed to run `surplus` kcal over a usual day, between
+       * eating more and walking less. In the window each counts at the logged average plus it; the plan
+       * assumes one a week (the rate they're earned, `respite.earnEveryDays`) at the limit plus it. TUNE.
+       */
+      rest: { surplus: 600 },
       /**
        * The step pool from the last `weeks` closed weeks walked (weeks of rest only skipped, at most
        * `lookbackWeeks` back): met in `raiseMet` or more, the pool + `raiseShare`, never above the best

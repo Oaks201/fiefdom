@@ -54,6 +54,7 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
           {view.healer && (
             <HealerTerms
               terms={view.healer}
+              running={view.running !== null}
               canUse={canRevise}
               onUse={(terms) => {
                 sfx('click')
@@ -92,31 +93,33 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
 }
 
 /**
- * The Healer's terms for the next contract (D-69, H2), which replace the Steward's Counsel. "Use these
- * terms" fills the Charter's form; the game never sets terms itself (Ch 4).
+ * Remedy's terms (D-69, D-72), which replace the Steward's Counsel. From rules 3.12.0 they bind: each
+ * weight week they become the Charter's calorie limit and step pool, so every contract sealed carries
+ * them (H5). With medical supervision confirmed they stay advice, and "Use these terms" fills the form.
  */
-function HealerTerms({ terms, canUse, onUse }: { terms: HealerTermsView; canUse: boolean; onUse(terms: HealerTermsView): void }): React.JSX.Element {
+function HealerTerms({ terms, running, canUse, onUse }: { terms: HealerTermsView; running: boolean; canUse: boolean; onUse(terms: HealerTermsView): void }): React.JSX.Element {
+  const differs = (terms.calorieLimit !== undefined && terms.calorieLimit !== terms.charter.calorieLimit) || (terms.stepPool !== undefined && terms.stepPool !== terms.charter.stepPool)
   return (
-    <section className="panel healer-terms" aria-label="The Healer’s terms">
+    <section className="panel healer-terms" aria-label="Remedy’s terms">
       <header className="panel__head">
         <h3 className="panel__title">
-          <GiHealthPotion aria-hidden="true" /> The Healer’s terms
+          <GiHealthPotion aria-hidden="true" /> Remedy’s terms
         </h3>
-        <span className="panel__aside">for the next contract</span>
+        <span className="panel__aside">{terms.binds ? 'for every contract you seal' : 'her advice'}</span>
       </header>
       <dl className="healer-terms__figures">
         <div>
           <dt>Calorie limit</dt>
           <dd>
             {terms.calorieLimit !== undefined ? formatNumber(terms.calorieLimit) : '—'}
-            <span className="muted"> · now {formatNumber(terms.charter.calorieLimit)}</span>
+            {!terms.binds && <span className="muted"> · now {formatNumber(terms.charter.calorieLimit)}</span>}
           </dd>
         </div>
         <div>
           <dt>Step pool</dt>
           <dd>
             {terms.stepPool !== undefined ? formatNumber(terms.stepPool) : '—'}
-            <span className="muted"> · now {formatNumber(terms.charter.stepPool)}</span>
+            {!terms.binds && <span className="muted"> · now {formatNumber(terms.charter.stepPool)}</span>}
           </dd>
         </div>
       </dl>
@@ -125,14 +128,18 @@ function HealerTerms({ terms, canUse, onUse }: { terms: HealerTermsView; canUse:
           {l.text}
         </p>
       ))}
-      {canUse ? (
-        terms.differs && (
+      {terms.binds ? (
+        <p className="muted">
+          The Healer sets the calorie limit and step pool; you keep your duties.{running ? ' The running contract keeps the terms it was sealed with.' : ''}
+        </p>
+      ) : canUse ? (
+        differs && (
           <button type="button" className="btn btn--primary" onClick={() => onUse(terms)}>
             Use these terms
           </button>
         )
       ) : (
-        <p className="muted">They can be taken between contracts, or on a contract’s last day before the next is sealed.</p>
+        <p className="muted">With medical supervision her terms are advice. They can be taken between contracts, or on a contract’s last day before the next is sealed.</p>
       )}
       <p className="muted healer-terms__when">Set at the close of {day(terms.day)}, week {terms.week}.</p>
     </section>
@@ -293,14 +300,14 @@ function CharterTerms({
         <li>
           <span className="deed__numeral">I.</span>
           <span>
-            Each week I shall walk <span className="ink">{formatNumber(c.stepPool)}</span> steps.
+            Each week I shall walk <span className="ink">{formatNumber(c.stepPool)}</span> steps{c.healerSet.stepPool && <span className="muted"> (set by Remedy)</span>}.
           </span>
         </li>
         <li>
           <span className="deed__numeral">II.</span>
           <span>
             Each day I shall eat no more than <span className="ink">{formatNumber(c.calorieLimit)}</span> calories
-            <span className="muted"> (the Healer’s floor: {formatNumber(c.floor)})</span>.
+            <span className="muted"> ({c.healerSet.calorieLimit ? 'set by Remedy; ' : ''}the Healer’s floor: {formatNumber(c.floor)})</span>.
           </span>
         </li>
         <li>
@@ -340,16 +347,17 @@ function CharterForm({ view, today, draft, close }: { view: ContractPageView; to
     <section className="charter charter--edit">
       <h3 className="charter__title">The Charter</h3>
       <div className="wizard__grid">
+        {/* D-72 (H5): a figure Remedy has set is hers; the form shows it and leaves it alone. */}
         <label className="field">
-          <span className="field__label">Step pool, a week</span>
+          <span className="field__label">Step pool, a week{c.healerSet.stepPool ? ' (set by Remedy)' : ''}</span>
           <span className="field__box">
-            <input value={pool} inputMode="numeric" onChange={(e) => setPool(e.target.value)} />
+            <input value={pool} inputMode="numeric" readOnly={c.healerSet.stepPool} onChange={(e) => setPool(e.target.value)} />
           </span>
         </label>
         <label className="field">
-          <span className="field__label">Calorie limit (the floor is {formatNumber(c.floor)})</span>
+          <span className="field__label">Calorie limit ({c.healerSet.calorieLimit ? 'set by Remedy' : `the floor is ${formatNumber(c.floor)}`})</span>
           <span className="field__box">
-            <input value={limit} inputMode="numeric" onChange={(e) => setLimit(e.target.value)} />
+            <input value={limit} inputMode="numeric" readOnly={c.healerSet.calorieLimit} onChange={(e) => setLimit(e.target.value)} />
             <span className="field__suffix">kcal</span>
           </span>
         </label>

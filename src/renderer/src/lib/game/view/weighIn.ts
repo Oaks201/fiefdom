@@ -12,7 +12,7 @@ import { RULES } from '../rules'
 import { faithfulStreak, reputationBonus, weighInQw } from '../settle'
 import { weekOn } from '../state'
 import { t } from '../text'
-import { breakMilestonesOnDay, lbTo, targetPace, toLb, weeklyWeighIns, weekMomentum, type Momentum } from '../weight'
+import { breakMilestonesOnDay, lbTo, plannedRestPerWeek, targetPace, toLb, weeklyWeighIns, weekMomentum, type Momentum } from '../weight'
 import type { CampaignState, HealerSource, ISODate, WeighIn } from '../types'
 import { formatNumber } from '../../format'
 
@@ -48,8 +48,11 @@ export interface HealerTermsView {
   charter: { calorieLimit: number; stepPool: number }
   /** The Healer's words for each, the approved text or else the placeholder (Ch 17). */
   lines: { textId: string; text: string }[]
-  /** The suggestion differs from the Charter: "Use these terms" has something to fill. */
-  differs: boolean
+  /**
+   * Rules 3.12.0 (D-72, H5): her terms bind, becoming the Charter's at each weight week, so every contract
+   * sealed carries them; false with medical supervision confirmed, when they stay advice.
+   */
+  binds: boolean
 }
 
 /** The Healer's latest terms for the next contract, or null before the first weight week on rules 3.11.0. */
@@ -64,22 +67,24 @@ export function healerTermsView(state: CampaignState): HealerTermsView | null {
   }
   // An estimate shows to the nearest 50, as the floor and the limit do.
   const maintenance = c.maintenance === undefined ? undefined : Math.round(c.maintenance / RULES.healer.roundTo) * RULES.healer.roundTo
+  // D-72 (H6): what the Respite day she plans for each week takes off the other days.
+  const rest = formatNumber((plannedRestPerWeek() * k.rest.surplus) / RULES.clock.daysPerWeek)
   if (c.calorieLimit === undefined || maintenance === undefined) {
     say('healer.terms.noEstimate', { weighIns: k.minWeighIns, days: k.minLoggedDays, window: k.windowDays })
   } else if (c.aim === 0) {
-    say('healer.terms.maintenance', { limit: formatNumber(c.calorieLimit), maintenance: formatNumber(maintenance) })
+    say('healer.terms.maintenance', { limit: formatNumber(c.calorieLimit), maintenance: formatNumber(maintenance), rest })
   } else {
     say('healer.terms.calories', {
       limit: formatNumber(c.calorieLimit),
       maintenance: formatNumber(maintenance),
       deficit: formatNumber((c.aim * RULES.healer.kcalPerLb) / RULES.clock.daysPerWeek),
+      rest,
       aim: inUnit(c.aim, unit),
       unit
     })
   }
   if (c.stepPool === undefined) say('healer.terms.noSteps', { weeks: k.steps.weeks })
   else say('healer.terms.steps', { pool: formatNumber(c.stepPool), met: c.stepsMet ?? 0, weeks: c.stepWeeks ?? k.steps.weeks })
-  const charter = { calorieLimit: state.charter.calorieLimit, stepPool: state.charter.stepPool }
   return {
     week: c.week,
     day: c.day,
@@ -87,9 +92,9 @@ export function healerTermsView(state: CampaignState): HealerTermsView | null {
     ...(maintenance !== undefined ? { maintenance } : {}),
     ...(c.calorieLimit !== undefined ? { calorieLimit: c.calorieLimit } : {}),
     ...(c.stepPool !== undefined ? { stepPool: c.stepPool } : {}),
-    charter,
+    charter: { calorieLimit: state.charter.calorieLimit, stepPool: state.charter.stepPool },
     lines,
-    differs: (c.calorieLimit !== undefined && c.calorieLimit !== charter.calorieLimit) || (c.stepPool !== undefined && c.stepPool !== charter.stepPool)
+    binds: state.campaign.medicalSupervision !== true
   }
 }
 

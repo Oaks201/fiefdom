@@ -13,7 +13,8 @@ import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { reputationBonus, settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState } from '../../src/renderer/src/lib/game/types'
 import { healerTermsView, reportSituation, weighInCard } from '../../src/renderer/src/lib/game/view/weighIn'
-import { counselCalories, counselMaintenance, counselSteps, type StepWeek } from '../../src/renderer/src/lib/game/weight'
+import { counselCalories, counselMaintenance, counselSteps, plannedRestPerWeek, type StepWeek } from '../../src/renderer/src/lib/game/weight'
+import { healerSetTerms, reviseCharter, sealContract } from '../../src/renderer/src/lib/game/contractActions'
 import { weighIns } from '../../src/renderer/src/lib/ledger'
 import type { DayLog, Ledger } from '../../src/renderer/src/lib/types'
 import { FOUNDED_AT, TZ, charter, chicago, goodDay, ledgerWith, steadyLedger, withDay } from './fixtures/ledgers'
@@ -144,19 +145,21 @@ test('D-69 (W4): a save from before 3.11.0 starts Faithful at the Scale with the
 
 test('D-69 (H2): the calorie limit aims at the target pace from maintenance, never more than 500 under the logged average, 100 a week at most, never under the floor', () => {
   const logs = (maintenance: number, logged: number | null = 2_050) => ({ source: 'logs' as const, maintenance, logged })
-  assert.equal(counselCalories(logs(2_550), 0.8, 1_550), 2_150, 'ahead: the book’s Ch 4 example, more room')
-  assert.equal(counselCalories(logs(2_450), 0.8, 1_450), 2_050, 'on pace: what is eaten now')
-  assert.equal(counselCalories(logs(2_200), 0.8, 1_200), 1_800, 'behind')
-  assert.equal(counselCalories(logs(2_200), 0.8, 1_200, 2_000), 1_900, 'reached 100 a week')
+  // The pace arithmetic alone; the Respite day she plans for (D-72) is tested below.
+  const plain = (m: Parameters<typeof counselCalories>[0], aim: number, floor: number, previous?: number): number | null => counselCalories(m, aim, floor, previous, 0)
+  assert.equal(plain(logs(2_550), 0.8, 1_550), 2_150, 'ahead: the book’s Ch 4 example, more room')
+  assert.equal(plain(logs(2_450), 0.8, 1_450), 2_050, 'on pace: what is eaten now')
+  assert.equal(plain(logs(2_200), 0.8, 1_200), 1_800, 'behind')
+  assert.equal(plain(logs(2_200), 0.8, 1_200, 2_000), 1_900, 'reached 100 a week')
   // D-70 (T-11): last week's figure stands while the fresh one is within 150 of it.
-  assert.equal(counselCalories(logs(2_500), 0.8, 1_500, 2_000), 2_000, '2,100 is within 150 of 2,000: held')
-  assert.equal(counselCalories(logs(2_550), 0.8, 1_550, 2_000), 2_100, '2,150 is 150 away: it moves, 100 at most')
-  assert.equal(counselCalories(logs(2_500), 0.8, 2_050, 2_000), 2_050, 'a held figure never sits under a risen floor')
-  assert.equal(counselCalories(logs(1_800), 0.8, 1_200), 1_550, 'gaining: held to 500 under the logged average')
-  assert.equal(counselCalories({ source: 'mifflin', maintenance: 1_500, logged: null }, 0.8, 1_200), 1_200, 'never under the floor')
-  assert.equal(counselCalories(logs(1_430, null), 0.8, 1_300, 1_500), 1_400, 'the floor stands under the smoothing too')
-  assert.equal(counselCalories(logs(2_480), 0, 1_480), 2_500, 'near the goal: maintenance itself, rounded to 50')
-  assert.equal(counselCalories({ source: 'minimum', maintenance: null, logged: null }, 0.8, 1_200), null)
+  assert.equal(plain(logs(2_500), 0.8, 1_500, 2_000), 2_000, '2,100 is within 150 of 2,000: held')
+  assert.equal(plain(logs(2_550), 0.8, 1_550, 2_000), 2_100, '2,150 is 150 away: it moves, 100 at most')
+  assert.equal(plain(logs(2_500), 0.8, 2_050, 2_000), 2_050, 'a held figure never sits under a risen floor')
+  assert.equal(plain(logs(1_800), 0.8, 1_200), 1_550, 'gaining: held to 500 under the logged average')
+  assert.equal(plain({ source: 'mifflin', maintenance: 1_500, logged: null }, 0.8, 1_200), 1_200, 'never under the floor')
+  assert.equal(plain(logs(1_430, null), 0.8, 1_300, 1_500), 1_400, 'the floor stands under the smoothing too')
+  assert.equal(plain(logs(2_480), 0, 1_480), 2_500, 'near the goal: maintenance itself, rounded to 50')
+  assert.equal(plain({ source: 'minimum', maintenance: null, logged: null }, 0.8, 1_200), null)
 })
 
 test('D-69 (H2): maintenance reads 35 days of logs and the weekly trend, else Fitbit’s burned, else the formula', () => {
@@ -252,4 +255,76 @@ test('D-69 (H1): the report names the trend against the target pace', () => {
   assert.equal(at(0.8), 'onPace')
   assert.equal(at(1.0), 'onPace')
   assert.equal(at(1.1), 'ahead')
+})
+
+// ── Stage 2a (rules 3.12.0, D-72): Remedy's terms bind, and Respite days in her arithmetic ──
+
+test('D-72 (H6): she plans a Respite day a week at 600 over the limit, so the other days carry it: about 85 kcal', () => {
+  const logs = (maintenance: number) => ({ source: 'logs' as const, maintenance, logged: 2_050 })
+  assert.equal(plannedRestPerWeek(), 1, 'one a week: the rate they are earned')
+  // 2,550 − 400 for the pace − 600 ÷ 7 for the Respite day = 2,064, rounded to 2,050.
+  assert.equal(counselCalories(logs(2_550), 0.8, 1_550), 2_050)
+  // Near the goal, holding the weight with a high day a week: 2,480 − 86 = 2,394, rounded to 2,400.
+  assert.equal(counselCalories(logs(2_480), 0, 1_480), 2_400)
+  // Two a week: 2,550 − 400 − 1,200 ÷ 7 = 1,979, rounded to 2,000.
+  assert.equal(counselCalories(logs(2_550), 0.8, 1_550, undefined, 2), 2_000, 'two a week take twice as much off the others')
+})
+
+test('D-72 (H6): a Respite day in her window counts as eaten at the logged average plus 600, whatever was logged on it', () => {
+  const rest = ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02']
+  const days = Array.from({ length: 35 }, (_, i) => {
+    const date = addDays('2026-10-01', i)
+    return { date, eaten: rest.includes(date) ? 1_500 : 2_000 }
+  })
+  const weekly = [0, 7, 14, 21, 28].map((k) => ({ date: addDays('2026-10-01', k + 3), weight: 210 - k / 7 }))
+  const counted = counselMaintenance(days, weekly, '2026-11-04', {}, RULES.healer.counsel, rest)
+  assert.equal(counted.logged, 2_000, 'the usual days’ average leaves the rest days out')
+  // (30 × 2,000 + 5 × 2,600) ÷ 35 = 2,085.7 eaten a day, + 1 lb a week × 500.
+  assert.ok(Math.abs((counted.maintenance ?? 0) - (73_000 / 35 + 500)) < 1e-6, `${counted.maintenance}`)
+  const ignored = counselMaintenance(days, weekly, '2026-11-04')
+  assert.ok((ignored.maintenance ?? 0) < (counted.maintenance ?? 0), 'read as usual days, the rest days pull maintenance down')
+})
+
+test('D-72 (H5): each weight week her terms become the Charter’s, so the next contract seals under them; the running one keeps its own', () => {
+  // The player's own terms before, sealed into a 3-day contract that runs across Monday's weigh-in (Oct 24 to 26).
+  const settled = settle(found(LEDGER), LEDGER, chicago('2026-10-23')).state
+  const before: CampaignState = { ...settled, charter: { ...settled.charter, calorieLimit: 2_000, stepPool: 50_000 } }
+  const running = sealContract(before, { id: 'c1', termDays: 3 }, '2026-10-23').state
+  assert.equal(running.contracts.active?.charter.calorieLimit, 2_000)
+  const after = settle(running, LEDGER, chicago('2026-10-27')).state
+  const c = after.weight.counsel
+  assert.ok(c?.calorieLimit !== undefined)
+  assert.notEqual(c.calorieLimit, 2_000, 'her figure differs from the old one')
+  assert.equal(after.charter.calorieLimit, c.calorieLimit)
+  // Three weeks closed by then: no step figure yet, so the pool stays as the Charter had it.
+  assert.equal(c.stepPool, undefined)
+  assert.equal(after.charter.stepPool, 50_000)
+  assert.equal(after.charter.calorieFloor, after.weight.healerFloor)
+  assert.deepEqual(after.charter.duties, before.charter.duties, 'the duties stay the player’s')
+  const set = after.log.filter((e) => e.kind === 'charter' && e.by === 'healer')
+  assert.ok(set.length >= 1, 'the log says the Healer set them')
+  const sealed = [...after.contracts.history, ...(after.contracts.active ? [after.contracts.active] : [])].find((k) => k.id === 'c1')
+  assert.equal(sealed?.charter.calorieLimit, 2_000, 'the contract running then kept the terms it was sealed with')
+  const next = sealContract(after, { id: 'c2', termDays: 3 }, '2026-10-27')
+  assert.ok(next.ok)
+  const c2 = next.state.contracts.queued ?? next.state.contracts.active
+  assert.equal(c2?.charter.calorieLimit, c.calorieLimit, 'the next contract carries her calorie limit')
+  assert.equal(c2?.charter.stepPool, 50_000, 'and the pool she has no figure for yet, as it was')
+})
+
+test('D-72 (H5): revising the Charter keeps her figures and changes only the duties; with medical supervision her terms stay advice', () => {
+  const state = settle(found(LEDGER), LEDGER, chicago('2026-11-03')).state
+  assert.deepEqual(healerSetTerms(state), { calorieLimit: true, stepPool: true })
+  const revised = reviseCharter(state, charter({ stepPool: 99_000, calorieLimit: 3_000, duties: ['Read'] }), '2026-11-03')
+  assert.ok(revised.ok)
+  assert.equal(revised.state.charter.stepPool, state.charter.stepPool)
+  assert.equal(revised.state.charter.calorieLimit, state.charter.calorieLimit)
+  assert.deepEqual(revised.state.charter.duties, ['Read'])
+
+  const supervised = foundCampaign({ startWeight: 217, goalWeight: 168, charter: charter(), timeZone: TZ, seed: 7, ledger: LEDGER, medicalSupervision: true }, FOUNDED_AT)
+  const advised = settle(supervised, LEDGER, chicago('2026-11-03')).state
+  assert.ok(advised.weight.counsel?.calorieLimit !== undefined, 'she still works out her terms')
+  assert.deepEqual(advised.charter, supervised.charter, 'but the Charter stays the player’s')
+  assert.deepEqual(healerSetTerms(advised), { calorieLimit: false, stepPool: false })
+  assert.equal(healerTermsView(advised)?.binds, false)
 })

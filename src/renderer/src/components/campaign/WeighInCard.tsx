@@ -172,7 +172,7 @@ export function WeighInCard({ campaign, ledger, today }: { campaign: CampaignSta
         {terms && (
           <div className="weighin-card__terms">
             <span>
-              The Healer’s terms for the next contract: {terms.calorieLimit !== undefined ? `${formatNumber(terms.calorieLimit)} kcal` : 'no calorie figure yet'},{' '}
+              Remedy’s terms for the next contract: {terms.calorieLimit !== undefined ? `${formatNumber(terms.calorieLimit)} kcal` : 'no calorie figure yet'},{' '}
               {terms.stepPool !== undefined ? `${formatNumber(terms.stepPool)} steps a week` : 'no step figure yet'}.
             </span>{' '}
             <button type="button" className="link" onClick={() => ui.go('contract')}>

@@ -30,7 +30,7 @@ import { marchesOf } from '../src/renderer/src/lib/game/marches'
 import { RULES } from '../src/renderer/src/lib/game/rules'
 import { valorOn } from '../src/renderer/src/lib/game/settle'
 import { counselCalories, counselMaintenance, type CounselWindow } from '../src/renderer/src/lib/game/weight'
-import { weekOn } from '../src/renderer/src/lib/game/state'
+import { respiteDays, weekOn } from '../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, RIVAL_IDS, STANCE_BANDS, type CampaignState, type GameEvent, type HexState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
 
 export const LABEL = { land: 1, grand: 2, build: 4, choice: 8, noReach: 16, doubt: 32, auto: 64, breach: 128, noTarget: 256 } as const
@@ -301,7 +301,7 @@ export class Recorder {
     if (!c || c.calorieLimit === undefined || c.day !== record.day) return
     const { campaign } = state
     const profile = { sex: campaign.sex, birthYear: campaign.birthYear, heightCm: campaign.heightCm, weightLb: record.average ?? null }
-    const m21 = counselMaintenance(state.settlement.snapshots.map(toHealerDay), weighInsOf(state.settlement.snapshots, campaign.weekStartsOn), record.day, profile, FLOOR_WINDOW)
+    const m21 = counselMaintenance(state.settlement.snapshots.map(toHealerDay), weighInsOf(state.settlement.snapshots, campaign.weekStartsOn), record.day, profile, FLOOR_WINDOW, respiteDays(state))
     const limit21 = counselCalories(m21, c.aim, state.weight.healerFloor ?? 0, this.previous21)
     if (limit21 === null) return
     this.previous21 = limit21

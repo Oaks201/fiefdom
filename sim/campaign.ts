@@ -141,7 +141,11 @@ export function runCampaign(o: RunOptions): RunResult {
   const days = o.weeks * WEEK
   const ledger = ledgerFor(profile, o.seed, days)
   const charter = { stepPool: JOURNEY.stepPool, calorieLimit: JOURNEY.calorieLimit, duties: [...JOURNEY.duties] }
-  const founded = foundCampaign({ startWeight: JOURNEY.startLb, goalWeight: JOURNEY.goalLb, charter, timeZone: TZ, seed: o.seed, ledger }, FOUNDED_AT)
+  // Rules 3.12.0 (D-72, H5): the simulated player eats and walks a fixed share of the journey's terms, and its
+  // weight follows its profile rather than what it eats, so it cannot play the Healer's terms (her limit would
+  // only ratchet down). Its campaigns take them as advice, as medical supervision does; every game number reads
+  // the habits against the terms in force, so who sets them changes none of the targets.
+  const founded = foundCampaign({ startWeight: JOURNEY.startLb, goalWeight: JOURNEY.goalLb, charter, timeZone: TZ, seed: o.seed, ledger, medicalSupervision: true }, FOUNDED_AT)
   let state = settle(founded, ledger, after(addDays(START, -1)), { launch: true }).state
   const violations: string[] = []
   const hexes: Record<string, number[]> = { player: [], ...Object.fromEntries(RIVAL_IDS.map((r) => [r, []])) }

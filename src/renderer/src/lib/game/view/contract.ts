@@ -5,7 +5,7 @@
  * Healer's terms (D-69). Pure; components only render these.
  */
 import { addDays, diffDays, weekOf } from '../clock'
-import { charterLocked, respiteRefusal, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
+import { charterLocked, healerSetTerms, respiteRefusal, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
 import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, sealRefusal, startDays, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
 import { numeral, realmEffects } from '../effects'
@@ -330,7 +330,8 @@ export function runningView(state: CampaignState, today: ISODate = openDayOf(sta
 
 export interface ContractPageView {
   lengths: LengthOption[]
-  charter: Charter & { floor: number; locked: boolean; medicalSupervision: boolean }
+  /** `healerSet` (D-72, H5): the figures the Healer has set, which the player's revision keeps. */
+  charter: Charter & { floor: number; locked: boolean; medicalSupervision: boolean; healerSet: { calorieLimit: boolean; stepPool: boolean } }
   /** The days a contract sealed today may start, earliest first (D-06): from the next dawn. */
   sealStartDays: ISODate[]
   /** A contract can be sealed today: none runs, or today is the running one's last day and none follows it yet (D-45). */
@@ -353,6 +354,7 @@ export function contractPageView(state: CampaignState, today: ISODate = openDayO
       duties: [...state.charter.duties],
       floor: state.weight.healerFloor ?? 0,
       locked: charterLocked(state, today),
+      healerSet: healerSetTerms(state),
       medicalSupervision: state.campaign.medicalSupervision === true
     },
     sealStartDays: startDays(state.contracts, today),

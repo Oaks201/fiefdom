@@ -50,8 +50,8 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `errors.ts` | `CampaignError`, a refusal the store shows as a notice | T02 |
 | `map.ts` | The four-march map (D-16): 321 hexes, marches, depth, bands, seams and their ruling march, strength by depth (D-17), ownership, villages, hex queries; strongholds and the hexes they bar (D-23) | T03, Patch 2, Patch 3 |
 | `score.ts`, `contracts.ts`, `economy.ts` | Q, Valor, RC; contracts and pledges; reputation and the purse | T04 |
-| `weight.ts` | Trend, target pace, Momentum, Milestones, Grace, the Healer's range; the Healer's terms for the next contract (D-69) | T05, Patch 9 |
-| `campaign.ts`, `settle.ts`, `ledgerDays.ts` | Founding; the day-close and week-close settlement engine (from Patch 9 the `weighIn` day phase: Faithful at the Scale, and the weight week settled at its weigh-in's close, D-69); reading ledger days into snapshots | T06 |
+| `weight.ts` | Trend, target pace, Momentum, Milestones, Grace, the Healer's range; the Healer's terms for the next contract (D-69), with Respite days counted and planned for (D-72) | T05, Patch 9 |
+| `campaign.ts`, `settle.ts`, `ledgerDays.ts` | Founding; the day-close and week-close settlement engine (from Patch 9 the `weighIn` day phase: Faithful at the Scale, and the weight week settled at its weigh-in's close, D-69; the Healer's terms set as the Charter's, D-72); reading ledger days into snapshots | T06 |
 | `buildings.ts`, `roster.ts`, `effects.ts` | Tiers, castle, Crossings, companies, realm-wide effects | T07 |
 | `combat.ts` | Threats, daily battles, the daily assault | T08 |
 | `land.ts` | Courtships, trades, fortification, reclaiming | T09 |

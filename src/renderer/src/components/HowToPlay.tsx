@@ -314,8 +314,10 @@ export function HowToPlay(): React.JSX.Element | null {
               </ul>
               <p>
                 The Charter can be revised between contracts, or on a contract’s last day before the next is sealed. Each contract keeps the terms it was sealed with.{' '}
-                <b>The Healer’s terms</b> on the Contract page suggest a calorie limit and a step pool for the next contract, from your own trend, logs and steps; “Use these
-                terms” fills the Charter’s form, and nothing changes until you revise it.
+                <b>Remedy, the Healer, sets the calorie limit and the step pool.</b> At each weekly weigh-in she works them out from your own trend, logs and steps, and they
+                become the Charter’s, so every contract you seal carries them; you keep your duties. She plans a Respite day each week, assuming it runs about{' '}
+                {formatNumber(RULES.healer.counsel.rest.surplus)} kcal over a usual day, and sets the other days so the week keeps its pace. With medical supervision
+                confirmed, her terms are advice instead.
               </p>
             </>
           )

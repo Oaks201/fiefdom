@@ -843,8 +843,8 @@ export interface GameEventMap {
   contractSealed: { contractId: string; contractKind: LandContract['kind']; termDays: number; pledge: number; startDate: ISODate; endDate: ISODate; rival?: RivalId }
   /** T14: a Respite day was spent on `day`; the contract now ends on `endDate`. */
   respite: { contractId: string; day: ISODate; endDate: ISODate }
-  /** T14: the Charter was revised between contracts. */
-  charter: { stepPool: number; calorieLimit: number; duties: string[] }
+  /** T14: the Charter was revised between contracts; from rules 3.12.0 also by the Healer at a weight week (D-72, `by: 'healer'`). */
+  charter: { stepPool: number; calorieLimit: number; duties: string[]; by?: 'healer' }
   /** A Healer check-in fired (Ch 16). */
   healer: { checkIn: string }
   /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */

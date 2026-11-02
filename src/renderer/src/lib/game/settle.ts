@@ -492,12 +492,32 @@ function closeWeight(state: CampaignState, ctx: PhaseContext, qw: number): { sta
     days: state.settlement.snapshots.map(toHealerDay),
     qw,
     realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
-    steps: { pool: state.charter.stepPool, weeks: stepWeeks(state, ctx.day) }
+    steps: { pool: state.charter.stepPool, weeks: stepWeeks(state, ctx.day) },
+    restDays: respiteDays(state)
   })
   announceMilestones(result.broken, ctx.emit)
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
-  return { state: { ...state, weight: result.weight }, momentum: result.momentum.m }
+  const next = { ...state, weight: result.weight }
+  const recorded = result.weight.weeks.length > state.weight.weeks.length
+  return { state: recorded ? healerSetsTerms(next, ctx.emit) : next, momentum: result.momentum.m }
+}
+
+/**
+ * Rules 3.12.0 (D-72, H5): the Healer's terms bind. A new weight week's calorie limit and step pool
+ * become the Charter's, so the next contract seals under them; a running contract keeps the terms it
+ * was sealed with (A-124), and the player keeps the duties. A figure she can't set yet stays as it was.
+ * With medical supervision confirmed her terms stay advice.
+ */
+function healerSetsTerms(state: CampaignState, emit: Emit): CampaignState {
+  const c = state.weight.counsel
+  if (!c || state.campaign.medicalSupervision) return state
+  const calorieLimit = c.calorieLimit ?? state.charter.calorieLimit
+  const stepPool = c.stepPool ?? state.charter.stepPool
+  const floor = state.weight.healerFloor
+  const charter: Charter = { ...state.charter, duties: [...state.charter.duties], calorieLimit, stepPool, ...(floor !== undefined ? { calorieFloor: floor } : {}) }
+  if (calorieLimit !== state.charter.calorieLimit || stepPool !== state.charter.stepPool) emit('charter', { stepPool, calorieLimit, duties: [...charter.duties], by: 'healer' })
+  return { ...state, charter }
 }
 
 /** The week's weight at its close, with its own habits score, unless its weigh-in already settled it (D-69). */
