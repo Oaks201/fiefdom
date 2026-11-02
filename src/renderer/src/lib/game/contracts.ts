@@ -1,7 +1,7 @@
 /**
  * Campaign contracts (Ch 4): lengths and unlocks, sealing with an optional pledge, the payout
- * curve, withdrawal, Respite, late corrections, the Accord (D-01), Charter validation and the
- * Steward's Counsel.
+ * curve, withdrawal, Respite, late corrections, the Accord (D-01) and Charter validation. The
+ * Steward's Counsel is retired for the Healer's terms (D-69).
  *
  * The legacy weekly contracts in `lib/contracts.ts` stay as they are; this is the campaign's own.
  * Every function is pure: it takes the contracts and purse slices and returns new ones. What the
@@ -22,8 +22,7 @@ import type {
   ISODate,
   LandContract,
   PurseState,
-  RivalId,
-  StewardSuggestion
+  RivalId
 } from './types'
 
 // ── The curve and the payouts ────────────────────────────────────────────────
@@ -384,21 +383,4 @@ export function spendRespite(contracts: ContractsState, day: ISODate, today: ISO
   if (active.respiteDates.includes(day)) throw new CampaignError(`${day} is already a Respite day.`)
   const respiteDates = [...active.respiteDates, day].sort()
   return { ...contracts, respiteBank: contracts.respiteBank - 1, active: { ...active, respiteDates, respiteDays: respiteDates.length } }
-}
-
-// ── The Steward's Counsel ────────────────────────────────────────────────────
-
-/**
- * Gentler terms after 4 weeks averaging below 75%, firmer ones after 4 weeks above 95%
- * (Ch 4). `weeklyScores` are q_w, oldest first; only the latest 4 count. It only suggests;
- * the Charter never changes on its own.
- */
-export function stewardSuggestion(weeklyScores: readonly number[]): StewardSuggestion | null {
-  const c = RULES.contracts.stewardCounsel
-  if (weeklyScores.length < c.weeks) return null
-  const average = weeklyScores.slice(-c.weeks).reduce((sum, q) => sum + q, 0) / c.weeks
-  const facts = { weeks: c.weeks, average: Math.round(average * 100) }
-  if (average < c.gentlerBelow) return { direction: 'gentler', textId: 'herald.steward.gentler', facts }
-  if (average > c.firmerAbove) return { direction: 'firmer', textId: 'herald.steward.firmer', facts }
-  return null
 }

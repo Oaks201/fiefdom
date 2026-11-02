@@ -1,8 +1,9 @@
 /**
  * Weight: every way the scale touches the game, built so that losing faster never pays more.
  * The 21-day trend and the easing target pace, weekly Momentum (Ch 5), the ten Milestones with
- * their two locks and the Crown's Grace (Ch 9), the Healer's calorie range (Ch 4) and the Healer's
- * check-ins (Ch 16). Decisions A-05, A-06, A-39, A-42 to A-44 and E-04 apply.
+ * their two locks and the Crown's Grace (Ch 9), the Healer's calorie range (Ch 4), the Healer's
+ * check-ins (Ch 16) and, from rules 3.11.0, the Healer's terms for the next contract (D-69, H2).
+ * Decisions A-05, A-06, A-39, A-42 to A-44, E-04 and D-69 apply.
  *
  * Every weight here is in lb with loss positive (A-05): turn ledger weigh-ins into lb with
  * `weighInsInLb` first. What each Milestone unlocks is T14's; when the week close runs is T06's.
@@ -15,7 +16,9 @@ import type {
   Campaign,
   CampaignState,
   GraceLevel,
+  HealerCounsel,
   HealerDay,
+  HealerSource,
   ISODate,
   MilestoneState,
   WeekStartsOn,
@@ -23,6 +26,8 @@ import type {
   WeightState,
   WeightWeek
 } from './types'
+
+export type { HealerSource } from './types'
 
 /** Absorbs floating-point noise before rounding marks and taking ceilings. */
 const EPSILON = 1e-9 // rules-ok: floating-point tolerance
@@ -484,8 +489,6 @@ export function mifflinStJeor(profile: HealerProfile, day: ISODate): number | nu
   return m.perKg * (weightLb / RULES.units.lbPerKg) + m.perCm * heightCm - m.perYear * age + m[sex]
 }
 
-export type HealerSource = 'logs' | 'burned' | 'mifflin' | 'minimum'
-
 export interface HealerRange {
   /** Where the TDEE came from: logs, else Fitbit burned (A-06), else Mifflin–St Jeor, else nothing. */
   source: HealerSource
@@ -497,24 +500,24 @@ export interface HealerRange {
   floor: number
 }
 
+/** Ch 4 step 2, before there are logs enough: Fitbit's 14-day burned average, else Mifflin–St Jeor × 1.4, else nothing. */
+function bootstrapTdee(days: readonly HealerDay[], day: ISODate, profile: HealerProfile): { source: HealerSource; tdee: number | null } {
+  const h = RULES.healer
+  const burned = mean(
+    daysIn(days, day, h.bootstrap.burnedWindowDays)
+      .map((d) => d.burned)
+      .filter((b): b is number => b !== undefined && b > 0)
+  )
+  if (burned !== null) return { source: 'burned', tdee: burned }
+  const bmr = mifflinStJeor(profile, day)
+  return bmr === null ? { source: 'minimum', tdee: null } : { source: 'mifflin', tdee: bmr * h.bootstrap.activityFactor }
+}
+
 /** The Healer's range at `day`, freshly computed (Ch 4 steps 1 to 3). */
 export function healerRange(days: readonly HealerDay[], day: ISODate, trendLb: number | null, profile: HealerProfile = {}): HealerRange {
   const h = RULES.healer
-  let source: HealerSource = 'logs'
-  let tdee = tdeeFromLogs(days, day, trendLb)
-  if (tdee === null) {
-    source = 'burned'
-    tdee = mean(
-      daysIn(days, day, h.bootstrap.burnedWindowDays)
-        .map((d) => d.burned)
-        .filter((b): b is number => b !== undefined && b > 0)
-    )
-  }
-  if (tdee === null) {
-    source = 'mifflin'
-    const bmr = mifflinStJeor(profile, day)
-    tdee = bmr === null ? null : bmr * h.bootstrap.activityFactor
-  }
+  const fromLogs = tdeeFromLogs(days, day, trendLb)
+  const { source, tdee } = fromLogs !== null ? { source: 'logs' as const, tdee: fromLogs } : bootstrapTdee(days, day, profile)
   if (tdee === null) return { source: 'minimum', tdee: null, low: null, high: null, floor: h.minFloor }
   const low = tdee - h.range.lowBelowTdee
   const floor = Math.max(h.minFloor, Math.round(Math.max(low, h.minFloor) / h.roundTo) * h.roundTo)
@@ -526,6 +529,94 @@ export function smoothFloor(previous: number | undefined, fresh: number): number
   if (previous === undefined) return fresh
   const most = RULES.healer.maxMovePerWeek
   return previous + clamp(fresh - previous, -most, most)
+}
+
+// ── The Healer's terms (rules 3.11.0, D-68, D-69, H2) ───────────────────────
+
+/** kcal a day for each lb a week: 3,500 ÷ 7. */
+function kcalPerLbWeek(): number {
+  return RULES.healer.kcalPerLb / RULES.clock.daysPerWeek
+}
+
+export interface CounselMaintenance {
+  source: HealerSource
+  /** kcal a day, or null with no estimate. */
+  maintenance: number | null
+  /** The window's logged average, when it has the logged days the estimate needs. */
+  logged: number | null
+}
+
+/** The window the Healer's terms read maintenance over: 35 days, 21 logged days and 3 weekly weigh-ins in it. */
+export interface CounselWindow {
+  windowDays: number
+  minLoggedDays: number
+  minWeighIns: number
+}
+
+/**
+ * Maintenance as the Healer's terms read it: the logged average plus the trend × 500 over the terms'
+ * window (35 days), with 3 weekly weigh-ins and 21 logged days in it; else the floor's own fallbacks
+ * (Fitbit's total burned, else Mifflin–St Jeor × 1.4). Weigh-ins in lb, weekly. The simulator reads
+ * the floor's shorter window beside it (G-26).
+ */
+export function counselMaintenance(
+  days: readonly HealerDay[],
+  weighIns: readonly WeighIn[],
+  day: ISODate,
+  profile: HealerProfile = {},
+  c: CounselWindow = RULES.healer.counsel
+): CounselMaintenance {
+  const { average, count } = loggedAverage(days, day, c.windowDays)
+  const logged = count >= c.minLoggedDays ? average : null
+  const r = inWindow(weighIns, day, c.windowDays).length >= c.minWeighIns ? trend(weighIns, day, c.windowDays) : null
+  if (logged !== null && r !== null) return { source: 'logs', maintenance: logged + r * kcalPerLbWeek(), logged }
+  const boot = bootstrapTdee(days, day, profile)
+  return { source: boot.source, maintenance: boot.tdee, logged }
+}
+
+/**
+ * The calorie limit the Healer suggests: maintenance − 500 × `aim` (the target pace, or 0 near the
+ * goal), never more than 500 under the logged average, rounded to 50. The last suggestion stands
+ * while the fresh figure is within 150 of it (D-70), and otherwise moves at most 100 kcal toward it;
+ * never under `floor`. Null without a maintenance estimate.
+ */
+export function counselCalories(m: CounselMaintenance, aim: number, floor: number, previous?: number): number | null {
+  if (m.maintenance === null) return null
+  const h = RULES.healer
+  let limit = m.maintenance - aim * kcalPerLbWeek()
+  if (m.logged !== null) limit = Math.max(limit, m.logged - h.counsel.maxBelowLogged)
+  limit = Math.round(limit / h.roundTo) * h.roundTo
+  if (previous !== undefined) {
+    limit = Math.abs(limit - previous) < h.counsel.holdWithin ? previous : previous + clamp(limit - previous, -h.maxMovePerWeek, h.maxMovePerWeek)
+  }
+  return Math.max(floor, limit)
+}
+
+/** A closed week as the Healer's step pool reads it: whether it met its pool, and its steps scaled to a full week. */
+export interface StepWeek {
+  met: boolean
+  walked: number
+}
+
+/**
+ * The step pool the Healer suggests from the last closed weeks, newest first: met in 3 or more of 4,
+ * the pool + 5% rounded up to 1,000, never above the best week; met in 2, the pool; fewer, the median
+ * walked rounded down, never under the pool less 10%. It never raises past 105,000. Null with fewer
+ * weeks than it reads.
+ */
+export function counselSteps(pool: number, weeks: readonly StepWeek[]): number | null {
+  const s = RULES.healer.counsel.steps
+  if (weeks.length < s.weeks) return null
+  const read = weeks.slice(0, s.weeks)
+  const met = read.filter((w) => w.met).length
+  const up = (x: number): number => Math.ceil(x / s.roundTo - EPSILON) * s.roundTo
+  const down = (x: number): number => Math.floor(x / s.roundTo + EPSILON) * s.roundTo
+  const walked = read.map((w) => w.walked).sort((a, b) => a - b)
+  if (met >= s.raiseMet) return Math.max(pool, Math.min(s.max, up(pool * (1 + s.raiseShare)), down(walked[walked.length - 1])))
+  if (met >= s.holdMet) return pool
+  const half = walked.length / 2
+  const median = walked.length % 2 === 1 ? walked[Math.floor(half)] : (walked[half - 1] + walked[half]) / 2
+  return Math.min(pool, Math.max(down(median), up(pool * (1 - s.easeShare))))
 }
 
 // ── Healer check-ins (Ch 16) ─────────────────────────────────────────────────
@@ -596,6 +687,24 @@ export function healerText(note: HealerNote): string {
 
 // ── The week close ───────────────────────────────────────────────────────────
 
+/** The Healer's terms at a weight week (H2): the calorie limit aimed at the target pace (maintenance near the goal), and the step pool. */
+function healerCounsel(previous: HealerCounsel | undefined, momentum: Momentum, floor: number, profile: HealerProfile, input: WeightWeekInput): HealerCounsel {
+  const aim = momentum.maintenance ? 0 : momentum.target
+  const m = counselMaintenance(input.days, input.weighIns, input.day, profile)
+  const calorieLimit = counselCalories(m, aim, floor, previous?.calorieLimit)
+  const stepPool = input.steps ? counselSteps(input.steps.pool, input.steps.weeks) : null
+  const read = input.steps?.weeks.slice(0, RULES.healer.counsel.steps.weeks) ?? []
+  return {
+    week: input.week,
+    day: input.day,
+    source: m.source,
+    aim,
+    ...(m.maintenance !== null ? { maintenance: m.maintenance } : {}),
+    ...(calorieLimit !== null ? { calorieLimit } : {}),
+    ...(stepPool !== null ? { stepPool, stepWeeks: read.length, stepsMet: read.filter((w) => w.met).length } : {})
+  }
+}
+
 /** A fresh weight slice for a campaign founded with `start` and `goal` (in lb). */
 export function initialWeightState(start: number, goal: number): WeightState {
   return { milestones: buildMilestones(start, goal), grace: 0, weeks: [] }
@@ -613,6 +722,8 @@ export interface WeightWeekInput {
   qw: number
   /** Realm Consistency at the close (A-39). */
   realmConsistency: number
+  /** For the Healer's step pool (D-69): the Charter's pool now, and the last closed weeks, newest first. */
+  steps?: { pool: number; weeks: readonly StepWeek[] }
 }
 
 export interface WeightWeekResult {
@@ -625,8 +736,10 @@ export interface WeightWeekResult {
 }
 
 /**
- * Everything weight does at one week close: Momentum, the week's record, Milestones, the Grace
- * and the Healer's floor. Settles once: closing a week already recorded changes nothing.
+ * Everything weight does for one campaign week: Momentum, the week's record, Milestones, the Grace,
+ * the Healer's floor and the Healer's terms (D-69). Settles once: a week already recorded changes
+ * nothing. From rules 3.11.0 it runs at the close of the day the week's weigh-in came in, or else at
+ * its week close (D-69, W1); `input.qw` is the habits score its plateau floor reads.
  */
 export function closeWeightWeek(campaign: Campaign, weight: WeightState, input: WeightWeekInput): WeightWeekResult {
   const goal = toLb(campaign.goalWeight, campaign.unit)
@@ -650,7 +763,8 @@ export function closeWeightWeek(campaign: Campaign, weight: WeightState, input: 
     momentum: momentum.m,
     realmConsistency: input.realmConsistency,
     tooFast: momentum.tooFast,
-    ...(average === null ? {} : { average })
+    ...(average === null ? {} : { average }),
+    qw: input.qw
   }
   const weeks = [...weight.weeks, record]
   const { milestones, broken } = breakMilestones({
@@ -670,7 +784,7 @@ export function closeWeightWeek(campaign: Campaign, weight: WeightState, input: 
     loggedAverage: loggedAverage(input.days, input.day, RULES.healer.checkInWindowDays).average
   })
   return {
-    weight: { ...weight, milestones, grace, healerFloor, weeks },
+    weight: { ...weight, milestones, grace, healerFloor, weeks, counsel: healerCounsel(weight.counsel, momentum, healerFloor, profile, input) },
     momentum,
     broken,
     grace: { from: weight.grace, to: grace },

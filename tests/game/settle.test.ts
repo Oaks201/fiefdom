@@ -44,10 +44,10 @@ const LEDGER = steadyLedger('2026-09-10', 70)
 const COMBAT_EVENTS: string[] = ['defense', 'assault', 'calledOff', 'trophy', 'respect', 'hexTransfer']
 const COMBAT_PURSE: string[] = ['spoils', 'tribute']
 
-test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53)', () => {
+test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53, D-69)', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
-    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones']
+    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones', 'weighIn']
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],
@@ -125,7 +125,8 @@ test('A 10-day absence settles 10 days in order, closes the week between them, a
   assert.equal(purse.find((e, i) => i > weekly && e.source === 'duties')?.date, '2026-10-19')
   const closed = back.events.find((e) => e.kind === 'weekClosed')
   assert.equal(closed?.day, '2026-10-18')
-  assert.equal(back.state.weight.weeks.at(-1)?.week, 2)
+  // D-69: each Monday's weigh-in settled its week's weight at that day's close, not the week close.
+  assert.deepEqual(back.state.weight.weeks.slice(-2).map((w) => [w.week, w.day]), [[2, '2026-10-12'], [3, '2026-10-19']])
 
   // One or two days are not a homecoming; 14 days away is, even when little is left to settle.
   assert.equal(settle(back.state, LEDGER, chicago('2026-10-24')).summary.homecoming, false)

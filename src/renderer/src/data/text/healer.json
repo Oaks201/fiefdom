@@ -63,5 +63,70 @@
     "template": "Healer check-in: the ledger, weigh-ins and goals are stored only on this computer.",
     "final": null,
     "approved": false
+  },
+  "healer.report.notEnough": {
+    "template": "Healer's report: there is no trend yet. It needs two weekly weigh-ins at least {days} days apart.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.tooFast": {
+    "template": "Healer's report: the trend is {trend} {unit} a week, over the safe pace of {limit} {unit}. Momentum is held at half and Milestones wait until it slows.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.nearGoal": {
+    "template": "Healer's report: the weight is within {share}% of the goal. Momentum pays in full while it stays there.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.up": {
+    "template": "Healer's report: the trend is up {trend} {unit} a week. Broken Milestones stay broken, and Momentum never goes below zero.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.flat": {
+    "template": "Healer's report: the trend is flat at {trend} {unit} a week, against a target pace of {target} {unit}. While habits hold, the plateau floor keeps part of Momentum.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.behind": {
+    "template": "Healer's report: the trend is {trend} {unit} a week, against a target pace of {target} {unit}.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.onPace": {
+    "template": "Healer's report: the trend is {trend} {unit} a week, at the target pace of {target} {unit}. Momentum pays in full.",
+    "final": null,
+    "approved": false
+  },
+  "healer.report.ahead": {
+    "template": "Healer's report: the trend is {trend} {unit} a week, ahead of the target pace of {target} {unit}. Going faster earns nothing more.",
+    "final": null,
+    "approved": false
+  },
+  "healer.terms.calories": {
+    "template": "Healer's terms: a calorie limit of {limit}, from an estimated maintenance of {maintenance} less {deficit} for a pace of {aim} {unit} a week.",
+    "final": null,
+    "approved": false
+  },
+  "healer.terms.maintenance": {
+    "template": "Healer's terms: a calorie limit of {limit}, the estimated maintenance of {maintenance}, to hold the weight near the goal.",
+    "final": null,
+    "approved": false
+  },
+  "healer.terms.noEstimate": {
+    "template": "Healer's terms: no calorie figure yet. It needs {weighIns} weekly weigh-ins and {days} days of food logged in {window} days, or Fitbit's calories burned.",
+    "final": null,
+    "approved": false
+  },
+  "healer.terms.steps": {
+    "template": "Healer's terms: a step pool of {pool}. The pool was met in {met} of the last {weeks} weeks.",
+    "final": null,
+    "approved": false
+  },
+  "healer.terms.noSteps": {
+    "template": "Healer's terms: no step figure until {weeks} weeks have closed.",
+    "final": null,
+    "approved": false
   }
 }

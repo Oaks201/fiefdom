@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.10.0',
+  ruleVersion: '3.11.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -108,8 +108,6 @@ const RULES_TABLE = {
     },
     /** Ch 4: the Table's budget score falls linearly to 0 at 15% over the limit. */
     table: { zeroAtShareOver: 0.15 },
-    /** Ch 4: the Steward's Counsel after 4 weeks averaging below 75% or above 95%. */
-    stewardCounsel: { weeks: 4, gentlerBelow: 0.75, firmerAbove: 0.95 },
     /** One contract runs; on its last day the next can be sealed to follow it (D-45). */
     maxQueued: 1,
     /** D-06: a contract may start on any of this many days from its earliest dawn. */
@@ -769,8 +767,39 @@ const RULES_TABLE = {
     /** A rough patch (Ch 16 "Illness and travel"): this many low-scoring days in a row. */
     roughPatchDays: 3, // TUNE (A-120)
     /** A low-scoring day, for the rough patch: its duties, food and steps average below this (T14). */
-    roughDayBelow: 0.5 // TUNE (A-179)
+    roughDayBelow: 0.5, // TUNE (A-179)
+    /**
+     * Rules 3.11.0 (D-68, D-69, H2): the Healer's terms for the next contract. The calorie limit is
+     * maintenance − the target pace × kcalPerLb ÷ 7, read over a longer window than the floor's so one
+     * noisy weigh-in moves it less; never under the floor, never more than `maxBelowLogged` under the
+     * logged average, moving at most `maxMovePerWeek` a week. TUNE.
+     */
+    counsel: {
+      windowDays: 35,
+      minLoggedDays: 21,
+      minWeighIns: 3,
+      maxBelowLogged: 500,
+      /** D-70 (T-11): last week's figure stands unless the fresh one is this far from it, so it reads as advice, not a ticker (G-26). */
+      holdWithin: 150,
+      /**
+       * The step pool from the last `weeks` closed weeks walked (weeks of rest only skipped, at most
+       * `lookbackWeeks` back): met in `raiseMet` or more, the pool + `raiseShare`, never above the best
+       * week; met in `holdMet`, the pool; fewer, the median walked, never under the pool less `easeShare`.
+       */
+      steps: { weeks: 4, lookbackWeeks: 8, raiseMet: 3, holdMet: 2, raiseShare: 0.05, easeShare: 0.1, roundTo: 1_000, max: 105_000 }
+    },
+    /**
+     * D-69 (H1): how the Healer's weekly report names the trend against the target pace: flat under a
+     * quarter of it, ahead above a quarter more than it, on pace between. TUNE.
+     */
+    report: { flatBelowShare: 0.25, aheadAboveShare: 0.25 }
   },
+
+  /**
+   * Rules 3.11.0 (D-68, D-69, W4): Faithful at the Scale. Each week's weigh-in pays `base`, plus
+   * `perWeek` for each week in a row before it with one, up to `maxBonus`, whatever the scale says. TUNE.
+   */
+  faithful: { base: 10, perWeek: 2, maxBonus: 10 },
 
   armory: {
     /** One item slot per company from Milestone 1, two from Milestone 4. */

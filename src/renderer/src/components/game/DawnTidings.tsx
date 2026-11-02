@@ -11,6 +11,7 @@ import { useUI } from '../../state/ui'
 import { Modal } from '../Modal'
 import { calorieCatchUpLine, stepCatchUpLine } from '../campaign/catchUpLines'
 import { WeighInBanner } from '../campaign/ChronicleCampaign'
+import { WeighInTidings } from '../campaign/WeighInCard'
 import { GameArt } from './GameArt'
 import { Herald } from './Herald'
 
@@ -19,7 +20,8 @@ const ART_WIDTH = 960
 
 /**
  * The Dawn tidings (Patch 6, D-47; spec section 3): once per campaign day, the first time the app is
- * open on it, the Herald's tidings and today's catch-up figures, after any Homecoming or big-moment
+ * open on it, the Herald's tidings and today's catch-up figures (and the morning after a weigh-in
+ * settled its week, the Healer's report and what it paid, D-69), after any Homecoming or big-moment
  * card and never over another dialog (C-78). The words are the Herald's catalog lines and interface
  * labels (C-80); the art band is `moment.dawnTidings`, with the horn until its picture exists (C-81).
  */
@@ -70,6 +72,7 @@ export function DawnTidings(): React.JSX.Element | null {
           }
         />
         <WeighInBanner campaign={campaign} ledger={ledger} today={openDay} />
+        <WeighInTidings campaign={campaign} ledger={ledger} today={openDay} />
         {lines.length > 0 && (
           <ul className="dawn__today" aria-label="Today">
             {lines.map(({ icon: Icon, text }) => (

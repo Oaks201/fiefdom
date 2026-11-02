@@ -14,7 +14,6 @@ import {
   settleContract,
   spendRespite,
   startDays,
-  stewardSuggestion,
   validateCharter,
   withdraw,
   withdrawalPayout,
@@ -25,7 +24,6 @@ import { balance, roundPosting } from '../../src/renderer/src/lib/game/economy'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { CampaignError } from '../../src/renderer/src/lib/game/errors'
 import { consistency, termsOf } from '../../src/renderer/src/lib/game/score'
-import { t } from '../../src/renderer/src/lib/game/text'
 import type { BuildingId, BuildingTier, ContractsState, PurseState } from '../../src/renderer/src/lib/game/types'
 import { realm, withBuildings } from './support/realm'
 import { MONDAY, days, workedExampleWeek } from './support/worked-example'
@@ -358,21 +356,4 @@ test('An Accord is sealed and paid exactly like a 30-day contract, and reports i
   // A standard contract carries no Accord hook.
   const standard = sealOne()
   assert.equal(settleContract(standard.contracts, standard.purse, 1, { ...PAY, date: '2026-10-11' }).accord, undefined)
-})
-
-// ── The Steward's Counsel ────────────────────────────────────────────────────
-
-test("The Steward's Counsel suggests gentler terms below 75% and firmer above 95% over 4 weeks, as text (Ch 4)", () => {
-  assert.equal(stewardSuggestion([0.5, 0.5, 0.5]), null)
-  const gentler = stewardSuggestion([0.99, 0.7, 0.72, 0.74, 0.73])
-  assert.equal(gentler?.direction, 'gentler')
-  assert.deepEqual(gentler?.facts, { weeks: 4, average: 72 })
-  assert.equal(stewardSuggestion([0.96, 0.97, 0.98, 0.99])?.direction, 'firmer')
-  assert.equal(stewardSuggestion([0.75, 0.75, 0.75, 0.75]), null)
-  assert.equal(stewardSuggestion([0.95, 0.95, 0.95, 0.95]), null)
-  for (const s of [gentler!, stewardSuggestion([1, 1, 1, 1])!]) {
-    const text = t(s.textId, s.facts)
-    assert.ok(!text.startsWith('[missing'), text)
-    assert.ok(!text.includes('{'), text)
-  }
 })

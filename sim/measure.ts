@@ -25,8 +25,11 @@ import { assaultGarrison, tidings } from '../src/renderer/src/lib/game/combat'
 import { PURSE_SOURCES, sourcePrefix } from '../src/renderer/src/lib/game/dev/invariants'
 import { pathRank, pathTotals, renown } from '../src/renderer/src/lib/game/dominion'
 import { bandOf, isClaimableKind, regionsOf } from '../src/renderer/src/lib/game/map'
+import { toHealerDay, weighInsOf } from '../src/renderer/src/lib/game/ledgerDays'
 import { marchesOf } from '../src/renderer/src/lib/game/marches'
+import { RULES } from '../src/renderer/src/lib/game/rules'
 import { valorOn } from '../src/renderer/src/lib/game/settle'
+import { counselCalories, counselMaintenance, type CounselWindow } from '../src/renderer/src/lib/game/weight'
 import { weekOn } from '../src/renderer/src/lib/game/state'
 import { BUILDING_IDS, RIVAL_IDS, STANCE_BANDS, type CampaignState, type GameEvent, type HexState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
 
@@ -126,7 +129,17 @@ export interface Measures {
   standingFlips?: number[]
   /** Patch 6 (T-09): conquest attempts that struck the player, and those the player held. */
   conquests?: { struck: number; held: number }
+  /**
+   * Patch 9 (G-26, D-69): the Healer's suggested calorie limit at each weight week, as the rules set it
+   * (the 35-day window), and as the floor's 21-day window would have set it, each smoothed on its own.
+   */
+  counsel?: { window35: number[]; window21: number[] }
+  /** Patch 9 (D-69): Faithful at the Scale's reputation by the end. */
+  faithful?: number
 }
+
+/** Patch 9 (G-26): the floor's own window, for the Healer's terms read the way the floor reads maintenance. */
+const FLOOR_WINDOW: CounselWindow = { windowDays: RULES.healer.logWindowDays, minLoggedDays: RULES.healer.minLoggedDays, minWeighIns: RULES.momentum.minWeighIns }
 
 /** Patch 4 (G-10): one rival march, over the campaign. */
 export interface MarchMeasure {
@@ -272,7 +285,29 @@ export class Recorder {
     for (const p of state.purse.events.slice(this.purseFrom)) if (p.date === today && p.kind === 'spend' && BUILD_SPENDS.test(p.source)) mask |= LABEL.build
     this.m.days.push(mask)
     this.week.valor.push(valorOn(state, today, state.campaign.weekStartsOn))
+    if (state.weight.weeks.length > this.weightWeeks) this.counsel(state)
     if (isWeekCloseDay(today, state.campaign.weekStartsOn)) this.closeWeek(state, week)
+  }
+
+  /** Weight weeks recorded so far, and the 21-day reading's last suggestion (G-26). */
+  private weightWeeks = 0
+  private previous21: number | undefined
+
+  /** Patch 9 (G-26): a weight week just settled; its suggested calorie limit, and the 21-day window's beside it. */
+  private counsel(state: CampaignState): void {
+    this.weightWeeks = state.weight.weeks.length
+    const c = state.weight.counsel
+    const record = state.weight.weeks[state.weight.weeks.length - 1]
+    if (!c || c.calorieLimit === undefined || c.day !== record.day) return
+    const { campaign } = state
+    const profile = { sex: campaign.sex, birthYear: campaign.birthYear, heightCm: campaign.heightCm, weightLb: record.average ?? null }
+    const m21 = counselMaintenance(state.settlement.snapshots.map(toHealerDay), weighInsOf(state.settlement.snapshots, campaign.weekStartsOn), record.day, profile, FLOOR_WINDOW)
+    const limit21 = counselCalories(m21, c.aim, state.weight.healerFloor ?? 0, this.previous21)
+    if (limit21 === null) return
+    this.previous21 = limit21
+    const series = (this.m.counsel ??= { window35: [], window21: [] })
+    series.window35.push(c.calorieLimit)
+    series.window21.push(limit21)
   }
 
   private labelOf(e: GameEvent): number {
@@ -465,12 +500,15 @@ export class Recorder {
     this.m.conquests = conquests
     const behavior = new Set<string>(PURSE_SOURCES.behavior)
     const income = { behavior: 0, tithe: 0, spoils: 0, other: 0 }
+    let faithful = 0
     for (const p of state.purse.events) {
       if (p.kind === 'tithe') income.tithe += p.amount
       else if (p.kind === 'spoils') income.spoils += p.amount
       else if (p.kind === 'earn') income[behavior.has(sourcePrefix(p.source)) ? 'behavior' : 'other'] += p.amount
+      if (p.source === 'faithful') faithful += p.amount
     }
     this.m.income = income
+    this.m.faithful = faithful
     return this.m
   }
 }

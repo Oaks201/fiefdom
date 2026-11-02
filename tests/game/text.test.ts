@@ -19,10 +19,19 @@ test('the catalog is well formed', () => {
 })
 
 test('Ch 17: Healer check-ins, one per Ch 16 guardrail (13), each with its approval flag (false until the owner reads it)', () => {
-  const ids = textIds('healer')
+  const ids = textIds('healer').filter((id) => !id.startsWith('healer.report.') && !id.startsWith('healer.terms.'))
   assert.equal(ids.length, 13)
   assert.deepEqual(ids, HEALER_CHECK_INS.map((id) => `healer.${id}`))
   for (const entry of Object.values(TEXT_SOURCES['healer.json'])) assert.equal(typeof entry.approved, 'boolean')
+})
+
+test('D-69: the Healer’s weekly report has a line for each way the trend can read, and the terms a line for each case, none yet approved', () => {
+  assert.deepEqual(
+    textIds('healer.report'),
+    ['notEnough', 'tooFast', 'nearGoal', 'up', 'flat', 'behind', 'onPace', 'ahead'].map((s) => `healer.report.${s}`)
+  )
+  assert.deepEqual(textIds('healer.terms'), ['calories', 'maintenance', 'noEstimate', 'steps', 'noSteps'].map((s) => `healer.terms.${s}`))
+  for (const id of [...textIds('healer.report'), ...textIds('healer.terms')]) assert.equal(TEXT_SOURCES['healer.json'][id].approved, false)
 })
 
 test('Ch 17: 10 Milestone unlocks', () => {

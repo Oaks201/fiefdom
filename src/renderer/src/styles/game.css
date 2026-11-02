@@ -942,6 +942,225 @@
   font-style: italic;
 }
 
+/* -- The weigh-in card (Patch 9, D-69) ------------------------------------ */
+.weighin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weighin-card__figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weighin-card__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: rgba(201, 150, 46, 0.08);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+}
+
+.weighin-card__figure strong {
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.weighin-card__label {
+  font-family: var(--font-caps);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.weighin-card__note {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.weighin-card__note.is-down {
+  color: var(--forest);
+}
+
+.weighin-card__note.is-up {
+  color: var(--crimson);
+}
+
+.weighin-card__pays {
+  margin: 0;
+  font-weight: 600;
+  color: var(--gold-deep);
+}
+
+.weighin-card__next p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.weighin-card__next svg {
+  flex: none;
+  color: var(--gold-deep);
+}
+
+.weighin-card__healer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weighin-card__terms {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.weighin-chart {
+  width: 100%;
+  height: auto;
+}
+
+.weighin-chart__grid {
+  stroke: var(--rule-soft);
+  stroke-width: 1;
+}
+
+.weighin-chart__tick {
+  font-size: 11px;
+  fill: var(--ink-3);
+}
+
+.weighin-chart__mark {
+  stroke: var(--gold-deep);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.weighin-chart__mark-label {
+  font-size: 11px;
+  fill: var(--gold-deep);
+}
+
+.weighin-chart__goal {
+  stroke: var(--gold);
+  stroke-width: 1.5;
+}
+
+.weighin-chart__band {
+  fill: rgba(47, 116, 64, 0.12);
+  stroke: none;
+}
+
+.weighin-chart__pace {
+  fill: none;
+  stroke: var(--forest);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.weighin-chart__trend {
+  stroke: var(--ink-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.weighin-chart__line {
+  fill: none;
+  stroke: var(--ink-blue);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.weighin-chart__dot {
+  fill: var(--ink-blue);
+  stroke: var(--paper);
+  stroke-width: 1.5;
+}
+
+.weighin-chart__dot.is-last {
+  fill: var(--crimson);
+}
+
+/* Waystones (W3): one pip for each whole pound between the last Milestone mark and the next. */
+.waystones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.waystone {
+  min-width: 38px;
+  padding: 2px 6px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.waystone.is-lit {
+  color: var(--paper);
+  background: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+.waystone.is-fresh {
+  background: var(--gold);
+  border-color: var(--gold-deep);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* The Healer's terms on the Contract page (D-69, H2), in place of the Steward's Counsel. */
+.healer-terms__figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.healer-terms__figures dt {
+  font-family: var(--font-caps);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.healer-terms__figures dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.healer-terms__figures dd .muted {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.healer-terms__line {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.healer-terms__when {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.dawn__weighin {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* -- The Archive's campaign cards ----------------------------------------- */
 .campaign-archive {
   margin-bottom: 18px;

@@ -76,7 +76,11 @@ export function WeighInLog({ campaign, ledger, today }: { campaign: CampaignStat
       )}
       {view.next && <p className="weighin-log__next">{nextText(view.next, view.unit)}</p>}
       <p className="weighin-log__grace">{view.grace.text}</p>
-      {view.momentumReputation !== null && <p className="muted">Momentum paid {formatRep(view.momentumReputation)} at the last week’s close.</p>}
+      {view.momentumReputation !== null && view.momentumPaidOn && (
+        <p className="muted">
+          Momentum paid {formatRep(view.momentumReputation)} at the close of {formatWeekdayShort(view.momentumPaidOn)}.
+        </p>
+      )}
     </section>
   )
 }

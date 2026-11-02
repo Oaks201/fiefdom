@@ -376,8 +376,10 @@ export interface MilestonePanel {
   broken: number
   /** The Grace as its plain words (no Steadiness, no benchmark). */
   grace: { level: GraceLevel; textId: string; text: string }
-  /** What Momentum paid at the last week close, as reputation earned (Ch 5), not a weight target. */
+  /** What Momentum paid for the last weight week, as reputation earned (Ch 5), not a weight target. */
   momentumReputation: number | null
+  /** The day whose close paid it: the weigh-in's from rules 3.11.0 (D-69), else the week close. */
+  momentumPaidOn: ISODate | null
 }
 
 function inUnit(lb: number, unit: CampaignState['campaign']['unit']): number {
@@ -413,7 +415,8 @@ export function milestonePanel(state: CampaignState, weighInsLb: readonly WeighI
     ...(next ? { next } : {}),
     broken: rows.filter((r) => r.brokenOn !== undefined).length,
     grace: { level, textId: graceTextId(level), text: t(graceTextId(level)) },
-    momentumReputation: momentum === null ? null : roundPosting(momentum)
+    momentumReputation: momentum === null ? null : roundPosting(momentum),
+    momentumPaidOn: lastClose ?? null
   }
 }
 
@@ -509,8 +512,9 @@ export function healerCards(state: CampaignState, today: ISODate = openDayOf(sta
   const lastWeek = state.weight.weeks.at(-1)
   const respite = respiteDays(state)
   if (lastWeek) {
+    // From 3.11.0 the record keeps the habits score it read (D-69); an older one read its own week's.
     const days = snapshotsBetween(snapshots, state.campaign.startDate, lastWeek.day).map(toDayRecord)
-    const qw = weekScores(days, termsOf(state.charter, floor), state.campaign.weekStartsOn, respite).at(-1)?.score ?? 0
+    const qw = lastWeek.qw ?? weekScores(days, termsOf(state.charter, floor), state.campaign.weekStartsOn, respite).at(-1)?.score ?? 0
     const m = weekMomentum({ weighIns: weighInsOf(snapshots, state.campaign.weekStartsOn), day: lastWeek.day, qw, goal: toLb(state.campaign.goalWeight, state.campaign.unit), cap: state.campaign.targetPace })
     situation.momentum = { r: m.r, mw: m.mw, mf: m.mf, qw: m.qw, tooFast: m.tooFast }
   }

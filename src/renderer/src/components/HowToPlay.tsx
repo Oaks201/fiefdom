@@ -194,7 +194,7 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>Open the Realm</b> and choose a hex touching your land. Its panel shows its garrison and what you can do there; send companies to assault one they can beat.
               </li>
               <li>
-                <b>Weigh in on {weighInDay}</b>. The Chronicle shows the weight box that day, and the week’s close reads it.
+                <b>Weigh in on {weighInDay}</b>. The Chronicle shows the weight box that day, and that day’s close pays the week’s Momentum and Faithful at the Scale.
               </li>
             </ol>
           )
@@ -243,7 +243,7 @@ export function HowToPlay(): React.JSX.Element | null {
               </p>
               <ul>
                 <li>the step pool and the calorie average are judged and paid;</li>
-                <li>Momentum pays for your weight trend;</li>
+                <li>Momentum pays for your weight trend, if the week’s weigh-in hasn’t already paid it;</li>
                 <li>villages you hold pay their tithes, and village courtships are decided;</li>
                 <li>the rivals take their turn (they spend, build, court and plan attacks), and each one’s stance toward you is read;</li>
                 <li>the Crown’s Grace is checked.</li>
@@ -262,8 +262,8 @@ export function HowToPlay(): React.JSX.Element | null {
               </p>
               <ul>
                 <li>
-                  <b>It fills from</b> duties kept, perfect days and streaks (daily); the step pool, calorie average and Momentum (weekly); contracts (when they end); village tithes;
-                  and battle spoils.
+                  <b>It fills from</b> duties kept, perfect days and streaks (daily); the step pool and calorie average (weekly); Momentum and Faithful at the Scale (with each
+                  week’s weigh-in); contracts (when they end); village tithes; and battle spoils.
                 </li>
                 <li>
                   <b>It pays for</b> building and castle tiers, Crossings, items, fortifications, courtships, deals and bribes.
@@ -312,7 +312,11 @@ export function HowToPlay(): React.JSX.Element | null {
                   <b>Withdrawing</b> ends a contract early: it pays for the days so far without the length bonus and returns half the pledge.
                 </li>
               </ul>
-              <p>The Charter can be revised between contracts. Each contract keeps the terms it was sealed with.</p>
+              <p>
+                The Charter can be revised between contracts, or on a contract’s last day before the next is sealed. Each contract keeps the terms it was sealed with.{' '}
+                <b>The Healer’s terms</b> on the Contract page suggest a calorie limit and a step pool for the next contract, from your own trend, logs and steps; “Use these
+                terms” fills the Charter’s form, and nothing changes until you revise it.
+              </p>
             </>
           )
         },
@@ -324,7 +328,17 @@ export function HowToPlay(): React.JSX.Element | null {
             <ul>
               <li>
                 <b>Momentum</b> pays each week for a steady trend toward your goal, up to a capped pace ({RULES.momentum.targetPace.capLb} lb a week by default). Losing faster never
-                pays more, and when your habits stay strong through a plateau it still pays part.
+                pays more, and when your habits stay strong through a plateau it still pays part. It is paid when the day of the week’s weigh-in closes at {dawn}, reading your
+                habits of the week before; a week with no weigh-in is paid at its close.
+              </li>
+              <li>
+                <b>Faithful at the Scale:</b> each week’s weigh-in pays {RULES.faithful.base}, plus {RULES.faithful.perWeek} for each week in a row before it with one
+                (up to +{RULES.faithful.maxBonus}), whatever the scale says. A week with no weigh-in ends the run, unless you were away or resting all week.
+              </li>
+              <li>
+                <b>The weigh-in card</b> in the Chronicle shows the week’s reading, your trend against the target pace, what the close pays, and the next Milestone with its{' '}
+                <b>waystones</b>: one for each whole pound (or kilogram) on the way, lit by a weigh-in at or under it. The Healer reports on the week there, and suggests terms for
+                the next contract.
               </li>
               <li>
                 <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark breaks it

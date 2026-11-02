@@ -11,11 +11,11 @@
  */
 import type { Ledger } from '../types'
 import { milestoneUnlocks } from './armory'
-import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf } from './clock'
+import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSince, weekOf, weighInDay } from './clock'
 import { dawn, patrolStrength, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { withReach } from './reach'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
-import { balance, dailyIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
+import { balance, dailyIncome, faithfulIncome, momentumIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { chronicle } from './dominion'
@@ -34,8 +34,8 @@ import { finishSkirmishes } from './skirmish'
 import { EventBuffer, awayOn, isPlayable, isRestDay, respiteDays } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
-import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum } from './weight'
-import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn } from './types'
+import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum, type StepWeek } from './weight'
+import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn, WeighIn } from './types'
 
 // ── The phase registry ───────────────────────────────────────────────────────
 
@@ -58,7 +58,9 @@ export const DAY_PHASE_NAMES = [
   /** Patch 6 (D-50): the rivals' land grabs and walls due today. */
   'rivalMoves',
   /** Rules 3.5.0 (D-53): a Milestone whose weigh-in reached its mark breaks at that day's close. */
-  'milestones'
+  'milestones',
+  /** Rules 3.11.0 (D-69): the week's weigh-in pays Faithful at the Scale and settles its weight week at that day's close. */
+  'weighIn'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -224,7 +226,8 @@ function dailyLines(state: CampaignState, snapshot: DaySnapshot): { lines: Purse
  * The week ending `day`: q_w and the behavior income it pays (steps, calories, flawless, Momentum).
  * Its pillars read its scored days only, rest days left out, so the step pool shrinks by a day's share
  * for each (D-54); its pay still counts every day, so a rest day never slows it. A week of rest days
- * only is judged at Realm Consistency, as a rest day is.
+ * only is judged at Realm Consistency, as a rest day is. A week whose weigh-in already settled its
+ * weight week paid its Momentum then, so its close pays none (D-69).
  */
 function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): { lines: PurseLine[]; qw: number } {
   const from = weekOf(day, weekStartsOn)
@@ -240,8 +243,60 @@ function weekIncome(state: CampaignState, day: ISODate, weekStartsOn: WeekStarts
     goal: toLb(campaign.goalWeight, campaign.unit),
     cap: campaign.targetPace
   })
-  const lines = weeklyIncome({ ...pillars, momentum: momentum.m, days: records(state, from, day).length }, reputationBonus(state))
+  const paidAtWeighIn = state.weight.weeks.some((w) => w.day >= from && w.day < day)
+  const lines = weeklyIncome({ ...pillars, momentum: paidAtWeighIn ? 0 : momentum.m, days: records(state, from, day).length }, reputationBonus(state))
   return { lines, qw }
+}
+
+/**
+ * The reading `day`'s week counts (D-13), once it is final at `day`'s close: one taken on or after the
+ * week's weigh-in day and by `day`, or at the week close any reading of the week (as D-53 reads it).
+ * Never a reading from before the campaign began.
+ */
+export function weekReading(state: CampaignState, day: ISODate): WeighIn | undefined {
+  const { weekStartsOn, startDate } = state.campaign
+  const week = weekOf(day, weekStartsOn)
+  const reading = weighInsOf(state.settlement.snapshots, weekStartsOn).find((w) => weekOf(w.date, weekStartsOn) === week && w.date <= day)
+  if (!reading || reading.date < startDate) return undefined
+  return reading.date >= weighInDay(day, weekStartsOn) || isWeekCloseDay(day, weekStartsOn) ? reading : undefined
+}
+
+/** The habits score a weigh-in's weight week reads when it settles before its week close (D-69): the calendar week that closed last. */
+export function weighInQw(state: CampaignState, day: ISODate): number {
+  const { weekStartsOn } = state.campaign
+  return weekIncome(state, addDays(weekOf(day, weekStartsOn), -1), weekStartsOn).qw
+}
+
+/**
+ * The closed weeks the Healer's step pool reads at `day` (D-69, H2), newest first: whether each met its
+ * pool and its steps scaled to a full week, rest days left out (D-54). A week of rest only is skipped;
+ * it looks back no further than the campaign's first week.
+ */
+function stepWeeks(state: CampaignState, day: ISODate): StepWeek[] {
+  const { weekStartsOn, startDate } = state.campaign
+  const s = RULES.healer.counsel.steps
+  const out: StepWeek[] = []
+  let last = isWeekCloseDay(day, weekStartsOn) ? day : addDays(weekOf(day, weekStartsOn), -1)
+  for (let i = 0; i < s.lookbackWeeks && out.length < s.weeks && last >= startDate; i++, last = addDays(last, -RULES.clock.daysPerWeek)) {
+    const days = scoredRecords(state, weekOf(last, weekStartsOn), last)
+    if (days.length === 0) continue
+    const walked = days.reduce((sum, d) => sum + Math.max(0, d.steps ?? 0), 0)
+    out.push({ met: weekPillars(days, currentTerms(state, last)).steps >= 1, walked: (walked * RULES.clock.daysPerWeek) / days.length })
+  }
+  return out
+}
+
+/**
+ * The streak Faithful at the Scale pays `day`'s week's weigh-in on (D-69, W4): its own once it has
+ * one, else the weeks in a row before `day`'s week with a campaign weigh-in, read from the snapshots.
+ */
+export function faithfulStreak(state: CampaignState, day: ISODate): number {
+  if (state.weight.faithful) return state.weight.faithful.streak
+  const { weekStartsOn, startDate } = state.campaign
+  const weeks = new Set(weighInsOf(state.settlement.snapshots, weekStartsOn).filter((w) => w.date >= startDate).map((w) => weekOf(w.date, weekStartsOn)))
+  let n = 0
+  for (let w = addDays(weekOf(day, weekStartsOn), -RULES.clock.daysPerWeek); weeks.has(w); w = addDays(w, -RULES.clock.daysPerWeek)) n++
+  return n
 }
 
 // ── Day phases ───────────────────────────────────────────────────────────────
@@ -425,20 +480,62 @@ function announceMilestones(broken: readonly MilestoneState[], emit: Emit): void
   }
 }
 
-/** Trend, target pace, Milestones, Steadiness, the Crown's Grace and the Healer's floor (T05). */
-const weightPhase: Phase = (state, ctx) => {
+/**
+ * One campaign week's weight (T05, D-69): trend, target pace, Momentum's record, Milestones,
+ * Steadiness, the Crown's Grace, the Healer's floor and terms, with habits score `qw`. Settles once.
+ */
+function closeWeight(state: CampaignState, ctx: PhaseContext, qw: number): { state: CampaignState; momentum: number } {
   const result = closeWeightWeek(state.campaign, state.weight, {
     day: ctx.day,
     week: ctx.week,
     weighIns: weighInsOf(state.settlement.snapshots, ctx.weekStartsOn),
     days: state.settlement.snapshots.map(toHealerDay),
-    qw: weekIncome(state, ctx.day, ctx.weekStartsOn).qw,
-    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn)
+    qw,
+    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
+    steps: { pool: state.charter.stepPool, weeks: stepWeeks(state, ctx.day) }
   })
   announceMilestones(result.broken, ctx.emit)
   if (result.grace.from !== result.grace.to) ctx.emit('grace', result.grace)
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
-  return { ...state, weight: result.weight }
+  return { state: { ...state, weight: result.weight }, momentum: result.momentum.m }
+}
+
+/** The week's weight at its close, with its own habits score, unless its weigh-in already settled it (D-69). */
+const weightPhase: Phase = (state, ctx) => closeWeight(state, ctx, weekIncome(state, ctx.day, ctx.weekStartsOn).qw).state
+
+/**
+ * Faithful at the Scale (rules 3.11.0, D-69, W4): the week's weigh-in pays at the close of the day it
+ * is final, once a week and whatever it reads, more for each week in a row before it with one. At a
+ * week close with none the streak ends, unless the player was away (A-10) or the week was all rest (D-54).
+ */
+function faithfulWeighIn(state: CampaignState, ctx: PhaseContext): CampaignState {
+  const f = state.weight.faithful
+  if (f?.paidWeek === ctx.week) return state
+  if (weekReading(state, ctx.day)) {
+    const streak = faithfulStreak(state, ctx.day)
+    const purse = postAll(state.purse, ctx.day, faithfulIncome(streak, reputationBonus(state)))
+    return { ...state, purse, weight: { ...state.weight, faithful: { streak: streak + 1, paidWeek: ctx.week } } }
+  }
+  if (!ctx.weekClose) return state
+  const held = awayOn(state, ctx.day) || records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day).every((d) => isRestDay(state, d.date))
+  const streak = held ? faithfulStreak(state, ctx.day) : 0
+  return { ...state, weight: { ...state.weight, faithful: { streak, ...(f?.paidWeek !== undefined ? { paidWeek: f.paidWeek } : {}) } } }
+}
+
+/**
+ * Rules 3.11.0 (D-69, W1): the week's weigh-in pays Faithful at the Scale, and from week 2 settles
+ * its weight week at the close of the day it came in, Momentum paid then, reading the trend through
+ * that reading and the habits of the week that closed last. A week close settles its own week as
+ * before, and so does the close of a week whose weigh-in never came.
+ */
+const weighInPhase: Phase = (input, ctx) => {
+  const state = faithfulWeighIn(input, ctx)
+  if (ctx.weekClose || ctx.week < 2 || state.weight.weeks.some((w) => w.week === ctx.week) || !weekReading(state, ctx.day)) return state
+  const settled = closeWeight(state, ctx, weighInQw(state, ctx.day))
+  const lines = momentumIncome(settled.momentum, reputationBonus(state))
+  const next = { ...settled.state, purse: postAll(settled.state.purse, ctx.day, lines) }
+  const snapshot = snapshotOf(next, ctx.day) as DaySnapshot
+  return putSnapshot(next, { ...snapshot, paid: { ...(snapshot.paid ?? { daily: 0 }), momentum: postedTotal(lines) } })
 }
 
 /** The week as the rivals see it (T10): its days, its average Valor (a rest day's its Realm Consistency), and its pillars without its rest days (D-54). */
@@ -544,7 +641,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   standings: standingsPhase, // Patch 6 (D-49, D-50)
   fronts: frontsDayPhase, // Patch 6 (D-50)
   rivalMoves: rivalMovesPhase, // Patch 6 (D-50)
-  milestones: milestonesDayPhase // Rules 3.5.0 (D-53)
+  milestones: milestonesDayPhase, // Rules 3.5.0 (D-53)
+  weighIn: weighInPhase // Rules 3.11.0 (D-69)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
@@ -626,6 +724,15 @@ function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events:
     const weeklyTotal = postedTotal(weekIncome(next, day, weekStartsOn).lines)
     adjust(roundPosting(weeklyTotal - paid.weekly), `correction:weekly:${day}`)
     paid.weekly = Math.max(paid.weekly, weeklyTotal)
+  }
+  if (paid.momentum !== undefined) {
+    // D-69: Momentum paid at this day's weigh-in, read again from the corrected inputs.
+    const { campaign } = next
+    const qw = next.weight.weeks.find((w) => w.day === day)?.qw ?? weighInQw(next, day)
+    const m = weekMomentum({ weighIns: weighInsOf(next.settlement.snapshots, weekStartsOn), day, qw, goal: toLb(campaign.goalWeight, campaign.unit), cap: campaign.targetPace }).m
+    const momentumTotal = postedTotal(momentumIncome(m, reputationBonus(next)))
+    adjust(roundPosting(momentumTotal - paid.momentum), `correction:momentum:${day}`)
+    paid.momentum = Math.max(paid.momentum, momentumTotal)
   }
   next = putSnapshot(next, { ...(snapshotOf(next, day) as DaySnapshot), streak: daily.streak, paid })
 

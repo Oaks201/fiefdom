@@ -82,7 +82,7 @@ test('Gap 1: a Respite day on yesterday leaves the end date where it was (D-54);
   assert.equal(takeRespite({ ...state }, addDays(START, -2), today).reason, 'A Respite day can be spent only on today or yesterday.')
 })
 
-test('Gap 1: the Charter is revised only between contracts, never below the floor', () => {
+test('Gap 1, D-69: the Charter is revised between contracts or on a contract’s last day before the next is sealed, never below the floor', () => {
   const state = withPurse(realm(), 200)
   const revised = reviseCharter(state, charter({ stepPool: 60_000 }), START)
   assert.ok(revised.ok)
@@ -91,8 +91,20 @@ test('Gap 1: the Charter is revised only between contracts, never below the floo
   assert.match(reviseCharter(state, charter({ calorieLimit: 1_100 }), START).reason ?? '', /calorie limit/)
   const running = sealContract(state, { id: 'c1', termDays: 3 }, addDays(START, -1)).state
   assert.equal(charterLocked(running, START), true)
-  assert.equal(reviseCharter(running, charter({ stepPool: 60_000 }), START).reason, 'The Charter can be revised only between contracts.')
+  assert.equal(reviseCharter(running, charter({ stepPool: 60_000 }), START).reason, 'The Charter can be revised only between contracts, or on a contract’s last day before the next is sealed.')
   assert.equal(charterLocked(running, addDays(START, -1)), false, 'sealed but not begun: still between contracts')
+
+  // D-69 (H2): on its last day the Charter opens for the next contract; the running one keeps its sealed terms.
+  const last = addDays(START, 2)
+  assert.equal(charterLocked(running, last), false)
+  const onLastDay = reviseCharter(running, charter({ stepPool: 60_000 }), last)
+  assert.ok(onLastDay.ok)
+  assert.equal(onLastDay.state.charter.stepPool, 60_000)
+  assert.equal(onLastDay.state.contracts.active?.charter.stepPool, running.contracts.active?.charter.stepPool, 'the running contract keeps its terms')
+  // Once the next is sealed to follow it, the Charter is fixed again: the next carries its own copy.
+  const followed = sealContract(onLastDay.state, { id: 'c2', termDays: 3 }, last).state
+  assert.equal(followed.contracts.queued?.charter.stepPool, 60_000, 'the next seals under the revised Charter')
+  assert.equal(charterLocked(followed, last), true)
 })
 
 // ── Gaps 2 and 3 ─────────────────────────────────────────────────────────────

@@ -545,10 +545,13 @@ export interface MilestoneState {
   keeping?: boolean
 }
 
-/** What the weight rules record at each week close, so Grace and the streaks can be derived (T05). */
+/**
+ * What the weight rules record for each campaign week, so Grace and the streaks can be derived (T05):
+ * at the close of the day its weigh-in came in, or else at its week close (rules 3.11.0, D-69).
+ */
 export interface WeightWeek {
   week: number
-  /** The week's last day, whose close is the week close. */
+  /** The day whose close settled it: its weigh-in's (D-69), or else the week's last day. */
   day: ISODate
   /** Momentum M, 0 to 1. */
   momentum: number
@@ -557,6 +560,38 @@ export interface WeightWeek {
   /** The 7-day average weight in lb at the close, when there is one. */
   average?: number
   tooFast: boolean
+  /** The habits score Momentum's plateau floor read: the week's own at its week close, else the week before's (D-69). Absent before 3.11.0. */
+  qw?: number
+}
+
+/** Where the Healer's maintenance estimate came from (Ch 4): logs, else Fitbit's total burned (A-06), else Mifflin–St Jeor, else nothing. */
+export type HealerSource = 'logs' | 'burned' | 'mifflin' | 'minimum'
+
+/** Rules 3.11.0 (D-69, H2): the terms the Healer suggests for the next contract, set at each weight week. It never sets them. */
+export interface HealerCounsel {
+  /** The weight week that set them, and the day it settled. */
+  week: number
+  day: ISODate
+  /** Where the maintenance estimate came from; 'minimum' when there is none. */
+  source: HealerSource
+  /** Estimated maintenance, kcal a day. */
+  maintenance?: number
+  /** The pace aimed at, lb a week: the target pace, or 0 near the goal. */
+  aim: number
+  /** The suggested calorie limit, kcal a day; absent without an estimate. */
+  calorieLimit?: number
+  /** The suggested weekly step pool; absent before enough weeks have closed. */
+  stepPool?: number
+  /** The weeks the step pool was read over, and how many met it. */
+  stepWeeks?: number
+  stepsMet?: number
+}
+
+/** Rules 3.11.0 (D-69, W4): Faithful at the Scale, the weeks in a row with a weigh-in before the next. */
+export interface FaithfulState {
+  streak: number
+  /** The last campaign week its weigh-in paid. */
+  paidWeek?: number
 }
 
 /** One ledger day as the Healer reads it (Ch 4). */
@@ -877,10 +912,14 @@ export interface WeightState {
   grace: GraceLevel
   /** The Healer's current calorie floor, once computed. */
   healerFloor?: number
-  /** One record per week close, oldest first. */
+  /** One record per campaign week, oldest first. */
   weeks: WeightWeek[]
   /** The last goal change; the founding goal is not a change. */
   goalChangedOn?: ISODate
+  /** Rules 3.11.0 (D-69): the Healer's latest terms; absent before the first weight week on 3.11.0. */
+  counsel?: HealerCounsel
+  /** Rules 3.11.0 (D-69): Faithful at the Scale; absent until its first weigh-in. */
+  faithful?: FaithfulState
 }
 
 export interface FrontState {
@@ -1287,8 +1326,11 @@ export interface DaySnapshot {
   burned?: number
   /** The perfect-day streak ending on this day. */
   streak: number
-  /** What the purse paid for this day's behavior, after rounding: daily, and weekly on a week's last day. */
-  paid?: { daily: number; weekly?: number }
+  /**
+   * What the purse paid for this day's behavior, after rounding: daily, weekly on a week's last day,
+   * and from rules 3.11.0 Momentum on the day a weigh-in settled its weight week (D-69).
+   */
+  paid?: { daily: number; weekly?: number; momentum?: number }
 }
 
 export interface SettlementState {
@@ -1333,13 +1375,6 @@ export interface PurseLine {
   kind: PurseEventKind
   amount: number
   source: string
-}
-
-/** The Steward's Counsel (Ch 4): a suggestion only; it never changes the Charter. */
-export interface StewardSuggestion {
-  direction: 'gentler' | 'firmer'
-  textId: string
-  facts: { weeks: number; average: number }
 }
 
 // ── Realm effects and the armory slice (T07) ─────────────────────────────────

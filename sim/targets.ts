@@ -468,8 +468,43 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       reqs.length > 0 ? monthShare >= G25.months && dareShare >= prizedShare : null
     )
   )
+
+  // G-26 (Patch 9, D-69): the Healer's terms hold steady. How often the suggested calorie limit turns around from one
+  // weight week to the next, with the rules' 35-day window and the floor's 21-day window beside it; and Faithful at
+  // the Scale's share of what a Steadfast campaign earns.
+  const turns = (pick: (c: NonNullable<Measures['counsel']>) => readonly number[]): number => {
+    let n = 0
+    let weeks = 0
+    for (const r of steadfast) {
+      const series = r.measures.counsel ? pick(r.measures.counsel) : []
+      const moves = series.slice(1).map((v, i) => Math.sign(v - series[i])).filter((s) => s !== 0)
+      for (let i = 1; i < moves.length; i++) if (moves[i] !== moves[i - 1]) n++
+      weeks += Math.max(0, series.length - 2)
+    }
+    return weeks > 0 ? n / weeks : Number.NaN
+  }
+  const turns35 = turns((c) => c.window35)
+  const turns21 = turns((c) => c.window21)
+  const faithfulShare = median(
+    steadfast.flatMap((r) => {
+      const inc = r.measures.income
+      return inc && r.measures.faithful !== undefined ? [r.measures.faithful / Math.max(1, inc.behavior + inc.tithe + inc.spoils + inc.other)] : []
+    })
+  )
+  rows.push(
+    row(
+      'G-26',
+      'The Healer’s terms hold steady (Patch 9)',
+      `Steadfast greedy: weight weeks whose suggested calorie limit turns around from the week before, with the 35-day window (under ${pct(G26.turnsBelow)}) and the floor's 21-day window beside it; Faithful at the Scale's share of reputation earned (median; under ${pct(G26.faithfulBelow)})`,
+      `${pct(turns35)} (21-day ${pct(turns21)}); ${pct(faithfulShare)}`,
+      Number.isFinite(turns35) ? turns35 < G26.turnsBelow && faithfulShare < G26.faithfulBelow : null
+    )
+  )
   return rows
 }
+
+/** Patch 9 (G-26, D-68): the suggested limit turns around in under 1 week in 4; the new weigh-in income stays under a tenth of what is earned. */
+const G26 = { turnsBelow: 0.25, faithfulBelow: 0.1 }
 
 /** Patch 8 (G-25, D-66): the share of months from week 8 with a request; the proposal's "at least one a month", across the seeds. */
 const G25 = { months: 0.9 }

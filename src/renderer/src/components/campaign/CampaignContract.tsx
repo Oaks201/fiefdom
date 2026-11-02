@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GiHourglass, GiReceiveMoney, GiScrollUnfurled } from 'react-icons/gi'
+import { GiHealthPotion, GiHourglass, GiReceiveMoney, GiScrollUnfurled } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { addDays, formatRelativeDay, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep, parseInteger } from '../../lib/format'
@@ -8,6 +8,7 @@ import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ContractTerm, ISODate } from '../../lib/game/types'
 import { contractPageView, payoutPreview, type ContractPageView, type RunningView } from '../../lib/game/view/contract'
 import { percent, rivalName } from '../../lib/game/view/shell'
+import type { HealerTermsView } from '../../lib/game/view/weighIn'
 import type { Ledger } from '../../lib/types'
 import { useCampaign } from '../../state/campaign'
 import { newId } from '../../state/hooks'
@@ -26,18 +27,18 @@ function day(d: ISODate): string {
  * (any length, an optional pledge); while one runs, its progress, and on its last day the draft
  * for the next below it.
  */
+/** The Charter's figures being revised: the Charter's own, or the Healer's terms (D-69). */
+interface CharterDraft {
+  stepPool: number
+  calorieLimit: number
+}
+
 export function CampaignContract({ campaign, today, ledger }: { campaign: CampaignState; today: ISODate; ledger: Ledger }): React.JSX.Element {
   const view = contractPageView(campaign, today, ledger)
+  const [revising, setRevising] = useState<CharterDraft | null>(null)
+  const canRevise = view.canSeal && !view.charter.locked
   return (
     <div className="campaign-contract">
-      {view.steward && (
-        <section className="panel steward-card">
-          <header className="panel__head">
-            <h3 className="panel__title">The Steward’s Counsel</h3>
-          </header>
-          <p>{view.steward.text}</p>
-        </section>
-      )}
       <div className="campaign-contract__cols">
         <div className="campaign-contract__main">
           {view.running && <ContractProgress running={view.running} today={today} />}
@@ -47,9 +48,19 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
               <p className="muted">Sealed today, it begins at dawn tomorrow at the earliest, so no day goes uncovered between them.</p>
             </header>
           )}
-          {view.canSeal && <DraftContract view={view} campaign={campaign} today={today} />}
+          {view.canSeal && <DraftContract view={view} campaign={campaign} today={today} revising={revising} setRevising={setRevising} />}
         </div>
         <aside className="campaign-contract__side">
+          {view.healer && (
+            <HealerTerms
+              terms={view.healer}
+              canUse={canRevise}
+              onUse={(terms) => {
+                sfx('click')
+                setRevising({ stepPool: terms.stepPool ?? view.charter.stepPool, calorieLimit: terms.calorieLimit ?? view.charter.calorieLimit })
+              }}
+            />
+          )}
           {view.running && <Running running={view.running} today={today} />}
           {view.queued && (
             <section className="panel">
@@ -80,12 +91,71 @@ export function CampaignContract({ campaign, today, ledger }: { campaign: Campai
   )
 }
 
-function DraftContract({ view, campaign, today }: { view: ContractPageView; campaign: CampaignState; today: ISODate }): React.JSX.Element {
+/**
+ * The Healer's terms for the next contract (D-69, H2), which replace the Steward's Counsel. "Use these
+ * terms" fills the Charter's form; the game never sets terms itself (Ch 4).
+ */
+function HealerTerms({ terms, canUse, onUse }: { terms: HealerTermsView; canUse: boolean; onUse(terms: HealerTermsView): void }): React.JSX.Element {
+  return (
+    <section className="panel healer-terms" aria-label="The Healer’s terms">
+      <header className="panel__head">
+        <h3 className="panel__title">
+          <GiHealthPotion aria-hidden="true" /> The Healer’s terms
+        </h3>
+        <span className="panel__aside">for the next contract</span>
+      </header>
+      <dl className="healer-terms__figures">
+        <div>
+          <dt>Calorie limit</dt>
+          <dd>
+            {terms.calorieLimit !== undefined ? formatNumber(terms.calorieLimit) : '—'}
+            <span className="muted"> · now {formatNumber(terms.charter.calorieLimit)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Step pool</dt>
+          <dd>
+            {terms.stepPool !== undefined ? formatNumber(terms.stepPool) : '—'}
+            <span className="muted"> · now {formatNumber(terms.charter.stepPool)}</span>
+          </dd>
+        </div>
+      </dl>
+      {terms.lines.map((l) => (
+        <p key={l.textId} className="healer-terms__line" data-text-id={l.textId}>
+          {l.text}
+        </p>
+      ))}
+      {canUse ? (
+        terms.differs && (
+          <button type="button" className="btn btn--primary" onClick={() => onUse(terms)}>
+            Use these terms
+          </button>
+        )
+      ) : (
+        <p className="muted">They can be taken between contracts, or on a contract’s last day before the next is sealed.</p>
+      )}
+      <p className="muted healer-terms__when">Set at the close of {day(terms.day)}, week {terms.week}.</p>
+    </section>
+  )
+}
+
+function DraftContract({
+  view,
+  campaign,
+  today,
+  revising,
+  setRevising
+}: {
+  view: ContractPageView
+  campaign: CampaignState
+  today: ISODate
+  revising: CharterDraft | null
+  setRevising(draft: CharterDraft | null): void
+}): React.JSX.Element {
   const act = useCampaign((s) => s.act)
   const unlocked = view.lengths.filter((l) => l.unlocked)
   const [term, setTerm] = useState<ContractTerm>(() => unlocked[unlocked.length - 1]?.days ?? 1)
   const [pledgeText, setPledgeText] = useState('')
-  const [revising, setRevising] = useState(false)
   const [chosenStart, setChosenStart] = useState<ISODate | null>(null)
   // The earliest day unless the player picked another that is still open (D-06).
   const start = chosenStart && view.sealStartDays.includes(chosenStart) ? chosenStart : view.sealStartDays[0]
@@ -191,7 +261,7 @@ function DraftContract({ view, campaign, today }: { view: ContractPageView; camp
       </div>
 
       <div className="deed__foot">
-        <HoldButton className="seal-button" onComplete={seal} disabled={!!pledgeProblem || revising} aria-label="Hold to seal the contract">
+        <HoldButton className="seal-button" onComplete={seal} disabled={!!pledgeProblem || revising !== null} aria-label="Hold to seal the contract">
           <WaxSeal color="crimson" icon={GiScrollUnfurled} size={76} seed={31} />
           <span className="seal-button__label">Hold to seal</span>
         </HoldButton>
@@ -210,60 +280,12 @@ function CharterTerms({
   view: ContractPageView
   campaign: CampaignState
   today: ISODate
-  revising: boolean
-  setRevising(on: boolean): void
+  revising: CharterDraft | null
+  setRevising(draft: CharterDraft | null): void
 }): React.JSX.Element {
-  const act = useCampaign((s) => s.act)
   const c = view.charter
-  const [pool, setPool] = useState(formatNumber(c.stepPool))
-  const [limit, setLimit] = useState(formatNumber(c.calorieLimit))
-  const [duties, setDuties] = useState(c.duties.join('\n'))
-
-  const save = (): void => {
-    const next = { stepPool: parseInteger(pool), calorieLimit: parseInteger(limit), duties: duties.split('\n').map((d) => d.trim()).filter(Boolean) }
-    if (act((s) => reviseCharter(s, next, today))) {
-      sfx('quill')
-      toast('The Charter is revised. The next contract seals under it.', 'success')
-      setRevising(false)
-    }
-  }
-
-  if (revising) {
-    return (
-      <section className="charter charter--edit">
-        <h3 className="charter__title">The Charter</h3>
-        <div className="wizard__grid">
-          <label className="field">
-            <span className="field__label">Step pool, a week</span>
-            <span className="field__box">
-              <input value={pool} inputMode="numeric" onChange={(e) => setPool(e.target.value)} />
-            </span>
-          </label>
-          <label className="field">
-            <span className="field__label">Calorie limit (the floor is {formatNumber(c.floor)})</span>
-            <span className="field__box">
-              <input value={limit} inputMode="numeric" onChange={(e) => setLimit(e.target.value)} />
-              <span className="field__suffix">kcal</span>
-            </span>
-          </label>
-          <label className="field">
-            <span className="field__label">Duties, one a line</span>
-            <span className="field__box">
-              <textarea rows={4} value={duties} onChange={(e) => setDuties(e.target.value)} />
-            </span>
-          </label>
-        </div>
-        <div className="modal__actions">
-          <button type="button" className="btn btn--ghost" onClick={() => setRevising(false)}>
-            Keep the Charter
-          </button>
-          <button type="button" className="btn btn--primary" onClick={save}>
-            Revise
-          </button>
-        </div>
-      </section>
-    )
-  }
+  // A fresh form for each draft, so "Use these terms" fills it anew (D-69).
+  if (revising) return <CharterForm key={`${revising.stepPool}:${revising.calorieLimit}`} view={view} today={today} draft={revising} close={() => setRevising(null)} />
   return (
     <section className="charter">
       <h3 className="charter__title">The Charter</h3>
@@ -287,13 +309,65 @@ function CharterTerms({
         </li>
       </ol>
       {c.locked ? (
-        <p className="muted">The Charter is fixed while a contract runs; it can be revised between contracts.</p>
+        <p className="muted">The Charter is fixed while a contract runs; it can be revised between contracts, or on a contract’s last day for the next.</p>
       ) : (
-        <button type="button" className="link" onClick={() => setRevising(true)}>
+        <button type="button" className="link" onClick={() => setRevising({ stepPool: c.stepPool, calorieLimit: c.calorieLimit })}>
           Revise the Charter…
         </button>
       )}
       {campaign.campaign.medicalSupervision && <p className="muted">Medical supervision confirmed: the limit may sit below the floor.</p>}
+    </section>
+  )
+}
+
+function CharterForm({ view, today, draft, close }: { view: ContractPageView; today: ISODate; draft: CharterDraft; close(): void }): React.JSX.Element {
+  const act = useCampaign((s) => s.act)
+  const c = view.charter
+  const [pool, setPool] = useState(formatNumber(draft.stepPool))
+  const [limit, setLimit] = useState(formatNumber(draft.calorieLimit))
+  const [duties, setDuties] = useState(c.duties.join('\n'))
+
+  const save = (): void => {
+    const next = { stepPool: parseInteger(pool), calorieLimit: parseInteger(limit), duties: duties.split('\n').map((d) => d.trim()).filter(Boolean) }
+    if (act((s) => reviseCharter(s, next, today))) {
+      sfx('quill')
+      toast('The Charter is revised. The next contract seals under it.', 'success')
+      close()
+    }
+  }
+
+  return (
+    <section className="charter charter--edit">
+      <h3 className="charter__title">The Charter</h3>
+      <div className="wizard__grid">
+        <label className="field">
+          <span className="field__label">Step pool, a week</span>
+          <span className="field__box">
+            <input value={pool} inputMode="numeric" onChange={(e) => setPool(e.target.value)} />
+          </span>
+        </label>
+        <label className="field">
+          <span className="field__label">Calorie limit (the floor is {formatNumber(c.floor)})</span>
+          <span className="field__box">
+            <input value={limit} inputMode="numeric" onChange={(e) => setLimit(e.target.value)} />
+            <span className="field__suffix">kcal</span>
+          </span>
+        </label>
+        <label className="field">
+          <span className="field__label">Duties, one a line</span>
+          <span className="field__box">
+            <textarea rows={4} value={duties} onChange={(e) => setDuties(e.target.value)} />
+          </span>
+        </label>
+      </div>
+      <div className="modal__actions">
+        <button type="button" className="btn btn--ghost" onClick={close}>
+          Keep the Charter
+        </button>
+        <button type="button" className="btn btn--primary" onClick={save}>
+          Revise
+        </button>
+      </div>
     </section>
   )
 }

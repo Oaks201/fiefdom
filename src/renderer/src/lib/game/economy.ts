@@ -11,7 +11,7 @@ import type { ISODate, PurseEvent, PurseEventKind, PurseLine, PurseState } from 
 
 /** Where a reputation gain may come from (Ch 15 invariant 4), by the prefix of its `source`. */
 export const PURSE_SOURCES = {
-  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'contract', 'correction'],
+  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'faithful', 'contract', 'correction'],
   battle: ['defense', 'assault', 'grandBattle', 'mythicHunt', 'royalHunt', 'tribute', 'mythic'],
   land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim', 'buyBack'],
   /** The founding grant, and the Bank's interest on what the player has already earned. */
@@ -110,8 +110,25 @@ export function weeklyIncome(week: WeekBehavior, bonus: number): PurseLine[] {
   earn('steps', rules.steps * Math.min(1, week.steps))
   earn('calories', rules.calories * Math.min(1, week.table))
   if (week.steps >= 1 && week.table >= 1 && week.duties >= 1) earn('flawless', rules.flawless)
-  earn('momentum', rules.momentum * Math.min(1, Math.max(0, week.momentum)))
-  return lines
+  return [...lines, ...momentumIncome(week.momentum, bonus, share)]
+}
+
+/**
+ * Momentum's reputation, 60 × M (Ch 5), × `share` in a partial week 1. From rules 3.11.0 it is paid at
+ * the close of the day the week's weigh-in came in, when that is before its week close (D-69, W1).
+ */
+export function momentumIncome(m: number, bonus: number, share = 1): PurseLine[] {
+  const amount = RULES.reputation.weekly.momentum * Math.min(1, Math.max(0, m)) * share
+  return amount > 0 ? [{ kind: 'earn', source: 'momentum', amount: withBonus(amount, bonus) }] : []
+}
+
+/**
+ * Faithful at the Scale (rules 3.11.0, D-69, W4): a week's weigh-in pays `base`, plus `perWeek` for
+ * each week in a row before it with one (`streak`), up to `maxBonus`, whatever the reading says.
+ */
+export function faithfulIncome(streak: number, bonus: number): PurseLine[] {
+  const f = RULES.faithful
+  return [{ kind: 'earn', source: 'faithful', amount: withBonus(f.base + Math.min(f.maxBonus, f.perWeek * Math.max(0, streak)), bonus) }]
 }
 
 export interface VillageHeld {

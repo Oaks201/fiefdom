@@ -2,11 +2,11 @@
  * View models for the Contract page and the Archive's campaign cards (T14, Ch 4, D-01): the
  * lengths with their exact unlock requirements, the pledge cap, payout previews, the running
  * contract's live score, progress and projection (D-45), withdrawal, the Respite bank and the
- * Steward's Counsel. Pure; components only render these.
+ * Healer's terms (D-69). Pure; components only render these.
  */
 import { addDays, diffDays, weekOf } from '../clock'
 import { charterLocked, respiteRefusal, withdrawalPreview, type WithdrawalPreview } from '../contractActions'
-import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, sealRefusal, startDays, stewardSuggestion, accordRespectGain } from '../contracts'
+import { contractPayout, payoutCurve, pledgeCap, pledgeReturn, sealRefusal, startDays, accordRespectGain } from '../contracts'
 import { balance, roundPosting, withBonus } from '../economy'
 import { numeral, realmEffects } from '../effects'
 import { snapshotDay, snapshotsBetween, toDayRecord } from '../ledgerDays'
@@ -14,10 +14,9 @@ import { RULES } from '../rules'
 import { budgetScore, poolShare, tableIntake, termsOf, weekScores, type ScoreTerms } from '../score'
 import { charterOn, contractScore } from '../settle'
 import { openDayOf } from '../state'
-import { t } from '../text'
 import type { CampaignState, Charter, ContractTerm, DayRecord, ISODate, LandContract, Pillars, RivalId } from '../types'
 import type { Ledger } from '../../types'
-
+import { healerTermsView, type HealerTermsView } from './weighIn'
 
 // ── Lengths and pledges ──────────────────────────────────────────────────────
 
@@ -340,25 +339,13 @@ export interface ContractPageView {
   /** The contract sealed to follow the running one. */
   queued?: ContractSummary
   respiteBank: number
-  /** The Steward's Counsel, when 4 weeks call for it (Ch 4). */
-  steward?: { direction: 'gentler' | 'firmer'; text: string }
-}
-
-/** Each closed week's q_w, oldest first, judged by the current Charter (A-124). */
-export function closedWeekScores(state: CampaignState): number[] {
-  const settled = state.settledThrough.day
-  if (settled < state.campaign.startDate) return []
-  const days = snapshotsBetween(state.settlement.snapshots, state.campaign.startDate, settled).map(toDayRecord)
-  const closes = new Set(state.weight.weeks.map((w) => w.day))
-  return weekScores(days, termsOf(state.charter, state.weight.healerFloor), state.campaign.weekStartsOn)
-    .filter((w) => closes.has(addDays(w.weekStart, RULES.clock.daysPerWeek - 1)))
-    .map((w) => w.score)
+  /** The Healer's terms for the next contract (D-69, H2), which replace the Steward's Counsel; null before the first. */
+  healer: HealerTermsView | null
 }
 
 /** The Contract page; `ledger` adds today's figures so far to the running contract's progress. */
 export function contractPageView(state: CampaignState, today: ISODate = openDayOf(state), ledger?: Ledger): ContractPageView {
   const { queued } = state.contracts
-  const counsel = stewardSuggestion(closedWeekScores(state))
   return {
     lengths: lengthOptions(state),
     charter: {
@@ -373,7 +360,7 @@ export function contractPageView(state: CampaignState, today: ISODate = openDayO
     running: runningView(state, today, ledger),
     ...(queued ? { queued: summary(queued) } : {}),
     respiteBank: state.contracts.respiteBank,
-    ...(counsel ? { steward: { direction: counsel.direction, text: t(counsel.textId, counsel.facts) } } : {})
+    healer: healerTermsView(state)
   }
 }
 

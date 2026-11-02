@@ -168,16 +168,22 @@ export function takeRespite(state: CampaignState, day: ISODate, today: ISODate =
   })
 }
 
-/** Whether the Charter may be revised on `today`: only between contracts, never while one runs (Ch 4). */
+/**
+ * Whether the Charter may be revised on `today`: between contracts (Ch 4), and from rules 3.11.0 on a
+ * running contract's last day before the next is sealed (D-69, H2), so terms can change with no day left
+ * uncovered. The running contract keeps the terms it was sealed with, so a revision on its last day
+ * governs from the next dawn.
+ */
 export function charterLocked(state: CampaignState, today: ISODate = openDayOf(state)): boolean {
-  const active = state.contracts.active
-  return active !== undefined && active.startDate <= today
+  const { active, queued } = state.contracts
+  if (active === undefined || active.startDate > today) return false
+  return active.endDate !== today || queued !== undefined
 }
 
-/** Revises the campaign's Charter between contracts, checked against the Healer's floor (or medical supervision). */
+/** Revises the campaign's Charter between contracts or on a contract's last day, checked against the Healer's floor (or medical supervision). */
 export function reviseCharter(state: CampaignState, charter: Charter, today: ISODate = openDayOf(state)): ContractAction {
   return attempt(state, () => {
-    if (charterLocked(state, today)) return refused(state, 'The Charter can be revised only between contracts.')
+    if (charterLocked(state, today)) return refused(state, 'The Charter can be revised only between contracts, or on a contract’s last day before the next is sealed.')
     const floor = state.weight.healerFloor ?? 0
     const errors = validateCharter(charter, { floor, ...(state.campaign.medicalSupervision ? { medicalSupervision: true } : {}) })
     if (errors.length > 0) return refused(state, errors.join(' '))

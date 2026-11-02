@@ -175,14 +175,6 @@
     "template": "World event: {event}.",
     "final": null
   },
-  "herald.steward.gentler": {
-    "template": "Steward's Counsel: consistency averaged {average}% over the last {weeks} weeks. Gentler Charter terms can be set before the next contract.",
-    "final": null
-  },
-  "herald.steward.firmer": {
-    "template": "Steward's Counsel: consistency averaged {average}% over the last {weeks} weeks. Firmer Charter terms can be set before the next contract.",
-    "final": null
-  },
   "herald.deal.refused.campaignOver": {
     "template": "No deals: the campaign is over.",
     "final": null

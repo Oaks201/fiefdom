@@ -3,6 +3,7 @@ import { GiHourglass, GiScrollUnfurled, GiScales } from 'react-icons/gi'
 import { CalendarButton } from '../components/chronicle/MonthCalendar'
 import { DayLedger } from '../components/chronicle/DayLedger'
 import { CampaignWeek, CampaignWeight, HealerCards, ValorPanel, WeighInBanner } from '../components/campaign/ChronicleCampaign'
+import { WeighInCard } from '../components/campaign/WeighInCard'
 import { WeighInLog } from '../components/campaign/WeighInLog'
 import { Herald } from '../components/game/Herald'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
@@ -220,6 +221,7 @@ export function ChroniclePage(): React.JSX.Element {
       {campaign && campaignToday && (
         <div className="chronicle__realm">
           <div className="chronicle__realm-main">
+            {date === today && <WeighInCard campaign={campaign} ledger={ledger} today={campaignToday} />}
             {date === today && !resting && <HealerCards campaign={campaign} ledger={ledger} today={campaignToday} />}
             {date === today && <Herald today={campaignToday} />}
           </div>

@@ -50,8 +50,8 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `errors.ts` | `CampaignError`, a refusal the store shows as a notice | T02 |
 | `map.ts` | The four-march map (D-16): 321 hexes, marches, depth, bands, seams and their ruling march, strength by depth (D-17), ownership, villages, hex queries; strongholds and the hexes they bar (D-23) | T03, Patch 2, Patch 3 |
 | `score.ts`, `contracts.ts`, `economy.ts` | Q, Valor, RC; contracts and pledges; reputation and the purse | T04 |
-| `weight.ts` | Trend, target pace, Momentum, Milestones, Grace, the Healer's range | T05 |
-| `campaign.ts`, `settle.ts`, `ledgerDays.ts` | Founding; the day-close and week-close settlement engine; reading ledger days into snapshots | T06 |
+| `weight.ts` | Trend, target pace, Momentum, Milestones, Grace, the Healer's range; the Healer's terms for the next contract (D-69) | T05, Patch 9 |
+| `campaign.ts`, `settle.ts`, `ledgerDays.ts` | Founding; the day-close and week-close settlement engine (from Patch 9 the `weighIn` day phase: Faithful at the Scale, and the weight week settled at its weigh-in's close, D-69); reading ledger days into snapshots | T06 |
 | `buildings.ts`, `roster.ts`, `effects.ts` | Tiers, castle, Crossings, companies, realm-wide effects | T07 |
 | `combat.ts` | Threats, daily battles, the daily assault | T08 |
 | `land.ts` | Courtships, trades, fortification, reclaiming | T09 |
@@ -70,6 +70,7 @@ Accept a task only when every verification box is ticked with evidence (test nam
 | `refound.ts` | The re-founding (D-21): a campaign founded as of the journey's start, its real contracts carried over and every day since played and settled | Patch 2 |
 | `view/audience.ts`, `view/audienceTalk.ts` | The Audience's words (D-62, D-63): greetings by Respect tier and day, a ruler's lines for deals struck and turned down, the topic he raises from what concerns him, the questions the player may ask and his answers; his neighbors' news first while fresh, and the Herald's quotes of it (`reactionsTo`, D-66). The lines live in `rivalLines.json` (Rich's) and `rivalLines.draft.json` (drafts, development builds only) | Patch 8 |
 | `requests.ts`, `view/requests.ts` | The rulers' requests (D-66): dares in the habit each prizes, Skivvet's and Emrys's offers, demands (a siege lifted, a hex spared, a toll); answering them, the promises they leave (`promisesOn` and `breakPromises` in land.ts), and the Audience's card for them | Patch 8 |
+| `view/weighIn.ts` | The weigh-in card (D-69): the week's reading, its trend against the target pace, the chart, what the close pays for it, the next Milestone and its waystones; the Healer's weekly report and terms | Patch 9 |
 | `state.ts` | Small shared helpers for reading and changing the campaign state, and the pacing of resolutions by Dominion marks (`resolutionMark`, `resolutionAllowed`, D-59) | quality pass, 2026-10-07 |
 | `grand.ts`, `grand/field.ts`, `grand/hosts.ts`, `armory.ts` | Grand Battle triggers, the queue, the battle API and outcomes; the round engine and the one battle-effect interpreter; enemy hosts; items, Wings, Elites, trophies, Milestone unlocks | T11 |
 | `world.ts`, `world/events.ts` | Resolving rivals, Accords, coalitions, Ascendancy, the Siege, victory, the Chronicle record; the event deck and its effects | T12 |
