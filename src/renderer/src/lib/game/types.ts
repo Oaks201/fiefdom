@@ -824,8 +824,8 @@ export interface GameEventMap {
   request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken'; hexId?: string; itemId?: string; price?: number; until?: ISODate }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
-  /** A rival's Respect toward the player changed. */
-  respect: { rival: RivalId; change: number; reason: string }
+  /** A rival's Respect toward the player changed. `forWeek` (rules 3.11.1, D-71): the week close a late correction's Respect is for. */
+  respect: { rival: RivalId; change: number; reason: string; forWeek?: ISODate }
   /** A rival's disposition toward the player changed. */
   disposition: { rival: RivalId; from: Disposition; to: Disposition }
   /** A Rim front changed state, or a rival became Emboldened or Humbled. */
@@ -877,7 +877,7 @@ export interface GameEventMap {
   campaignEnd: { outcome: 'won' | 'fallen' }
   /** A campaign week closed (T06): its number and the behavior income it paid (tithes not included). */
   weekClosed: { week: number; income: number }
-  /** A ledger correction inside the grace window was taken in (A-02); `adjustment` is what the purse gained. */
+  /** A ledger correction inside its window was taken in (A-02, D-71); `correctedDay` is the first day corrected, `adjustment` what the purse gained. */
   correction: { correctedDay: ISODate; adjustment: number }
   /** T11: what a broken Milestone opened (Ch 9 unlock table), for the Milestone card. */
   unlock: { milestone: number; unlocks: string[] }

@@ -38,7 +38,7 @@ import { blocksConquest, callToArmsOn, fortificationCap, fortificationCost, pact
 import { bandOf, borderHexesOf, depthOf, fronts as rimFronts, hexIndex, hexWorth, isClaimableKind, nearestTo, neighbors, touches, wildGarrison } from './map'
 import { RULES, type DeepReadonly } from './rules'
 import { chance, draw, int, pick, roll, shuffle, weighted } from './rng'
-import { settleDare } from './requests'
+import { lateDareMet, settleDare } from './requests'
 import { refreshRoster, roster } from './roster'
 import { placeGoblinBid } from './goblin'
 import { marchesOf } from './marches'
@@ -516,6 +516,33 @@ export function rivalTurn(input: CampaignState, w: RivalWeek): RivalTurnResult {
   // Patch 7 (W1): the beasts take back some of what the Orc won from the wilds.
   state = orcLosesToWilds(state, w)
   return { state, warhosts }
+}
+
+/** A closed week as the habit-based Respect reads it: its habits and Realm Consistency at its close. */
+export type WeekKept = Pick<RivalWeek, 'habits' | 'realmConsistency'>
+
+/**
+ * Rules 3.11.1 (D-71): the Respect the close of `day` gives for the habits a rival prizes, taken in late when a
+ * correction to that week's inputs turns `was` into `now`: his prized week, the dare judged on it, and the
+ * Archmage's constant week. Only what the correction turned counts, each once (its `respect` event names the
+ * week, `forWeek`), and nothing is ever taken back. Ugrak's dare reads battles, which no correction changes.
+ */
+export function lateWeekRespect(input: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn, was: WeekKept, now: WeekKept, emit: Emit): CampaignState {
+  let state = input
+  const forWeek: Emit = (kind, payload) => emit(kind, kind === 'respect' ? { ...payload, forWeek: day } : payload)
+  const given = (rival: RivalId, reason: string): boolean =>
+    state.log.some((e) => e.kind === 'respect' && e.rival === rival && e.reason === reason && (e.forWeek ?? e.day) === day)
+  for (const rival of RIVAL_IDS.filter((r) => isActive(state, r))) {
+    if (!prizedWeek(state, rival, now.habits, day, weekStartsOn) || prizedWeek(state, rival, was.habits, day, weekStartsOn)) continue
+    if (!given(rival, 'prizedWeek')) state = adjustRespect(state, rival, RULES.respect.change.prizedWeek, 'prizedWeek', forWeek)
+    if (rival !== 'orc') state = lateDareMet(state, rival, day, forWeek)
+  }
+  const at = RULES.respect.constantWeekAt
+  const constant = RULES.respect.byRival.archmage.constantWeek
+  if (isActive(state, 'archmage') && (now.realmConsistency ?? 0) >= at && (was.realmConsistency ?? 0) < at && constant !== undefined && !given('archmage', 'constantWeek')) {
+    state = adjustRespect(state, 'archmage', constant, 'constantWeek', forWeek)
+  }
+  return state
 }
 
 interface Spending {

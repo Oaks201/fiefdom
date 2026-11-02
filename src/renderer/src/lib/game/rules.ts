@@ -65,12 +65,15 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.11.0',
+  ruleVersion: '3.11.1',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
     dayCloseHour: 4,
-    /** A settled day can be corrected until the following close (Ch 2 rule 4, A-02). */
+    /**
+     * A settled day can be corrected until the following close (Ch 2 rule 4, A-02). Rules 3.11.1 (D-71): a
+     * contract's steps and food stay open until its last day's window closes (`correctableDays` in settle.ts).
+     */
     correctionGraceDays: 1,
     /** D-14: a first courtship and a first Tier II in the opening days (the book's 100 couldn't buy Tier II at 150). */
     foundingGrant: 250,

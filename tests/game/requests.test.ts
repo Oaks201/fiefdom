@@ -12,13 +12,13 @@ import { setOrders } from '../../src/renderer/src/lib/game/combat'
 import { balance } from '../../src/renderer/src/lib/game/economy'
 import { fortificationCap, promisesOn } from '../../src/renderer/src/lib/game/land'
 import { touchesOwner } from '../../src/renderer/src/lib/game/map'
-import { answerRequest, requestOf, requestsOf, requestsWeek, settleDare } from '../../src/renderer/src/lib/game/requests'
+import { answerRequest, lateDareMet, requestOf, requestsOf, requestsWeek, settleDare } from '../../src/renderer/src/lib/game/requests'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { lostToRaids } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { withStandingSiege, standingSiegeOf } from '../../src/renderer/src/lib/game/sieges'
 import { withWorld } from '../../src/renderer/src/lib/game/state'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type GameEventKind, type GameEventMap, type RivalId, type RulerRequest } from '../../src/renderer/src/lib/game/types'
+import { RIVAL_IDS, type CampaignState, type Emit, type GameEvent, type GameEventKind, type GameEventMap, type RivalId, type RulerRequest } from '../../src/renderer/src/lib/game/types'
 import { LINE_KEYS, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
 import { audienceTopic, reactionsTo } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { ordersView } from '../../src/renderer/src/lib/game/view/orders'
@@ -179,6 +179,19 @@ test('R1: an offer refused or lapsed costs nothing; a dare is never answered, an
   const raided = logged(realm(), [{ day: START, kind: 'defense', rival: 'goblin', outcome: 'defeat', threat: 'raid', hexId: 'x' }])
   assert.equal(lostToRaids(raided, 'orc', START, START), false)
   assert.equal(lostToRaids(raided, 'goblin', START, START), true)
+  // D-71: a dare judged missed, met after all by a late correction to its week: what met gives over what missed took, once.
+  const events: { kind: GameEventKind; [k: string]: unknown }[] = []
+  const record: Emit = (kind, payload) => void events.push({ kind, ...payload })
+  const missed = logged(withRespect(realm(), 'archmage', 20 + Q.dare.missed), [{ day: close, kind: 'request', rival: 'archmage', request: 'dare', stage: 'missed' }])
+  const late = lateDareMet(missed, 'archmage', close, record)
+  assert.equal(late.rivals.archmage.respect, 20 + Q.dare.met)
+  assert.deepEqual(events.map((e) => [e.kind, e.stage ?? e.reason]), [['request', 'met'], ['respect', 'dareMet']])
+  assert.equal(events[0].until, close, 'the late met names the close it is for')
+  const once = logged(late, [{ day: START, kind: 'request', rival: 'archmage', request: 'dare', stage: 'met', until: close }])
+  assert.equal(lateDareMet(once, 'archmage', close, record), once, 'never twice')
+  assert.equal(lateDareMet(missed, 'archmage', addDays(close, 7), record), missed, 'only a dare judged at that close')
+  const metAtClose = logged(realm(), [{ day: close, kind: 'request', rival: 'archmage', request: 'dare', stage: 'met' }])
+  assert.equal(lateDareMet(metAtClose, 'archmage', close, record), metAtClose, 'one met at its close stays as it was')
   // An offer declined: nothing lost.
   const hexOffer = asked(withRespect(realm(), 'archmage', 20), 'archmage', 'hexOffer', { hexId: 'nowhere', price: 50 })
   const declined = answerRequest(hexOffer, 'archmage', 'refuse', START)

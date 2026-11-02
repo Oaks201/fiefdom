@@ -122,6 +122,18 @@ export function settleDare(state: CampaignState, rival: RivalId, day: ISODate, m
   return adjustRespect(dropped(state, q), rival, met ? Q.dare.met : Q.dare.missed, met ? 'dareMet' : 'dareMissed', emit)
 }
 
+/**
+ * Rules 3.11.1 (D-71): `rival`'s dare judged missed at the close of `day`, met after all once a correction to that
+ * week's steps or food keeps the habit he prizes: what met gives over what missed took, once. The late `met`
+ * names the close it is for (`until`).
+ */
+export function lateDareMet(state: CampaignState, rival: RivalId, day: ISODate, emit: Emit): CampaignState {
+  const judged = state.log.flatMap((e) => (e.kind === 'request' && e.rival === rival && e.request === 'dare' && (e.until ?? e.day) === day && (e.stage === 'met' || e.stage === 'missed') ? [e.stage] : []))
+  if (!judged.includes('missed') || judged.includes('met')) return state
+  emit('request', { rival, request: 'dare', stage: 'met', until: day })
+  return adjustRespect(state, rival, Q.dare.met - Q.dare.missed, 'dareMet', emit)
+}
+
 /** The request `rival` last sent, as the log has it, if he has. */
 function lastMade(state: CampaignState, rival: RivalId): { day: ISODate; kind: RequestKind } | undefined {
   const e = state.log.findLast((x) => x.kind === 'request' && x.rival === rival && x.stage === 'made')

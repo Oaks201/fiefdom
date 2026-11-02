@@ -152,7 +152,8 @@ test('A-02: raising yesterday’s steps inside the grace window posts adjust eve
   assert.ok(adjusts.every((e) => e.kind === 'adjust' && e.amount > 0))
   assert.ok(adjusts.some((e) => e.source === 'correction:weekly:2026-10-11'))
   assert.ok(balance(s3.state.purse) > balanceBefore)
-  assert.deepEqual(s3.events.map((e) => e.kind), ['correction'])
+  // D-71: the week now meets its step pool, so the Dwarf gives his prized week late.
+  assert.deepEqual(s3.events.map((e) => (e.kind === 'respect' ? [e.kind, e.rival, e.reason, e.forWeek] : [e.kind])), [['respect', 'dwarf', 'prizedWeek', '2026-10-11'], ['correction']])
   assert.ok((s3.state.contracts.active?.score ?? 0) > scoreBefore)
   assert.equal(s3.state.settlement.snapshots.find((s) => s.date === '2026-10-11')?.steps, 12_000)
 
@@ -205,6 +206,82 @@ test('A-02: editing a day 3 days back changes nothing, and neither does editing 
   // While the next day is still being closed, it is taken in.
   const s3 = settle(s1, late, chicago('2026-10-17'))
   assert.equal(s3.state.settlement.snapshots.find((s) => s.date === '2026-10-15')?.steps, 40_000)
+})
+
+/** Week 2 (Monday Oct 12 to Sunday Oct 18) walked short of the 50,000 pool: two days at 2,000. */
+const SHORT = withDay(withDay(LEDGER, '2026-10-12', (d) => ({ ...d, steps: 2_000 })), '2026-10-13', (d) => ({ ...d, steps: 2_000 }))
+/** The same week with the steps the tracker missed entered later. */
+const WALKED = withDay(withDay(SHORT, '2026-10-12', (d) => ({ ...d, steps: 12_000 })), '2026-10-13', (d) => ({ ...d, steps: 12_000 }))
+
+/** A 14-day contract (Castle tier II) sealed on Saturday Oct 10 (Sunday Oct 11 to Saturday Oct 24), settled with `ledger` up to `now`. */
+function underContract(ledger: Ledger, now: Date): CampaignState {
+  const s1 = settle(found(ledger), ledger, chicago('2026-10-10')).state
+  return settle(sealOn({ ...s1, castleTier: 2 }, '2026-10-10', 14, 'c1', 10), ledger, now).state
+}
+
+test('D-71: a contract’s steps entered after their day’s window still count while it runs: the week’s pay, the score and the Dwarf’s prized week, each once', () => {
+  const s2 = underContract(SHORT, chicago('2026-10-20'))
+  const prized = (s: CampaignState): string[] => s.log.flatMap((e) => (e.kind === 'respect' && e.rival === 'dwarf' && e.reason === 'prizedWeek' && (e.forWeek ?? e.day) === '2026-10-18' ? [e.day] : []))
+  assert.deepEqual(prized(s2), [], 'the week closed short')
+
+  const s3 = settle(s2, WALKED, chicago('2026-10-20', 600))
+  assert.equal(s3.summary.days.length, 0)
+  assert.deepEqual(['2026-10-12', '2026-10-13'].map((d) => s3.state.settlement.snapshots.find((s) => s.date === d)?.steps), [12_000, 12_000])
+  const adjusts = s3.state.purse.events.slice(s2.purse.events.length)
+  assert.ok(adjusts.some((e) => e.source === 'correction:weekly:2026-10-18' && e.amount > 0))
+  assert.ok(adjusts.every((e) => e.kind === 'adjust' && e.date === '2026-10-19'), 'dated the last settled day')
+  // His +4 for the week, given late: dated the last settled day, naming the week it is for.
+  assert.equal(s3.state.rivals.dwarf.respect, s2.rivals.dwarf.respect + RULES.respect.change.prizedWeek)
+  assert.deepEqual(prized(s3.state), ['2026-10-19'])
+  assert.ok((s3.state.contracts.active?.score ?? 0) > (s2.contracts.active?.score ?? 0))
+  assert.ok(s3.events.some((e) => e.kind === 'correction' && e.correctedDay === '2026-10-12'))
+  const logDays = s3.state.log.map((e) => e.day)
+  assert.deepEqual(logDays, [...logDays].sort())
+
+  // Settled once. Lowered and raised again, nothing is paid or given twice, and nothing is taken back.
+  const again = settle(s3.state, WALKED, chicago('2026-10-20', 600))
+  assert.deepEqual(again.state, s3.state)
+  assert.equal(again.events.length, 0)
+  const lowered = settle(s3.state, SHORT, chicago('2026-10-20', 700)).state
+  assert.equal(lowered.settlement.snapshots.find((s) => s.date === '2026-10-12')?.steps, 2_000)
+  assert.equal(lowered.rivals.dwarf.respect, s3.state.rivals.dwarf.respect)
+  const raised = settle(lowered, WALKED, chicago('2026-10-20', 800)).state
+  assert.equal(raised.purse.events.length, s3.state.purse.events.length)
+  assert.equal(raised.rivals.dwarf.respect, s3.state.rivals.dwarf.respect)
+})
+
+test('D-71: a contract’s days stay open through its last day’s window, a paid contract rising then; after that, and outside any contract, A-02 holds', () => {
+  const paid = underContract(SHORT, chicago('2026-10-25'))
+  assert.equal(paid.contracts.history.find((c) => c.id === 'c1')?.status, 'paid')
+  // Oct 25: the contract's last day (Oct 24) can still be corrected, so its Monday can too.
+  const rising = settle(paid, WALKED, chicago('2026-10-25', 600)).state
+  assert.equal(rising.settlement.snapshots.find((s) => s.date === '2026-10-12')?.steps, 12_000)
+  assert.ok(rising.purse.events.slice(paid.purse.events.length).some((e) => e.source === 'contract:c1' && e.amount > 0))
+  // Its last day's window closed, the contract's days are locked, as A-02 locks any other day.
+  const locked = settle(paid, WALKED, chicago('2026-10-27'))
+  assert.equal(locked.state.settlement.snapshots.find((s) => s.date === '2026-10-12')?.steps, 2_000)
+  assert.equal(locked.events.filter((e) => e.kind === 'correction' || (e.kind === 'respect' && e.forWeek)).length, 0)
+  // With no contract, Monday locks with A-02's window.
+  const free = settle(found(SHORT), SHORT, chicago('2026-10-20')).state
+  const after = settle(free, WALKED, chicago('2026-10-20', 600))
+  assert.equal(after.state.settlement.snapshots.find((s) => s.date === '2026-10-12')?.steps, 2_000)
+  assert.equal(after.events.length, 0)
+})
+
+test('D-71: food logged late on a contract’s days makes them perfect days after all: their pay, the streak carried on into the days after, and the Goblin’s prized week', () => {
+  const MISSED = ['2026-10-12', '2026-10-13', '2026-10-14']
+  const unlogged = MISSED.reduce((l, day) => withDay(l, day, (d) => ({ ...d, eaten: undefined })), LEDGER)
+  const s2 = underContract(unlogged, chicago('2026-10-20'))
+  assert.deepEqual(MISSED.map((d) => s2.settlement.snapshots.find((s) => s.date === d)?.streak), [0, 0, 0])
+
+  const s3 = settle(s2, LEDGER, chicago('2026-10-20', 600)).state
+  const added = s3.purse.events.slice(s2.purse.events.length).map((e) => e.source)
+  assert.ok(MISSED.every((d) => added.includes(`correction:daily:${d}`)))
+  // The streak runs on unbroken, so a day after the gap pays its longer streak too.
+  assert.ok(added.includes('correction:daily:2026-10-19'))
+  const streaks = s3.settlement.snapshots.filter((s) => s.date >= START && s.date <= '2026-10-19').map((s) => s.streak)
+  assert.deepEqual(streaks, streaks.map((_, i) => i + 1))
+  assert.equal(s3.rivals.goblin.respect, s2.rivals.goblin.respect + RULES.respect.change.prizedWeek)
 })
 
 test('A ledger with no data settles without throwing and pays no behavior income beyond the founding grant (Momentum’s floor needs consistency)', () => {

@@ -27,7 +27,7 @@ import './surges'
 import { prepareMarches } from './marches'
 import { marchRulesDay } from './personalities'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
-import { borderCampaigns, dailyStandings, rivalBidsAtClose, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WarhostRequest } from './rivals'
+import { borderCampaigns, dailyStandings, lateWeekRespect, rivalBidsAtClose, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WarhostRequest, type WeekKept } from './rivals'
 import { dailyStances } from './terms'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
@@ -538,11 +538,15 @@ const weighInPhase: Phase = (input, ctx) => {
   return putSnapshot(next, { ...snapshot, paid: { ...(snapshot.paid ?? { daily: 0 }), momentum: postedTotal(lines) } })
 }
 
+/** The week ending `day` as the habit-based Respect reads it: its pillars without its rest days (D-54), and Realm Consistency at its close. */
+function weekKept(state: CampaignState, day: ISODate, weekStartsOn: WeekStartsOn): WeekKept {
+  const days = scoredRecords(state, weekOf(day, weekStartsOn), day)
+  return { habits: { days, pillars: weekPillars(days, currentTerms(state, day)) }, realmConsistency: realmConsistencyOn(state, day, weekStartsOn) }
+}
+
 /** The week as the rivals see it (T10): its days, its average Valor (a rest day's its Realm Consistency), and its pillars without its rest days (D-54). */
 function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
-  const from = weekOf(ctx.day, ctx.weekStartsOn)
-  const all = records(state, from, ctx.day)
-  const days = scoredRecords(state, from, ctx.day)
+  const all = records(state, weekOf(ctx.day, ctx.weekStartsOn), ctx.day)
   const valors = all.map((d) => valorOn(state, d.date, ctx.weekStartsOn))
   return {
     day: ctx.day,
@@ -550,8 +554,7 @@ function rivalWeek(state: CampaignState, ctx: PhaseContext): RivalWeek {
     weekStartsOn: ctx.weekStartsOn,
     days: all.length,
     valor: valors.length > 0 ? valors.reduce((s, v) => s + v, 0) / valors.length : 0,
-    habits: { days, pillars: weekPillars(days, currentTerms(state, ctx.day)) },
-    realmConsistency: realmConsistencyOn(state, ctx.day, ctx.weekStartsOn),
+    ...weekKept(state, ctx.day, ctx.weekStartsOn),
     emit: ctx.emit
   }
 }
@@ -692,67 +695,108 @@ export function isCorrectable(day: ISODate, now: Date, timeZone: string): boolea
 }
 
 /**
- * Takes in a ledger correction to the last settled day while it is inside the grace window
- * (A-02). The snapshot is updated; daily and weekly income, a paid contract and the running
- * contract's score are recomputed. Anything that would now pay more posts an `adjust`; nothing
- * that was paid is ever lowered. Combat, courtships, rival turns and events are never rerun.
+ * The settled days a ledger edit can still change at `now`, oldest first, and whether every input counts
+ * (`full`) or only steps and food. The last settled day takes every input while A-02's window is open. Rules
+ * 3.11.1 (D-71): each day of a contract also takes its steps and food until the contract's last day can no
+ * longer be corrected, so a step count the tracker missed, or a meal logged late, still counts for the contract.
  */
-function correctLastDay(state: CampaignState, ledger: Ledger, now: Date, events: EventBuffer): CampaignState {
-  const day = state.settledThrough.day
-  if (!isCorrectable(day, now, state.campaign.timeZone)) return state
-  const old = snapshotOf(state, day)
-  const fresh = snapshotDay(ledger, day, charterOn(state, day))
-  if (old && sameInputs(old, fresh)) return state
+export function correctableDays(state: CampaignState, now: Date): { day: ISODate; full: boolean }[] {
+  const last = state.settledThrough.day
+  const { timeZone } = state.campaign
+  const open = new Map<ISODate, boolean>()
+  if (isCorrectable(last, now, timeZone)) open.set(last, true)
+  for (const c of contractsOf(state)) {
+    if (c.endDate < last || !isCorrectable(c.endDate, now, timeZone)) continue
+    for (let d = c.startDate; d <= last && d <= c.endDate; d = addDays(d, 1)) if (!open.has(d)) open.set(d, false)
+  }
+  return [...open.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day, full]) => ({ day, full }))
+}
 
-  let next = putSnapshot(state, { ...fresh, streak: old?.streak ?? 0, ...(old?.paid ? { paid: old.paid } : {}) })
-  if (day < state.campaign.startDate) return next // the founding day: inputs only
+/** `old` with the steps and food of `fresh` (D-71); its other inputs stay as they settled. */
+function withStepsAndFood(old: DaySnapshot, fresh: DaySnapshot): DaySnapshot {
+  const out: DaySnapshot = { ...old }
+  delete out.steps
+  delete out.eaten
+  return { ...out, ...(fresh.steps !== undefined ? { steps: fresh.steps } : {}), ...(fresh.eaten !== undefined ? { eaten: fresh.eaten } : {}) }
+}
 
-  const { weekStartsOn } = state.campaign
+/**
+ * Takes in the ledger's corrections to `days` (as `correctableDays` gives them; A-02, D-71). Their snapshots take
+ * the corrected inputs, then all that pays for those inputs is read again from the first day corrected: each
+ * day's pay (and the streaks after it), each week's pay, Momentum paid at a weigh-in, the paid contracts and the
+ * running one's score, and the Respect a week close gives for a prized habit kept (`lateWeekRespect`). Each pays
+ * what the correction adds (read against the same inputs before it), never past what was paid; nothing paid is
+ * lowered (Ch 2 rule 5). Combat, courtships, rival moves and events are never rerun. Postings and events are
+ * dated the last settled day, so the purse and the log never go back in time.
+ */
+export function takeCorrections(state: CampaignState, ledger: Ledger, days: readonly { day: ISODate; full: boolean }[], events: EventBuffer): CampaignState {
+  let next = state
+  let first: ISODate | undefined
+  for (const { day, full } of days) {
+    const old = snapshotOf(state, day)
+    if (!old && !full) continue
+    const fresh = snapshotDay(ledger, day, charterOn(state, day))
+    const inputs = full || !old ? fresh : withStepsAndFood(old, fresh)
+    if (old && sameInputs(old, inputs)) continue
+    next = putSnapshot(next, { ...inputs, streak: old?.streak ?? 0, ...(old?.paid ? { paid: old.paid } : {}) })
+    // The founding day takes its inputs only.
+    if (day >= state.campaign.startDate && first === undefined) first = day
+  }
+  if (first === undefined) return next
+
+  const last = state.settledThrough.day
+  const { weekStartsOn, goalWeight, unit, targetPace } = state.campaign
   let adjustment = 0
-  const adjust = (amount: number, source: string): void => {
-    if (amount <= 0) return
-    next = { ...next, purse: post(next.purse, { date: day, kind: 'adjust', amount, source }) }
+  const credit = (paid: number, before: number, after: number, source: string): number => {
+    const amount = roundPosting(Math.min(after - before, after - paid))
+    if (amount <= 0) return paid
+    next = { ...next, purse: post(next.purse, { date: last, kind: 'adjust', amount, source }) }
     adjustment = roundPosting(adjustment + amount)
+    return roundPosting(paid + amount)
+  }
+  const momentumOf = (s: CampaignState, day: ISODate): number => {
+    const m = weekMomentum({ weighIns: weighInsOf(s.settlement.snapshots, weekStartsOn), day, qw: weighInQw(s, day), goal: toLb(goalWeight, unit), cap: targetPace }).m
+    return postedTotal(momentumIncome(m, reputationBonus(s)))
   }
 
-  const daily = dailyLines(next, snapshotOf(next, day) as DaySnapshot)
-  const paid = { ...(old?.paid ?? { daily: 0 }) }
-  const dailyTotal = postedTotal(daily.lines)
-  adjust(roundPosting(dailyTotal - paid.daily), `correction:daily:${day}`)
-  paid.daily = Math.max(paid.daily, dailyTotal)
-  if (paid.weekly !== undefined) {
-    const weeklyTotal = postedTotal(weekIncome(next, day, weekStartsOn).lines)
-    adjust(roundPosting(weeklyTotal - paid.weekly), `correction:weekly:${day}`)
-    paid.weekly = Math.max(paid.weekly, weeklyTotal)
+  // Each day's pay, in order, so a streak the correction lengthened carries into the days after it.
+  for (const s of snapshotsBetween(next.settlement.snapshots, first, last)) {
+    const was = snapshotOf(state, s.date)
+    if (!was) continue
+    const corrected = dailyLines(next, s)
+    const paid = s.paid ?? { daily: 0 }
+    const daily = credit(paid.daily, postedTotal(dailyLines(state, was).lines), postedTotal(corrected.lines), `correction:daily:${s.date}`)
+    next = putSnapshot(next, { ...s, streak: corrected.streak, paid: { ...paid, daily } })
   }
-  if (paid.momentum !== undefined) {
-    // D-69: Momentum paid at this day's weigh-in, read again from the corrected inputs.
-    const { campaign } = next
-    const qw = next.weight.weeks.find((w) => w.day === day)?.qw ?? weighInQw(next, day)
-    const m = weekMomentum({ weighIns: weighInsOf(next.settlement.snapshots, weekStartsOn), day, qw, goal: toLb(campaign.goalWeight, campaign.unit), cap: campaign.targetPace }).m
-    const momentumTotal = postedTotal(momentumIncome(m, reputationBonus(next)))
-    adjust(roundPosting(momentumTotal - paid.momentum), `correction:momentum:${day}`)
-    paid.momentum = Math.max(paid.momentum, momentumTotal)
+  // Each closed week's pay, and Momentum paid at a weigh-in, which reads the week before it (D-69).
+  for (const s of snapshotsBetween(next.settlement.snapshots, first, last)) {
+    if (!s.paid) continue
+    const paid = { ...s.paid }
+    if (paid.weekly !== undefined) paid.weekly = credit(paid.weekly, postedTotal(weekIncome(state, s.date, weekStartsOn).lines), postedTotal(weekIncome(next, s.date, weekStartsOn).lines), `correction:weekly:${s.date}`)
+    if (paid.momentum !== undefined) paid.momentum = credit(paid.momentum, momentumOf(state, s.date), momentumOf(next, s.date), `correction:momentum:${s.date}`)
+    next = putSnapshot(next, { ...s, paid })
   }
-  next = putSnapshot(next, { ...(snapshotOf(next, day) as DaySnapshot), streak: daily.streak, paid })
 
-  const ctx = payContext(next, day)
+  const ctx = payContext(next, last)
   for (const c of next.contracts.history) {
-    if (!c.paid || c.startDate > day || day > c.endDate) continue
-    const late = lateCorrection(next.contracts, next.purse, c.id, contractScore(next, c, c.endDate, weekStartsOn), ctx)
+    if (!c.paid || c.endDate < first || c.startDate > last) continue
+    const score = contractScore(next, c, c.endDate, weekStartsOn)
+    if (score <= (c.score ?? 0)) continue
+    const late = lateCorrection(next.contracts, next.purse, c.id, score, ctx)
     next = { ...next, contracts: late.contracts, purse: late.purse }
     adjustment = roundPosting(adjustment + late.adjustment)
   }
   const active = next.contracts.active
-  if (active && active.startDate <= day && day <= active.endDate) {
-    next = { ...next, contracts: { ...next.contracts, active: { ...active, score: contractScore(next, active, day, weekStartsOn) } } }
+  if (active && active.startDate <= last && first <= active.endDate) {
+    next = { ...next, contracts: { ...next.contracts, active: { ...active, score: contractScore(next, active, last, weekStartsOn) } } }
   }
 
-  if (adjustment > 0) {
-    events.emitter(day)('correction', { correctedDay: day, adjustment })
-    next = events.flush(next)
+  const emit = events.emitter(last)
+  for (let close = addDays(weekOf(first, weekStartsOn), RULES.clock.daysPerWeek - 1); close <= last; close = addDays(close, RULES.clock.daysPerWeek)) {
+    next = events.flush(lateWeekRespect(next, close, weekStartsOn, weekKept(state, close, weekStartsOn), weekKept(next, close, weekStartsOn), emit))
   }
-  return next
+  if (adjustment > 0) emit('correction', { correctedDay: first, adjustment })
+  return events.flush(next)
 }
 
 // ── The summary for the Homecoming (A-45) ────────────────────────────────────
@@ -811,8 +855,9 @@ function summarize(days: SettledDay[], events: GameEvent[], purseChange: number,
 }
 
 /**
- * Settles the campaign up to `now`: first any correction to the last settled day still inside
- * its grace window, then every closed day in order (missed days run with no orders), with the week
+ * Settles the campaign up to `now`: first the corrections to the days still open (the last settled
+ * day inside its grace window, a contract's steps and food until it ends; A-02, D-71), then every
+ * closed day in order (missed days run with no orders), with the week
  * phases after each week's last day. Pure: it reads `ledger` and returns the next state, the
  * events it posted and a summary for the Homecoming. With nothing new to settle it returns the
  * same state and no events.
@@ -822,7 +867,7 @@ export function settle(state: CampaignState, ledger: Ledger, now: Date, options:
   const events = new EventBuffer()
   const hooks: PhaseHooks = { accordsPaid: [], grandBattleRequests: [], warhosts: [] }
   const balanceBefore = balance(state.purse)
-  let next = isPlayable(state) ? correctLastDay(state, ledger, now, events) : state
+  let next = isPlayable(state) ? takeCorrections(state, ledger, correctableDays(state, now), events) : state
 
   // A launch after 14 or more days away is a return (A-10): no Siege may fall within 7 days of it (Ch 14 rule 7).
   const today = openDay(now, timeZone)
