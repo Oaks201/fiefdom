@@ -6,12 +6,14 @@
  *   (`dayBattles`), then the assaults of the day's orders. A den assault that reveals a rare
  *   creature is left to the close, which raises its Mythic Hunt as before.
  * - **The player's side** is the companies the close's formula would field, placed as the
- *   Marshal places them, with the Foundry's arms bonus on their power and the walls and
- *   fortification as health in the center front. Readiness is the formula's rally share
- *   (r + (1 − r) × V) at the Valor locked when the day's fights began.
+ *   Marshal places them, with the Foundry's arms bonus on their power and the walls as health in
+ *   the center front. Readiness is the formula's rally share (r + (1 − r) × V) at the Valor
+ *   locked when the day's fights began.
  * - **The enemy** fields as many companies as the player, of its own kinds (the rival's host,
  *   the lair's quarry, or the codex's beasts and militia), their power together the threat's
  *   strength (or the garrison) × `hostScale` for that count (mythic foes × `mythicScale` too).
+ *   Rules 3.12.1 (D-75): a fortified hex holds part of the threat back (`fortifiedShare`), as
+ *   much as its fortification adds to the formula's Army, so the field weighs it as the close does.
  * - **Nothing posts here.** A fight's result is kept with its day; the close reads it in place of
  *   the formula's (combat.ts) and posts spoils, tribute, hexes and Weary as on any day. A fight
  *   begun and not finished by the close is finished by the Marshal (`finishSkirmishes`); one never
@@ -23,7 +25,7 @@
  * mythic's quarry are the only draws.
  */
 import { CODEX, type MatchupId } from './codex'
-import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, defenseOf, envoyAvailable, isRevealDen, ordersFor, ordersValidity, rally, setOrders, skirmishDayOf } from './combat'
+import { COMBAT_HOOKS, assaultOf, calledOff, dayBattles, dayForces, defenseOf, isRevealDen, ordersFor, rally, setOrders, skirmishDayOf } from './combat'
 import { balance } from './economy'
 import { realmEffects, wallsFor } from './effects'
 import { battleStart, companyUnit, hireOf, orderDeck, placeFormation, quarryFor } from './grand'
@@ -35,7 +37,6 @@ import { fallbackOn, flankingMult, garrisonMult } from './sieges'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { hostUnits } from './rivals'
-import { roster } from './roster'
 import { envoyFee } from './respect'
 import { isPlayable, openDayOf } from './state'
 import type { BattleSetup, CampaignState, Company, Effects, HexState, ISODate, RivalId, SlotKey, Skirmish, SkirmishDay, ThreatKind } from './types'
@@ -54,12 +55,23 @@ export interface FightPlan {
   threat?: ThreatKind
   rival?: RivalId
   restrike?: boolean
+  /** What takes the field: the threat's strength less what the hex's fortification holds back (`fortifiedShare`), or the garrison ÷ flanking. */
   strength: number
   enemy: EnemyKind
   /** The companies the close's formula would field, in its order. */
   companies: Company[]
-  /** Health the center front gains: the walls and the hex's fortification (a defense only). */
+  /** Health the center front gains: the walls (a defense only). */
   walls: number
+}
+
+/**
+ * Rules 3.12.1 (D-75): the share of a threat that takes the field against a fortified hex. The
+ * formula stands the fortification F in the Army beside the companies and walls; on the field it
+ * holds the enemy back instead, which then fields strength × (Army − F) ÷ Army, so the companies
+ * and walls meet it at the formula's own odds. 1 on an unfortified hex.
+ */
+export function fortifiedShare(army: number, fortification: number): number {
+  return army > 0 && fortification > 0 ? Math.max(0, army - fortification) / army : 1
 }
 
 export type SkirmishRefusal = 'campaignOver' | 'notToday' | 'started' | 'noFights' | 'unknownFight' | 'fought' | 'reputation' | 'notStarted' | 'opened' | 'veiled' | string
@@ -104,12 +116,7 @@ function enemyOfGarrison(hex: HexState): EnemyKind {
  */
 export function todaysFights(state: CampaignState, day: ISODate, effects: Effects = realmEffects(state)): FightPlan[] {
   const orders = ordersFor(state, day, effects)
-  const validity = ordersValidity(state, orders, effects)
-  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
-  const hired = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
-  // An envoy no longer lent (his Respect fell, or the Orc's, who sends none from Patch 6, C-84) leaves the roll unpaid.
-  const army = roster(state, { day, hired, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
-  const defensePool = army.filter((c) => !assigned.has(c.id))
+  const { validity, army, home: defensePool } = dayForces(state, orders, day, effects)
   const purse = balance(state.purse)
   const plans: FightPlan[] = []
 
@@ -117,7 +124,8 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
     const hex = state.hexes.find((h) => h.id === b.hexId)
     if (!hex || calledOff(state, b, hex, day)) continue
     const affordable = defensePool.filter((c) => feeOf(state, c) === 0 || feeOf(state, c) <= purse)
-    const { fielded } = defenseOf(effects, affordable, hex, b.kind, b.rival, 1, orders?.defenseOverride)
+    // At Valor 1 the Defense is the Army: the companies, walls and fortification as the formula counts them.
+    const { fielded, defense: armyValue } = defenseOf(effects, affordable, hex, b.kind, b.rival, 1, orders?.defenseOverride)
     if (fielded.length === 0) continue
     const foe = b.kind === 'beasts' ? 'beast' : b.kind === 'mythic' ? 'mythic' : 'rival'
     plans.push({
@@ -127,10 +135,10 @@ export function todaysFights(state: CampaignState, day: ISODate, effects: Effect
       threat: b.kind,
       ...(b.rival ? { rival: b.rival } : {}),
       ...(b.restrike ? { restrike: true } : {}),
-      strength: b.strength,
+      strength: b.strength * fortifiedShare(armyValue, fortificationValue(hex)),
       enemy: enemyOfThreat(b.kind, b.rival),
       companies: fielded.map((f) => f.company),
-      walls: wallsFor(effects, { ring: bandOf(hex), foe }) + fortificationValue(hex)
+      walls: wallsFor(effects, { ring: bandOf(hex), foe })
     })
   }
 

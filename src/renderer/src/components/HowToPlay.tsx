@@ -598,8 +598,9 @@ export function HowToPlay(): React.JSX.Element | null {
           body: (
             <>
               <p>
-                Each day one threat strikes a hex on your border: beasts, a mythic creature, or a rival’s raid. Your defense is your fielded companies’ strength plus walls, scaled by
-                the day’s Valor. Threats strike weaker in weeks 1 to {firstThreatWeek}, while the realm finds its feet.
+                Each day one threat strikes a hex on your border: beasts, a mythic creature, or a rival’s raid. Your defense is your fielded companies’ strength plus walls and the hex’s
+                fortification, scaled by the day’s Valor. Only companies left home defend: those you send on an assault don’t, and the Herald’s strength word (Weaker, Matched,
+                Stronger, Overwhelming) compares the threat with the companies you leave home. Threats strike weaker in weeks 1 to {firstThreatWeek}, while the realm finds its feet.
               </p>
               <ul>
                 <li>
@@ -629,7 +630,8 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>Lead the battles yourself:</b> <b>Start today’s battles</b> (in the Chronicle and in the day’s orders) lets you fight the day’s battles as short{' '}
                 {RULES.skirmish.rounds}-round fights on the battle field. It locks your Valor so far and the day’s orders; until you open a battle, <b>Undo start</b> unlocks them
                 again (not under the Veil of Fog). A fight you finish replaces the close’s result; one you leave
-                is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. If you never press it, the day closes exactly as before.
+                is finished by the Marshal at {dawn}; one you never open is fought at the close as usual. If you never press it, the day closes exactly as before. On the field your walls
+                stand with your center-front company, and a fortified hex holds part of the enemy back: as large a part as its fortification adds to your defense.
               </p>
             </>
           )

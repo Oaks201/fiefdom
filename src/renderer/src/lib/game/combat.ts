@@ -724,7 +724,8 @@ export interface DefenseQuery {
 
 /**
  * The player's Army and Defense on a hex against a threat, with every company defending and the
- * Marshal's pick: what T10 compares a conquest attempt against, and the basis of the bands.
+ * Marshal's pick: what T10 compares a conquest attempt against. (The Herald's bands count only the
+ * companies left home, `dayForces`, from rules 3.12.1, D-75.)
  */
 export function defenseFor(state: CampaignState, q: DefenseQuery, effects: Effects = realmEffects(state)): { army: number; defense: number } {
   const hex = state.hexes.find((h) => h.id === q.hexId)
@@ -1061,9 +1062,14 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
   const veiled = COMBAT_HOOKS.bandsHidden(state, date)
   const exact = effects.reveals.threatStrength.whom !== 'none' && !veiled
   const ahead = Math.max(0, diffDays(today, date))
+  // Rules 3.12.1 (D-75): a band weighs the threat against the companies left home that day, as the close fields them.
+  const orders = ordersFor(state, date, effects)
+  const { home } = dayForces(state, orders, date, effects)
   const notice = (t: { kind: ThreatKind; hexId: string; rival?: RivalId; strength: number }, siegeDay: boolean, restrike: boolean): ThreatNotice => {
-    const { army } = defenseFor(state, { hexId: t.hexId, kind: t.kind, rival: t.rival, valor: 1, day: date }, effects)
     const hex = state.hexes.find((h) => h.id === t.hexId)
+    if (!hex) throw new RangeError(`No hex "${t.hexId}" on the map`)
+    // At Valor 1 the Defense is the Army.
+    const army = defenseOf(effects, home, hex, t.kind, t.rival, 1, orders?.defenseOverride).defense
     return {
       kind: t.kind,
       date,
@@ -1073,7 +1079,7 @@ export function tidings(state: CampaignState, date: ISODate): TidingsView {
       ...(exact ? { strength: t.strength } : {}),
       siegeDay,
       restrike,
-      atStake: hex !== undefined && returnsToWilds(hex, t.kind) && wildsMayReclaim(marchRule(state, hex, date))
+      atStake: returnsToWilds(hex, t.kind) && wildsMayReclaim(marchRule(state, hex, date))
     }
   }
   const threats: ThreatNotice[] = []
@@ -1241,12 +1247,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
 
   // Orders: the player's own, else the standing siege's (D-22); companies sent on a valid assault leave the defense pool; the rest defend (A-36).
   const orders = ordersFor(state, day, effects)
-  const validity = ordersValidity(state, orders, effects)
-  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
-  const hiredBlades = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
-  const envoys = (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r))
-  const army = roster(state, { day, hired: hiredBlades, envoys }, effects)
-  const defensePool = army.filter((c) => !assigned.has(c.id))
+  const { validity, army, home: defensePool } = dayForces(state, orders, day, effects)
 
   let purse = state.purse
   const gains: { kind: 'spoils' | 'tribute'; amount: number; source: string }[] = []
@@ -1600,14 +1601,25 @@ export interface OrdersEstimate {
 }
 
 /**
+ * The day's forces under `orders` (A-36), as the close, the orders panel, the Herald and the battle
+ * map all read them: the roster with the hired blades and envoys the orders take, and the companies
+ * left home to defend (every one not sent on a valid assault).
+ */
+export function dayForces(state: CampaignState, orders: DailyOrders | undefined, day: ISODate, effects: Effects = realmEffects(state)): { validity: OrdersValidity; army: Company[]; home: Company[] } {
+  const validity = ordersValidity(state, orders, effects)
+  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
+  const hired = effects.hiredBlades.on ? (orders?.hired ?? 0) : 0
+  // An envoy no longer lent (his Respect fell, or the Orc's, who sends none from Patch 6, C-84) leaves the roll unpaid.
+  const army = roster(state, { day, hired, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
+  return { validity, army, home: army.filter((c) => !assigned.has(c.id)) }
+}
+
+/**
  * What `orders` would field on `day` at Valor `valor` (an estimate for the orders panel, T15): the
  * same fielding as the day's close, before any fee is paid. With no orders every company defends.
  */
 export function ordersEstimate(state: CampaignState, orders: DailyOrders | undefined, day: ISODate, valor: number, effects: Effects = realmEffects(state)): OrdersEstimate {
-  const validity = ordersValidity(state, orders, effects)
-  const assigned = new Set(validity.assaults.flatMap((a) => a.companies))
-  const army = roster(state, { day, hired: effects.hiredBlades.on ? (orders?.hired ?? 0) : 0, envoys: (orders?.envoys ?? []).filter((r) => envoyAvailable(state, r)) }, effects)
-  const pool = army.filter((c) => !assigned.has(c.id))
+  const { validity, army, home: pool } = dayForces(state, orders, day, effects)
   const byId = hexIndex(state.hexes)
   const defenses: OrdersEstimate['defenses'] = []
   for (const t of tidings(state, day).threats) {

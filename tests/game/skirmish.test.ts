@@ -7,9 +7,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
-import { COMBAT_HOOKS, assaultValue, companyMatch, defenseBanners, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { COMBAT_HOOKS, assaultValue, companyMatch, dayBattles, defenseBanners, defenseFor, defenseValue, foeOfThreat, garrisonType, isRevealDen, rally, setOrders, strengthBand, tidings } from '../../src/renderer/src/lib/game/combat'
 import { realmEffects } from '../../src/renderer/src/lib/game/effects'
 import { fieldResult, fitDeck, isOver, marshalPlay, playRoundOn, startField } from '../../src/renderer/src/lib/game/grand/field'
+import { fortificationValue } from '../../src/renderer/src/lib/game/land'
 import { claimableBy, neighbors } from '../../src/renderer/src/lib/game/map'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
@@ -19,6 +20,7 @@ import {
   beginFight,
   enemyScale,
   fightSetup,
+  fortifiedShare,
   hostScale,
   marshalAllFights,
   matchupOf,
@@ -433,4 +435,75 @@ test('Patch 7 B4: a hand never deals an Order that can do nothing in it (Arcane 
   const short = fitDeck(['volley', 'shieldwall', 'charge', 'arcaneWard'], [...mine.map((u) => ({ ...u, reach: 'ranged' as const })), ...beasts], 3, 2)
   assert.equal(short.slice(0, 3).length, 3, 'the hand is still full')
   assert.notEqual(short[3], 'arcaneWard', 'the last round still has an Order that can do something')
+})
+
+// ── Rules 3.12.1 (D-75): fortification on the battle map, and the Herald's bands ─────────────────
+
+/** `state` with `hexId` fortified to `level`. */
+function fortified(state: CampaignState, hexId: string, level: HexState['fortification']): CampaignState {
+  return { ...state, hexes: state.hexes.map((h) => (h.id === hexId ? { ...h, fortification: level } : h)) }
+}
+
+/** The formula's Army for a planned defense at Valor 1: its companies, `walls` and `fortification`. */
+function plannedArmy(state: CampaignState, plan: FightPlan, walls: number, fortification: number): number {
+  const effects = realmEffects(state)
+  const strikes = plan.companies.map((c) => c.power * companyMatch(c, matchupOf(plan), foeOfThreat(plan.threat ?? 'beasts', plan.rival)))
+  return defenseValue({ strikes, armsBonus: effects.armsBonus.value, walls, fortification, rallyFloor: effects.rallyFloor.value, valor: 1 }).army
+}
+
+test('D-75: fortifiedShare is 1 on an unfortified hex and (Army − F) ÷ Army on a fortified one', () => {
+  assert.equal(fortifiedShare(100, 0), 1)
+  assert.equal(fortifiedShare(0, 0), 1)
+  assert.equal(fortifiedShare(110.4, 51.6), (110.4 - 51.6) / 110.4)
+  assert.equal(fortifiedShare(40, 40), 0)
+})
+
+test('D-75: on a fortified hex the enemy fields strength × (Army − F) ÷ Army and the center front gains only the walls, so the field meets the formula’s odds', () => {
+  const plain0 = todaysFights(ordered, today).find((p) => p.side === 'defense')
+  assert.ok(plain0, 'a defense today')
+  const plain = fortified(ordered, plain0.hexId, 0)
+  const walled = fortified(ordered, plain0.hexId, 2)
+  const hex = walled.hexes.find((h) => h.id === plain0.hexId) as HexState
+  const F = fortificationValue(hex)
+  assert.ok(F > 0)
+
+  const before = todaysFights(plain, today).find((p) => p.id === plain0.id) as FightPlan
+  const after = todaysFights(walled, today).find((p) => p.id === plain0.id) as FightPlan
+  const threat = dayBattles(plain, today).find((b) => b.hexId === plain0.hexId && b.kind === plain0.threat) as { strength: number }
+  assert.equal(before.strength, threat.strength, 'unfortified: the whole threat takes the field, as before 3.12.1')
+  assert.deepEqual(after.companies.map((c) => c.id), before.companies.map((c) => c.id), 'the same companies defend')
+  assert.equal(after.walls, before.walls, 'the fortification is no longer health in the center front')
+
+  const army = plannedArmy(walled, after, after.walls, F)
+  assert.ok(Math.abs(after.strength - threat.strength * (army - F) / army) < 1e-9)
+  // The companies and walls meet what takes the field at the formula's ratio of Army to strength.
+  const fieldOdds = plannedArmy(walled, after, after.walls, 0) / after.strength
+  assert.ok(Math.abs(fieldOdds - army / threat.strength) < 1e-9, `${fieldOdds} vs ${army / threat.strength}`)
+
+  // On the field: a smaller host, the center front's health unchanged by fortifying.
+  const centerFront = (s: CampaignState, p: FightPlan): number => fightSetup(s, p, 0.9, today).setup.units.find((u) => u.side === 'player' && u.slot === 'center:front')?.health ?? 0
+  assert.equal(centerFront(walled, after), centerFront(plain, before))
+  const host = (s: CampaignState, p: FightPlan): number => fightSetup(s, p, 0.9, today).enemy.reduce((t, c) => t + c.power, 0)
+  assert.ok(host(walled, after) < host(plain, before))
+})
+
+test('D-75: the Herald bands a threat against the companies left home, the ones the close fields (A-36)', () => {
+  // With no assault ordered every company is home, and the band is the whole roster's.
+  const all = todaysFights(base, today).find((p) => p.side === 'defense') as FightPlan
+  const threat = dayBattles(base, today).find((b) => b.hexId === all.hexId && b.kind === all.threat) as { strength: number }
+  const banded = (s: CampaignState): string | undefined => tidings(s, today).threats.find((n) => n.hexId === all.hexId && n.kind === all.threat)?.band
+  const everyone = defenseFor(base, { hexId: all.hexId, kind: all.threat ?? 'beasts', rival: all.rival, valor: 1, day: today }).army
+  assert.ok(banded(base))
+  assert.equal(banded(base), strengthBand(threat.strength, everyone))
+
+  // Send the two companies the Marshal would field first on an assault: the band reads what stays home.
+  const target = base.hexes.find((h) => h.owner === 'neutral' && !h.village && h.kind !== 'lairMouth' && claimableBy(base.hexes, h.id, 'player', 'assault'))
+  assert.ok(target)
+  const raid = setOrders(base, { date: today, assaultTarget: target.id, assault: all.companies.slice(0, 2).map((c) => c.id), defense: [] }).state
+  const plan = todaysFights(raid, today).find((p) => p.id === all.id) as FightPlan
+  assert.ok(plan.companies.every((c) => !all.companies.slice(0, 2).includes(c)), 'the sent companies don’t defend')
+  const hex = raid.hexes.find((h) => h.id === plan.hexId) as HexState
+  const home = plannedArmy(raid, plan, plan.walls, fortificationValue(hex))
+  assert.ok(home < everyone)
+  assert.equal(banded(raid), strengthBand(threat.strength, home))
 })
