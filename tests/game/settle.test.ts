@@ -44,14 +44,14 @@ const LEDGER = steadyLedger('2026-09-10', 70)
 const COMBAT_EVENTS: string[] = ['defense', 'assault', 'calledOff', 'trophy', 'respect', 'hexTransfer']
 const COMBAT_PURSE: string[] = ['spoils', 'tribute']
 
-test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53, D-69)', () => {
+test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53, D-69, D-76)', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
-    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones', 'weighIn']
+    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones', 'weighIn', 'healerRequest']
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],
-    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule', 'marches', 'chronicle']
+    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule', 'marches', 'chronicle', 'healer']
   )
   assert.deepEqual(Object.keys(DAY_PHASES).sort(), [...DAY_PHASE_NAMES].sort())
   assert.deepEqual(Object.keys(WEEK_PHASES).sort(), [...WEEK_PHASE_NAMES].sort())

@@ -136,6 +136,8 @@ export interface Measures {
   counsel?: { window35: number[]; window21: number[] }
   /** Patch 9 (D-69): Faithful at the Scale's reputation by the end. */
   faithful?: number
+  /** Patch 9 (D-76, H3): the Healer's requests: their reputation by the end, how many she made, and how many were met. */
+  healerRequests?: { reputation: number; made: number; met: number }
 }
 
 /** Patch 9 (G-26): the floor's own window, for the Healer's terms read the way the floor reads maintenance. */
@@ -501,12 +503,20 @@ export class Recorder {
     const behavior = new Set<string>(PURSE_SOURCES.behavior)
     const income = { behavior: 0, tithe: 0, spoils: 0, other: 0 }
     let faithful = 0
+    const healerRequests = { reputation: 0, made: 0, met: 0 }
     for (const p of state.purse.events) {
       if (p.kind === 'tithe') income.tithe += p.amount
       else if (p.kind === 'spoils') income.spoils += p.amount
       else if (p.kind === 'earn') income[behavior.has(sourcePrefix(p.source)) ? 'behavior' : 'other'] += p.amount
       if (p.source === 'faithful') faithful += p.amount
+      if (p.source === 'healerRequest') healerRequests.reputation += p.amount
     }
+    for (const e of state.log) {
+      if (e.kind !== 'healerRequest') continue
+      if (e.stage === 'made') healerRequests.made++
+      else if (e.stage === 'met') healerRequests.met++
+    }
+    this.m.healerRequests = healerRequests
     this.m.income = income
     this.m.faithful = faithful
     return this.m

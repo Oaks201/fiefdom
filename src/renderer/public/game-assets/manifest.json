@@ -415,6 +415,14 @@
       640
     ]
   },
+  "portrait.healer": {
+    "file": null,
+    "kind": "rival",
+    "size": [
+      512,
+      640
+    ]
+  },
   "company.militia.token": {
     "file": "company.militia.token-green-silver-v1.png",
     "kind": "token",

@@ -2,7 +2,7 @@
 
 Written 2026-10-31, on branch `patch-8` (from Patch 8, 258be21, rules 3.10.0).
 
-**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0). On 2026-11-08 Rich approved all 26 of her lines as written (D-74).
+**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0). On 2026-11-08 Rich approved all 26 of her lines as written (D-74). On 2026-11-11 Rich asked Claude to run the rest by the design so far: stage 2b, her requests and her Audience, is built (D-76, rules 3.13.0; section 13).
 
 Rich's direction (2026-10-31):
 - Improve the weight-loss side of the game.
@@ -341,3 +341,32 @@ Claude drafts every Healer line in her voice: the 13 check-ins, the report and t
 - **Remedy's 26 drafts** are in the catalog, listed for review in [patch-9-remedy-lines.md](patch-9-remedy-lines.md). Rich approved them all as written on 2026-11-08 (D-74).
 - **Simulator:** it can't play her terms, since its players eat a fixed share of the journey's terms and their weight doesn't follow what they eat, so its campaigns take her terms as advice. Every target reads as on 3.11.0. G-26 is 21% with the Respite planning (20% before).
 - **Tests:** 957 pass, 4 of them new for stage 2a.
+
+## 13. Stage 2b: Remedy's requests and her Audience (rules 3.13.0, D-76)
+
+Built on branch `patch-9` (2026-11-11). On 2026-11-11 Rich asked Claude to run the rest of Patch 9, deciding by the design so far. [Targets](../game/sim/targets-3.13.0.md).
+
+### 13.1 What was built
+
+- **H3, her requests** (`healer.ts`), as approved in D-68:
+  - At each week close from week 2 she asks one small step for the week ahead, on the weakest of four habits over the last two weeks: food logged, days within the limit, the step pool walked, every duty kept.
+  - One day more than last week, or 10 points more of the pool; a habit already at its best is asked to hold.
+  - She leaves a habit a ruler dared that week to him.
+  - Met: 15 reputation at the close of the day it is met, and every fourth met banks a Respite day. Missed: nothing, and her next card says so.
+  - A rest day counts as a day kept. A correction that keeps a missed request pays it after all.
+- **H4, an Audience with Remedy** (`view/healer.ts`, `HealerAudience.tsx`), opened from the Chronicle's Healer section and the weigh-in card:
+  - her portrait facing yours (a placeholder until `portrait.healer` is painted; its prompt is in [patch-9-art-prompts.md](patch-9-art-prompts.md));
+  - her report and her request;
+  - her answers: how you are doing, why your floor is what it is, why the scale went up (only after it did), when the next Milestone comes, what losing faster earns, and whether you can rest. Talking pays nothing.
+- **Words:** 20 Healer slots with her drafts, unapproved ([patch-9-remedy-lines.md](patch-9-remedy-lines.md)), and 3 Herald lines.
+
+### 13.2 Decisions Claude made by the design
+
+- **A perfect week is asked to hold** rather than given no request, so a player never earns more by slipping.
+- **The request pays the moment it is met** (D-53's way), since a day kept or a step walked is never taken back.
+- **A missed request is told only on the next card**, in her words that nothing is lost; the Herald stays silent on it.
+- **G-07 is reported, not retuned** (T-12 read again, D-02): it still misses on a near-tie, 6 weeks between the mixes' median victories against 5 allowed (6.5 before). It goes to Rich as an open item.
+
+### 13.3 What the simulator found
+
+720 campaigns, no invariant broken; every verdict is as on 3.12.0. G-26 holds at 22% (21% before: requests bank Respite days, which her arithmetic counts). Faithful at the Scale with her requests is 2% of what a Steadfast campaign earns, and 41% of her requests are met.

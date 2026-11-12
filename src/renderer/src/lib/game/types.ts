@@ -86,6 +86,10 @@ export interface Campaign {
 export const MIGRATION_IDS = ['bentMarches'] as const
 export type MigrationId = (typeof MIGRATION_IDS)[number]
 
+/** Rules 3.13.0 (D-76, H3): the habits the Healer's requests ask after, in the order a tie falls. */
+export const HEALER_HABITS = ['foodLogged', 'withinLimit', 'steps', 'duties'] as const
+export type HealerHabit = (typeof HEALER_HABITS)[number]
+
 export interface Charter {
   stepPool: number
   calorieLimit: number
@@ -847,6 +851,11 @@ export interface GameEventMap {
   charter: { stepPool: number; calorieLimit: number; duties: string[]; by?: 'healer' }
   /** A Healer check-in fired (Ch 16). */
   healer: { checkIn: string }
+  /**
+   * Rules 3.13.0 (D-76, H3): the Healer's request made at a week close, met (with what it paid, and a Respite day
+   * banked when it was every fourth met), or missed. `until` names the request's last day.
+   */
+  healerRequest: { habit: HealerHabit; stage: 'made' | 'met' | 'missed'; target: number; until: ISODate; reward?: number; respite?: true }
   /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */
   grandBattle: {
     battleId: string
@@ -920,6 +929,25 @@ export interface WeightState {
   counsel?: HealerCounsel
   /** Rules 3.11.0 (D-69): Faithful at the Scale; absent until its first weigh-in. */
   faithful?: FaithfulState
+  /** Rules 3.13.0 (D-76, H3): the Healer's open request for the week, and how many she has seen met. */
+  request?: HealerRequest
+  requestsMet?: number
+  /** Rules 3.13.0 (D-76, H4): what the floor was last read from, for the Healer's Audience. */
+  floorFrom?: { source: HealerSource; tdee?: number; fresh: number }
+}
+
+/** Rules 3.13.0 (D-76, H3): the Healer's request for the week after a week close: one small step on one habit. */
+export interface HealerRequest {
+  /** The week close she asked at; the request runs from the next dawn through `until`, the next week close. */
+  madeOn: ISODate
+  until: ISODate
+  habit: HealerHabit
+  /** What it asks: days of the week (a day count), or the share of the step pool walked in whole points (steps). */
+  target: number
+  /** Last week's figure it builds on, in the same terms. */
+  last: number
+  /** The day whose close it was met and paid; it stays, met, until the next week close asks again. */
+  metOn?: ISODate
 }
 
 export interface FrontState {

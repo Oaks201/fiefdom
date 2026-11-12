@@ -804,7 +804,16 @@ export function closeWeightWeek(campaign: Campaign, weight: WeightState, input: 
     loggedAverage: loggedAverage(input.days, input.day, RULES.healer.checkInWindowDays).average
   })
   return {
-    weight: { ...weight, milestones, grace, healerFloor, weeks, counsel: healerCounsel(weight.counsel, momentum, healerFloor, profile, input) },
+    weight: {
+      ...weight,
+      milestones,
+      grace,
+      healerFloor,
+      weeks,
+      counsel: healerCounsel(weight.counsel, momentum, healerFloor, profile, input),
+      // Rules 3.13.0 (D-76, H4): what the floor was read from, for the Healer's Audience.
+      floorFrom: { source: healer.source, ...(healer.tdee !== null ? { tdee: healer.tdee } : {}), fresh: healer.floor }
+    },
     momentum,
     broken,
     grace: { from: weight.grace, to: grace },

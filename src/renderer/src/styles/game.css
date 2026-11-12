@@ -302,6 +302,52 @@
   color: var(--forest);
 }
 
+/* Rules 3.13.0 (D-76, H3): her request for the week, edged in her green; met, in the forest's. */
+.healer-request {
+  margin: 0;
+  border-left: 4px solid #2f5d55;
+}
+
+.healer-request.is-met {
+  border-left-color: var(--forest);
+}
+
+.healer-request__last {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.healer-request__ask {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.healer-request__so-far {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.healer-request__so-far.is-kept {
+  color: var(--forest);
+}
+
+.healer-request__rule {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* H4: the way into an Audience with her. */
+.healer__audience,
+.weighin-card__audience {
+  margin: 0;
+}
+
+.audience--healer .healer-request {
+  margin-bottom: 12px;
+}
+
 /* -- The founding wizard -------------------------------------------------- */
 .modal--founding {
   width: min(860px, 100%);

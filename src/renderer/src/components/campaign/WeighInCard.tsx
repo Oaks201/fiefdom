@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GiCrown, GiHealthPotion, GiScales } from 'react-icons/gi'
 import { addDays, formatShort, formatWeekdayShort } from '../../lib/dates'
 import { formatNumber, formatRep, formatSigned, formatWeight } from '../../lib/format'
@@ -7,6 +8,7 @@ import { toLb } from '../../lib/game/weight'
 import { weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
 import { useUI } from '../../state/ui'
+import { HealerAudience } from './HealerAudience'
 
 /** The player's weigh-ins in lb, from the ledger (live). */
 function weighInsLb(ledger: Ledger): { date: ISODate; weight: number }[] {
@@ -105,6 +107,7 @@ function paysLine(card: WeighInCardView, today: ISODate): string {
  */
 export function WeighInCard({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
   const ui = useUI()
+  const [audience, setAudience] = useState(false)
   const card = weighInCard(campaign, weighInsLb(ledger), today)
   if (!card) return null
   const terms = healerTermsView(campaign)
@@ -180,6 +183,12 @@ export function WeighInCard({ campaign, ledger, today }: { campaign: CampaignSta
             </button>
           </div>
         )}
+        <p className="weighin-card__audience">
+          <button type="button" className="btn btn--small btn--ghost" onClick={() => setAudience(true)}>
+            <GiHealthPotion aria-hidden="true" /> Speak with Remedy
+          </button>
+        </p>
+        {audience && <HealerAudience campaign={campaign} today={today} onClose={() => setAudience(false)} />}
       </div>
     </section>
   )

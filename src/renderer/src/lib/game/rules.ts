@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.12.1',
+  ruleVersion: '3.13.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -801,7 +801,15 @@ const RULES_TABLE = {
      * D-69 (H1): how the Healer's weekly report names the trend against the target pace: flat under a
      * quarter of it, ahead above a quarter more than it, on pace between. TUNE.
      */
-    report: { flatBelowShare: 0.25, aheadAboveShare: 0.25 }
+    report: { flatBelowShare: 0.25, aheadAboveShare: 0.25 },
+    /**
+     * Rules 3.13.0 (D-68, D-76, H3): the Healer's requests. From the close of week `fromWeek`, at each
+     * week close she asks one small step on the weakest of four habits over the last `readWeeks` weeks:
+     * one day more than last week (at most every day), or `stepRaise` more of the step pool walked (at
+     * most all of it). Met, `met` reputation at the close of the day it is met, and every `respiteEvery`th
+     * met banks a Respite day (the bank's cap applies); missed, nothing. TUNE.
+     */
+    requests: { fromWeek: 2, readWeeks: 2, stepRaise: 0.1, met: 15, respiteEvery: 4 }
   },
 
   /**

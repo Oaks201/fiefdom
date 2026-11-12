@@ -1,7 +1,7 @@
 /**
  * Patch 4 (docs/redesign/patch-4-spec.md section 11; C-48), Patch 5 (docs/redesign/patch-5-spec.md
  * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md sections 7 and 12.5; C-94, D-52): a campaign
- * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.12.1 in place. Each fixture
+ * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.13.0 in place. Each fixture
  * (`tests/game/fixtures/campaign-<version>.json`) was written by its script in `scripts/` on its own
  * rules, before the next patch changed any: a synthetic Steadfast campaign played by the automatic player
  * on the simulator's ledger (no one's health data). As the app does when it loads one, a save from before
@@ -70,8 +70,8 @@ function playOn(f: Fixture, weeks: number): { state: CampaignState; violations: 
   return { state, violations }
 }
 
-test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.12.1 takes each without a re-founding, migrating it once', () => {
-  assert.equal(RULES.ruleVersion, '3.12.1')
+test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.13.0 takes each without a re-founding, migrating it once', () => {
+  assert.equal(RULES.ruleVersion, '3.13.0')
   for (const [version, f] of Object.entries(FIXTURES)) {
     assert.equal(f.ruleVersion, version)
     assert.equal(f.state.campaign.ruleVersion, version)

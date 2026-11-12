@@ -1,6 +1,6 @@
 # Remedy's lines
 
-**Status (2026-11-08):** Rich approved all 26 as written (D-74). Each now carries `approved: true` in `healer.json`, so the game speaks it.
+**Status (2026-11-11):** Rich approved the first 26 as written (D-74), and the game speaks them. Stage 2b adds 20 drafts for her requests and her Audience (D-76), at the end, unapproved: the game shows their plain lines until he approves them.
 
 Drafted 2026-11-02 for Patch 9 stage 2a (D-72). Rich's brief: Remedy is a strict, severe-looking woman, serious about health, genuine and caring, and she can come across a bit aggressive.
 
@@ -55,3 +55,37 @@ Drafted 2026-11-02 for Patch 9 stage 2a (D-72). Rich's brief: Remedy is a strict
 | `terms.noEstimate` | Contract page: not enough data for a calorie limit | I have no calorie figure for you yet. Give me {weighIns} weekly weigh-ins and {days} days of food logged in {window} days, or let Fitbit tell me what you burn. | Healer's terms: no calorie figure yet. It needs {weighIns} weekly weigh-ins and {days} days of food logged in {window} days, or Fitbit's calories burned. |
 | `terms.steps` | Contract page: her step pool | Your pool is {pool} steps a week. You met it in {met} of the last {weeks} weeks, and I have set it by that. | Healer's terms: a step pool of {pool}. The pool was met in {met} of the last {weeks} weeks. |
 | `terms.noSteps` | Contract page: fewer than 4 weeks closed | No step figure until {weeks} weeks have closed. Walk, and I will tell you how far. | Healer's terms: no step figure until {weeks} weeks have closed. |
+
+## Stage 2b: her requests (8)
+
+Drafted 2026-11-11 (D-76), unapproved.
+
+| Slot | When it shows | Remedy (draft) | The plain line it replaces |
+| --- | --- | --- | --- |
+| `request.foodLogged` | Her request: food logged was your weakest habit | Log your food on {target} of the {days} days, through {date}. Last week you logged {last}. I cannot judge what I am not shown. | Healer’s request for the week: log food on {target} of its {days} days, through {date}. Last week, {last}. |
+| `request.withinLimit` | Her request: days within the limit were your weakest | Keep {target} of the {days} days within {limit} kcal, through {date}. Last week you held {last}. One day more; that is all I ask. | Healer’s request for the week: keep {target} of its {days} days within the calorie limit of {limit} kcal, through {date}. Last week, {last}. |
+| `request.steps` | Her request: the step pool was your weakest | Walk {target}% of your step pool this week, {steps} steps, through {date}. Last week you managed {last}%. Get there. | Healer’s request for the week: walk {target}% of the step pool, {steps} steps, through {date}. Last week, {last}%. |
+| `request.duties` | Her request: duties kept were your weakest | Keep every duty on {target} of the {days} days, through {date}. Last week, {last}. Discipline is a habit before it is a virtue. | Healer’s request for the week: keep every duty on {target} of its {days} days, through {date}. Last week, {last}. |
+| `request.hold` | Her request: your weakest habit was already at its best last week | Last week was what I ask for. Do it again: {what}, through {date}. Twice is a habit begun. | Healer’s request for the week: {what} again, through {date}, as last week. |
+| `request.met` | Her request met | Done, and done properly. {reward} reputation. | Healer’s request met: {reward} reputation. |
+| `request.metRespite` | Her request met, and it was every fourth: a Respite day banked | Done. {reward} reputation, and a day of rest banked: every {every} met earns one. Spend it when you need it, not when you want it. | Healer’s request met: {reward} reputation, and a Respite day banked, as every {every} met earns. |
+| `request.missed` | Her next request card, when the one before was missed | Missed. Nothing is taken from you for it. We go again at the week close. | Healer’s request missed. Nothing is lost; a new request comes at the week close. |
+
+## Stage 2b: her Audience (12)
+
+Drafted 2026-11-11 (D-76), unapproved. The question buttons are the player's words and show as they are.
+
+| Slot | When it shows | Remedy (draft) | The plain line it replaces |
+| --- | --- | --- | --- |
+| `audience.noReading` | Her Audience opens with no weigh-in this week or last | No weigh-in this week or last. Step on the scale on {day}. I cannot help you with numbers I do not have. | There is no weigh-in this week or last. The next weekly reading is taken on {day}. |
+| `audience.floor` | Asked why the floor is what it is (maintenance estimated) | Your floor is {floor} kcal. You burn about {tdee} a day, {source}; {below} less is {fresh}, and never under {min}. It moves {move} a week at most, so no single week can shove it. | The calorie floor is {floor} kcal a day. Maintenance is estimated at {tdee} kcal, {source}; {below} less is {fresh}, never under {min}. The floor moves at most {move} kcal a week toward it. |
+| `audience.floorMinimum` | Asked about the floor while it is at its least (no estimate yet) | Your floor is {floor} kcal, the least I allow anyone. I have not seen enough of you yet to set it higher. | The calorie floor is {floor} kcal a day, the least it can be: there is not yet enough to estimate maintenance. |
+| `audience.floorNone` | Asked about the floor before the first weight week | No floor yet. I set it at your first weight week, and not a day before. | There is no calorie floor yet. It is set at the first weight week. |
+| `audience.scaleUp` | Asked why the scale went up (only after a reading up) | Up {change} {unit} on one reading. One reading is weather; the {window}-day trend is the climate, and it reads {trend}. Nothing you broke is taken back, and while your habits hold, Momentum keeps {low} to {high}%. | The scale read {change} {unit} more than last week. The game reads one weigh-in a week, and the trend over {window} days is {trend}. A broken Milestone is never taken back, and while the week’s habits hold, Momentum keeps a floor of {low} to {high}%. |
+| `audience.next` | Asked when the next Milestone comes | Milestone {index}: {mark} {unit}, {toGo} {unit} from here. Not before week {earliest}; at the pace I set, about week {week}. Do not chase it faster. | Milestone {index} is at {mark} {unit}, {toGo} {unit} to go. It cannot break before week {earliest}; at the target pace it comes about week {week}. |
+| `audience.nextReached` | Asked about a Milestone whose mark is reached early | You have reached {mark} {unit}. Milestone {index} waits for week {earliest}. Patience is part of the cure. | Milestone {index}’s mark of {mark} {unit} is reached; it breaks in week {earliest}, when its time comes. |
+| `audience.nextKeeping` | Asked about a Keeping Milestone, near the goal | Milestone {index} asks one thing now: stay near your goal. Keeping is harder than losing; most never learn that. | Milestone {index} is kept by staying near the goal. |
+| `audience.allBroken` | Asked about Milestones once all are broken | Every Milestone is broken. Now keep what you built. | Every Milestone is broken. |
+| `audience.faster` | Asked what losing faster earns | Nothing. Momentum pays in full at {target} {unit} a week and not a crumb more. Past {limit} {unit} a week I hold it at half and stop your Milestones; faster is not better, it is damage. | Nothing. Momentum pays in full at the target pace of {target} {unit} a week and no more. Past {limit} {unit} a week, Momentum is held at half and the Milestones wait. |
+| `audience.rest` | Asked whether you can rest, with days banked | You have {bank} rest days banked, of {cap}, and earn one every {every} days. A rest day pays as a day kept and asks nothing of you. Take one when you are worn, not when you are bored. | There are {bank} Respite days banked, of {cap}; one is earned every {every} days. A Respite day pays as a day kept, and asks nothing to be logged. |
+| `audience.restNone` | Asked whether you can rest, with none banked | None banked. You earn one every {every} days, up to {cap}. When it comes, it pays as a day kept. | There is no Respite day banked; one is earned every {every} days, up to {cap}. A Respite day pays as a day kept, and asks nothing to be logged. |

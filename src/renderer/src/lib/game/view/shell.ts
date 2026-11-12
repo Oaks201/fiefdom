@@ -333,6 +333,11 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       if (e.stage === 'met' || e.stage === 'missed') return line('result', `herald.request.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if (e.stage === 'broken' && e.hexId) return line('result', 'herald.request.broken', { rival: rivalName(e.rival), hex: hexName(e.hexId) }, { rival: e.rival, hexId: e.hexId })
       return e.stage === 'lapsed' && isDemand({ kind: e.request }) ? line('world', 'herald.request.lapsed', { rival: rivalName(e.rival) }, { rival: e.rival }) : null
+    case 'healerRequest':
+      // Rules 3.13.0 (D-76, H3): the Healer's request made, and met; a miss goes untold, since it costs nothing.
+      if (e.stage === 'made') return line('warning', 'herald.healer.request', { date: e.until })
+      if (e.stage === 'met') return line('result', e.respite ? 'herald.healer.requestMetRespite' : 'herald.healer.requestMet', { reward: Math.round(e.reward ?? 0) })
+      return null
     default:
       return null
   }

@@ -102,6 +102,8 @@ function inventory() {
   for (let tier = 1; tier <= 5; tier++) add(`castle.${tier}`, 'castle', `Castle, Tier ${tier}`)
 
   for (const r of rivals) for (const mood of ['calm', 'angry', 'humbled']) add(`rival.${r.id}.${mood}`, 'rival', `${r.ruler}, ${mood}`)
+  // Patch 9 (D-68, D-76, H4): Remedy, the Healer, received in her Audience as a ruler is, at the rulers' 4:5.
+  add('portrait.healer', 'rival', 'Remedy, the Healer: portrait', 'The Healer’s Audience')
 
   const lines = []
   for (const c of companies.companies) lines.push([c.id, c.name])

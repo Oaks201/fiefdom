@@ -485,18 +485,21 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   }
   const turns35 = turns((c) => c.window35)
   const turns21 = turns((c) => c.window21)
+  // Patch 9 stage 2b (D-76): the new weigh-in income is Faithful at the Scale and the Healer's requests together.
   const faithfulShare = median(
     steadfast.flatMap((r) => {
       const inc = r.measures.income
-      return inc && r.measures.faithful !== undefined ? [r.measures.faithful / Math.max(1, inc.behavior + inc.tithe + inc.spoils + inc.other)] : []
+      return inc && r.measures.faithful !== undefined ? [(r.measures.faithful + (r.measures.healerRequests?.reputation ?? 0)) / Math.max(1, inc.behavior + inc.tithe + inc.spoils + inc.other)] : []
     })
   )
+  const asked = steadfast.reduce((s, r) => s + (r.measures.healerRequests?.made ?? 0), 0)
+  const metShare = asked > 0 ? steadfast.reduce((s, r) => s + (r.measures.healerRequests?.met ?? 0), 0) / asked : Number.NaN
   rows.push(
     row(
       'G-26',
       'The Healer’s terms hold steady (Patch 9)',
-      `Steadfast greedy: weight weeks whose suggested calorie limit turns around from the week before, with the 35-day window (under ${pct(G26.turnsBelow)}) and the floor's 21-day window beside it; Faithful at the Scale's share of reputation earned (median; under ${pct(G26.faithfulBelow)})`,
-      `${pct(turns35)} (21-day ${pct(turns21)}); ${pct(faithfulShare)}`,
+      `Steadfast greedy: weight weeks whose suggested calorie limit turns around from the week before, with the 35-day window (under ${pct(G26.turnsBelow)}) and the floor's 21-day window beside it; Faithful at the Scale's and the Healer's requests' share of reputation earned (median; under ${pct(G26.faithfulBelow)}); her requests met (reported)`,
+      `${pct(turns35)} (21-day ${pct(turns21)}); ${pct(faithfulShare)}; requests met ${pct(metShare)}`,
       Number.isFinite(turns35) ? turns35 < G26.turnsBelow && faithfulShare < G26.faithfulBelow : null
     )
   )

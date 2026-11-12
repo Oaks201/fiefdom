@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { GiBootPrints, GiHealthPotion, GiHourglass, GiKnifeFork, GiLaurelCrown, GiScales, GiSwordman } from 'react-icons/gi'
 import { diffDays, formatShort, WEEKDAYS, weekday } from '../../lib/dates'
 import { formatNumber, formatRep } from '../../lib/format'
@@ -19,6 +20,7 @@ import {
   stepPace,
   weighInPrompt
 } from '../../lib/game/view/chronicle'
+import { healerRequestView } from '../../lib/game/view/healer'
 import { percent } from '../../lib/game/view/shell'
 import { dayLog, weighIns } from '../../lib/ledger'
 import type { Ledger } from '../../lib/types'
@@ -27,6 +29,7 @@ import { WaxSeal } from '../WaxSeal'
 import { StartBattles } from '../battle/StartBattles'
 import { WeightField } from '../chronicle/DayLedger'
 import { calorieCatchUpLine, stepCatchUpLine } from './catchUpLines'
+import { HealerAudience, HealerRequestCard } from './HealerAudience'
 
 /**
  * The week's pace toward the step pool and its calorie average against the limit (Ch 2, Ch 4), and on
@@ -193,18 +196,29 @@ export function WeighInBanner({ campaign, ledger, today }: { campaign: CampaignS
   )
 }
 
-/** The Healer's check-ins, as calm cards (Ch 16); each shows its approved text, or else its placeholder. */
+/**
+ * The Healer on the Chronicle: her check-ins, as calm cards (Ch 16), each with its approved text or else its
+ * placeholder; from rules 3.13.0 her request for the week (D-76, H3) and the way into an Audience with her (H4).
+ */
 export function HealerCards({ campaign, ledger, today }: { campaign: CampaignState; ledger: Ledger; today: ISODate }): React.JSX.Element | null {
+  const [audience, setAudience] = useState(false)
   const steps = liveWeek(campaign, ledger, today).reduce((s, d) => s + (d.steps ?? 0), 0)
   const cards = healerCards(campaign, today, { stepsThisWeek: steps })
-  if (cards.length === 0) return null
+  const request = healerRequestView(campaign, ledger, today)
   return (
-    <section className="healer" aria-label="The Healer">
+    <section className="healer" aria-label="Remedy, the Healer">
       {cards.map((c) => (
         <p key={c.checkIn} className="healer-card" data-text-id={c.textId}>
           <GiHealthPotion aria-hidden="true" /> {c.text}
         </p>
       ))}
+      {request && <HealerRequestCard request={request} />}
+      <p className="healer__audience">
+        <button type="button" className="btn btn--small btn--ghost" onClick={() => setAudience(true)}>
+          <GiHealthPotion aria-hidden="true" /> Speak with Remedy
+        </button>
+      </p>
+      {audience && <HealerAudience campaign={campaign} today={today} onClose={() => setAudience(false)} />}
     </section>
   )
 }

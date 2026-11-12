@@ -614,5 +614,17 @@
   "herald.deed.summonedDefeated": {
     "template": "A summoned mythic beaten at {hex}: {value} Renown on {rival}’s path.",
     "final": null
+  },
+  "herald.healer.request": {
+    "template": "Remedy has a request for the week, through {date}. See the Chronicle.",
+    "final": null
+  },
+  "herald.healer.requestMet": {
+    "template": "You met Remedy’s request: {reward} reputation.",
+    "final": null
+  },
+  "herald.healer.requestMetRespite": {
+    "template": "You met Remedy’s request: {reward} reputation and a Respite day.",
+    "final": null
   }
 }

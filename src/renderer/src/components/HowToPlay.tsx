@@ -7,7 +7,7 @@ import { trust } from '../lib/game/land'
 import { RULES } from '../lib/game/rules'
 import { RIVAL_IDS } from '../lib/game/types'
 import { amount } from '../lib/game/view/refusals'
-import { weekCloseView } from '../lib/game/view/shell'
+import { percent, weekCloseView } from '../lib/game/view/shell'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 import { useLedgerData } from '../state/hooks'
 import { useUI } from '../state/ui'
@@ -341,6 +341,18 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>The weigh-in card</b> in the Chronicle shows the week’s reading, your trend against the target pace, what the close pays, and the next Milestone with its{' '}
                 <b>waystones</b>: one for each whole pound (or kilogram) on the way, lit by a weigh-in at or under it. The Healer reports on the week there, and suggests terms for
                 the next contract.
+              </li>
+              <li>
+                <b>Remedy’s requests:</b> from week {RULES.healer.requests.fromWeek}, at each week’s close she asks one small step for the week ahead, on whichever habit was
+                weakest over the last {RULES.healer.requests.readWeeks} weeks: days with food logged, days within the calorie limit, the step pool walked, or days with every duty
+                kept. She asks one day more than last week, or {percent(RULES.healer.requests.stepRaise)} points more of the step pool, and never for anything on the
+                scale. She leaves a habit a ruler has dared you to that week to him. Met, it pays {RULES.healer.requests.met} reputation when that day closes, and each{' '}
+                {RULES.healer.requests.respiteEvery} met bank a Respite day; missed, nothing is lost. A rest day
+                counts as a day kept.
+              </li>
+              <li>
+                <b>Speak with Remedy</b> from the Chronicle or the weigh-in card: she gives this week’s report and answers how you are doing, why your calorie floor is what it
+                is, why the scale went up, when the next Milestone comes, what losing faster earns (nothing), and whether you can rest. Talking with her pays nothing.
               </li>
               <li>
                 <b>Milestones:</b> the journey from your starting weight to your goal is split into {RULES.milestones.count} marks. A weekly weigh-in at or below a mark breaks it

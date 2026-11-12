@@ -11,7 +11,7 @@ import type { ISODate, PurseEvent, PurseEventKind, PurseLine, PurseState } from 
 
 /** Where a reputation gain may come from (Ch 15 invariant 4), by the prefix of its `source`. */
 export const PURSE_SOURCES = {
-  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'faithful', 'contract', 'correction'],
+  behavior: ['duties', 'perfectDay', 'streak', 'steps', 'calories', 'flawless', 'momentum', 'faithful', 'healerRequest', 'contract', 'correction'],
   battle: ['defense', 'assault', 'grandBattle', 'mythicHunt', 'royalHunt', 'tribute', 'mythic'],
   land: ['tithe', 'courtship', 'deal', 'goblinOffer', 'auction', 'uprising', 'reclaim', 'buyBack'],
   /** The founding grant, and the Bank's interest on what the player has already earned. */
@@ -129,6 +129,11 @@ export function momentumIncome(m: number, bonus: number, share = 1): PurseLine[]
 export function faithfulIncome(streak: number, bonus: number): PurseLine[] {
   const f = RULES.faithful
   return [{ kind: 'earn', source: 'faithful', amount: withBonus(f.base + Math.min(f.maxBonus, f.perWeek * Math.max(0, streak)), bonus) }]
+}
+
+/** The Healer's request met (rules 3.13.0, D-76, H3): `met` reputation, whatever the habit. */
+export function healerRequestIncome(bonus: number): PurseLine[] {
+  return [{ kind: 'earn', source: 'healerRequest', amount: withBonus(RULES.healer.requests.met, bonus) }]
 }
 
 export interface VillageHeld {

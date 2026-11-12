@@ -15,9 +15,10 @@ import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSin
 import { dawn, patrolStrength, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { withReach } from './reach'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
-import { balance, dailyIncome, faithfulIncome, momentumIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
+import { balance, dailyIncome, faithfulIncome, healerRequestIncome, momentumIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
+import { banksRespite, chooseRequest, daredHabits, requestMet, type HabitDay } from './healer'
 import { chronicle } from './dominion'
 import { dealEnds, recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
@@ -35,7 +36,7 @@ import { EventBuffer, awayOn, isPlayable, isRestDay, respiteDays } from './state
 import { accordPaid, worldWeek } from './world'
 import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum, type StepWeek } from './weight'
-import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn, WeighIn } from './types'
+import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, HealerRequest, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn, WeighIn } from './types'
 
 // ── The phase registry ───────────────────────────────────────────────────────
 
@@ -60,7 +61,9 @@ export const DAY_PHASE_NAMES = [
   /** Rules 3.5.0 (D-53): a Milestone whose weigh-in reached its mark breaks at that day's close. */
   'milestones',
   /** Rules 3.11.0 (D-69): the week's weigh-in pays Faithful at the Scale and settles its weight week at that day's close. */
-  'weighIn'
+  'weighIn',
+  /** Rules 3.13.0 (D-76, H3): the Healer's request met pays at that day's close; one unmet at its last day's is missed. */
+  'healerRequest'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -74,7 +77,9 @@ export const WEEK_PHASE_NAMES = [
   'world',
   'resetAndSchedule',
   'marches',
-  'chronicle'
+  'chronicle',
+  /** Rules 3.13.0 (D-76, H3): the Healer's request for the week ahead, after the rulers' dares (`world`). */
+  'healer'
 ] as const
 
 export type DayPhaseName = (typeof DAY_PHASE_NAMES)[number]
@@ -650,6 +655,81 @@ const milestonesDayPhase: Phase = (state, ctx) => {
   return { ...state, weight: { ...state.weight, milestones } }
 }
 
+// ── The Healer's requests (rules 3.13.0, D-76, H3) ──────────────────────────
+
+/** The settled days from `from` through `to` as the Healer's requests read them: inputs, rest, and the terms in force (never before the start). */
+export function habitDays(state: CampaignState, from: ISODate, to: ISODate): HabitDay[] {
+  const rest = new Set(respiteDays(state))
+  return records(state, from, to).map((d) => ({ ...d, rest: rest.has(d.date), terms: currentTerms(state, d.date) }))
+}
+
+/** The request's own days settled through `day`. */
+function requestDays(state: CampaignState, q: Pick<HealerRequest, 'madeOn' | 'until'>, day: ISODate): HabitDay[] {
+  return habitDays(state, addDays(q.madeOn, 1), day < q.until ? day : q.until)
+}
+
+/** Pays a request met (H3): `met` reputation, and every fourth met banks a Respite day up to the bank's cap. `until` dates a late one (D-71). */
+function payRequest(state: CampaignState, q: Pick<HealerRequest, 'habit' | 'target' | 'until'>, day: ISODate, emit: Emit): CampaignState {
+  const lines = healerRequestIncome(reputationBonus(state))
+  const met = (state.weight.requestsMet ?? 0) + 1
+  const banked = banksRespite(met) && state.contracts.respiteBank < respiteCap(state)
+  const contracts = banked ? { ...state.contracts, respiteBank: state.contracts.respiteBank + 1 } : state.contracts
+  emit('healerRequest', { habit: q.habit, stage: 'met', target: q.target, until: q.until, reward: postedTotal(lines), ...(banked ? { respite: true as const } : {}) })
+  return { ...state, contracts, purse: postAll(state.purse, day, lines), weight: { ...state.weight, requestsMet: met } }
+}
+
+/**
+ * Rules 3.13.0 (D-76, H3): the Healer's request pays at the close of the day it is met, and stays, met, until the
+ * next week close. One still unmet at the close of its last day is missed, which costs nothing and, while the
+ * player is away, goes untold (X-17).
+ */
+const healerRequestPhase: Phase = (state, ctx) => {
+  const q = state.weight.request
+  if (!q || q.metOn !== undefined || ctx.day <= q.madeOn || ctx.day > q.until) return state
+  if (requestMet(q, requestDays(state, q, ctx.day))) {
+    const paid = payRequest(state, q, ctx.day, ctx.emit)
+    return { ...paid, weight: { ...paid.weight, request: { ...q, metOn: ctx.day } } }
+  }
+  if (ctx.day < q.until) return state
+  if (!awayOn(state, ctx.day)) ctx.emit('healerRequest', { habit: q.habit, stage: 'missed', target: q.target, until: q.until })
+  const weight = { ...state.weight }
+  delete weight.request
+  return { ...state, weight }
+}
+
+/**
+ * Rules 3.13.0 (D-76, H3): from week `fromWeek`, at each week close the Healer asks one small step for the week
+ * ahead, on the weakest habit of the last `readWeeks` weeks that no ruler dared at the same close. None while the
+ * player is away (X-17); a request met this week gives way to the new one.
+ */
+const healerWeekPhase: Phase = (state, ctx) => {
+  const r = RULES.healer.requests
+  const open = state.weight.request
+  if (ctx.week < r.fromWeek || (open && open.metOn === undefined && open.until > ctx.day) || awayOn(state, ctx.day)) return state
+  const weekStart = weekOf(ctx.day, ctx.weekStartsOn)
+  const read = habitDays(state, addDays(weekStart, -RULES.clock.daysPerWeek * (r.readWeeks - 1)), ctx.day)
+  const ask = chooseRequest(read, habitDays(state, weekStart, ctx.day), daredHabits(state, ctx.day))
+  if (!ask) return state
+  const q: HealerRequest = { madeOn: ctx.day, until: addDays(ctx.day, RULES.clock.daysPerWeek), ...ask }
+  ctx.emit('healerRequest', { habit: q.habit, stage: 'made', target: q.target, until: q.until })
+  return { ...state, weight: { ...state.weight, request: q } }
+}
+
+/**
+ * Rules 3.13.0 (D-76, with D-71): a request judged missed, met after all once corrections to its days keep it: it
+ * pays then, once, its `met` naming its last day. Read against every request missed from `first` on.
+ */
+function lateRequestsMet(state: CampaignState, first: ISODate, emit: Emit): CampaignState {
+  let next = state
+  const missed = state.log.flatMap((e) => (e.kind === 'healerRequest' && e.stage === 'missed' && e.until >= first ? [e] : []))
+  for (const e of missed) {
+    if (next.log.some((x) => x.kind === 'healerRequest' && x.stage === 'met' && x.until === e.until)) continue
+    const q = { madeOn: addDays(e.until, -RULES.clock.daysPerWeek), until: e.until, habit: e.habit, target: e.target }
+    if (requestMet(q, requestDays(next, q, e.until))) next = payRequest(next, q, next.settledThrough.day, emit)
+  }
+  return next
+}
+
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   syncNote: noop, // Fitbit syncs before `settle` is called.
@@ -665,7 +745,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   fronts: frontsDayPhase, // Patch 6 (D-50)
   rivalMoves: rivalMovesPhase, // Patch 6 (D-50)
   milestones: milestonesDayPhase, // Rules 3.5.0 (D-53)
-  weighIn: weighInPhase // Rules 3.11.0 (D-69)
+  weighIn: weighInPhase, // Rules 3.11.0 (D-69)
+  healerRequest: healerRequestPhase // Rules 3.13.0 (D-76)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
@@ -679,7 +760,8 @@ export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
   world: worldPhase, // T12
   resetAndSchedule,
   marches: marchesPhase, // Patch 2 (D-19)
-  chronicle: chroniclePhase // Patch 2 (D-18)
+  chronicle: chroniclePhase, // Patch 2 (D-18)
+  healer: healerWeekPhase // Rules 3.13.0 (D-76)
 }
 
 // ── Running it ───────────────────────────────────────────────────────────────
@@ -815,6 +897,10 @@ export function takeCorrections(state: CampaignState, ledger: Ledger, days: read
   for (let close = addDays(weekOf(first, weekStartsOn), RULES.clock.daysPerWeek - 1); close <= last; close = addDays(close, RULES.clock.daysPerWeek)) {
     next = events.flush(lateWeekRespect(next, close, weekStartsOn, weekKept(state, close, weekStartsOn), weekKept(next, close, weekStartsOn), emit))
   }
+  // Rules 3.13.0 (D-76): a Healer's request the corrections now keep pays after all.
+  const before = balance(next.purse)
+  next = events.flush(lateRequestsMet(next, first, emit))
+  adjustment = roundPosting(adjustment + balance(next.purse) - before)
   if (adjustment > 0) emit('correction', { correctedDay: first, adjustment })
   return events.flush(next)
 }
