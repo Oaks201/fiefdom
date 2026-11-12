@@ -1,4 +1,6 @@
-# Remedy's lines (for Rich's approval)
+# Remedy's lines
+
+**Status (2026-11-08):** Rich approved all 26 as written (D-74). Each now carries `approved: true` in `healer.json`, so the game speaks it.
 
 Drafted 2026-11-02 for Patch 9 stage 2a (D-72). Rich's brief: Remedy is a strict, severe-looking woman, serious about health, genuine and caring, and she can come across a bit aggressive.
 

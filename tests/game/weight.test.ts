@@ -167,7 +167,7 @@ test('Too fast: a 28-day trend of 2.5 lb a week at 217 lb holds Mw at 0.5, check
 
   const notes = healerCheckIns({ momentum: m })
   assert.deepEqual(notes.map((n) => n.checkIn), ['tooFast'])
-  assert.match(healerText(notes[0]), /faster than the safe pace/)
+  assert.match(healerText(notes[0]), /Momentum is held at half and the Milestones wait/)
 
   // Milestone 1 of 230 → 180 (mark 225, earliest week 3) is reached; week 4 would break it.
   const milestones = buildMilestones(230, 180)
@@ -441,7 +441,7 @@ function stateWith(over: Partial<Campaign> = {}): CampaignState {
 
 test('A goal of 125 lb with a height of 180 cm (BMI 17.5) is refused', () => {
   close(bmi(125, 180), 17.5, 0.01)
-  assert.throws(() => checkGoal(125, 'lb', 180), (e: unknown) => e instanceof CampaignError && /below BMI 18.5/.test(e.message))
+  assert.throws(() => checkGoal(125, 'lb', 180), (e: unknown) => e instanceof CampaignError && /125 lb is below a healthy weight/.test(e.message))
   assert.doesNotThrow(() => checkGoal(135, 'lb', 180))
   assert.doesNotThrow(() => checkGoal(125, 'lb'))
   assert.throws(() => changeGoal(stateWith({ heightCm: 180 }), 125, day(40)), CampaignError)
@@ -558,10 +558,10 @@ test('Smoothing (A-44): a floor at 1,550 whose fresh computation says 1,800 move
   assert.equal(smoothFloor(1550, 1200), 1450)
 })
 
-test('Crash dieting: a two-week logged average under the floor brings a gentle check-in', () => {
+test('Crash dieting: a two-week logged average under the floor brings a check-in', () => {
   const notes = healerCheckIns({ floor: 1550, loggedAverage: 1400 })
   assert.deepEqual(notes, [{ checkIn: 'crashDieting', facts: { floor: 1550 } }])
-  assert.match(healerText(notes[0]), /below the calorie floor of 1550 kcal/)
+  assert.match(healerText(notes[0]), /Two weeks under 1550 kcal/)
   assert.deepEqual(healerCheckIns({ floor: 1550, loggedAverage: 1600 }), [])
 })
 

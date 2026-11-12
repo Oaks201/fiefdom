@@ -25,13 +25,20 @@ test('Ch 17: Healer check-ins, one per Ch 16 guardrail (13), each with its appro
   for (const entry of Object.values(TEXT_SOURCES['healer.json'])) assert.equal(typeof entry.approved, 'boolean')
 })
 
-test('D-69: the Healer’s weekly report has a line for each way the trend can read, and the terms a line for each case, none yet approved', () => {
+test('D-69: the Healer’s weekly report has a line for each way the trend can read, and the terms a line for each case', () => {
   assert.deepEqual(
     textIds('healer.report'),
     ['notEnough', 'tooFast', 'nearGoal', 'up', 'flat', 'behind', 'onPace', 'ahead'].map((s) => `healer.report.${s}`)
   )
   assert.deepEqual(textIds('healer.terms'), ['calories', 'maintenance', 'noEstimate', 'steps', 'noSteps'].map((s) => `healer.terms.${s}`))
-  for (const id of [...textIds('healer.report'), ...textIds('healer.terms')]) assert.equal(TEXT_SOURCES['healer.json'][id].approved, false)
+})
+
+test('D-74: Rich approved every one of Remedy’s lines, so each Healer slot speaks its final', () => {
+  for (const [id, entry] of Object.entries(TEXT_SOURCES['healer.json'])) {
+    assert.equal(entry.approved, true, id)
+    assert.ok(entry.final, id)
+    assert.equal(t(id), entry.final, id)
+  }
 })
 
 test('Ch 17: 10 Milestone unlocks', () => {

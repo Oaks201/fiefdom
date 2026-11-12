@@ -2,7 +2,7 @@
 
 Written 2026-10-31, on branch `patch-8` (from Patch 8, 258be21, rules 3.10.0).
 
-**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0), and her drafted lines wait for his approval.
+**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0). On 2026-11-08 Rich approved all 26 of her lines as written (D-74).
 
 Rich's direction (2026-10-31):
 - Improve the weight-loss side of the game.
@@ -338,6 +338,6 @@ Claude drafts every Healer line in her voice: the 13 check-ins, the report and t
 
 ### Stage 2a, built (2026-11-02, D-73)
 - **H5 and H6** are built as above (rules 3.12.0). Her terms became the sample campaign's Charter at its weigh-in, and a contract sealed after carries them.
-- **Remedy's 26 drafts** are in the catalog, unapproved, and listed for review in [patch-9-remedy-lines.md](patch-9-remedy-lines.md).
+- **Remedy's 26 drafts** are in the catalog, listed for review in [patch-9-remedy-lines.md](patch-9-remedy-lines.md). Rich approved them all as written on 2026-11-08 (D-74).
 - **Simulator:** it can't play her terms, since its players eat a fixed share of the journey's terms and their weight doesn't follow what they eat, so its campaigns take her terms as advice. Every target reads as on 3.11.0. G-26 is 21% with the Respite planning (20% before).
 - **Tests:** 957 pass, 4 of them new for stage 2a.

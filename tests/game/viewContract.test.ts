@@ -134,7 +134,7 @@ test('T14: founding is refused, with its reason, for an open legacy contract and
   const ledger = emptyLedger()
   ledger.contracts.push(openLegacyContract('2026-10-01'))
   assert.throws(() => foundCampaign(input({ ledger }), FOUNDED_AT), /ledger contract is still open/)
-  assert.throws(() => foundCampaign(input({ goalWeight: 125, heightCm: 180 }), FOUNDED_AT), /BMI/)
+  assert.throws(() => foundCampaign(input({ goalWeight: 125, heightCm: 180 }), FOUNDED_AT), /125 lb is below a healthy weight for your height/)
 })
 
 // ── The view model ───────────────────────────────────────────────────────────
