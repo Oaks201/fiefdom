@@ -7,14 +7,15 @@
  * figure is the player's own: the trend, the target pace, the estimated maintenance.
  */
 import { addDays, diffDays, isWeekCloseDay, weekCloseDay, weekOf, weighInDay } from '../clock'
-import { faithfulIncome, momentumIncome, roundPosting } from '../economy'
+import { faithfulIncome, momentumIncome, plateauIncome, roundPosting } from '../economy'
+import { siegeReward } from '../plateau'
 import { RULES } from '../rules'
 import { faithfulStreak, reputationBonus, weighInQw } from '../settle'
 import { weekOn } from '../state'
 import { t } from '../text'
 import { breakMilestonesOnDay, lbTo, plannedRestPerWeek, targetPace, toLb, weeklyWeighIns, weekMomentum, type Momentum } from '../weight'
 import type { CampaignState, HealerSource, ISODate, WeighIn } from '../types'
-import { formatNumber } from '../../format'
+import { formatNumber, plural } from '../../format'
 
 type Unit = CampaignState['campaign']['unit']
 
@@ -168,8 +169,10 @@ export interface WeighInCardView {
   settled: boolean
   settlesOn: ISODate
   report: { situation: ReportSituation; textId: string; text: string }
-  /** What the close pays for it, or paid: Momentum (null when the week close pays it), Faithful at the Scale, Milestones breaking. */
-  pays: { momentum: number | null; faithful: number | null; milestones: number[] }
+  /** What the close pays for it, or paid: Momentum (null when the week close pays it), Faithful at the Scale, Milestones breaking, a plateau siege broken (D-77). */
+  pays: { momentum: number | null; faithful: number | null; milestones: number[]; plateau: number | null }
+  /** Rules 3.14.0 (D-77, B1): the Healer's word on the plateau siege: standing, its break waiting, or broken this week. */
+  siege: { textId: string; text: string } | null
   next: NextMilestoneView | null
   waystones: Waystone[]
   chart: WeighInChart
@@ -257,6 +260,20 @@ export function weighInCard(state: CampaignState, weighInsLb: readonly WeighIn[]
     ? state.weight.milestones.filter((m) => m.brokenOn !== undefined && m.brokenOn >= weekStart && m.brokenOn <= weekCloseDay(reading.date, weekStartsOn)).map((m) => m.index)
     : breakMilestonesOnDay({ milestones: state.weight.milestones, weighIns: upTo, day: settlesOn, week, weekStartsOn }).broken.map((m) => m.index)
 
+  // Rules 3.14.0 (D-77, B1): the plateau siege, standing, waiting on a too-fast trend, or broken by this week's reading.
+  const weekClose = weekCloseDay(reading.date, weekStartsOn)
+  const standing = state.weight.siege
+  const broke = state.log.findLast((e) => e.kind === 'plateau' && e.stage === 'broken' && e.day >= weekStart && e.day <= weekClose)
+  const breaksAtClose = !record && standing !== undefined && reading.weight < standing.low && !momentum.tooFast
+  const plateauPay = broke?.kind === 'plateau' ? (broke.reward ?? 0) : breaksAtClose && standing ? total(plateauIncome(siegeReward(standing.wear), bonus)) : null
+  let siege: WeighInCardView['siege'] = null
+  if (broke?.kind === 'plateau') siege = { textId: 'healer.siege.broken', text: t('healer.siege.broken', { wear: plural(broke.wear, 'day'), reward: Math.round(broke.reward ?? 0) }) }
+  else if (standing && reading.weight < standing.low && momentum.tooFast) siege = { textId: 'healer.siege.waiting', text: t('healer.siege.waiting', { low: inUnit(standing.low, unit), unit }) }
+  else if (standing) {
+    const facts = { day: Math.max(1, diffDays(standing.begunOn, today)), wear: plural(standing.wear, 'day'), reward: Math.round(total(plateauIncome(siegeReward(standing.wear), bonus))), low: inUnit(standing.low, unit), unit }
+    siege = { textId: 'healer.siege.holding', text: t('healer.siege.holding', facts) }
+  }
+
   // The next Milestone and its waystones.
   const lowest = Math.min(...weekly.map((w) => w.weight))
   const lowestBefore = index > 0 ? Math.min(...weekly.slice(0, index).map((w) => w.weight)) : Infinity
@@ -315,7 +332,8 @@ export function weighInCard(state: CampaignState, weighInsLb: readonly WeighIn[]
     settled: record !== undefined,
     settlesOn,
     report: { situation, textId: `healer.report.${situation}`, text: t(`healer.report.${situation}`, facts) },
-    pays: { momentum: momentumPay, faithful, milestones: breaking },
+    pays: { momentum: momentumPay, faithful, milestones: breaking, plateau: plateauPay },
+    siege,
     next,
     waystones,
     chart: {

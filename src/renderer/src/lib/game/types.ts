@@ -856,6 +856,8 @@ export interface GameEventMap {
    * banked when it was every fourth met), or missed. `until` names the request's last day.
    */
   healerRequest: { habit: HealerHabit; stage: 'made' | 'met' | 'missed'; target: number; until: ISODate; reward?: number; respite?: true }
+  /** Rules 3.14.0 (D-77, B1): a plateau siege begun, broken (with what its wear paid), or its break waiting on a too-fast trend. `low` in lb. */
+  plateau: { stage: 'begun' | 'broken' | 'waiting'; low: number; wear: number; reward?: number; lowOn?: ISODate }
   /** A Grand Battle was announced, queued or fought (Ch 11). `refused`: a trigger that could not be raised (T11). */
   grandBattle: {
     battleId: string
@@ -934,6 +936,19 @@ export interface WeightState {
   requestsMet?: number
   /** Rules 3.13.0 (D-76, H4): what the floor was last read from, for the Healer's Audience. */
   floorFrom?: { source: HealerSource; tdee?: number; fresh: number }
+  /** Rules 3.14.0 (D-77, B1): the plateau siege standing, if one does. */
+  siege?: PlateauSiege
+}
+
+/** Rules 3.14.0 (D-77, B1): a siege on a weight plateau, begun when the weekly readings stalled. */
+export interface PlateauSiege {
+  /** The low to break, lb, and the day of its reading. */
+  low: number
+  lowOn: ISODate
+  /** The weight week that began it; wear counts from the day after. */
+  begunOn: ISODate
+  /** Days of wear: days kept well, and rest days, while it stands. */
+  wear: number
 }
 
 /** Rules 3.13.0 (D-76, H3): the Healer's request for the week after a week close: one small step on one habit. */
@@ -1451,6 +1466,8 @@ export type EffectSourceRef =
   | { kind: 'pathRank'; path: RivalId; rank: number }
   /** Patch 4 (D-31): the Archmage's surge that blessed or cursed a company on its day. */
   | { kind: 'surge'; date: ISODate }
+  /** Rules 3.14.0 (D-77, B3): Vigor, from the last weight week's Momentum. */
+  | { kind: 'vigor'; momentum: number }
 
 export interface Contribution {
   from: EffectSourceRef

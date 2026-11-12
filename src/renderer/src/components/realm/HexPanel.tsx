@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GiCastle, GiCoins, GiCrystalBall, GiHornInternal, GiQuill, GiScales, GiShakingHands, GiShield, GiSiegeTower, GiTreasureMap } from 'react-icons/gi'
+import { GiCastle, GiCoins, GiCrystalBall, GiHornInternal, GiOak, GiQuill, GiScales, GiShakingHands, GiShield, GiSiegeTower, GiTreasureMap } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { formatShort } from '../../lib/dates'
 import { formatNumber } from '../../lib/format'
@@ -11,6 +11,7 @@ import { bendSurge } from '../../lib/game/surges'
 import { keepVillage } from '../../lib/game/world/events'
 import { RULES } from '../../lib/game/rules'
 import type { CampaignState, ISODate, RivalId } from '../../lib/game/types'
+import { heartOakStage } from '../../lib/game/weight'
 import { hexPanel, marchName, suggestedBid, trustNow, type HexAction, type HexPanel as HexPanelView } from '../../lib/game/view/realm'
 import { amount, whole } from '../../lib/game/view/refusals'
 import { SURGE_WORDS, realmConsistencyNow, rivalName } from '../../lib/game/view/shell'
@@ -19,6 +20,7 @@ import { toast } from '../../state/toasts'
 import { useUI } from '../../state/ui'
 import { BidForm } from '../diplomacy/BidForm'
 import { HoldForm } from '../diplomacy/HoldForm'
+import { GameArt } from '../game/GameArt'
 import { HelpLink } from '../game/HelpLink'
 
 const KIND_NAMES: Record<string, string> = {
@@ -73,6 +75,18 @@ function kindName(view: HexPanelView): string {
  * village's loyalty, fortification and status, and every action the engine allows here today with
  * its cost, or the engine's own reason why not.
  */
+/** Rules 3.14.0 (D-77, B2): the Heart Oak beside the castle, at its stage: one for each Milestone broken. */
+function HeartOak({ stage }: { stage: number }): React.JSX.Element {
+  return (
+    <div className="hex-panel__oak">
+      <GameArt slot={`realm.heartOak.${stage}`} width={96} label="The Heart Oak" title={`The Heart Oak, stage ${stage}`} fallback={<GiOak className="hex-panel__oak-icon" aria-hidden="true" />} />
+      <p>
+        <b>The Heart Oak</b>, stage {stage} of {RULES.milestones.count}: planted at the founding, it grows a stage with each Milestone broken.
+      </p>
+    </div>
+  )
+}
+
 export function HexPanel({ campaign, today, hexId, onClose }: { campaign: CampaignState; today: ISODate; hexId: string; onClose(): void }): React.JSX.Element | null {
   const view = hexPanel(campaign, hexId, today)
   const [bidding, setBidding] = useState(false)
@@ -92,6 +106,7 @@ export function HexPanel({ campaign, today, hexId, onClose }: { campaign: Campai
       <p className="hex-panel__what">
         <span className={`owner-badge owner-badge--${view.owner}`}>{view.ownerName}</span> {kindName(view)}, {view.march ? `${marchName(view.march)}, depth ${view.depth}` : 'the heartland'} · band {view.band}
       </p>
+      {view.kind === 'castle' && <HeartOak stage={heartOakStage(campaign.weight.milestones)} />}
       <dl className="facts">
         {view.seam && view.march && (
           <div>

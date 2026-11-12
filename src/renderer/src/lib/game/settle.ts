@@ -15,7 +15,7 @@ import { addDays, campaignWeek, diffDays, isWeekCloseDay, openDay, closedDaysSin
 import { dawn, patrolStrength, scheduleThreats, settleCombat, type GrandBattleRequest } from './combat'
 import { withReach } from './reach'
 import { earnRespite, lateCorrection, settleContract, type AccordPaid, type PayContext } from './contracts'
-import { balance, dailyIncome, faithfulIncome, healerRequestIncome, momentumIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
+import { balance, dailyIncome, faithfulIncome, healerRequestIncome, momentumIncome, plateauIncome, post, postAll, roundPosting, tithes, weeklyIncome } from './economy'
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { banksRespite, chooseRequest, daredHabits, requestMet, type HabitDay } from './healer'
@@ -26,6 +26,7 @@ import { resolveGoblinBids } from './goblin'
 // Patch 4 (D-31): installs the Archmage's surges into combat's dawn.
 import './surges'
 import { prepareMarches } from './marches'
+import { plateauWeek, wearsOn } from './plateau'
 import { marchRulesDay } from './personalities'
 import { sameInputs, snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from './ledgerDays'
 import { borderCampaigns, dailyStandings, lateWeekRespect, rivalBidsAtClose, rivalMovesDay, rivalTurn, settleFronts, skirmishFronts, type RivalWeek, type WarhostRequest, type WeekKept } from './rivals'
@@ -34,7 +35,7 @@ import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
 import { EventBuffer, awayOn, isPlayable, isRestDay, respiteDays } from './state'
 import { accordPaid, worldWeek } from './world'
-import { consistency, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
+import { consistency, dayScore, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum, type StepWeek } from './weight'
 import type { CampaignState, Charter, DayRecord, DaySnapshot, Emit, GameEvent, HealerRequest, ISODate, LandContract, MilestoneState, PurseLine, WeekStartsOn, WeighIn } from './types'
 
@@ -63,7 +64,9 @@ export const DAY_PHASE_NAMES = [
   /** Rules 3.11.0 (D-69): the week's weigh-in pays Faithful at the Scale and settles its weight week at that day's close. */
   'weighIn',
   /** Rules 3.13.0 (D-76, H3): the Healer's request met pays at that day's close; one unmet at its last day's is missed. */
-  'healerRequest'
+  'healerRequest',
+  /** Rules 3.14.0 (D-77, B1): a day kept well, or a rest day, wears the plateau siege standing. */
+  'plateau'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -505,7 +508,41 @@ function closeWeight(state: CampaignState, ctx: PhaseContext, qw: number): { sta
   for (const note of result.checkIns) ctx.emit('healer', { checkIn: note.checkIn })
   const next = { ...state, weight: result.weight }
   const recorded = result.weight.weeks.length > state.weight.weeks.length
-  return { state: recorded ? healerSetsTerms(next, ctx.emit) : next, momentum: result.momentum.m }
+  return { state: recorded ? plateauStep(healerSetsTerms(next, ctx.emit), ctx, result.momentum.tooFast) : next, momentum: result.momentum.m }
+}
+
+/**
+ * Rules 3.14.0 (D-77, B1): the plateau siege at a weight week. The week's reading below a standing siege's low
+ * breaks it, paying its wear then, unless the trend is too fast (it waits, A-43); with none standing, one
+ * begins when the campaign's weekly readings stall.
+ */
+function plateauStep(state: CampaignState, ctx: PhaseContext, tooFast: boolean): CampaignState {
+  const { weekStartsOn, startDate } = state.campaign
+  const readings = weighInsOf(state.settlement.snapshots, weekStartsOn).filter((w) => w.date >= startDate && w.date <= ctx.day)
+  const before = state.weight.siege
+  const step = plateauWeek(before, readings, weekReading(state, ctx.day), ctx.day, tooFast)
+  const weight = { ...state.weight }
+  delete weight.siege
+  if (step.siege) weight.siege = step.siege
+  let next: CampaignState = { ...state, weight }
+  if (step.begun && step.siege) ctx.emit('plateau', { stage: 'begun', low: step.siege.low, lowOn: step.siege.lowOn, wear: 0 })
+  if (step.waiting && step.siege) ctx.emit('plateau', { stage: 'waiting', low: step.siege.low, wear: step.siege.wear })
+  if (step.broken && before) {
+    const lines = plateauIncome(step.broken.reward, reputationBonus(state))
+    next = { ...next, purse: postAll(next.purse, ctx.day, lines) }
+    ctx.emit('plateau', { stage: 'broken', low: before.low, wear: step.broken.wear, reward: postedTotal(lines) })
+  }
+  return next
+}
+
+/** Rules 3.14.0 (D-77, B1): each day after a plateau siege began, kept well or a rest day, adds a day of wear; none while the player is away (X-17). */
+const plateauDayPhase: Phase = (state, ctx) => {
+  const siege = state.weight.siege
+  if (!siege || ctx.day <= siege.begunOn || awayOn(state, ctx.day)) return state
+  const snapshot = snapshotOf(state, ctx.day)
+  const rest = isRestDay(state, ctx.day)
+  const score = snapshot ? dayScore(toDayRecord(snapshot), charterOn(state, ctx.day).stepPool) : 0
+  return wearsOn(rest, score) ? { ...state, weight: { ...state.weight, siege: { ...siege, wear: siege.wear + 1 } } } : state
 }
 
 /**
@@ -746,7 +783,8 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   rivalMoves: rivalMovesPhase, // Patch 6 (D-50)
   milestones: milestonesDayPhase, // Rules 3.5.0 (D-53)
   weighIn: weighInPhase, // Rules 3.11.0 (D-69)
-  healerRequest: healerRequestPhase // Rules 3.13.0 (D-76)
+  healerRequest: healerRequestPhase, // Rules 3.13.0 (D-76)
+  plateau: plateauDayPhase // Rules 3.14.0 (D-77)
 }
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */

@@ -233,6 +233,8 @@ export interface MomentSpec {
   lines?: string[]
   /** A button beside Continue: watch a battle's replay. */
   action?: { label: string; battleId: string }
+  /** Rules 3.14.0 (D-77, B2): a small picture beside the words: the Heart Oak at the stage a Milestone grows it to. */
+  inset?: { slot: string; label: string }
 }
 
 /**
@@ -248,7 +250,9 @@ export function momentsFor(state: CampaignState, events: readonly GameEvent[]): 
     switch (e.kind) {
       case 'milestone': {
         const card = milestoneCard(e.index, { mark: Math.round(lbTo(e.mark, state.campaign.unit) * TENTH) / TENTH, unit: state.campaign.unit, date: e.day })
-        out.push({ id: e.id, slot: card.slot, titleId: card.titleId, bodyId: card.bodyId, facts: card.facts, sound: 'milestone', lines: card.unlocks })
+        // Rules 3.14.0 (D-77, B2): the Heart Oak grows a stage with each Milestone.
+        const oak = `The Heart Oak grows to stage ${e.index} of ${RULES.milestones.count}.`
+        out.push({ id: e.id, slot: card.slot, titleId: card.titleId, bodyId: card.bodyId, facts: card.facts, sound: 'milestone', lines: [...card.unlocks, oak], inset: { slot: `realm.heartOak.${e.index}`, label: 'The Heart Oak' } })
         break
       }
       case 'grandBattle': {

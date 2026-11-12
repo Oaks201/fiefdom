@@ -44,7 +44,8 @@ const SIZES = {
   button: [256, 64],
   parchment: [1024, 1024],
   seal: [128, 128],
-  icon: [64, 64]
+  icon: [64, 64],
+  oak: [256, 256]
 }
 
 const WHERE = {
@@ -65,7 +66,8 @@ const WHERE = {
   button: 'Everywhere',
   parchment: 'Everywhere',
   seal: 'Everywhere',
-  icon: 'Everywhere'
+  icon: 'Everywhere',
+  oak: 'Realm map (the castle hex), the castle panel, Milestone cards'
 }
 
 /** Every art slot, in a stable order. */
@@ -135,6 +137,8 @@ function inventory() {
   for (const owner of ['player', 'orc', 'goblin', 'dwarf', 'archmage', 'neutral']) add(`banner.${owner}`, 'banner', `Banner: ${owner}`)
   for (const e of read('events.json')) add(`event.${e.id}`, 'event', `Event card: ${e.name}`)
   for (let n = 1; n <= 10; n++) add(`milestone.${n}`, 'milestone', `Milestone ${n} scene`)
+  // Patch 9 (D-68, D-77, B2): the Heart Oak, planted at founding and grown a stage with each Milestone.
+  for (let n = 0; n <= 10; n++) add(`realm.heartOak.${n}`, 'oak', `The Heart Oak, stage ${n}`)
   for (const m of ['grandBattleWon', 'grandBattleLost', 'coalition', 'ultimatum', 'victory', 'fall']) add(`moment.${m}`, 'moment', `Big moment: ${m}`)
   // Patch 6 (D-47, C-81): the Herald reading the morning's news, a band across the top of the Dawn tidings card.
   add('moment.dawnTidings', 'moment', 'Dawn tidings: the Herald reading the morning news', 'Dawn tidings card')

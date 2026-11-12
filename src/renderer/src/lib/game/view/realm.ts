@@ -25,6 +25,7 @@ import { reachStanding, stepsBeyond } from '../reach'
 import { fallbackOn, flankingMult, standingSiegeOf } from '../sieges'
 import { openDayOf, worldOf } from '../state'
 import { bendSurge, foreseesSurges } from '../surges'
+import { heartOakStage } from '../weight'
 import { t } from '../text'
 import {
   BUILDING_IDS,
@@ -268,6 +269,8 @@ export interface MapHex extends HexPoint {
   preparation?: number
   /** A siege on it (D-22): its wear as a share of the garrison it wears (0 to 1), and whether it is the standing siege. */
   siege?: { progress: number; standing: boolean }
+  /** Rules 3.14.0 (D-77, B2): on the castle hex, the Heart Oak's stage: one for each Milestone broken. */
+  oak?: number
   /** A stronghold (D-23). */
   stronghold?: boolean
   /** A garrison fallen back here (D-24): the strength it adds today and the days it has left, today included. */
@@ -342,6 +345,7 @@ export function mapView(state: CampaignState, today: ISODate = openDayOf(state))
     const siege = siegeOn(state, h, today, standing)
     if (siege) out.siege = siege
     if (isStronghold(state.hexes, h.id)) out.stronghold = true
+    if (h.kind === 'castle') out.oak = heartOakStage(state.weight.milestones)
     const fallen = fallbackHere(state, h, today)
     if (fallen) out.fallback = { strength: fallen.strength, daysLeft: fallen.daysLeft }
     const bar = h.owner !== 'player' ? strongholdBarring(state.hexes, h.id) : undefined

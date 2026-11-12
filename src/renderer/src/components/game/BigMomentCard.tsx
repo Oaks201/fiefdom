@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { GiOak } from 'react-icons/gi'
 import { sfx } from '../../audio'
 import { SFX_NAMES, type SfxName } from '../../audio/sfx'
 import { useMoments } from '../../state/moments'
@@ -46,6 +47,11 @@ export function BigMomentCard(): React.JSX.Element | null {
         )}
         <div className="moment__words">
           <h2 className="moment__title">{text(moment.titleId, moment.facts)}</h2>
+          {moment.inset && (
+            <span className="moment__inset">
+              <GameArt slot={moment.inset.slot} width={96} label={moment.inset.label} title={moment.inset.label} fallback={<GiOak className="moment__inset-icon" aria-hidden="true" />} />
+            </span>
+          )}
           {moment.bodyId && <p className="moment__body">{text(moment.bodyId, moment.facts)}</p>}
           {moment.lines && moment.lines.length > 0 && (
             <ul className="moment__lines">

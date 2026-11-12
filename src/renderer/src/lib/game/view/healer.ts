@@ -167,7 +167,7 @@ export function healerAudience(state: CampaignState, ledger: Ledger, weighInsLb:
   const opening = card ? { textId: card.report.textId, text: card.report.text } : words('healer.audience.noReading', { day: weighInDay(today, weekStartsOn) < today ? weighInDay(addDays(weekOf(today, weekStartsOn), RULES.clock.daysPerWeek), weekStartsOn) : weighInDay(today, weekStartsOn) })
   const questions: HealerQuestion[] = []
 
-  questions.push({ id: 'doing', label: 'How am I doing?', answer: [opening, ...(terms?.lines ?? [])] })
+  questions.push({ id: 'doing', label: 'How am I doing?', answer: [opening, ...(card?.siege ? [card.siege] : []), ...(terms?.lines ?? [])] })
 
   const floor = state.weight.healerFloor
   const from = state.weight.floorFrom
@@ -184,7 +184,7 @@ export function healerAudience(state: CampaignState, ledger: Ledger, weighInsLb:
               tdee: formatNumber(Math.round(from.tdee / h.roundTo) * h.roundTo),
               source: SOURCE_WORDS[from.source],
               below: formatNumber(h.range.lowBelowTdee),
-              fresh: formatNumber(from.fresh),
+              low: formatNumber(Math.round((from.tdee - h.range.lowBelowTdee) / h.roundTo) * h.roundTo),
               min: formatNumber(h.minFloor),
               move: h.maxMovePerWeek
             })

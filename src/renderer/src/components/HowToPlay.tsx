@@ -351,6 +351,15 @@ export function HowToPlay(): React.JSX.Element | null {
                 counts as a day kept.
               </li>
               <li>
+                <b>The plateau siege:</b> when {RULES.plateauSiege.stallReadings} weekly weigh-ins in a row pass without a new low, a siege on the plateau begins. Each
+                day after that with your duties, food and steps scoring {percent(RULES.plateauSiege.wearDayScore)}% or more, and each Respite day, adds a day of wear; wear
+                never fades. The first weekly weigh-in below the low breaks it and pays {RULES.plateauSiege.perWear} reputation a day of wear (at most{' '}
+                {RULES.plateauSiege.maxReward}) when that day closes: the pay is for the days you kept, not for how much came off. A too-fast trend makes it wait.
+              </li>
+              <li>
+                <b>The Heart Oak</b> stands beside your castle on the map. Planted at the founding, it grows a stage with each Milestone broken.
+              </li>
+              <li>
                 <b>Speak with Remedy</b> from the Chronicle or the weigh-in card: she gives this week’s report and answers how you are doing, why your calorie floor is what it
                 is, why the scale went up, when the next Milestone comes, what losing faster earns (nothing), and whether you can rest. Talking with her pays nothing.
               </li>

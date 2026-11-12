@@ -62,6 +62,11 @@ export function tablePillar(days: readonly DayRecord[], terms: ScoreTerms): numb
   return (logged.length / days.length) * budgetScore(average, terms.calorieLimit)
 }
 
+/** A settled day's duties, food and steps (against a day's share of the pool), averaged: what a "low-scoring day" means (A-179), and a day kept well on a plateau (D-77). */
+export function dayScore(day: DayRecord, stepPool: number): number {
+  return (dutiesPillar([day]) + (day.eaten !== undefined ? 1 : 0) + stepsPillar([day], stepPool)) / PILLARS
+}
+
 /** Duties kept ÷ duties sworn. */
 export function dutiesPillar(days: readonly DayRecord[]): number {
   const sworn = days.reduce((sum, d) => sum + d.dutiesSworn, 0)

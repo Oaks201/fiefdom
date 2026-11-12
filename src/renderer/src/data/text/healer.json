@@ -165,8 +165,8 @@
     "approved": false
   },
   "healer.request.missed": {
-    "template": "Healer’s request missed. Nothing is lost; a new request comes at the week close.",
-    "final": "Missed. Nothing is taken from you for it. We go again at the week close.",
+    "template": "Healer: last week’s request was missed. Nothing is lost for it.",
+    "final": "Last week’s request: missed. Nothing is taken from you for it. We go again.",
     "approved": false
   },
   "healer.audience.noReading": {
@@ -175,8 +175,8 @@
     "approved": false
   },
   "healer.audience.floor": {
-    "template": "The calorie floor is {floor} kcal a day. Maintenance is estimated at {tdee} kcal, {source}; {below} less is {fresh}, never under {min}. The floor moves at most {move} kcal a week toward it.",
-    "final": "Your floor is {floor} kcal. You burn about {tdee} a day, {source}; {below} less is {fresh}, and never under {min}. It moves {move} a week at most, so no single week can shove it.",
+    "template": "The calorie floor is {floor} kcal a day. Maintenance is estimated at {tdee} kcal, {source}; {below} less is {low}, and the floor is never under {min}. It moves at most {move} kcal a week toward that.",
+    "final": "Your floor is {floor} kcal. You burn about {tdee} a day, {source}; {below} less is {low}, and I never set it under {min}. It moves {move} a week at most, so no single week can shove it.",
     "approved": false
   },
   "healer.audience.floorMinimum": {
@@ -227,6 +227,21 @@
   "healer.audience.restNone": {
     "template": "There is no Respite day banked; one is earned every {every} days, up to {cap}. A Respite day pays as a day kept, and asks nothing to be logged.",
     "final": "None banked. You earn one every {every} days, up to {cap}. When it comes, it pays as a day kept.",
+    "approved": false
+  },
+  "healer.siege.holding": {
+    "template": "Healer: the plateau siege, day {day}: {wear} of wear, worth {reward} reputation when a weekly weigh-in breaks below {low} {unit}.",
+    "final": "Day {day} of the siege: {wear} of wear so far, worth {reward} the week you weigh in under {low} {unit}. Plateaus fall to patience, not panic; keep wearing it down.",
+    "approved": false
+  },
+  "healer.siege.waiting": {
+    "template": "Healer: the weigh-in is below the plateau's low of {low} {unit}, but the trend is too fast, so the siege's pay waits until it slows.",
+    "final": "You are under {low} {unit}, but too fast. The siege's pay waits until you slow down. Eat to your limit, not under it.",
+    "approved": false
+  },
+  "healer.siege.broken": {
+    "template": "Healer: the plateau is broken. {wear} of wear pay {reward} reputation.",
+    "final": "The plateau is broken. {wear} of wear, {reward} reputation: paid for the days you kept when the scale gave you nothing.",
     "approved": false
   }
 }

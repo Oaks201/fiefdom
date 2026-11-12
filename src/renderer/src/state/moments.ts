@@ -23,6 +23,8 @@ export interface Moment {
   action?: { label: string; battleId: string }
   /** The player's portrait in place of the slot's art (the standing card). */
   portrait?: PortraitChoice
+  /** Rules 3.14.0 (D-77, B2): a small picture beside the words: the Heart Oak at the stage a Milestone grows it to. */
+  inset?: { slot: string; label: string }
 }
 
 interface MomentStore {

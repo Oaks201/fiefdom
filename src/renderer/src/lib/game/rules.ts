@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.13.0',
+  ruleVersion: '3.14.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -817,6 +817,20 @@ const RULES_TABLE = {
    * `perWeek` for each week in a row before it with one, up to `maxBonus`, whatever the scale says. TUNE.
    */
   faithful: { base: 10, perWeek: 2, maxBonus: 10 },
+
+  /**
+   * Rules 3.14.0 (D-68, D-77, B1): the plateau siege. `stallReadings` weekly readings in a row after the low with none
+   * below it begin a siege; each day while it stands with a day score of `wearDayScore` or more (duties, food
+   * logged, steps), or a rest day, adds a day of wear; the first reading below the low pays `perWear` a day of
+   * wear, at most `maxReward`. TUNE.
+   */
+  plateauSiege: { stallReadings: 3, wearDayScore: 0.75, perWear: 5, maxReward: 150 },
+
+  /**
+   * Rules 3.14.0 (D-68, D-77, B3): Vigor. Each weight week's Momentum M gives every company `perMomentum` × M more
+   * power, until the next weight week settles; 0 leaves it out. TUNE.
+   */
+  vigor: { perMomentum: 0 },
 
   armory: {
     /** One item slot per company from Milestone 1, two from Milestone 4. */

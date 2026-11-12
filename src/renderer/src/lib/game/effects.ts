@@ -225,6 +225,10 @@ export function realmEffects(state: CampaignState): Effects {
   push(e.armsBonus, foundry, byTier(RULES.buildings.foundry.armsBonus, b.foundry))
   push(e.walls, foundry, byTier(RULES.buildings.foundry.walls, b.foundry))
 
+  // Rules 3.14.0 (D-77, B3): Vigor, every company's power from the last weight week's Momentum, until the next settles.
+  const momentum = state.weight.weeks.at(-1)?.momentum ?? 0
+  if (RULES.vigor.perMomentum > 0 && momentum > 0) push(e.companyPower.all, { kind: 'vigor', momentum }, RULES.vigor.perMomentum * momentum)
+
   // Milestone boons (Ch 9).
   if (milestoneBroken(state, unlocks.armory)) push(e.itemSlots, milestone(unlocks.armory, 'armory'), RULES.armory.itemSlots.base)
   if (milestoneBroken(state, unlocks.secondItemSlot)) {
@@ -464,5 +468,7 @@ export function sourceLabel(ref: EffectSourceRef): string {
       return `${CODEX.rivals.find((x) => x.id === ref.path)?.people ?? ref.path} path ${numeral(ref.rank)}`
     case 'surge':
       return 'Wild magic'
+    case 'vigor':
+      return 'Vigor'
   }
 }

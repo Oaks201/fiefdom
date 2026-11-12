@@ -78,6 +78,18 @@
   color: var(--ink-2);
 }
 
+/* Rules 3.14.0 (D-77, B2): the Heart Oak at its new stage, under a Milestone's title. */
+.moment__inset {
+  display: flex;
+  justify-content: center;
+}
+
+.moment__inset-icon {
+  width: 56px;
+  height: 56px;
+  color: #2f6b3a;
+}
+
 /* -- The Herald ----------------------------------------------------------- */
 .herald__section + .herald__section {
   margin-top: 10px;

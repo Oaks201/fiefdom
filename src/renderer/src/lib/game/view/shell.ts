@@ -23,6 +23,7 @@ import { foreseesSurges } from '../surges'
 import { isPlayable, isRestDay, openDayOf, weekOn, worldOf } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
+import { plural } from '../../format'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type StanceBand, type Surge, type SurgeKind, type WeekStartsOn } from '../types'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
@@ -337,6 +338,11 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       // Rules 3.13.0 (D-76, H3): the Healer's request made, and met; a miss goes untold, since it costs nothing.
       if (e.stage === 'made') return line('warning', 'herald.healer.request', { date: e.until })
       if (e.stage === 'met') return line('result', e.respite ? 'herald.healer.requestMetRespite' : 'herald.healer.requestMet', { reward: Math.round(e.reward ?? 0) })
+      return null
+    case 'plateau':
+      // Rules 3.14.0 (D-77, B1): a plateau siege begun or broken; a break waiting on a too-fast trend is the Healer's to tell.
+      if (e.stage === 'begun') return line('world', 'herald.plateau.begun', { weeks: RULES.plateauSiege.stallReadings })
+      if (e.stage === 'broken') return line('result', 'herald.plateau.broken', { wear: plural(e.wear, 'day'), reward: Math.round(e.reward ?? 0) })
       return null
     default:
       return null

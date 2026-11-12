@@ -11,7 +11,7 @@
  *
  * A variant is `base`, `income` (the Ch 15 income check's conditions), `conquestOnWar` (Patch 6, C-93: daily
  * conquest planning switched on, for T-09's comparison), `standingBuffer` (Patch 6, T-10: a 5-point buffer on
- * the standings) or `<lever>:<percent>`, such as `hostShare:+10`. A lever scales its values by 1 + percent / 100.
+ * the standings), `vigor` (Patch 9, B3, D-77: Vigor switched on at 5%) or `<lever>:<percent>`, such as `hostShare:+10`. A lever scales its values by 1 + percent / 100.
  */
 import Module from 'node:module'
 
@@ -145,9 +145,12 @@ export const CONQUEST_ON_WAR = 'conquestOnWar'
 export const STANDING_BUFFER = 'standingBuffer'
 /** The buffer T-10 proposes probing (patch-6-spec section 12.4). */
 export const BUFFER_PROBE = 5
+/** Patch 9 (B3, D-77): Vigor switched on at the proposals' 5% of power a point of Momentum, for its decision. */
+export const VIGOR = 'vigor'
+export const VIGOR_PROBE = 0.05
 
 /** The variants that are switches rather than a lever's step. */
-const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR, STANDING_BUFFER])
+const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR, STANDING_BUFFER, VIGOR])
 
 export function variantOf(lever: string, delta: number): string {
   return `${lever}:${delta > 0 ? '+' : ''}${delta}`
@@ -169,6 +172,7 @@ export function patchOf(variant: string): (table: Table) => Table {
   if (variant === INCOME) return (t) => (incomeCheck(t), t)
   if (variant === CONQUEST_ON_WAR) return (t) => ((t.rivalAi.planConquestOnWar = true), t)
   if (variant === STANDING_BUFFER) return (t) => ((t.respect.standingBuffer = BUFFER_PROBE), t)
+  if (variant === VIGOR) return (t) => ((t.vigor.perMomentum = VIGOR_PROBE), t)
   const { lever, delta } = parseVariant(variant) as { lever: Lever; delta: number }
   return (t) => (lever.apply(t, 1 + delta / 100), t)
 }
@@ -221,6 +225,10 @@ export function checkOverride(variant: string, rules: Table): number[] {
   if (variant === STANDING_BUFFER) {
     if (rules.respect.standingBuffer !== BUFFER_PROBE) throw new Error('The standingBuffer variant did not reach RULES')
     return [rules.respect.standingBuffer]
+  }
+  if (variant === VIGOR) {
+    if (rules.vigor.perMomentum !== VIGOR_PROBE) throw new Error('The vigor variant did not reach RULES')
+    return [rules.vigor.perMomentum]
   }
   const lever = (parseVariant(variant) as { lever: Lever }).lever
   const loaded = lever.read(rules)

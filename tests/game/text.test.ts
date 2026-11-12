@@ -19,7 +19,7 @@ test('the catalog is well formed', () => {
 })
 
 test('Ch 17: Healer check-ins, one per Ch 16 guardrail (13), each with its approval flag (false until the owner reads it)', () => {
-  const ids = textIds('healer').filter((id) => !['report', 'terms', 'request', 'audience'].includes(id.split('.')[1]))
+  const ids = textIds('healer').filter((id) => !['report', 'terms', 'request', 'audience', 'siege'].includes(id.split('.')[1]))
   assert.equal(ids.length, 13)
   assert.deepEqual(ids, HEALER_CHECK_INS.map((id) => `healer.${id}`))
   for (const entry of Object.values(TEXT_SOURCES['healer.json'])) assert.equal(typeof entry.approved, 'boolean')
@@ -34,7 +34,7 @@ test('D-69: the Healer’s weekly report has a line for each way the trend can r
 })
 
 test('D-74: Rich approved every one of Remedy’s stage 2a lines, so each of those slots speaks its final', () => {
-  const stage2a = Object.entries(TEXT_SOURCES['healer.json']).filter(([id]) => !id.startsWith('healer.request.') && !id.startsWith('healer.audience.'))
+  const stage2a = Object.entries(TEXT_SOURCES['healer.json']).filter(([id]) => !['request', 'audience', 'siege'].includes(id.split('.')[1]))
   assert.equal(stage2a.length, 26)
   for (const [id, entry] of stage2a) {
     assert.equal(entry.approved, true, id)
@@ -43,9 +43,9 @@ test('D-74: Rich approved every one of Remedy’s stage 2a lines, so each of tho
   }
 })
 
-test('D-76: Remedy’s request and Audience lines are drafted in her finals, unapproved, so the plain templates show until Rich reads them', () => {
-  const ids = [...textIds('healer.request'), ...textIds('healer.audience')]
-  assert.equal(ids.length, 20)
+test('D-76, D-77: Remedy’s request, Audience and plateau siege lines are drafted in her finals, unapproved, so the plain templates show until Rich reads them', () => {
+  const ids = [...textIds('healer.request'), ...textIds('healer.audience'), ...textIds('healer.siege')]
+  assert.equal(ids.length, 23)
   for (const id of ids) {
     const entry = TEXT_SOURCES['healer.json'][id]
     assert.equal(entry.approved, false, id)

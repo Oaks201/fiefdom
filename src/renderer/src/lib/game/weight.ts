@@ -724,6 +724,11 @@ function healerCounsel(previous: HealerCounsel | undefined, momentum: Momentum, 
 }
 
 /** A fresh weight slice for a campaign founded with `start` and `goal` (in lb). */
+/** Rules 3.14.0 (D-68, D-77, B2): the Heart Oak's stage, 0 at founding and one more for each Milestone broken. */
+export function heartOakStage(milestones: readonly MilestoneState[]): number {
+  return milestones.filter((m) => m.brokenOn !== undefined).length
+}
+
 export function initialWeightState(start: number, goal: number): WeightState {
   return { milestones: buildMilestones(start, goal), grace: 0, weeks: [] }
 }

@@ -626,5 +626,13 @@
   "herald.healer.requestMetRespite": {
     "template": "You met Remedy’s request: {reward} reputation and a Respite day.",
     "final": null
+  },
+  "herald.plateau.begun": {
+    "template": "A siege on the weight plateau begins: {weeks} weekly weigh-ins without a new low. Each day kept well wears it down.",
+    "final": null
+  },
+  "herald.plateau.broken": {
+    "template": "The plateau is broken: {wear} of wear pay {reward} reputation.",
+    "final": null
   }
 }

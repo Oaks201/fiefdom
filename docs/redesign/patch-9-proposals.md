@@ -2,7 +2,7 @@
 
 Written 2026-10-31, on branch `patch-8` (from Patch 8, 258be21, rules 3.10.0).
 
-**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0). On 2026-11-08 Rich approved all 26 of her lines as written (D-74). On 2026-11-11 Rich asked Claude to run the rest by the design so far: stage 2b, her requests and her Audience, is built (D-76, rules 3.13.0; section 13).
+**Status (2026-11-01):** Rich approved everything as recommended (D-68): W1 to W4, H1 to H4, B1 and B2, writing option 1 and the suggested order. B3 (Vigor) is left open for stage 3, on the simulator's report. Stage 1, the weigh-in moment and the Healer's terms, is built (D-69, rules 3.11.0; section 11), and Rich took its decisions T-11 to T-13 as recommended (D-70). On 2026-11-02 Rich named the Healer Remedy and had her terms bind, Respite days counted (D-72, section 12); stage 2a is built (D-73, rules 3.12.0). On 2026-11-08 Rich approved all 26 of her lines as written (D-74). On 2026-11-11 Rich asked Claude to run the rest by the design so far: stage 2b, her requests and her Audience, is built (D-76, rules 3.13.0; section 13). Stage 3 is built too (D-77, rules 3.14.0; section 14): the plateau siege and the Heart Oak; Vigor was left out on the simulator's report. Patch 9 is complete.
 
 Rich's direction (2026-10-31):
 - Improve the weight-loss side of the game.
@@ -370,3 +370,34 @@ Built on branch `patch-9` (2026-11-11). On 2026-11-11 Rich asked Claude to run t
 ### 13.3 What the simulator found
 
 720 campaigns, no invariant broken; every verdict is as on 3.12.0. G-26 holds at 22% (21% before: requests bank Respite days, which her arithmetic counts). Faithful at the Scale with her requests is 2% of what a Steadfast campaign earns, and 41% of her requests are met.
+
+## 14. Stage 3: the plateau siege, the Heart Oak, and Vigor (rules 3.14.0, D-77)
+
+Built on branch `patch-9` (2026-11-11). [Targets](../game/sim/targets-3.14.0.md); [with Vigor](../game/sim/targets-3.14.0-vigor.md).
+
+### 14.1 What was built
+
+- **B1, the plateau siege** (`plateau.ts`), as proposed:
+  - three weekly readings in a row after the low with none below it begin a siege;
+  - each day after that with a day score of 0.75 or more, and each rest day, adds a day of wear; none while away;
+  - the first reading below the low pays 5 a day of wear, at most 150, at that weigh-in's close; a too-fast trend makes it wait;
+  - the weigh-in card and her Audience show it standing (day n, its wear, what it is worth) and broken; the Herald tells it begun and broken.
+- **B2, the Heart Oak:** beside the castle, a stage for each Milestone broken: on the castle hex up close, in its panel, and on each Milestone card. 11 art slots with prompts in [patch-9-art-prompts.md](patch-9-art-prompts.md); an oak icon stands in until they are painted.
+- **Words:** her three siege lines, drafted and unapproved, and two Herald lines.
+
+### 14.2 Decisions Claude made by the design
+
+- **B3, Vigor: left out.** D-68 asked that G-08, G-11 and G-19 stay in their windows. With Vigor at 5%, G-11 misses: Steadfast wins at week 56.5, under its 58 to 64 window, and the greedy Perfect player wins 48% of campaigns instead of 25%, the gap between habit profiles the proposals warned of. Weight is never needed to win (Ch 9), so it stays off (`RULES.vigor.perMomentum` 0). It remains built, and the simulator's `vigor` variant can probe it again.
+- **The oak stays out of the zoomed-out realm view**, where it crowded the castle mark; it shows up close and in the castle's panel.
+- **Wear counts from the day after the siege begins**, so the reward measures the days kept on a plateau the readings have shown.
+- **G-07 stays reported, not retuned** (D-02): its mixes are 59 to 66, 7 weeks apart.
+
+### 14.3 What the simulator found
+
+740 campaigns (20 on the long-plateau profile), no invariant broken; every verdict is as on 3.13.0. **G-27 is met:** a siege begins off the generated plateaus once in 233 weeks played, a Steadfast campaign sees 2.9 sieges, every long plateau became a siege, and the median wear at a break is 6 days. The new weigh-in income is still 2% of what a Steadfast campaign earns. Victory comes about a week sooner (53 / 59 / 65).
+
+### 14.4 Open for Rich
+
+- **Remedy's 23 new lines** (requests, Audience, siege) wait for his approval in [patch-9-remedy-lines.md](patch-9-remedy-lines.md).
+- **The art:** Remedy's portrait and the Heart Oak's 11 stages, from [patch-9-art-prompts.md](patch-9-art-prompts.md).
+- **G-07**, a near-tie since stage 1: probe it in a later patch if he wants it met.

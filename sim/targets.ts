@@ -14,7 +14,7 @@ import { RIVAL_IDS, type DeedKind, type RivalId } from '../src/renderer/src/lib/
 import type { RunOptions, RunResult } from './campaign'
 import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, SURGE_FROM_WEEK, TERMS_FROM_WEEK, type MarchMeasure, type Measures } from './measure'
 import type { PolicyId } from './policy'
-import type { ProfileId } from './profiles'
+import { PLATEAU, PROFILES, type ProfileId } from './profiles'
 
 /** Patch 5 (P5-01, G-11): the smarter players' horizon, past G-11's week 76. The greedy players keep the run's own, so G-01 to G-10 still compare. */
 export const LONG_WEEKS = 90
@@ -56,6 +56,8 @@ export function targetPlan(seeds: number, weeks: number): RunOptions[] {
   const long = weeks < USUAL_WEEKS ? weeks : Math.max(weeks, LONG_WEEKS)
   for (const p of ['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]) add(p, 'smarter', seeds, long)
   for (const mix of MIXES) for (const policy of mix.policies) add('steadfast', policy, half, long)
+  // Patch 9 (G-27, D-77): the long plateau, for its siege.
+  add('steadfastPlateau', 'greedy', half)
   return runs
 }
 
@@ -485,11 +487,12 @@ export function targetRows(results: readonly RunResult[]): Row[] {
   }
   const turns35 = turns((c) => c.window35)
   const turns21 = turns((c) => c.window21)
-  // Patch 9 stage 2b (D-76): the new weigh-in income is Faithful at the Scale and the Healer's requests together.
+  // Patch 9 stages 2b and 3 (D-76, D-77): the new weigh-in income is Faithful at the Scale, the Healer's requests and the plateau siege together.
   const faithfulShare = median(
     steadfast.flatMap((r) => {
       const inc = r.measures.income
-      return inc && r.measures.faithful !== undefined ? [(r.measures.faithful + (r.measures.healerRequests?.reputation ?? 0)) / Math.max(1, inc.behavior + inc.tithe + inc.spoils + inc.other)] : []
+      const added = (r.measures.faithful ?? 0) + (r.measures.healerRequests?.reputation ?? 0) + (r.measures.plateau?.reputation ?? 0)
+      return inc && r.measures.faithful !== undefined ? [added / Math.max(1, inc.behavior + inc.tithe + inc.spoils + inc.other)] : []
     })
   )
   const asked = steadfast.reduce((s, r) => s + (r.measures.healerRequests?.made ?? 0), 0)
@@ -498,13 +501,51 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     row(
       'G-26',
       'The Healer’s terms hold steady (Patch 9)',
-      `Steadfast greedy: weight weeks whose suggested calorie limit turns around from the week before, with the 35-day window (under ${pct(G26.turnsBelow)}) and the floor's 21-day window beside it; Faithful at the Scale's and the Healer's requests' share of reputation earned (median; under ${pct(G26.faithfulBelow)}); her requests met (reported)`,
+      `Steadfast greedy: weight weeks whose suggested calorie limit turns around from the week before, with the 35-day window (under ${pct(G26.turnsBelow)}) and the floor's 21-day window beside it; Faithful at the Scale's, the Healer's requests' and the plateau siege's share of reputation earned (median; under ${pct(G26.faithfulBelow)}); her requests met (reported)`,
       `${pct(turns35)} (21-day ${pct(turns21)}); ${pct(faithfulShare)}; requests met ${pct(metShare)}`,
       Number.isFinite(turns35) ? turns35 < G26.turnsBelow && faithfulShare < G26.faithfulBelow : null
     )
   )
+
+  // G-27 (Patch 9, D-77, B1): plateaus, not noise. On Steadfast, the sieges whose stall (from its low to the reading that
+  // began it) touches none of the generated 3-week plateaus (their weeks, and the week after, still at their level), as
+  // one every so many weeks played; on the long-plateau profile, the campaigns whose long plateau became a siege.
+  const onPlateau = (lowWeek: number, begunWeek: number): boolean => {
+    for (let w = lowWeek; w <= begunWeek; w++) {
+      const at = (w - 1) % PLATEAU.everyWeeks
+      if (at >= PLATEAU.everyWeeks - PLATEAU.weeks || (at === 0 && w > 1)) return true
+    }
+    return false
+  }
+  let noise = 0
+  let weeksPlayed = 0
+  let sieges = 0
+  for (const r of steadfast) {
+    const p = r.measures.plateau
+    if (!p) continue
+    sieges += p.sieges.length
+    noise += p.sieges.filter((s) => !onPlateau(s.lowWeek, s.begunWeek)).length
+    weeksPlayed += r.measures.weeks.length
+  }
+  const noiseEvery = noise > 0 ? weeksPlayed / noise : Number.POSITIVE_INFINITY
+  const longFrom = PROFILES.find((p) => p.id === 'steadfastPlateau')?.plateauFromWeek ?? 0
+  const plateauRuns = of('steadfastPlateau', 'greedy')
+  const caught = plateauRuns.length > 0 ? plateauRuns.filter((r) => r.measures.plateau?.sieges.some((s) => s.begunWeek >= longFrom)).length / plateauRuns.length : Number.NaN
+  const wears = [...steadfast, ...plateauRuns].flatMap((r) => r.measures.plateau?.wear ?? [])
+  rows.push(
+    row(
+      'G-27',
+      'Plateaus, not noise (Patch 9)',
+      `Steadfast greedy: a siege begun off the generated plateaus, one every so many weeks played (at least ${G27.noiseEveryWeeks}); sieges a campaign (mean); the long-plateau profile's campaigns whose long plateau became a siege (at least ${pct(G27.caught)}); wear at the break (median)`,
+      `every ${Number.isFinite(noiseEvery) ? f1(noiseEvery) : '∞'} weeks; ${f2(sieges / Math.max(1, steadfast.length))}; ${pct(caught)}; wear ${wears.length > 0 ? f1(median(wears)) : '—'} days`,
+      Number.isFinite(caught) ? noiseEvery >= G27.noiseEveryWeeks && caught >= G27.caught : null
+    )
+  )
   return rows
 }
+
+/** Patch 9 (G-27, D-68, D-77): a siege off the generated plateaus no more than once in 8 weeks; the long plateau a siege nearly always. */
+const G27 = { noiseEveryWeeks: 8, caught: 0.95 }
 
 /** Patch 9 (G-26, D-68): the suggested limit turns around in under 1 week in 4; the new weigh-in income stays under a tenth of what is earned. */
 const G26 = { turnsBelow: 0.25, faithfulBelow: 0.1 }

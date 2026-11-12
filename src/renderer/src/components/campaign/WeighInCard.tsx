@@ -94,6 +94,7 @@ function paysLine(card: WeighInCardView, today: ISODate): string {
   if (card.pays.momentum !== null) parts.push(`Momentum ${formatRep(card.pays.momentum)}`)
   if (card.pays.faithful !== null) parts.push(`Faithful at the Scale ${formatRep(card.pays.faithful)}`)
   for (const m of card.pays.milestones) parts.push(`Milestone ${m}`)
+  if (card.pays.plateau !== null) parts.push(`the plateau siege ${formatRep(card.pays.plateau)}`)
   if (parts.length === 0) return ''
   const when = card.settled ? `Paid at the close of ${formatWeekdayShort(card.settlesOn)}` : `At ${card.settlesOn === today ? 'today’s' : `${formatWeekdayShort(card.settlesOn)}’s`} close`
   return `${when}: ${parts.join(', ')}${card.pays.momentum === null && !card.settled ? '; Momentum at the week close' : ''}.`
@@ -172,6 +173,11 @@ export function WeighInCard({ campaign, ledger, today }: { campaign: CampaignSta
         <p className="healer-card" data-text-id={card.report.textId}>
           <GiHealthPotion aria-hidden="true" /> {card.report.text}
         </p>
+        {card.siege && (
+          <p className="healer-card weighin-card__siege" data-text-id={card.siege.textId}>
+            <GiHealthPotion aria-hidden="true" /> {card.siege.text}
+          </p>
+        )}
         {terms && (
           <div className="weighin-card__terms">
             <span>

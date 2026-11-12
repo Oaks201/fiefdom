@@ -1903,6 +1903,94 @@
       1080
     ]
   },
+  "realm.heartOak.0": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.1": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.2": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.3": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.4": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.5": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.6": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.7": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.8": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.9": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
+  "realm.heartOak.10": {
+    "file": null,
+    "kind": "oak",
+    "size": [
+      256,
+      256
+    ]
+  },
   "moment.grandBattleWon": {
     "file": "moment.grandBattleWon-pixel-v2.png",
     "kind": "moment",

@@ -13,7 +13,7 @@ import { realmEffects } from '../effects'
 import { snapshotDay, snapshotsBetween, toDayRecord, toHealerDay, weighInsOf } from '../ledgerDays'
 import { hexName } from '../map'
 import { RULES } from '../rules'
-import { dutiesPillar, poolShare, stepsPillar, tableIntake, termsOf, valor, weekScores } from '../score'
+import { dayScore, dutiesPillar, poolShare, stepsPillar, tableIntake, termsOf, valor, weekScores } from '../score'
 import { charterOn, realmConsistencyOn, restDayIncome, streakBefore } from '../settle'
 import { isRestDay, openDayOf, respiteDays, weekOn } from '../state'
 import { t, type HealerCheckIn } from '../text'
@@ -487,13 +487,6 @@ export interface HealerCard {
   /** The approved final text, or else the placeholder (Ch 17). */
   text: string
 }
-
-/** A settled day's duties, food and steps (against a day's share of the pool), averaged: what a "low-scoring day" means (A-179). */
-export function dayScore(day: DayRecord, stepPool: number): number {
-  return (dutiesPillar([day]) + (day.eaten !== undefined ? 1 : 0) + stepsPillar([day], stepPool)) / DAY_PARTS
-}
-
-const DAY_PARTS = 3 // rules-ok: duties, food and steps
 
 /**
  * The Healer's calm cards for the Chronicle on `today`: the calorie floor, a too-fast trend, a

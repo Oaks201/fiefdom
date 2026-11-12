@@ -9,6 +9,7 @@ import {
   GiExpand,
   GiFlame,
   GiHornInternal,
+  GiOak,
   GiQuill,
   GiReturnArrow,
   GiShield,
@@ -90,6 +91,10 @@ function hexPoints(s: number): string {
 const OUTLINE = hexPoints(1)
 const BORDER = hexPoints(0.86)
 const TERRAIN = { x: -HALF_W, y: -1, width: HEX_WIDTH, height: 2 }
+
+/** Rules 3.14.0 (D-77, B2): the Heart Oak on the castle hex, small in its upper left, in the banner's green. */
+const OAK_PLACE = { x: -0.86, y: -0.82, width: 0.8, height: 0.8 }
+const OAK_COLOR = '#2f6b3a'
 
 const BAND_COLORS: Record<string, string> = { weaker: '#2f7440', matched: '#c9962e', stronger: '#d06a1e', overwhelming: '#8b1e1a' }
 
@@ -221,6 +226,7 @@ const HexCell = memo(
         <polygon className="hex__edge" points={OUTLINE} fill="none" />
         {!hex.decor && <polygon className="hex__hit" points={OUTLINE} />}
         {hex.kind === 'capital' && <Mark icon={GiCrown} x={0} y={-0.1} size={0.7} color={color.edge} />}
+        {hex.oak !== undefined && <GameArt slot={`realm.heartOak.${hex.oak}`} place={OAK_PLACE} label="The Heart Oak" fallback={<Mark icon={GiOak} x={-0.46} y={-0.4} size={0.46} color={OAK_COLOR} />} />}
         {hex.mythic && <Mark icon={GiDragonHead} x={0} y={-0.1} size={0.62} color="#4b3e54" />}
         {hex.village && hex.kind !== 'capital' && <Mark icon={GiVillage} x={-0.42} y={-0.4} size={0.44} color="#6b4e0c" />}
         {hex.fortification > 0 && (
