@@ -195,7 +195,8 @@ test('D-39: each rival’s own drivers are read from the week at its close, once
   const by = (r: RivalId): Record<string, number> => Object.fromEntries(eventsOf(events, 'respect').filter((e) => e.rival === r).map((e) => [e.reason, e.change]))
   const own = RULES.respect.byRival
   assert.equal(by('goblin').bribePaid, own.goblin.bribePaid)
-  assert.equal(by('goblin').bidHeld, own.goblin.bidHeld)
+  assert.equal(by('goblin').bidHeld, own.goblin.bidHeld, 'X3 (D-82): his bid held against him costs his own weight')
+  assert.equal(own.goblin.bidHeld, -1)
   assert.equal(by('archmage').surgeHeld, own.archmage.surgeHeld)
   assert.equal(by('archmage').ritualEndured, own.archmage.ritualEndured)
   assert.equal(by('archmage').constantWeek, own.archmage.constantWeek)

@@ -148,9 +148,23 @@ export const BUFFER_PROBE = 5
 /** Patch 9 (B3, D-77): Vigor switched on at the proposals' 5% of power a point of Momentum, for its decision. */
 export const VIGOR = 'vigor'
 export const VIGOR_PROBE = 0.05
+/**
+ * Patch 10 (F1, D-79): the Crown's Grace stops weakening the opposition, for the measuring run F1 asks for before
+ * any number is proposed. The benchmark's ease, Ascendancy's higher ratio and later week, and the shorter
+ * coalitions are switched off; what softens a loss (the reclaim, halved tribute, a contested hex's second day) stays.
+ */
+export const GRACE_OFF = 'graceOff'
 
 /** The variants that are switches rather than a lever's step. */
-const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR, STANDING_BUFFER, VIGOR])
+const SWITCHES = new Set([BASE, INCOME, CONQUEST_ON_WAR, STANDING_BUFFER, VIGOR, GRACE_OFF])
+
+/** F1's measuring run: every way the Grace weakens the opposition, off. */
+function graceOff(t: Table): void {
+  t.rivals.benchmark.graceEase = t.rivals.benchmark.graceEase.map(() => 0)
+  t.defeat.ascendancy.fromWeekGraceIII = t.defeat.ascendancy.fromWeek
+  t.defeat.ascendancy.powerRatioGraceI = t.defeat.ascendancy.powerRatio
+  t.world.coalitions.graceIIIShortenWeeks = 0
+}
 
 export function variantOf(lever: string, delta: number): string {
   return `${lever}:${delta > 0 ? '+' : ''}${delta}`
@@ -173,6 +187,7 @@ export function patchOf(variant: string): (table: Table) => Table {
   if (variant === CONQUEST_ON_WAR) return (t) => ((t.rivalAi.planConquestOnWar = true), t)
   if (variant === STANDING_BUFFER) return (t) => ((t.respect.standingBuffer = BUFFER_PROBE), t)
   if (variant === VIGOR) return (t) => ((t.vigor.perMomentum = VIGOR_PROBE), t)
+  if (variant === GRACE_OFF) return (t) => (graceOff(t), t)
   const { lever, delta } = parseVariant(variant) as { lever: Lever; delta: number }
   return (t) => (lever.apply(t, 1 + delta / 100), t)
 }
@@ -229,6 +244,12 @@ export function checkOverride(variant: string, rules: Table): number[] {
   if (variant === VIGOR) {
     if (rules.vigor.perMomentum !== VIGOR_PROBE) throw new Error('The vigor variant did not reach RULES')
     return [rules.vigor.perMomentum]
+  }
+  if (variant === GRACE_OFF) {
+    const a = rules.defeat.ascendancy
+    const off = rules.rivals.benchmark.graceEase.every((e: number) => e === 0) && a.fromWeekGraceIII === a.fromWeek && a.powerRatioGraceI === a.powerRatio && rules.world.coalitions.graceIIIShortenWeeks === 0
+    if (!off) throw new Error('The graceOff variant did not reach RULES')
+    return []
   }
   const lever = (parseVariant(variant) as { lever: Lever }).lever
   const loaded = lever.read(rules)

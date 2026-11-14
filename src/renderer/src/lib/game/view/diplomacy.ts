@@ -10,7 +10,7 @@
  */
 import { formatNumber } from '../../format'
 import { CODEX } from '../codex'
-import { totalDominion } from '../dominion'
+import { fieldDayRenown, fieldStreak, totalDominion } from '../dominion'
 import { realmEffects } from '../effects'
 import { availableDeals, bidCheck, courtshipSlots, resistance, type DealKind, type DealOffer, type DealRefusalCode } from '../land'
 import { claimableBy, hexName } from '../map'
@@ -201,6 +201,8 @@ export interface OrcWar {
   tug: WarTrack
   how: string
   now: string
+  /** Patch 10 (D-80, K3): the streak of days in his field, and what its next day adds. */
+  field: string
 }
 
 const pct = (share: number): number => Math.round(share * PERCENT)
@@ -237,8 +239,11 @@ function frontLine(state: CampaignState, rival: RivalId, f: FrontState): FrontLi
 }
 
 /** The Orc's war track against the player (D-28): positive the player's way, drawn with the Orc on the left. */
-function orcWarOf(state: CampaignState): OrcWar | undefined {
+function orcWarOf(state: CampaignState, today: ISODate): OrcWar | undefined {
   if (state.rivals.orc.status !== 'active') return undefined
+  const days = fieldStreak(state, today)
+  const next = `+${fieldDayRenown(days + 1)} Renown on his path`
+  const field = days > 0 ? `Day ${days} in the field. The streak’s next day adds ${next}.` : `No streak in the field. A day with a battle against him or in his march, won or lost, starts one and adds ${next}.`
   const tr = RULES.personalities.orc.track
   const t = orcTrackOf(state)
   const strike = pct(tr.strikePerStep * Math.abs(t))
@@ -254,7 +259,7 @@ function orcWarOf(state: CampaignState): OrcWar | undefined {
         ? `His way by ${-t}: his raids, conquest attempts and counterattacks strike ${strike}% harder, and his march’s garrisons are ${garrison}% harder to take.${extra}`
         : `Even: his strikes and his march’s garrisons are as usual. Each step your way makes his strikes ${pct(tr.strikePerStep)}% weaker and his garrisons ${pct(tr.garrisonPerStep)}% easier to take; each step his way, the reverse.${extra}`
   const how = `From week ${RULES.personalities.fromWeek}, a day you win more battles with him than you lose (his raids, conquest attempts and counterattacks; hexes of his march taken; Grand Battles) moves the marker a step your way, and a day you lose more moves it his way.`
-  return { tug: warTrack({ owner: 'orc', name: rivalName('orc') }, { owner: 'player', name: 'You' }, -t, tr.max), how, now }
+  return { tug: warTrack({ owner: 'orc', name: rivalName('orc') }, { owner: 'player', name: 'You' }, -t, tr.max), how, now, field }
 }
 
 /** His stance, from the week terms start (D-33). */
@@ -331,7 +336,7 @@ export function rivalPanel(state: CampaignState, rival: RivalId, effects: Effect
   const fronts = Object.values(state.fronts)
     .filter((f) => f.rivals.includes(rival))
     .map((f) => frontLine(state, rival, f))
-  const orcWar = rival === 'orc' ? orcWarOf(state) : undefined
+  const orcWar = rival === 'orc' ? orcWarOf(state, today) : undefined
   return {
     rival,
     name,

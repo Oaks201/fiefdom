@@ -615,6 +615,26 @@
     "template": "A summoned mythic beaten at {hex}: {value} Renown on {rival}’s path.",
     "final": null
   },
+  "herald.deed.wallRaised": {
+    "template": "Walls raised to level {level} at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.wallsHeld": {
+    "template": "The walls at {hex} held: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.fieldDay": {
+    "template": "Day {days} in the field: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.mythicBeaten": {
+    "template": "A mythic beaten at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
+  "herald.deed.mythicHunted": {
+    "template": "A Mythic Hunt won at {hex}: {value} Renown on {rival}’s path.",
+    "final": null
+  },
   "herald.healer.request": {
     "template": "Remedy has a request for the week, through {date}. See the Chronicle.",
     "final": null

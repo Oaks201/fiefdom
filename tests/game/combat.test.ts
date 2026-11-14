@@ -398,15 +398,18 @@ test('A-130: Grace II halves tribute and Oathguard halves it again; Grand Illusi
   assert.ok((second.of('defense')[0].tribute ?? 0) > 0)
 })
 
-test('Respect: a defeated raid gives +3 with its raider, a lost one −2', () => {
+test('Respect: a defeated raid gives +3 with its raider (the Orc his own +2, D-80), a lost one −2', () => {
   const state = realm()
   const target = quietHex(state)
   const day = '2026-10-08'
-  const won = fight(withTiding(state, { date: day, kind: 'raid', rival: 'orc', hexId: target, strength: 1 }), day, 1)
-  assert.equal(won.state.rivals.orc.respect, state.rivals.orc.respect + 3)
-  assert.deepEqual(won.of('respect'), [{ rival: 'orc', change: 3, reason: 'raidDefeated' }])
-  const lost = fight(withTiding(state, { date: day, kind: 'raid', rival: 'orc', hexId: target, strength: 1_000 }), day, 0)
-  assert.equal(lost.state.rivals.orc.respect, state.rivals.orc.respect - 2)
+  const won = fight(withTiding(state, { date: day, kind: 'raid', rival: 'goblin', hexId: target, strength: 1 }), day, 1)
+  assert.equal(won.state.rivals.goblin.respect, state.rivals.goblin.respect + 3)
+  assert.deepEqual(won.of('respect'), [{ rival: 'goblin', change: 3, reason: 'raidDefeated' }])
+  const lost = fight(withTiding(state, { date: day, kind: 'raid', rival: 'goblin', hexId: target, strength: 1_000 }), day, 0)
+  assert.equal(lost.state.rivals.goblin.respect, state.rivals.goblin.respect - 2)
+  // Patch 10 (K3): the Orc weighs an attack of his beaten less; his Respect is earned in his field.
+  const orc = fight(withTiding(state, { date: day, kind: 'raid', rival: 'orc', hexId: target, strength: 1 }), day, 1)
+  assert.deepEqual(orc.of('respect'), [{ rival: 'orc', change: RULES.respect.byRival.orc.raidDefeated, reason: 'raidDefeated' }])
 })
 
 test('A-131: a mythic victory posts a trophy for the Armory to grant', () => {

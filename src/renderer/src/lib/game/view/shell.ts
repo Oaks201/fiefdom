@@ -280,7 +280,12 @@ export function resultLine(e: GameEvent): HeraldLine | null {
     case 'pathRank':
       return line('result', 'herald.pathRank', { rival: rivalName(e.path), rank: numeral(e.rank) }, { rival: e.path })
     case 'deed':
-      return line('result', `herald.deed.${e.deed}`, { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}) }, { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) })
+      return line(
+        'result',
+        `herald.deed.${e.deed}`,
+        { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}), ...(e.level !== undefined ? { level: e.level } : {}), ...(e.streak !== undefined ? { days: e.streak } : {}) },
+        { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) }
+      )
     case 'ascendancy':
       if (e.stage === 'warning' || e.stage === 'lifted') return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if ((e.stage === 'delayed' || e.stage === 'humbled') && e.until) return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival), date: e.until }, { rival: e.rival })

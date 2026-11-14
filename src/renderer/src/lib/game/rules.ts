@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.14.0',
+  ruleVersion: '3.15.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -614,10 +614,14 @@ const RULES_TABLE = {
      * refused, his bid for a village held against him. The Dwarf: a pact kept to its end, a wall level of
      * his march broken. The Archmage: a week closing at Realm Consistency `constantWeekAt` or more, a surge
      * strike held, a Ritual endured. TUNE.
+     *
+     * Patch 10 (D-80, rules 3.15.0). K3: the Orc weighs an attack of his beaten `raidDefeated` (the common 3
+     * is the others'), and gives `fieldWeek` on every `dominion.crafts.fieldWeekDays`th day of a streak in
+     * his field. X3, as Rich set it on the simulator's reading (D-82): the Goblin's bid held against him costs 1 (it was 2; at nothing he sat at Peace 69% of his weeks). TUNE.
      */
     byRival: {
-      orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5 },
-      goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: -5, bidHeld: -2 },
+      orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5, raidDefeated: 2, fieldWeek: 2 },
+      goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: -5, bidHeld: -1 },
       dwarf: { wallBroken: -1 },
       archmage: { constantWeek: 1, surgeHeld: 2, ritualEndured: 2 }
     } as PerRival<Record<string, number>>,
@@ -698,8 +702,12 @@ const RULES_TABLE = {
      * realm's total Dominion at a mark first: the first at `dominionMarks[0]`, the second at `[1]`, and so on.
      * A rival ready before it waits. Replaces the calendar (none before week 16, then one per 12 weeks). Patch 8 (D-65):
      * the third and fourth lowered from 2,700 and 3,650, as the deals of D-64 slow Dominion two to three weeks. TUNE.
+     *
+     * Patch 10 (D-81, K7's offset): the crafts of D-80 add Renown, and with it Steadfast won 5 weeks early (week
+     * 54 for 59). The second mark rises from 1,800 to 1,900, and the third and fourth go back to D-59's 2,700 and
+     * 3,650 (from 2,500 and 3,350), which holds G-11's windows. A rank or a tier already reached never falls.
      */
-    resolution: { dominionMarks: [650, 1_800, 2_500, 3_350] },
+    resolution: { dominionMarks: [650, 1_900, 2_700, 3_650] },
     /** Ch 13: what a rival's fall does to the others. */
     fallout: { conqueredThreat: 15, abdicatedThreat: 10, alliedThreat: 5, conqueredLoyaltyMult: 0.5 },
     /** An allied rival may join one Grand Battle a month. */
@@ -896,30 +904,52 @@ const RULES_TABLE = {
       counterattackHeld: 2,
       counterattackHeldBeasts: 1,
       /**
-       * Patch 4 (D-34, C-42): each rival's signature deeds, to his path alone. The Orc: every battle with
-       * him counts, a loss `battleLost`; a hex he took, taken back, `retaken`. The Goblin: a hex of his march
-       * won by deal `dealTakenPerDepth` × depth; a bribe under the garrison it bought `bargain`; his bid held
-       * `bribeBeaten`; his bid beaten in a courtship `counterBidBeaten`. The Dwarf: `wallsBroken` a wall level
-       * of his march taken; `siegeEndured` a siege day beyond the first (at most `siegeEnduredCap`); his conquest
-       * attempt beaten `siegeBroken`. The Archmage: a surge strike held `surgeWeathered`; a hex taken on its
-       * ebb's day `surgeSeized`; a Ritual endured `ritualEndured`; a summoned mythic's hex taken `summonedDefeated`. TUNE.
+       * Patch 4 (D-34, C-42): each rival's signature deeds, to his path alone. The Goblin: a hex won by deal
+       * `dealTakenPerDepth` × depth (from Patch 10 in any march, K4); a bribe under the garrison it bought
+       * `bargain`; his bid held `bribeBeaten`. The Dwarf: `wallsBroken` a wall level of his march taken;
+       * `siegeEndured` a siege day beyond the first (at most `siegeEnduredCap`). The Archmage: a surge strike
+       * held `surgeWeathered`; a hex taken on its ebb's day `surgeSeized`; a Ritual endured `ritualEndured`. TUNE.
+       *
+       * Patch 10 (D-80; X2, X5) retired five: the Orc's `battleLost` (0.5) and `retaken` (2), which the field
+       * streak replaces (`crafts`), and three that posted less than once a campaign: `counterBidBeaten` (2),
+       * `siegeBroken` (3) and `summonedDefeated` (3). A save's old deeds of those kinds keep their Renown.
        */
-      battleLost: 0.5,
-      retaken: 2,
       dealTakenPerDepth: 0.5,
       bargain: 2,
       bribeBeaten: 3,
-      counterBidBeaten: 2,
       wallsBroken: 1,
       siegeEndured: 1,
       siegeEnduredCap: 5,
-      siegeBroken: 3,
       surgeWeathered: 1,
       surgeSeized: 1,
       ritualEndured: 3,
-      summonedDefeated: 3,
-      /** How far back a taking reads its hex's history (its last change of hands, its siege days, a summoning). TUNE. */
+      /** How far back a taking reads its hex's history (its last change of hands, its siege days). TUNE. */
       lookbackDays: 90
+    },
+    /**
+     * Patch 10 (D-80, rules 3.15.0; K1 to K5): each ruler's craft. A deed in his craft adds Renown to his
+     * path wherever it is done, widening D-18. Every value TUNE.
+     * - **Stone, the Dwarf's (K2).** A wall level the player raises: `wallRaisedPerLevelBand` × the level ×
+     *   the hex's band, once for each hex and level in a campaign. A defense won that the hex's walls turned
+     *   (lost at the same Valor without them): `wallsHeld` a wall level, beside the battle's own deed.
+     * - **The field, the Orc's (K3).** A day with a battle against him or in his march, won or lost, is a
+     *   field day. Day n of a streak of them pays `fieldDay` × n, at most `fieldDayCap`. A rest day (D-54) and
+     *   a day away (X-17) hold the streak; any other day without one ends it. Every `fieldWeekDays`th day
+     *   moves his Respect (`respect.byRival.orc.fieldWeek`).
+     * - **The deal, the Goblin's (K4):** `deeds.dealTakenPerDepth` in any march.
+     * - **The unseen, the Archmage's (K5).** A defense held against a mythic `mythicBeaten`, and a Mythic
+     *   Hunt won `mythicHunted`, wherever fought, beside the battle's own deed.
+     */
+    // D-81 (the simulator's first reading): a wall level raised 0.4 (the proposals' 0.5 put stone at a tenth of all
+    // Renown alone), a mythic beaten 0.75 (at 0.5 the Archmage's craft sat under G-28's 2%).
+    crafts: {
+      wallRaisedPerLevelBand: 0.4,
+      wallsHeld: 1,
+      fieldDay: 0.25,
+      fieldDayCap: 1.5,
+      fieldWeekDays: 7,
+      mythicBeaten: 0.75,
+      mythicHunted: 5
     },
     /** A fully walked path: its march held (Holdings about 440), its hexes taken, its battles fought and its rival resolved (Renown about 660). TUNE. */
     fullPath: 1_100,
@@ -1030,6 +1060,17 @@ const RULES_TABLE = {
     maxBuys: 24,
     /** Defense battles a rival's raids must win within a week before the smarter player asks for a Truce. */
     raidsWinning: 2,
+    /**
+     * Patch 10 (D-80): the smarter player walls its frontier, one level a day. A hex in danger lies beyond the
+     * protected rings and was attacked `minHits` times or more within `memoryDays`, or (`facing`) touches the
+     * land of a ruler at War with the player (`war`), at Tension or War (`hostile`), or neither (`none`). It is
+     * walled to `toLevel`, the hex attacked most first, when the level costs at most `purseShare` of the purse.
+     * Before this the simulator's players raised a wall only on a contested hex, about one a campaign, so
+     * nothing was tuned against a walled realm. D-81: a first habit of walling every hex facing a ruler at
+     * Tension or War, at up to 15% of the purse, raised 214 levels a campaign and starved a weak player's army
+     * (29 of 40 Wavering campaigns fell); this one raises about 100. TUNE.
+     */
+    walls: { toLevel: 2, purseShare: 0.1, memoryDays: 14, minHits: 2, facing: 'war' as 'none' | 'war' | 'hostile' },
     /** The share over resistance the smarter player bids on a rival's last villages, against its unknown counter-bid. */
     defectionMargin: 1.3,
     /** The Valor the player expects before any day is settled. */

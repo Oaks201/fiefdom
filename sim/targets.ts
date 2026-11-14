@@ -541,6 +541,21 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       Number.isFinite(caught) ? noiseEvery >= G27.noiseEveryWeeks && caught >= G27.caught : null
     )
   )
+
+  // G-28 (Patch 10, D-80): the crafts are played. On the smarter Steadfast player: craft deeds' share of the Renown
+  // posted, each craft's own share, and the wall levels a campaign raises.
+  const crafty = of('steadfast', 'smarter')
+  const craftShare = deedShare(crafty, CRAFT_DEEDS)
+  const eachCraft = CRAFTS.map((c) => deedShare(crafty, c.deeds))
+  rows.push(
+    row(
+      'G-28',
+      'The crafts are played (Patch 10)',
+      `Steadfast smarter: craft deeds' share of the Renown posted (${pct(G28.share[0])} to ${pct(G28.share[1])}); each craft's own (at least ${pct(G28.each)}): ${CRAFTS.map((c) => c.craft).join(', ')}; wall levels raised a campaign (mean)`,
+      `${pct(craftShare)}; ${eachCraft.map((s) => (Number.isFinite(s) ? `${(s * 100).toFixed(1)}%` : '–')).join(', ')}; ${f1(mean(crafty.map((r) => r.measures.crafts?.walls ?? 0)))}`,
+      Number.isFinite(craftShare) ? craftShare >= G28.share[0] && craftShare <= G28.share[1] && eachCraft.every((s) => s >= G28.each) : null
+    )
+  )
   return rows
 }
 
@@ -809,15 +824,71 @@ function siegeLines(steadfast: readonly RunResult[]): string[] {
 
 const HEX_DEEDS: readonly DeedKind[] = ['hexTaken', 'strongholdTaken']
 const BATTLE_DEEDS: readonly DeedKind[] = ['battleWon', 'heldAgainstBeasts', 'heldAgainstMythic', 'counterattackHeld', 'grandBattleWon']
-/** Patch 4's signature deeds (D-34), each to its rival's path alone. */
-const SIGNATURE_DEEDS: readonly DeedKind[] = ['battleLost', 'retaken', 'dealTaken', 'bargain', 'bribeBeaten', 'counterBidBeaten', 'wallsBroken', 'siegeEndured', 'siegeBroken', 'surgeWeathered', 'surgeSeized', 'ritualEndured', 'summonedDefeated']
+/** Patch 4's signature deeds (D-34), each to its rival's path alone, less the five Patch 10 retired and the deal, now a craft (D-80). */
+const SIGNATURE_DEEDS: readonly DeedKind[] = ['bargain', 'bribeBeaten', 'wallsBroken', 'siegeEndured', 'surgeWeathered', 'surgeSeized', 'ritualEndured']
+/** Patch 10 (D-80, K2 to K5): the deeds in each ruler's craft, paid wherever they are done. */
+const CRAFTS: readonly { ruler: string; craft: string; deeds: readonly DeedKind[] }[] = [
+  { ruler: 'the Orc', craft: 'the field', deeds: ['fieldDay'] },
+  { ruler: 'the Goblin', craft: 'the deal', deeds: ['dealTaken'] },
+  { ruler: 'the Dwarf', craft: 'stone', deeds: ['wallRaised', 'wallsHeld'] },
+  { ruler: 'the Archmage', craft: 'the unseen', deeds: ['mythicBeaten', 'mythicHunted'] }
+]
+const CRAFT_DEEDS: readonly DeedKind[] = CRAFTS.flatMap((c) => c.deeds)
+/** Patch 10 (G-28): craft deeds are this share of a Steadfast campaign's Renown, and each craft at least `each` of it. */
+const G28 = { share: [0.1, 0.2], each: 0.02 }
+/** The streak lengths the crafts section groups by: a day, 2 to 3, 4 to 6, a week to 13 days, 14 or more. */
+const STREAK_GROUPS: readonly [label: string, from: number, to: number][] = [
+  ['1', 1, 1],
+  ['2 to 3', 2, 3],
+  ['4 to 6', 4, 6],
+  ['7 to 13', 7, 13],
+  ['14 or more', 14, Number.POSITIVE_INFINITY]
+]
+
+/** A deed group's share of the Renown `runs` posted, every path summed. */
+function deedShare(runs: readonly RunResult[], kinds: readonly DeedKind[]): number {
+  let part = 0
+  let total = 0
+  for (const r of runs)
+    for (const [k, v] of Object.entries(r.measures.deedMix ?? {})) {
+      total += v
+      if (kinds.includes(k as DeedKind)) part += v
+    }
+  return total > 0 ? part / total : Number.NaN
+}
+
+/** Patch 10 (G-28, D-80): the crafts as the smarter Steadfast player plays them, all paths and the Orc's alone. */
+export function craftLines(results: readonly RunResult[]): string[] {
+  const groups: [label: string, runs: RunResult[]][] = [
+    ['Steadfast, smarter', results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter')],
+    ['The Orc’s path alone', results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter+paths:orc')]
+  ]
+  const per = (runs: readonly RunResult[], read: (r: RunResult) => number): string => f1(mean(runs.map(read)))
+  const streaks = (runs: readonly RunResult[], from: number, to: number): string => per(runs, (r) => (r.measures.crafts?.streaks ?? []).filter((s) => s >= from && s <= to).length)
+  const row = (label: string, read: (runs: readonly RunResult[]) => string): string => `| ${label} | ${groups.map(([, runs]) => (runs.length > 0 ? read(runs) : '–')).join(' | ')} |`
+  return [
+    '## The crafts (Patch 10)',
+    '',
+    'Each ruler’s craft as the smarter Steadfast player plays it (D-80): a campaign’s means, and each craft’s share of the Renown posted.',
+    '',
+    `| Measure | ${groups.map(([label]) => label).join(' | ')} |`,
+    `| --- | ${groups.map(() => '---').join(' | ')} |`,
+    ...CRAFTS.map((c) => row(`Renown from ${c.craft} (${c.ruler}): share`, (runs) => pct(deedShare(runs, c.deeds)))),
+    row('Renown from every craft: share', (runs) => pct(deedShare(runs, CRAFT_DEEDS))),
+    row('Wall levels raised', (runs) => per(runs, (r) => r.measures.crafts?.walls ?? 0)),
+    row('Defenses won that the walls turned', (runs) => per(runs, (r) => r.measures.crafts?.wallsHeld ?? 0)),
+    ...STREAK_GROUPS.map(([label, from, to]) => row(`Streaks in the Orc’s field of ${label} ${to === 1 ? 'day' : 'days'}`, (runs) => streaks(runs, from, to))),
+    row('Longest streak (the longest of any campaign)', (runs) => String(max(runs.flatMap((r) => r.measures.crafts?.streaks ?? [0]))))
+  ]
+}
 
 /** The Renown mix (P2-13; Patch 3's deeds, D-25; Patch 4's signatures, D-34): each deed's share of the Renown posted, for Steadfast and the one-path players. */
 export function deedLines(results: readonly RunResult[]): string[] {
   const onePath = new Set<string>(RIVAL_IDS.map((r) => `paths:${r}`))
   const groups = [
     results.filter((r) => r.profile === 'steadfast' && r.policy === 'greedy'),
-    results.filter((r) => r.profile === 'steadfast' && onePath.has(r.policy))
+    results.filter((r) => r.profile === 'steadfast' && onePath.has(r.policy)),
+    results.filter((r) => r.profile === 'steadfast' && r.policy === 'smarter')
   ].map((runs) => {
     const mix: Record<string, number> = {}
     for (const r of runs) for (const [k, v] of Object.entries(r.measures.deedMix ?? {})) mix[k] = (mix[k] ?? 0) + v
@@ -830,8 +901,8 @@ export function deedLines(results: readonly RunResult[]): string[] {
     '',
     'Each deed’s share of the Renown posted, every path summed (P2-13: hexes about 50%, battles about 30%, resolving 15 to 20%).',
     '',
-    '| Deed | Steadfast | One path |',
-    '| --- | --- | --- |',
+    '| Deed | Steadfast | One path | Steadfast, smarter |',
+    '| --- | --- | --- | --- |',
     line('**Hexes**', HEX_DEEDS),
     ...HEX_DEEDS.map((k) => line(k, [k])),
     line('**Battles**', BATTLE_DEEDS),
@@ -839,6 +910,8 @@ export function deedLines(results: readonly RunResult[]): string[] {
     line('**Resolving a rival**', ['resolved']),
     line('**Signature deeds** (D-34)', SIGNATURE_DEEDS),
     ...SIGNATURE_DEEDS.map((k) => line(k, [k])),
+    line('**Craft deeds** (D-80)', CRAFT_DEEDS),
+    ...CRAFT_DEEDS.map((k) => line(k, [k])),
     `| Renown a campaign (mean) | ${groups.map((g) => f1(g.total / Math.max(1, g.runs))).join(' | ')} |`
   ]
 }
@@ -877,7 +950,7 @@ export function writeTargets(results: readonly RunResult[], meta: { seeds: numbe
     const before = alive.map((r) => r.measures.weeks.find((w) => w.week === m * MONTH)?.held ?? r.measures.weeks[0]?.held ?? 0)
     lines.push(`| ${m + 1} | ${f1(perWeek(PLAYER_VIEW))} | ${f1(perWeek(PLAYER_VIEW_STRICT))} | ${f1(perWeek(LABEL.breach))} | ${f1(perWeek(LABEL.noTarget))} | ${f1(perWeek(LABEL.noReach))} | ${f1(perWeek(LABEL.land))} | ${f1(mean(held.map((h, i) => (h - before[i]) / MONTH)))} | ${median(held)} |`)
   }
-  lines.push('', ...siegeLines(steadfast), '', ...marchLines(steadfast), '', ...termsLines(results), '', ...deedLines(results), '', ...lengthLines(results), '', ...worldLines(results), '', ...respectLines(results), '', ...flipLines(results), '', ...incomeLines(results), '')
+  lines.push('', ...siegeLines(steadfast), '', ...marchLines(steadfast), '', ...termsLines(results), '', ...deedLines(results), '', ...craftLines(results), '', ...lengthLines(results), '', ...worldLines(results), '', ...respectLines(results), '', ...flipLines(results), '', ...incomeLines(results), '')
   fs.mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `targets-${RULES.ruleVersion}${meta.variant ? `-${meta.variant}` : ''}.md`)
   fs.writeFileSync(file, lines.join('\n'))

@@ -93,6 +93,11 @@ export interface Measures {
   deeds?: number[]
   /** Renown posted by the end, by deed kind, every path summed (P2-13's mix; Patch 3's stronghold and counterattack deeds, D-25). */
   deedMix?: Record<string, number>
+  /**
+   * Patch 10 (G-28, D-80): the crafts. Wall levels the player raised; defenses won that the walls turned; the
+   * lengths of the streaks in the Orc's field, each as it ended.
+   */
+  crafts?: { walls: number; wallsHeld: number; streaks: number[] }
   /** Patch 8 (G-24): deals struck by the end, by kind, and binding deals broken. */
   deals?: Record<string, number>
   dealsBroken?: number
@@ -478,6 +483,19 @@ export class Recorder {
     const mix: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deed') mix[e.deed] = (mix[e.deed] ?? 0) + e.value
     this.m.deedMix = mix
+    const streaks: number[] = []
+    let last = 0
+    for (const e of state.log) {
+      if (e.kind !== 'deed' || e.deed !== 'fieldDay' || e.streak === undefined) continue
+      if (e.streak === 1 && last > 0) streaks.push(last)
+      last = e.streak
+    }
+    if (last > 0) streaks.push(last)
+    this.m.crafts = {
+      walls: state.log.filter((e) => e.kind === 'fortified' && !e.standing).length,
+      wallsHeld: state.log.filter((e) => e.kind === 'defense' && e.walls !== undefined).length,
+      streaks
+    }
     const deals: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deal') deals[e.deal] = (deals[e.deal] ?? 0) + 1
     this.m.deals = deals

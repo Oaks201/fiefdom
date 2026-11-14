@@ -19,7 +19,8 @@ import { balance, dailyIncome, faithfulIncome, healerRequestIncome, momentumInco
 import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { banksRespite, chooseRequest, daredHabits, requestMet, type HabitDay } from './healer'
-import { chronicle } from './dominion'
+import { chronicle, pathsOf } from './dominion'
+import { respectChange } from './respect'
 import { dealEnds, recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
 import { resolveGoblinBids } from './goblin'
@@ -33,7 +34,7 @@ import { borderCampaigns, dailyStandings, lateWeekRespect, rivalBidsAtClose, riv
 import { dailyStances } from './terms'
 import { RULES } from './rules'
 import { finishSkirmishes } from './skirmish'
-import { EventBuffer, awayOn, isPlayable, isRestDay, respiteDays } from './state'
+import { EventBuffer, adjustRespect, awayOn, isPlayable, isRestDay, respiteDays } from './state'
 import { accordPaid, worldWeek } from './world'
 import { consistency, dayScore, pillarScore, realmConsistency, termsOf, valor, weekPillars, type ScoreTerms } from './score'
 import { breakMilestonesOnDay, closeWeightWeek, toLb, weekMomentum, type StepWeek } from './weight'
@@ -652,8 +653,19 @@ const resetAndSchedule: Phase = (state, ctx) => scheduleThreats(state, addDays(c
 /** Each rival march's preparation level: up after a quiet week, down after a pushed one (D-19). */
 const marchesPhase: Phase = (state, ctx) => prepareMarches(state, ctx.day, ctx.emit)
 
-/** The chronicle (D-18): the deeds the log holds since it last read it, their Renown, and new path ranks. */
-const chroniclePhase: Phase = (state, ctx) => chronicle(state, ctx.emit)
+/**
+ * The chronicle (D-18): the deeds the log holds since it last read it, their Renown, and new path ranks.
+ * Patch 10 (D-80, K3): a rest day (D-54) or a day away (X-17) holds the Orc's field streak, and every
+ * `fieldWeekDays`th day of one moves his Respect, at that day's close (D-53).
+ */
+const chroniclePhase: Phase = (state, ctx) => {
+  const before = pathsOf(state).field
+  const next = chronicle(state, ctx.emit, { day: ctx.day, held: isRestDay(state, ctx.day) || awayOn(state, ctx.day) })
+  const field = pathsOf(next).field
+  const counted = field !== undefined && field.through === ctx.day && field.days !== before?.days
+  if (!counted || field.days % RULES.dominion.crafts.fieldWeekDays !== 0 || next.rivals.orc.status !== 'active') return next
+  return adjustRespect(next, 'orc', respectChange('orc', 'fieldWeek', 0), 'fieldWeek', ctx.emit)
+}
 
 /** Patch 4 (D-28): the march rules that read the day once it has closed: the Orc's war track and his attrition. */
 const marchRulesPhase: Phase = (state, ctx) => marchRulesDay(state, ctx.day, ctx.emit)

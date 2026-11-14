@@ -83,7 +83,7 @@ export interface Campaign {
 }
 
 /** Patch 5 (D-38): the one-time migrations of older saves, in the order they run. */
-export const MIGRATION_IDS = ['bentMarches'] as const
+export const MIGRATION_IDS = ['bentMarches', 'wallsStanding'] as const
 export type MigrationId = (typeof MIGRATION_IDS)[number]
 
 /** Rules 3.13.0 (D-76, H3): the habits the Healer's requests ask after, in the order a tie falls. */
@@ -771,7 +771,11 @@ export interface GameEventMap {
     hunt?: number
     /** D-12: the player led this fight on the battle map. */
     led?: boolean
+    /** Patch 10 (D-80, K2): the hex's wall levels, on a defense won that the formula loses at the same Valor without them. */
+    walls?: number
   }
+  /** Patch 10 (D-80, K2): the player raised a hex's walls to `level`. `standing`: a level already standing when rules 3.15.0 took the save, posted once by the `wallsStanding` migration. */
+  fortified: { hexId: string; level: number; standing?: true }
   /** The player's daily assault (Ch 6); `led` when the player fought it on the battle map (D-12). */
   /**
    * `value`: Patch 3, the Assault it was fought at (the formula's, at the Valor it used; a led fight's at the Valor locked when it began).
@@ -792,7 +796,8 @@ export interface GameEventMap {
     fortification?: number
   }
   /** Patch 2 (D-18): a deed on a rival's path: Renown it adds, permanently. */
-  deed: { path: RivalId; deed: DeedKind; value: number; hexId?: string; source?: string }
+  /** Patch 10 (D-80): `level`, the wall level a `wallRaised` or `wallsHeld` deed counts; `streak`, the day of the streak a `fieldDay` is. */
+  deed: { path: RivalId; deed: DeedKind; value: number; hexId?: string; source?: string; level?: number; streak?: number }
   /** Patch 2 (D-18): a path reached a new rank (ranks never fall). */
   pathRank: { path: RivalId; rank: number }
   /** Patch 2 (D-19): a rival march's preparation level moved at the week close. */
@@ -1173,19 +1178,37 @@ export type DeedKind =
   | 'strongholdTaken'
   | 'counterattackHeld'
   /** Patch 4 (D-34): each rival's signature deeds, to his path alone. */
-  | 'battleLost'
-  | 'retaken'
   | 'dealTaken'
   | 'bargain'
   | 'bribeBeaten'
-  | 'counterBidBeaten'
   | 'wallsBroken'
   | 'siegeEndured'
-  | 'siegeBroken'
   | 'surgeWeathered'
   | 'surgeSeized'
   | 'ritualEndured'
+  /** Patch 10 (D-80, K2 to K5): deeds in a ruler's craft, to his path wherever they are done. */
+  | 'wallRaised'
+  | 'wallsHeld'
+  | 'fieldDay'
+  | 'mythicBeaten'
+  | 'mythicHunted'
+  /** Retired by Patch 10 (D-80; X2, X5): no longer posted, still in the log of a save that earned them. */
+  | 'battleLost'
+  | 'retaken'
+  | 'counterBidBeaten'
+  | 'siegeBroken'
   | 'summonedDefeated'
+
+/** The deeds Patch 10 retired (D-80): a save may hold them, and nothing posts them. */
+export const RETIRED_DEEDS: readonly DeedKind[] = ['battleLost', 'retaken', 'counterBidBeaten', 'siegeBroken', 'summonedDefeated']
+
+/** Patch 10 (D-80, K3): the Orc's field streak, kept beside the chronicle's bookmark because a day away leaves nothing in the log. */
+export interface FieldStreak {
+  /** Field days in the streak so far. */
+  days: number
+  /** The last day the streak counted or held through. It is alive on that day and the next. */
+  through: ISODate
+}
 
 export interface PathState {
   /** Permanent: the sum of the path's deeds. */
@@ -1198,6 +1221,8 @@ export interface PathsState {
   byRival: Record<RivalId, PathState>
   /** How many log events the chronicle phase has read: deeds are posted once. */
   logRead: number
+  /** Patch 10 (D-80, K3): the Orc's field streak; absent before its first field day under rules 3.15.0. */
+  field?: FieldStreak
 }
 
 export interface MarchesState {

@@ -126,11 +126,11 @@ export function weeklyRespect(input: CampaignState, w: { day: ISODate; weekStart
     if (e.result === 'defeat') add('orc', 'grandBattleLost')
     else if (e.trigger !== 'incursion') add('orc', 'grandBattleWon')
   }
-  // The Goblin: coin and bargains.
+  // The Goblin: coin and bargains. His bid held against him costs half what it did from Patch 10 (X3, D-82).
   add('goblin', 'bribePaid', week.filter((e) => e.kind === 'bribe').length)
   add('goblin', 'buyOffAccepted', week.filter((e) => e.kind === 'terms' && e.rival === 'goblin' && e.offer === 'buyOff' && e.stage === 'accepted').length)
-  add('goblin', 'buyOffRefused', week.filter((e) => e.kind === 'terms' && e.rival === 'goblin' && e.offer === 'buyOff' && (e.stage === 'refused' || e.stage === 'lapsed')).length)
   add('goblin', 'bidHeld', week.filter((e) => e.kind === 'goblinBid' && e.stage === 'held').length)
+  add('goblin', 'buyOffRefused', week.filter((e) => e.kind === 'terms' && e.rival === 'goblin' && e.offer === 'buyOff' && (e.stage === 'refused' || e.stage === 'lapsed')).length)
   // The Dwarf: his walls broken. A pact kept pays every ruler at its last day's close from Patch 8 (D2, `dealEnds`).
   const byId = new Map(state.hexes.map((h) => [h.id, h]))
   const walls = week.reduce((s, e) => (e.kind === 'hexTransfer' && e.to === 'player' && e.from !== 'player' && byId.get(e.hexId)?.march === 'dwarf' ? s + (e.fortification ?? 0) : s), 0)

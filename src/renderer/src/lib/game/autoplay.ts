@@ -38,8 +38,8 @@ import { balance } from './economy'
 import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
 import { isOver, marshalPlay } from './grand/field'
-import { bidCheck, fortify, makeDeal, offerDeal, placeBid, promisesOn, resistance, type DealRequest } from './land'
-import { claimableBy, hexIndex, isStronghold, touches } from './map'
+import { bidCheck, fortify, fortifyOffer, makeDeal, offerDeal, placeBid, promisesOn, resistance, type DealRequest } from './land'
+import { claimableBy, hexIndex, isStronghold, touches, touchesOwner } from './map'
 import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
@@ -607,6 +607,7 @@ function smarterDaily(input: CampaignState, today: ISODate, day: AutoplayDay): C
     const done = fortify(state, h.id, today)
     if (done.ok) state = done.state
   }
+  state = wallFrontier(state, today)
   const besiegers = new Set(ultimatumView(state, today).flatMap((u) => u.members))
   for (const r of RIVAL_IDS) {
     if (state.rivals[r].status !== 'active') continue
@@ -624,6 +625,38 @@ function smarterDaily(input: CampaignState, today: ISODate, day: AutoplayDay): C
   const hires = state.terms?.hires
   const hiring = hires !== undefined && today <= hires.until
   if (!hiring && pendingBattles(state).some((b) => b.battleDate >= today && diffDays(today, b.battleDate) <= A.mercenaryDays)) state = tryDeal(state, 'goblin', { kind: 'mercenaries' }, today)
+  return state
+}
+
+/**
+ * Patch 10 (D-80): the smarter player walls its frontier, one level a day (`RULES.autoplay.walls`): the hex in
+ * danger that was attacked most in the last days, then the deepest, to `toLevel`, when the purse can spare it.
+ */
+function wallFrontier(state: CampaignState, today: ISODate): CampaignState {
+  const W = A.walls
+  const since = addDays(today, -W.memoryDays)
+  const hits = new Map<string, number>()
+  // The log runs in day order: read back from its end to the first day that counts.
+  for (let i = state.log.length - 1; i >= 0 && state.log[i].day >= since; i--) {
+    const e = state.log[i]
+    if (e.kind === 'defense') hits.set(e.hexId, (hits.get(e.hexId) ?? 0) + 1)
+  }
+  const faces = (r: RivalId): boolean => {
+    const standing = state.rivals[r].disposition.player
+    return state.rivals[r].status === 'active' && (W.facing === 'war' ? standing === 'war' : W.facing === 'hostile' ? standing !== 'peace' : false)
+  }
+  const facing = RIVAL_IDS.filter(faces)
+  const inDanger = state.hexes
+    .filter((h) => h.owner === 'player' && h.ring > RULES.land.protectedThroughRing && h.fortification < W.toLevel)
+    .filter((h) => (hits.get(h.id) ?? 0) >= W.minHits || facing.some((r) => touchesOwner(state.hexes, h.id, r)))
+    .sort((a, b) => (hits.get(b.id) ?? 0) - (hits.get(a.id) ?? 0) || b.ring - a.ring || a.id.localeCompare(b.id))
+  const purse = balance(state.purse)
+  for (const h of inDanger) {
+    const offer = fortifyOffer(state, h.id)
+    if (!offer.ok || offer.cost > W.purseShare * purse) continue
+    const done = fortify(state, h.id, today)
+    return done.ok ? done.state : state
+  }
   return state
 }
 

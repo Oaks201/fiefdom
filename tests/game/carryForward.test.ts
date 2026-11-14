@@ -1,13 +1,16 @@
 /**
  * Patch 4 (docs/redesign/patch-4-spec.md section 11; C-48), Patch 5 (docs/redesign/patch-5-spec.md
  * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md sections 7 and 12.5; C-94, D-52): a campaign
- * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.14.0 in place. Before Patch 10,
+ * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to the current rules in place. Before Patch 10,
  * a 3.14.0 save joins them, stopped with Patches 7 to 9's records under way, so a later patch that changes the
  * save is checked against one shaped like the live game's. Each fixture
  * (`tests/game/fixtures/campaign-<version>.json`) was written by its script in `scripts/` on its own
  * rules, before the next patch changed any: a synthetic Steadfast campaign played by the automatic player
  * on the simulator's ledger (no one's health data). As the app does when it loads one, a save from before
  * the bend is first migrated once to the bent map (D-38); the 3.3.0 save was founded on it.
+ *
+ * Patch 10 stage 1 (D-80, rules 3.15.0): every save from before it has one more migration, `wallsStanding`,
+ * which credits the walls it already has as deeds in the Dwarf's craft and changes nothing else.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -19,6 +22,7 @@ import { addDays, dayCloseInstant } from '../../src/renderer/src/lib/game/clock'
 import { roundPosting } from '../../src/renderer/src/lib/game/economy'
 import { settleViolations } from '../../src/renderer/src/lib/game/dev/invariants'
 import { weighInsOf } from '../../src/renderer/src/lib/game/ledgerDays'
+import { bandOf } from '../../src/renderer/src/lib/game/map'
 import { migrateCampaign, migrationsOf } from '../../src/renderer/src/lib/game/migrate'
 import { needsRefounding } from '../../src/renderer/src/lib/game/refound'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
@@ -73,15 +77,15 @@ function playOn(f: Fixture, weeks: number): { state: CampaignState; violations: 
   return { state, violations }
 }
 
-test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.14.0 takes each without a re-founding, migrating it once', () => {
-  assert.equal(RULES.ruleVersion, '3.14.0')
+test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.15.0 takes each without a re-founding, migrating it once', () => {
+  assert.equal(RULES.ruleVersion, '3.15.0')
   for (const [version, f] of Object.entries(FIXTURES)) {
     assert.equal(f.ruleVersion, version)
     assert.equal(f.state.campaign.ruleVersion, version)
     assert.equal(needsRefounding(f.state), false)
     assert.deepEqual(migrationsOf(f.state), [], 'D-38: a save from before the bend has had no migration')
     const { state, applied } = migrateCampaign(f.state)
-    assert.deepEqual(applied, ['bentMarches'])
+    assert.deepEqual(applied, ['bentMarches', 'wallsStanding'])
     assert.equal(state.campaign.ruleVersion, version, 'a campaign keeps its founding version')
     assert.deepEqual(migrateCampaign(state).applied, [], 'and never again')
   }
@@ -137,7 +141,7 @@ test('C-94: the 3.3.0 save is what it says, and 3.11.0 takes it as it is: no re-
   assert.equal(V330.state.campaign.ruleVersion, '3.3.0')
   assert.equal(needsRefounding(V330.state), false)
   assert.deepEqual(migrationsOf(V330.state), ['bentMarches'], 'founded on the bent map')
-  assert.deepEqual(migrateCampaign(V330.state).applied, [], 'nothing to migrate')
+  assert.deepEqual(migrateCampaign(V330.state).applied, ['wallsStanding'], 'only its standing walls to credit (D-80)')
   const { state, violations } = playOn(V330, WEEKS_ON)
   assert.deepEqual(violations, [])
   assert.equal(state.campaign.ruleVersion, '3.3.0', 'a campaign keeps its founding version')
@@ -166,7 +170,7 @@ test('D-52, D-53: the 3.4.0 save (the live game\'s rules) is what it says, and 3
   assert.equal(V340.ruleVersion, '3.4.0')
   assert.equal(V340.state.campaign.ruleVersion, '3.4.0')
   assert.equal(needsRefounding(V340.state), false)
-  assert.deepEqual(migrateCampaign(V340.state).applied, [], 'nothing to migrate')
+  assert.deepEqual(migrateCampaign(V340.state).applied, ['wallsStanding'], 'only its standing walls to credit (D-80)')
   const { state, violations } = playOn(V340, WEEKS_ON)
   assert.deepEqual(violations, [])
   assert.equal(state.campaign.ruleVersion, '3.4.0', 'a campaign keeps its founding version')
@@ -223,7 +227,11 @@ test('D-57, D-64, D-66, D-73, D-76, D-77: the 3.14.0 save is what it says, stopp
   assert.equal(s.campaign.ruleVersion, '3.14.0')
   assert.equal(needsRefounding(s), false)
   assert.deepEqual(migrationsOf(s), ['bentMarches'], 'founded on the bent map')
-  assert.deepEqual(migrateCampaign(s).applied, [], 'nothing to migrate')
+  const credited = migrateCampaign(s)
+  assert.deepEqual(credited.applied, ['wallsStanding'], 'only its standing walls to credit (D-80)')
+  const walls = s.hexes.reduce((n, h) => n + (h.owner === 'player' ? h.fortification : 0), 0)
+  assert.equal(credited.state.log.length - s.log.length, walls, 'one `fortified` for each wall level standing, and nothing else')
+  assert.deepEqual({ ...credited.state, log: s.log, campaign: s.campaign }, s)
   // What the fixture script chose it for (scripts/fixture-3.14.0.ts, `underWay`).
   assert.ok(s.reach !== undefined, 'Patch 7: the realm’s reach')
   assert.ok(Object.values(s.rivals).some((r) => r.ai?.siege !== undefined), 'Patch 7 (W1): a ruler besieging the wilds of his march')
@@ -235,6 +243,26 @@ test('D-57, D-64, D-66, D-73, D-76, D-77: the 3.14.0 save is what it says, stopp
   assert.ok(s.weight.siege !== undefined, 'Patch 9 (D-77): a plateau siege standing')
   const ledger = ledgerFor(profileOf(f.profile), f.seed, f.ledgerWeeks * 7)
   assert.equal(fingerprint(settle(s, ledger, after(day)).state), fingerprint(s))
+})
+
+test('D-80 (K2): a 3.14.0 save with walls standing, as the live game’s has, is credited for them on its first night under 3.15.0: once, to the Dwarf’s path', () => {
+  const f = V3140
+  const held = f.state.hexes.filter((h) => h.owner === 'player' && h.march !== undefined)
+  const [a, b] = [held[0], held[held.length - 1]]
+  // The fixture's player raised no wall; the live game's has (D-75). Two hexes walled, as they would stand in a 3.14.0 save.
+  const walled: CampaignState = { ...f.state, hexes: f.state.hexes.map((h) => (h.id === a.id ? { ...h, fortification: 2 } : h.id === b.id ? { ...h, fortification: 1 } : h)) }
+  const { state: migrated, applied } = migrateCampaign(walled)
+  assert.deepEqual(applied, ['wallsStanding'])
+  const ledger = ledgerFor(profileOf(f.profile), f.seed, f.ledgerWeeks * 7)
+  const today = addDays(walled.settledThrough.day, 1)
+  const night = settle(migrated, ledger, after(today), { launch: true }).state
+  const paid = night.log.flatMap((e) => (e.kind === 'deed' && e.deed === 'wallRaised' ? [e] : []))
+  const K = RULES.dominion.crafts
+  assert.deepEqual(paid.map((e) => [e.path, e.hexId, e.level]).sort(), [['dwarf', a.id, 1], ['dwarf', a.id, 2], ['dwarf', b.id, 1]].sort())
+  assert.equal(roundPosting(paid.reduce((s, e) => s + e.value, 0)), roundPosting(K.wallRaisedPerLevelBand * (3 * bandOf(a) + bandOf(b))))
+  const next = settle(night, ledger, after(addDays(today, 1)), { launch: true }).state
+  assert.equal(next.log.filter((e) => e.kind === 'deed' && e.deed === 'wallRaised').length, paid.length, 'never again')
+  assert.deepEqual(migrateCampaign(night).applied, [])
 })
 
 test('D-64, D-66, D-76, D-77: the 3.14.0 save played on 12 weeks settles with no invariant broken, and what it left under way runs its course: the plateau siege breaks and pays, Remedy’s request and the ruler’s dare are judged, the Truce ends unbroken', () => {

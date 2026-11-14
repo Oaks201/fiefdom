@@ -172,12 +172,19 @@ test('D-37: the bend moves 260 of the 321 hexes; the heartland and rings 3 and 4
   }
 })
 
+/** A migrated save without the `fortified` events Patch 10's `wallsStanding` migration adds (D-80), so the bend's own changes can be compared. */
+function withoutWallCredit(state: CampaignState): CampaignState {
+  return { ...state, log: state.log.filter((e) => !(e.kind === 'fortified' && e.standing)) }
+}
+
 test('D-38: each fixture migrates once: every moved hex id it holds is renamed, and nothing else changes', () => {
   for (const [version, save] of Object.entries(SAVES)) {
-    const { state, applied } = migrateCampaign(save)
-    assert.deepEqual(applied, ['bentMarches'], version)
+    const { state: full, applied } = migrateCampaign(save)
+    assert.deepEqual(applied, ['bentMarches', 'wallsStanding'], version)
+    // Patch 10 (D-80) also credits the walls standing: `fortified` events at the log's end, checked in crafts.test.ts. The bend is read without them.
+    const state = withoutWallCredit(full)
     const renamed = new Set<string>()
-    compare({ ...save, campaign: { ...save.campaign, migrations: ['bentMarches'] } }, state, '', renamed)
+    compare({ ...save, campaign: { ...save.campaign, migrations: ['bentMarches', 'wallsStanding'] } }, state, '', renamed)
     for (const place of renamed) assert.ok(INVENTORY.has(place.replace(/^\./, '')), `${version}: ${place} is renamed but not in the inventory`)
     assert.ok(renamed.size >= 10, `${version}: renamed ${renamed.size} places`)
     // The hexes keep their order and everything but their position (C-55).
@@ -187,15 +194,15 @@ test('D-38: each fixture migrates once: every moved hex id it holds is renamed, 
       assert.deepEqual(parseHexId(h.id), { q: h.q, r: h.r })
       assert.ok(onMap(h.id), h.id)
     })
-    assert.deepEqual(migrateCampaign(state), { state, applied: [] }, `${version}: never again`)
+    assert.deepEqual(migrateCampaign(full), { state: full, applied: [] }, `${version}: never again`)
   }
 })
 
 test('D-38: on a save that holds a moved hex in every field of the inventory, every one is renamed', () => {
   const save = toppedUp()
-  const { state } = migrateCampaign(save)
+  const state = withoutWallCredit(migrateCampaign(save).state)
   const renamed = new Set<string>()
-  compare({ ...save, campaign: { ...save.campaign, migrations: ['bentMarches'] } }, state, '', renamed)
+  compare({ ...save, campaign: { ...save.campaign, migrations: ['bentMarches', 'wallsStanding'] } }, state, '', renamed)
   const places = new Set([...renamed].map((p) => p.replace(/^\./, '')))
   for (const want of INVENTORY) if (want !== 'hexes[].id') assert.ok(places.has(want) || want === 'log[terms].gift', `${want} renamed`)
   assert.ok(places.has('log[terms].gift') || places.has('log[terms].hexId'))

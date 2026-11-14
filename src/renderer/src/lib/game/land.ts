@@ -863,13 +863,18 @@ export function fortifyOffer(state: CampaignState, hexId: string): { ok: boolean
   return { ok: true, next, cost }
 }
 
-/** Raises one of the player's hexes one fortification level (to 3 at most), paying from the purse. */
+/**
+ * Raises one of the player's hexes one fortification level (to 3 at most), paying from the purse. From
+ * Patch 10 (D-80, K2) it goes into the log as `fortified`, which the chronicle reads as a deed in the Dwarf's craft.
+ */
 export function fortify(state: CampaignState, hexId: string, today: ISODate = openDayOf(state)): LandAction {
   const offer = fortifyOffer(state, hexId)
   if (!offer.ok) return refused(state, offer.reason as LandRefusal, offer.cost)
   const hex = hexOf(state, hexId) as HexState
   const paid = { ...state, purse: spend(state.purse, today, offer.cost, `fortify:${hexId}:${offer.next}`) }
-  return { ok: true, cost: offer.cost, state: replaceHex(paid, { ...hex, fortification: offer.next as HexState['fortification'] }) }
+  const events = new EventBuffer()
+  events.emitter(today)('fortified', { hexId, level: offer.next })
+  return { ok: true, cost: offer.cost, state: events.flush(replaceHex(paid, { ...hex, fortification: offer.next as HexState['fortification'] })) }
 }
 
 // ── Reclaiming (Ch 6 "Losing land", Ch 9 Grace I) ────────────────────────────

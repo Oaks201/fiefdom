@@ -140,6 +140,7 @@ export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience,
             </header>
             <WarTrackBar tug={panel.orcWar.tug} />
             <p className="war__now">{panel.orcWar.now}</p>
+            <p className="war__now">{panel.orcWar.field}</p>
           </section>
         )}
         {panel.fronts.length > 0 && (

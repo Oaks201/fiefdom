@@ -12,16 +12,24 @@
  *
  * Each path's Dominion sets its rank, I to V, at shares of a fully walked path; a rank once reached
  * never falls (P2-15). Total Dominion (all four paths) gates the building tiers.
+ *
+ * Patch 10 (D-80, rules 3.15.0; K1 to K5): each ruler's craft. A deed in his craft adds Renown to his path
+ * wherever it is done (`RULES.dominion.crafts`): a wall raised and a defense the walls turned (the Dwarf),
+ * a day of a streak in the field (the Orc; `paths.field` keeps the streak), a hex won by deal in any
+ * march (the Goblin), a mythic beaten or hunted (the Archmage).
  */
 import { CODEX } from './codex'
-import { depthOf, hexIndex, hexWorth, isClaimableKind, isStronghold, marchShares, pathShares, type Shares } from './map'
+import { bandOf, depthOf, hexIndex, hexWorth, isClaimableKind, isStronghold, marchShares, pathShares, type Shares } from './map'
 import { addDays } from './clock'
 import { RULES } from './rules'
-import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type GameEvent, type HexState, type LairId, type Owner, type PathsState, type RivalId } from './types'
+import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type FieldStreak, type GameEvent, type HexState, type ISODate, type LairId, type Owner, type PathsState, type RivalId } from './types'
 
 export { hexWorth, pathShares }
 
 const D = RULES.dominion
+const C = D.crafts
+/** Patch 10 (K3): the ruler whose craft is the field. */
+const FIELD_RULER: RivalId = 'orc'
 const HEARTLAND = RULES.map.heartlandRings
 
 function zeros(): Record<RivalId, number> {
@@ -102,6 +110,10 @@ interface Deed {
   value: number
   hexId?: string
   source?: string
+  /** Patch 10: the wall level a wall deed counts. */
+  level?: number
+  /** Patch 10: the day of the streak a field day is. */
+  streak?: number
 }
 
 function spread(shares: Shares, deed: DeedKind, value: number, hexId?: string, source?: string): Deed[] {
@@ -126,32 +138,87 @@ function signature(path: RivalId, deed: DeedKind, value: number, e: GameEvent, h
 
 const DEAL_WAYS: ReadonlySet<string> = new Set(['bribe', 'influence', 'trade'])
 
-/** The signature deeds a hex the player took records (D-34): the Goblin's deals, the Dwarf's walls and sieges, the Orc's retaking, the Archmage's ebbs and summoned mythics. */
+/** The signature deeds a hex the player took records (D-34): the Goblin's deals (in any march from Patch 10, K4), the Dwarf's walls and sieges, the Archmage's ebbs. */
 function takenSignatures(state: CampaignState, e: Extract<GameEvent, { kind: 'hexTransfer' }>, hex: HexState, at: number): Deed[] {
   const d = D.deeds
   const shares = pathShares(hex)
   const out: Deed[] = []
-  if (DEAL_WAYS.has(e.how) && shares.goblin) out.push(...signature('goblin', 'dealTaken', d.dealTakenPerDepth * depthOf(hex) * shares.goblin, e, hex.id))
+  if (DEAL_WAYS.has(e.how)) out.push(...signature('goblin', 'dealTaken', d.dealTakenPerDepth * depthOf(hex), e, hex.id))
   if (shares.dwarf && e.fortification) out.push(...signature('dwarf', 'wallsBroken', d.wallsBroken * e.fortification * shares.dwarf, e, hex.id))
   // Looking back from the taking: this hex's own history since it last changed hands, and the day's surges.
   let repulses = 0
-  let lastHolder: string | undefined
+  let changedHands = false
   let ebbed = false
-  let summoned = false
-  // ISO dates compare as strings: the lookback's first day, and the first day a summoning still counts.
+  // ISO dates compare as strings: the lookback's first day.
   const since = addDays(e.day, -d.lookbackDays)
-  const summonedSince = addDays(e.day, 1 - RULES.personalities.archmage.summonDays)
-  for (const x of before(state.log, at, (x) => (lastHolder === undefined && x.day >= since) || x.day === e.day)) {
-    if (x.kind === 'hexTransfer' && x.hexId === hex.id && lastHolder === undefined) lastHolder = x.from === 'player' ? `player>${x.to}` : 'other'
-    if (x.kind === 'assault' && x.hexId === hex.id && x.outcome === 'repulsed' && lastHolder === undefined) repulses++
+  for (const x of before(state.log, at, (x) => (!changedHands && x.day >= since) || x.day === e.day)) {
+    if (x.kind === 'hexTransfer' && x.hexId === hex.id) changedHands = true
+    if (x.kind === 'assault' && x.hexId === hex.id && x.outcome === 'repulsed' && !changedHands) repulses++
     if (x.kind === 'surge' && x.hexId === hex.id && x.day === e.day && x.surge === 'ebb') ebbed = true
-    if (lastHolder === undefined && ((x.kind === 'surge' && x.surge === 'summoning') || (x.kind === 'ritual' && x.ritualId === 'summoning')) && x.hexId === hex.id && x.day >= summonedSince) summoned = true
   }
   if (shares.dwarf && e.how === 'conquest' && repulses > 0) out.push(...signature('dwarf', 'siegeEndured', d.siegeEndured * Math.min(d.siegeEnduredCap, repulses) * shares.dwarf, e, hex.id))
-  if (lastHolder === 'player>orc') out.push(...signature('orc', 'retaken', d.retaken, e, hex.id))
   if (ebbed && shares.archmage) out.push(...signature('archmage', 'surgeSeized', d.surgeSeized * shares.archmage, e, hex.id))
-  if (summoned) out.push(...signature('archmage', 'summonedDefeated', d.summonedDefeated, e, hex.id))
   return out
+}
+
+/** The deed a defense's own outcome records (D-18, D-25, D-34): none for a loss. */
+function defenseDeed(e: Extract<GameEvent, { kind: 'defense' }>, byId: ReadonlyMap<string, HexState>): Deed[] {
+  const d = D.deeds
+  if (e.outcome === 'defeat') return []
+  if (e.threat === 'surge') return signature('archmage', 'surgeWeathered', d.surgeWeathered, e, e.hexId)
+  if (e.threat === 'counterattack') {
+    // D-25: a counterattack held is its own deed, in place of the battle's ordinary one.
+    if (e.rival) return [{ path: e.rival, deed: 'counterattackHeld', value: d.counterattackHeld, hexId: e.hexId, source: e.id }]
+    const hex = byId.get(e.hexId)
+    return hex && hex.ring > HEARTLAND ? spread(pathShares(hex), 'counterattackHeld', d.counterattackHeldBeasts, hex.id, e.id) : []
+  }
+  if (e.rival) return [{ path: e.rival, deed: 'battleWon', value: d.battleWon, hexId: e.hexId, source: e.id }]
+  const hex = byId.get(e.hexId)
+  if (!hex || hex.ring <= HEARTLAND) return []
+  if (e.threat === 'beasts') return spread(pathShares(hex), 'heldAgainstBeasts', d.heldAgainstBeasts, hex.id, e.id)
+  if (e.threat === 'mythic') return spread(pathShares(hex), 'heldAgainstMythic', d.heldAgainstMythic, hex.id, e.id)
+  return []
+}
+
+/** Patch 10 (K2, K5): the craft deeds a defense won records beside its own: the walls that turned it (the Dwarf), a mythic beaten (the Archmage), wherever it was fought. */
+function defenseCrafts(e: Extract<GameEvent, { kind: 'defense' }>): Deed[] {
+  if (e.outcome === 'defeat') return []
+  const out: Deed[] = []
+  if (e.walls) out.push({ path: 'dwarf', deed: 'wallsHeld', value: C.wallsHeld * e.walls, hexId: e.hexId, level: e.walls, source: e.id })
+  if (e.threat === 'mythic') out.push({ path: 'archmage', deed: 'mythicBeaten', value: C.mythicBeaten, hexId: e.hexId, source: e.id })
+  return out
+}
+
+/**
+ * Patch 10 (K3): whether `e` is a battle in the Orc's field, won or lost: an assault on a hex he holds or a
+ * hex of his march (a seam of it too), an attack of his on the player, or a Grand Battle against him or in his march.
+ */
+export function isFieldBattle(e: GameEvent, byId: ReadonlyMap<string, HexState>): boolean {
+  const inMarch = (hexId: string): boolean => {
+    const hex = byId.get(hexId)
+    return hex?.march === FIELD_RULER || hex?.seam === FIELD_RULER
+  }
+  switch (e.kind) {
+    case 'assault':
+      return e.outcome !== 'revealed' && (e.owner === FIELD_RULER || inMarch(e.hexId))
+    case 'defense':
+      return e.rival === FIELD_RULER
+    case 'grandBattle':
+      return e.stage === 'fought' && e.result !== undefined && (e.rival === FIELD_RULER || inMarch(e.hexId))
+    default:
+      return false
+  }
+}
+
+/** Patch 10 (K3): the Orc's field streak on `day`: its field days so far, 0 once a day has passed without a battle or a hold. */
+export function fieldStreak(state: CampaignState, day: ISODate): number {
+  const field = pathsOf(state).field
+  return field && field.through >= addDays(day, -1) ? field.days : 0
+}
+
+/** What a field day pays (K3): `fieldDay` × its day in the streak, at most `fieldDayCap`. */
+export function fieldDayRenown(streakDay: number): number {
+  return Math.min(C.fieldDayCap, C.fieldDay * streakDay)
 }
 
 /** The deeds one log event records (D-18; Patch 4's signature deeds, D-34), with the hexes as they stand. `at` is its place in the log. */
@@ -168,43 +235,31 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
       if (!isStronghold(state.hexes, hex.id)) return taken
       return [...taken, ...spread(pathShares(hex), 'strongholdTaken', d.strongholdPerDepth * depthOf(hex), hex.id, e.id)]
     }
-    case 'assault':
-      // The Orc: every battle with him counts, a repulse too (D-34).
-      return e.outcome === 'repulsed' && e.owner === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
+    case 'fortified': {
+      // Patch 10 (K2): a wall level raised, once for each hex and level in a campaign.
+      const hex = byId.get(e.hexId)
+      if (!hex) return []
+      for (const x of before(state.log, at, () => true)) if (x.kind === 'fortified' && x.hexId === e.hexId && x.level === e.level) return []
+      return [{ path: 'dwarf', deed: 'wallRaised', value: C.wallRaisedPerLevelBand * e.level * bandOf(hex), hexId: hex.id, level: e.level, source: e.id }]
+    }
     case 'bribe':
       return e.price < e.garrison ? signature('goblin', 'bargain', d.bargain, e, e.hexId) : []
     case 'goblinBid':
       return e.stage === 'held' ? signature('goblin', 'bribeBeaten', d.bribeBeaten, e, e.hexId) : []
-    case 'courtship':
-      return e.outcome === 'defected' && e.winner === 'player' && e.rivals?.includes('goblin') ? signature('goblin', 'counterBidBeaten', d.counterBidBeaten, e, e.hexId) : []
     case 'ritual':
       return signature('archmage', 'ritualEndured', d.ritualEndured, e, e.hexId)
-    case 'defense': {
-      if (e.outcome === 'defeat') return e.rival === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
-      if (e.threat === 'surge') return signature('archmage', 'surgeWeathered', d.surgeWeathered, e, e.hexId)
-      if (e.threat === 'conquest' && e.rival === 'dwarf') return signature('dwarf', 'siegeBroken', d.siegeBroken, e, e.hexId)
-      if (e.threat === 'counterattack') {
-        // D-25: a counterattack held is its own deed, in place of the battle's ordinary one.
-        if (e.rival) return [{ path: e.rival, deed: 'counterattackHeld', value: d.counterattackHeld, hexId: e.hexId, source: e.id }]
-        const hex = byId.get(e.hexId)
-        return hex && hex.ring > HEARTLAND ? spread(pathShares(hex), 'counterattackHeld', d.counterattackHeldBeasts, hex.id, e.id) : []
-      }
-      if (e.rival) return [{ path: e.rival, deed: 'battleWon', value: d.battleWon, hexId: e.hexId, source: e.id }]
-      const hex = byId.get(e.hexId)
-      if (!hex || hex.ring <= HEARTLAND) return []
-      if (e.threat === 'beasts') return spread(pathShares(hex), 'heldAgainstBeasts', d.heldAgainstBeasts, hex.id, e.id)
-      if (e.threat === 'mythic') return spread(pathShares(hex), 'heldAgainstMythic', d.heldAgainstMythic, hex.id, e.id)
-      return []
-    }
+    case 'defense':
+      return [...defenseDeed(e, byId), ...defenseCrafts(e)]
     case 'grandBattle': {
-      if (e.stage === 'fought' && e.result === 'defeat') return e.rival === 'orc' ? signature('orc', 'battleLost', d.battleLost, e, e.hexId) : []
-      if (e.stage !== 'fought' || e.result === undefined) return []
+      if (e.stage !== 'fought' || e.result === undefined || e.result === 'defeat') return []
       const battle = state.grandBattles.find((b) => b.id === e.battleId)
       const members = battle?.members ?? (e.rival ? [e.rival] : [])
       if (members.length > 0) return members.map((path) => ({ path, deed: 'grandBattleWon' as const, value: d.grandBattleWon / members.length, hexId: e.hexId, source: e.id }))
       const quarry = e.quarry ?? battle?.quarry
       const lair = quarry ? CODEX.quarries.find((q) => q.id === quarry)?.lair : byId.get(e.hexId)?.march
-      return lair ? spread(lairShares(lair), 'grandBattleWon', d.grandBattleWon, e.hexId, e.id) : []
+      const won: Deed[] = lair ? spread(lairShares(lair), 'grandBattleWon', d.grandBattleWon, e.hexId, e.id) : []
+      // Patch 10 (K5): a Mythic Hunt won is a deed in the Archmage's craft, beside the battle's own.
+      return e.trigger === 'mythicHunt' ? [...won, { path: 'archmage', deed: 'mythicHunted', value: C.mythicHunted, hexId: e.hexId, source: e.id }] : won
     }
     case 'rivalResolved':
       return [{ path: e.rival, deed: 'resolved', value: d.resolved, source: e.id }]
@@ -213,22 +268,40 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
   }
 }
 
+/** What a day's close tells the chronicle (Patch 10, K3): the day, and whether it holds a field streak (a rest day, D-54, or a day away, X-17). */
+export interface ChronicleClose {
+  day: ISODate
+  held: boolean
+}
+
 /**
  * The chronicle (D-18): posts the deeds in the log since it last read it, adds their Renown, and
  * raises any path whose Dominion has passed a new rank. Settle once: it reads each event once.
+ *
+ * Patch 10 (K3): the first battle in the Orc's field on a day makes it a field day, the next of its streak
+ * when the streak is alive (it counted or held through the day before), else the first of a new one. At a
+ * day's close (`close`) a rest day or a day away holds a streak that was alive.
  */
-export function chronicle(input: CampaignState, emit: Emit): CampaignState {
+export function chronicle(input: CampaignState, emit: Emit, close?: ChronicleClose): CampaignState {
   const paths = pathsOf(input)
-  if (paths.logRead >= input.log.length && input.paths) return checkRanks(input, emit)
   const byId = hexIndex(input.hexes)
   const byRival = { ...paths.byRival }
-  for (let at = paths.logRead; at < input.log.length; at++) {
-    for (const deed of deedsOf(input, input.log[at], byId, at)) {
-      byRival[deed.path] = { ...byRival[deed.path], renown: byRival[deed.path].renown + deed.value }
-      emit('deed', deed)
-    }
+  let field: FieldStreak | undefined = paths.field
+  const add = (deed: Deed): void => {
+    byRival[deed.path] = { ...byRival[deed.path], renown: byRival[deed.path].renown + deed.value }
+    emit('deed', deed)
   }
-  return checkRanks({ ...input, paths: { byRival, logRead: input.log.length } }, emit)
+  for (let at = paths.logRead; at < input.log.length; at++) {
+    const e = input.log[at]
+    for (const deed of deedsOf(input, e, byId, at)) add(deed)
+    if (!isFieldBattle(e, byId) || (field && e.day <= field.through)) continue
+    const days = field && field.through === addDays(e.day, -1) ? field.days + 1 : 1
+    field = { days, through: e.day }
+    add({ path: FIELD_RULER, deed: 'fieldDay', value: fieldDayRenown(days), streak: days, source: e.id })
+  }
+  if (close?.held && field && field.through === addDays(close.day, -1)) field = { ...field, through: close.day }
+  if (paths.logRead >= input.log.length && input.paths && field === paths.field) return checkRanks(input, emit)
+  return checkRanks({ ...input, paths: { byRival, logRead: input.log.length, ...(field ? { field } : {}) } }, emit)
 }
 
 function checkRanks(state: CampaignState, emit: Emit): CampaignState {

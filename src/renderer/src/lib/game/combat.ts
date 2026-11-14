@@ -1317,7 +1317,16 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
         gains.push({ kind: 'spoils', amount, source: `defense:${b.kind}:${hex.id}` })
         report.spoils = roundPosting(amount)
       }
-      if (b.rival && RESPECTED_ATTACKS.has(b.kind)) respect.push({ rival: b.rival, change: RULES.respect.change.raidDefeated, reason: 'raidDefeated' })
+      // Patch 10 (K3): each ruler weighs an attack of his beaten his own way (the Orc less: his Respect is earned in his field).
+      if (b.rival && RESPECTED_ATTACKS.has(b.kind)) respect.push({ rival: b.rival, change: respectChange(b.rival, 'raidDefeated', RULES.respect.change.raidDefeated), reason: 'raidDefeated' })
+      // Patch 10 (K2): the walls turned it when the formula, at the Valor fought at, loses without them.
+      if (hex.fortification > 0) {
+        const fought = led ? (skirmishDayOf(state, day)?.valor ?? ctx.valor) : ctx.valor
+        const formula = led
+          ? defenseValue({ strikes: fielded.map((f) => f.strike), armsBonus: effects.armsBonus.value, walls: wallsFor(effects, { ring: bandOf(hex), foe }), fortification: fortificationValue(hex), rallyFloor: effects.rallyFloor.value, valor: fought }).defense
+          : defense
+        if (formula - fortificationValue(hex) * rally(effects.rallyFloor.value, fought) < b.strength) report.walls = hex.fortification
+      }
       if (b.kind === 'mythic') {
         const side = lairSide(hex)
         const lair = side ? CODEX.lairs.find((l) => l.land === side)?.id : undefined

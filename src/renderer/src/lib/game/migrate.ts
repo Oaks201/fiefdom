@@ -11,9 +11,15 @@
  *   else changes: the hexes keep their order (C-55), owners, garrisons and names. Hex ids hold a comma, so
  *   nothing else in a save can be mistaken for one. The store keeps the old file before it writes the
  *   migrated one (C-53).
+ * - **wallsStanding** (Patch 10, D-80, K2): rules 3.15.0 read a wall the player raises as a deed in the
+ *   Dwarf's craft, from the `fortified` event raising it posts. Walls raised before then left no event, so
+ *   each wall level standing on a hex the player holds is posted once, dated the open day and marked
+ *   `standing`; the chronicle pays it at the next close as it pays any other. A hex the player takes loses
+ *   its walls (`toPlayer`), so every level standing is one the player raised. Nothing else changes.
  */
 import { bentIds, parseHexId } from './map'
 import { needsRefounding } from './refound'
+import { EventBuffer, openDayOf } from './state'
 import type { CampaignState, MigrationId } from './types'
 
 /** The migrations `state` has had. */
@@ -31,8 +37,23 @@ export function migrateCampaign(state: CampaignState): { state: CampaignState; a
     next = bendMarches(next)
     applied.push('bentMarches')
   }
+  if (!done.has('wallsStanding')) {
+    next = creditStandingWalls(next)
+    applied.push('wallsStanding')
+  }
   if (applied.length === 0) return { state, applied }
   return { state: { ...next, campaign: { ...next.campaign, migrations: [...migrationsOf(state), ...applied] } }, applied }
+}
+
+/** D-80 (K2): a `fortified` event for every wall level standing on the player's hexes, in map order, dated the open day. */
+function creditStandingWalls(state: CampaignState): CampaignState {
+  const events = new EventBuffer()
+  const emit = events.emitter(openDayOf(state))
+  for (const h of state.hexes) {
+    if (h.owner !== 'player') continue
+    for (let level = 1; level <= h.fortification; level++) emit('fortified', { hexId: h.id, level, standing: true })
+  }
+  return events.flush(state)
 }
 
 /** D-37: every moved hex id in the save renamed to its bent id, and every hex record placed there. */

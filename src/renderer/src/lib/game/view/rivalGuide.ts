@@ -134,7 +134,7 @@ function measuresOf(rival: RivalId): GuideLine[] {
     },
     {
       term: 'They pull apart',
-      text: `Taking his land adds Renown (${perDepth(d.hexTakenPerDepth)}) but costs Respect (${signed(conquered)}). Beating his raids adds both (Respect ${signed(c.raidDefeated)}, Renown ${signed(d.battleWon)}). The table below shows every deed both ways.`
+      text: `Taking his land adds Renown (${perDepth(d.hexTakenPerDepth)}) but costs Respect (${signed(conquered)}). Beating his raids adds both (Respect ${signed(respectChange(rival, 'raidDefeated', c.raidDefeated))}, Renown ${signed(d.battleWon)}). The table below shows every deed both ways.`
     }
   ]
 }
@@ -254,14 +254,11 @@ function deedsOf(rival: RivalId): Deed[] {
   const hexTaken = `${perDepth(d.hexTakenPerDepth)}, +${amount(d.perFortification)} a wall level`
   // The Goblin's deals (a bribe, a courtship, a trade) add his own deed on top of the hex's (D-34).
   const byDeal = perDepth(d.hexTakenPerDepth + (rival === 'goblin' ? d.dealTakenPerDepth : 0))
+  // Patch 10 (D-80): each ruler's craft, and his own weight for an attack of his beaten (K3).
+  const k = RULES.dominion.crafts
+  const beaten = respectChange(rival, 'raidDefeated', c.raidDefeated)
 
-  const raids: Deed[] =
-    rival === 'dwarf'
-      ? [
-          { deed: 'His raid beaten', respect: c.raidDefeated, renown: signed(d.battleWon) },
-          { deed: 'His conquest attempt beaten', respect: c.raidDefeated, renown: signed(d.siegeBroken) }
-        ]
-      : [{ deed: 'His raid or conquest attempt beaten', respect: c.raidDefeated, renown: signed(d.battleWon) }]
+  const raids: Deed[] = [{ deed: 'His raid or conquest attempt beaten', respect: beaten, renown: signed(d.battleWon) }]
   const grand: Deed[] =
     rival === 'orc'
       ? c.incursionWon === own.orc.grandBattleWon
@@ -278,7 +275,7 @@ function deedsOf(rival: RivalId): Deed[] {
   const common: Deed[] = [
     ...raids,
     ...grand,
-    { deed: 'A battle lost to him (his raid or attack beats your defense)', respect: c.raidLost, ...(rival === 'orc' ? { renown: signed(d.battleLost) } : {}) },
+    { deed: 'A battle lost to him (his raid or attack beats your defense)', respect: c.raidLost },
     { deed: 'A hex he holds, taken by assault or Grand Battle', respect: conquered, renown: hexTaken },
     { deed: 'A wild hex of his march taken', renown: hexTaken },
     { deed: 'A stronghold of his march taken', renown: `${perDepth(d.strongholdPerDepth)} more` },
@@ -305,18 +302,23 @@ function deedsOf(rival: RivalId): Deed[] {
     case 'orc':
       return [
         ...common,
-        { deed: 'His counterattack held', respect: c.raidDefeated, renown: signed(d.counterattackHeld) },
-        { deed: 'A Grand Battle against him lost', respect: own.orc.grandBattleLost, renown: signed(d.battleLost) },
-        { deed: 'Your assault on his hex repulsed', renown: signed(d.battleLost) },
-        { deed: 'A hex he took from you, taken back', renown: `+${amount(d.retaken)} more` },
+        { deed: 'His counterattack held', respect: beaten, renown: signed(d.counterattackHeld) },
+        { deed: 'A Grand Battle against him lost', respect: own.orc.grandBattleLost },
+        // Patch 10 (K3): his craft is the field.
+        {
+          deed: 'A day in his field: any battle against him or in his march, won or lost. A rest day or a day away holds the streak',
+          renown: `+${k.fieldDay} on a streak’s first day, +${k.fieldDay} more each day after, up to +${k.fieldDayCap} a day`
+        },
+        { deed: `Every ${k.fieldWeekDays}th day of a streak in his field`, respect: own.orc.fieldWeek }
       ]
     case 'goblin':
       return [
         ...common,
         { deed: 'A bribe paid for a hex of his march', respect: own.goblin.bribePaid, renown: byDeal },
         { deed: 'A bribe paid below the garrison it bought', renown: `+${amount(d.bargain)} more` },
-        { deed: 'A courtship won against his bid', renown: `+${amount(d.counterBidBeaten)} more` },
         { deed: 'His bid for your village held off', respect: own.goblin.bidHeld, renown: signed(d.bribeBeaten) },
+        // Patch 10 (K4): his craft is the deal.
+        { deed: 'A hex won by a bribe, a courtship or a trade in any other march', renown: perDepth(d.dealTakenPerDepth) },
         { deed: 'His buy-off taken', respect: own.goblin.buyOffAccepted },
         { deed: 'His buy-off refused, or left to lapse', respect: own.goblin.buyOffRefused }
       ]
@@ -325,6 +327,9 @@ function deedsOf(rival: RivalId): Deed[] {
         ...common,
         { deed: 'Each of his wall levels broken (a walled hex of his march taken)', respect: own.dwarf.wallBroken, respectPer: 'a level', renown: `+${amount(d.wallsBroken)} a level more` },
         { deed: 'A hex of his march taken by siege', renown: `+${amount(d.siegeEndured)} for each repulse before it, up to +${amount(d.siegeEndured * d.siegeEnduredCap)}` },
+        // Patch 10 (K2): his craft is stone.
+        { deed: 'A wall level you raise on any hex of yours, once for each hex and level', renown: `+${amount(k.wallRaisedPerLevelBand)} × the level × the hex’s band` },
+        { deed: 'A defense won that your walls turned, on any hex', renown: `+${amount(k.wallsHeld)} a wall level more` },
         { deed: 'An oath of stone with him kept to its end', respect: RULES.trade.oath.keptRespect },
         { deed: 'An oath of stone with him broken (the Book of Grudges opens)', respect: RULES.trade.oath.brokenRespect }
       ]
@@ -335,7 +340,9 @@ function deedsOf(rival: RivalId): Deed[] {
         { deed: 'His Ritual endured', respect: own.archmage.ritualEndured, renown: signed(d.ritualEndured) },
         { deed: `A week at Realm Consistency ${pct(RULES.respect.constantWeekAt)} or more`, respect: own.archmage.constantWeek },
         { deed: 'A hex of his march taken on its ebb', renown: `+${amount(d.surgeSeized)} more` },
-        { deed: 'A summoned mythic’s hex taken', renown: `+${amount(d.summonedDefeated)} more` }
+        // Patch 10 (K5): his craft is the unseen.
+        { deed: 'A mythic beaten in a defense, on any hex', renown: `+${k.mythicBeaten} more` },
+        { deed: 'A Mythic Hunt won', renown: `+${amount(k.mythicHunted)} more` }
       ]
   }
 }

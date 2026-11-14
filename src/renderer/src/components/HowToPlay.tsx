@@ -126,6 +126,7 @@ export function HowToPlay(): React.JSX.Element | null {
   const slots = inf.courtshipSlots
   const sg = RULES.sieges
   const deeds = RULES.dominion.deeds
+  const crafts = RULES.dominion.crafts
   const pm = RULES.personalities
   const rp = RULES.dominion.rankPerks
   const map = RULES.map
@@ -588,19 +589,34 @@ export function HowToPlay(): React.JSX.Element | null {
               </p>
               <ul>
                 <li>
-                  <b>The Orc:</b> every battle with him, a loss too ({deeds.battleLost}); a hex he took from you, taken back ({deeds.retaken}).
+                  <b>The Goblin:</b> a hex won by a deal or bribe, in any march ({deeds.dealTakenPerDepth} × its depth); a bribe paid below the garrison it bought ({deeds.bargain});
+                  his bid for your village held ({deeds.bribeBeaten}).
                 </li>
                 <li>
-                  <b>The Goblin:</b> a hex of his march won by a deal or bribe ({deeds.dealTakenPerDepth} × its depth); a bribe paid below the garrison it bought ({deeds.bargain});
-                  his bid for your village held ({deeds.bribeBeaten}); a courtship won against his bid ({deeds.counterBidBeaten}).
+                  <b>The Dwarf:</b> each wall level broken ({deeds.wallsBroken}); each repulse a siege of his endured, up to {deeds.siegeEnduredCap} ({deeds.siegeEndured} each).
                 </li>
                 <li>
-                  <b>The Dwarf:</b> each wall level broken ({deeds.wallsBroken}); each repulse a siege of his endured, up to {deeds.siegeEnduredCap} ({deeds.siegeEndured} each); his
-                  conquest attempt beaten ({deeds.siegeBroken}).
+                  <b>The Archmage:</b> a surge strike held ({deeds.surgeWeathered}); a hex taken on its ebb ({deeds.surgeSeized}); a Ritual endured ({deeds.ritualEndured}).
+                </li>
+              </ul>
+              <p>
+                <b>Each ruler admires a craft.</b> A deed in his craft adds Renown to his path wherever you do it:
+              </p>
+              <ul>
+                <li>
+                  <b>The Orc, the field:</b> a day with any battle against him or in his march, won or lost, is a day in the field. Day 1 of a streak adds {crafts.fieldDay}, each
+                  day after {crafts.fieldDay} more, up to {crafts.fieldDayCap} a day. A rest day or a day away holds the streak; any other day without a battle ends it. Every{' '}
+                  {crafts.fieldWeekDays}th day of a streak raises his Respect.
                 </li>
                 <li>
-                  <b>The Archmage:</b> a surge strike held ({deeds.surgeWeathered}); a hex taken on its ebb ({deeds.surgeSeized}); a Ritual endured ({deeds.ritualEndured}); a summoned
-                  mythic beaten ({deeds.summonedDefeated}).
+                  <b>The Goblin, the deal:</b> the hexes won by coin above, in any march.
+                </li>
+                <li>
+                  <b>The Dwarf, stone:</b> a wall level you raise on any hex of yours ({crafts.wallRaisedPerLevelBand} × the level × the hex’s band, once for each hex and level); a
+                  defense won that your walls turned ({crafts.wallsHeld} a wall level).
+                </li>
+                <li>
+                  <b>The Archmage, the unseen:</b> a mythic beaten in a defense ({crafts.mythicBeaten}); a Mythic Hunt won ({crafts.mythicHunted}).
                 </li>
               </ul>
             </>
