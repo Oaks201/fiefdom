@@ -1,11 +1,11 @@
 # Remedy's lines
 
-**Status (2026-11-11):** Rich approved the first 26 as written (D-74), and the game speaks them. Stage 2b adds 20 drafts for her requests and her Audience (D-76), and stage 3 three for the plateau siege (D-77), at the end, unapproved: the game shows their plain lines until he approves them.
+**Status (2026-11-11):** Rich approved the first 26 as written (D-74), and on 2026-11-11 the other 23 as written (D-78): stage 2b's 20 for her requests and her Audience (D-76) and stage 3's three for the plateau siege (D-77). Every line here carries `approved: true` in `healer.json`, so the game speaks it.
 
 Drafted 2026-11-02 for Patch 9 stage 2a (D-72). Rich's brief: Remedy is a strict, severe-looking woman, serious about health, genuine and caring, and she can come across a bit aggressive.
 
 **How these work:**
-- Each draft is already in `src/renderer/src/data/text/healer.json` as its slot's `final`, with `approved: false`. Until you approve a line, the game shows the plain line beneath it.
+- Each draft is in `src/renderer/src/data/text/healer.json` as its slot's `final`. A draft carries `approved: false` until it is approved, and the game shows the plain line beneath it until then.
 - Approve all, approve some, or rewrite any: tell me which, and I set `approved: true` (or put your wording in).
 - Words in braces are filled in by the game, e.g. {floor} becomes 1,550.
 
@@ -58,7 +58,7 @@ Drafted 2026-11-02 for Patch 9 stage 2a (D-72). Rich's brief: Remedy is a strict
 
 ## Stage 2b: her requests (8)
 
-Drafted 2026-11-11 (D-76), unapproved.
+Drafted 2026-11-11 (D-76), approved as written (D-78).
 
 | Slot | When it shows | Remedy (draft) | The plain line it replaces |
 | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ Drafted 2026-11-11 (D-76), unapproved.
 
 ## Stage 2b: her Audience (12)
 
-Drafted 2026-11-11 (D-76), unapproved. The question buttons are the player's words and show as they are.
+Drafted 2026-11-11 (D-76), approved as written (D-78). The question buttons are the player's words and show as they are.
 
 | Slot | When it shows | Remedy (draft) | The plain line it replaces |
 | --- | --- | --- | --- |
@@ -92,7 +92,7 @@ Drafted 2026-11-11 (D-76), unapproved. The question buttons are the player's wor
 
 ## Stage 3: the plateau siege (3)
 
-Drafted 2026-11-11 (D-77), unapproved.
+Drafted 2026-11-11 (D-77), approved as written (D-78).
 
 | Slot | When it shows | Remedy (draft) | The plain line it replaces |
 | --- | --- | --- | --- |

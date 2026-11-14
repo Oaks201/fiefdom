@@ -27,6 +27,7 @@ import {
   type WeekHabits
 } from '../../src/renderer/src/lib/game/rivals'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
+import { weekPillars } from '../../src/renderer/src/lib/game/score'
 import { adjustRespect } from '../../src/renderer/src/lib/game/state'
 import { settle } from '../../src/renderer/src/lib/game/settle'
 import type { CampaignState, DayRecord, GameEvent, GraceLevel, RivalId } from '../../src/renderer/src/lib/game/types'
@@ -285,6 +286,18 @@ test('A-38: the prized-habit Respect (+4) is paid only in weeks that meet each r
       ['orc', 4]
     ]
   )
+})
+
+test('Ch 16 crash dieting (A-41, D-66): a day eaten under 90% of the Healer’s floor counts against the Goblin’s prized week as 15% over the limit, so eating too little never meets his food dare', () => {
+  const state = realm()
+  const terms = { stepPool: 70_000, calorieLimit: 2_000, floor: 1_600 }
+  const under = 0.85 * terms.floor
+  const judged = (days: DayRecord[]): boolean => prizedWeek(state, 'goblin', { days, pillars: weekPillars(days, terms) }, '2026-10-11', 1)
+  // The dare is judged by the same reading (settleDare in rivalTurn).
+  const atLimit = perfectDays('2026-10-05', 7).map((d) => ({ ...d, eaten: terms.calorieLimit }))
+  assert.equal(judged(atLimit), true, 'every day at the limit')
+  assert.equal(judged(atLimit.map((d, i) => (i === 3 ? { ...d, eaten: under } : d))), false, 'one day under 90% of the floor tips a week at the limit over it')
+  assert.equal(judged(atLimit.map((d) => ({ ...d, eaten: under }))), false, 'and a week of them is fully over budget')
 })
 
 // ── The weekly turn ──────────────────────────────────────────────────────────

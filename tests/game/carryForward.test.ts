@@ -1,7 +1,9 @@
 /**
  * Patch 4 (docs/redesign/patch-4-spec.md section 11; C-48), Patch 5 (docs/redesign/patch-5-spec.md
  * section 6; C-50) and Patch 6 (docs/redesign/patch-6-spec.md sections 7 and 12.5; C-94, D-52): a campaign
- * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.14.0 in place. Each fixture
+ * founded and played on rules 3.1.0, 3.2.0, 3.3.0 or 3.4.0 carries forward to 3.14.0 in place. Before Patch 10,
+ * a 3.14.0 save joins them, stopped with Patches 7 to 9's records under way, so a later patch that changes the
+ * save is checked against one shaped like the live game's. Each fixture
  * (`tests/game/fixtures/campaign-<version>.json`) was written by its script in `scripts/` on its own
  * rules, before the next patch changed any: a synthetic Steadfast campaign played by the automatic player
  * on the simulator's ledger (no one's health data). As the app does when it loads one, a save from before
@@ -41,6 +43,7 @@ const FIXTURES = { '3.1.0': load('3.1.0'), '3.2.0': load('3.2.0') }
 const V310 = FIXTURES['3.1.0']
 const V330 = load('3.3.0')
 const V340 = load('3.4.0')
+const V3140 = load('3.14.0')
 const WEEKS_ON = 12
 const after = (day: ISODate): Date => new Date(dayCloseInstant(day, TZ).getTime() + 60_000)
 
@@ -210,4 +213,52 @@ test('D-54: a 3.4.0 save (the live game\'s kind) with a Respite on its open day 
   const before = V340.state.settlement.snapshots.find((x) => x.date === V340.state.settledThrough.day)?.streak as number
   assert.equal(s.settlement.snapshots.find((x) => x.date === night)?.streak, before + 1)
   assert.equal(s.campaign.ruleVersion, '3.4.0', 'a campaign keeps its founding version')
+})
+
+test('D-57, D-64, D-66, D-73, D-76, D-77: the 3.14.0 save is what it says, stopped with Patches 7 to 9 under way, and the current rules take it as it is: no re-founding, no migration, and settling with no day to settle changes nothing (Test 9)', () => {
+  const f = V3140
+  const s = f.state
+  const day = s.settledThrough.day
+  assert.equal(f.ruleVersion, '3.14.0')
+  assert.equal(s.campaign.ruleVersion, '3.14.0')
+  assert.equal(needsRefounding(s), false)
+  assert.deepEqual(migrationsOf(s), ['bentMarches'], 'founded on the bent map')
+  assert.deepEqual(migrateCampaign(s).applied, [], 'nothing to migrate')
+  // What the fixture script chose it for (scripts/fixture-3.14.0.ts, `underWay`).
+  assert.ok(s.reach !== undefined, 'Patch 7: the realm’s reach')
+  assert.ok(Object.values(s.rivals).some((r) => r.ai?.siege !== undefined), 'Patch 7 (W1): a ruler besieging the wilds of his march')
+  assert.ok(s.standingSiege !== undefined, 'a standing siege')
+  assert.ok(s.deals.some((d) => d.binds === true && d.until !== undefined && d.until > day), 'Patch 8 (D-64): a deal that binds both sides, still running')
+  assert.ok((s.world?.requests ?? []).some((r) => r.until > day), 'Patch 8 (D-66): a ruler’s request still open')
+  assert.ok(s.log.some((e) => e.kind === 'charter' && e.by === 'healer'), 'Patch 9 (D-73): Remedy has set the Charter’s terms')
+  assert.ok(s.weight.request !== undefined && s.weight.request.until > day, 'Patch 9 (D-76): Remedy’s request still open')
+  assert.ok(s.weight.siege !== undefined, 'Patch 9 (D-77): a plateau siege standing')
+  const ledger = ledgerFor(profileOf(f.profile), f.seed, f.ledgerWeeks * 7)
+  assert.equal(fingerprint(settle(s, ledger, after(day)).state), fingerprint(s))
+})
+
+test('D-64, D-66, D-76, D-77: the 3.14.0 save played on 12 weeks settles with no invariant broken, and what it left under way runs its course: the plateau siege breaks and pays, Remedy’s request and the ruler’s dare are judged, the Truce ends unbroken', () => {
+  const f = V3140
+  const day = f.state.settledThrough.day
+  const { state, violations } = playOn(f, WEEKS_ON)
+  assert.deepEqual(violations, [])
+  assert.equal(state.campaign.ruleVersion, '3.14.0', 'a campaign keeps its founding version')
+  assert.equal(state.campaign.status, 'active')
+  assert.ok(state.settledThrough.week >= f.state.settledThrough.week + WEEKS_ON - 1)
+  const fresh = state.log.slice(f.state.log.length)
+  const siege = f.state.weight.siege
+  assert.ok(siege)
+  const broken = fresh.find((e) => e.kind === 'plateau' && e.stage === 'broken' && e.low === siege.low)
+  assert.ok(broken && broken.kind === 'plateau', `the siege of ${siege.low} lb breaks`)
+  assert.ok(broken.wear >= siege.wear && (broken.reward ?? 0) > 0, 'its wear kept and paid')
+  const asked = f.state.weight.request
+  assert.ok(asked)
+  assert.ok(fresh.some((e) => e.kind === 'healerRequest' && e.until === asked.until && (e.stage === 'met' || e.stage === 'missed')), 'Remedy’s request is judged')
+  for (const r of (f.state.world?.requests ?? []).filter((x) => x.until > day && x.kind === 'dare')) {
+    assert.ok(fresh.some((e) => e.kind === 'request' && e.rival === r.rival && e.request === 'dare' && e.day === r.until && (e.stage === 'met' || e.stage === 'missed')), `${r.rival}’s dare is judged at its close`)
+  }
+  for (const d of f.state.deals.filter((x) => x.binds === true && x.until !== undefined && x.until > day)) {
+    assert.ok(!state.deals.some((x) => x.id === d.id), `${d.rival}’s ${d.kind} is over`)
+    assert.ok(!fresh.some((e) => e.kind === 'dealEnded' && e.rival === d.rival && e.deal === d.kind && e.how === 'broken' && e.day <= (d.until as ISODate)), 'and the player kept it')
+  }
 })

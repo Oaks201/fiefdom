@@ -124,6 +124,18 @@ test('D-76 (H3): her first request comes at the close of week 2, for the week ah
   assert.equal(JSON.stringify(settle(saturday, kept, chicago('2026-10-25'), LAUNCH).state), JSON.stringify(saturday), 'settling again changes nothing')
 })
 
+test('D-76 (H3, X-17): while the player is away she asks nothing, and a request that runs out then is missed untold', () => {
+  const ledger = ledgerUnlogged((d) => [2, 4].includes(new Date(`${d}T12:00:00Z`).getUTCDay()))
+  const left = settle(found(ledger), ledger, chicago('2026-10-12'), LAUNCH).state
+  // Back on Nov 10: the week closes of Oct 18 and Oct 25 come 6 and 13 days after the last launch, Nov 1 and Nov 8 away (A-10).
+  const back = settle(left, ledger, chicago('2026-11-10'), LAUNCH).state
+  const fresh = back.log.slice(left.log.length).flatMap((e) => (e.kind === 'healerRequest' ? [e] : []))
+  assert.deepEqual(fresh.filter((e) => e.stage === 'made').map((e) => e.day), ['2026-10-18', '2026-10-25'], 'none made while away')
+  assert.ok(!fresh.some((e) => e.stage === 'missed' && e.until === '2026-11-01'), 'the one that ran out while away goes untold')
+  assert.equal(back.weight.request, undefined, 'and is gone')
+  assert.equal(back.purse.events.filter((e) => e.source === 'healerRequest').length, 0, 'costing nothing')
+})
+
 test('D-76 (H3): a request missed costs nothing, and the next week close asks again', () => {
   const ledger = ledgerUnlogged((d) => [2, 4].includes(new Date(`${d}T12:00:00Z`).getUTCDay()))
   const before = settle(found(ledger), ledger, chicago('2026-10-19'), LAUNCH).state
@@ -160,7 +172,7 @@ test('D-76 (H3): the request card reads the week live, and says what meeting it 
   assert.equal(view.soFar, 1, 'Monday logged, live, before its close')
   assert.equal(view.met, false)
   assert.equal(view.ask.textId, 'healer.request.foodLogged')
-  assert.match(view.ask.text, /log food on 6 of its 7 days/)
+  assert.match(view.ask.text, /Log your food on 6 of the 7 days/)
   assert.equal(view.reward, roundPosting(healerRequestIncome(reputationBonus(asked))[0].amount))
   assert.equal(view.toRespite, RULES.healer.requests.respiteEvery)
   assert.equal(healerRequestView(asked, ledger, '2026-10-18'), null, 'not before its week')
@@ -171,7 +183,7 @@ test('D-76 (H3): a request at its most asks to hold, in the hold line', () => {
   const asked = settle(found(ledger), ledger, chicago('2026-10-19'), LAUNCH).state
   const view = healerRequestView(asked, ledger, '2026-10-19')
   assert.equal(view?.ask.textId, 'healer.request.hold')
-  assert.match(view?.ask.text ?? '', /food logged on every day again/)
+  assert.match(view?.ask.text ?? '', /Do it again: food logged on every day/)
 })
 
 test('D-76 (H3): the Herald tells a request made and met, and never a miss', () => {
@@ -194,7 +206,7 @@ test('D-76 (H4): her Audience answers from the rules: the floor, losing faster, 
   assert.match(answer('floor'), /^healer\.audience\.floor/)
   assert.equal(answer('faster'), 'healer.audience.faster')
   assert.match(answer('rest'), /^healer\.audience\.rest/)
-  assert.match(view.questions.find((q) => q.id === 'faster')?.answer[0].text ?? '', /Momentum is held at half/)
+  assert.match(view.questions.find((q) => q.id === 'faster')?.answer[0].text ?? '', /I hold it at half and stop your Milestones/)
   const down = healerAudience(state, ledger, lb.filter((w) => w.date < '2026-10-26'), '2026-10-25')
   assert.ok(!down.questions.some((q) => q.id === 'scaleUp'), 'no question about the scale going up when it went down')
   assert.equal(healerAudience(state, ledger, [], '2026-10-27').opening.textId, 'healer.audience.noReading')

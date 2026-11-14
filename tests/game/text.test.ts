@@ -43,14 +43,13 @@ test('D-74: Rich approved every one of Remedy’s stage 2a lines, so each of tho
   }
 })
 
-test('D-76, D-77: Remedy’s request, Audience and plateau siege lines are drafted in her finals, unapproved, so the plain templates show until Rich reads them', () => {
+test('D-78: Rich approved Remedy’s 23 request, Audience and plateau siege lines, so every Healer slot speaks its final', () => {
   const ids = [...textIds('healer.request'), ...textIds('healer.audience'), ...textIds('healer.siege')]
   assert.equal(ids.length, 23)
-  for (const id of ids) {
-    const entry = TEXT_SOURCES['healer.json'][id]
-    assert.equal(entry.approved, false, id)
+  for (const [id, entry] of Object.entries(TEXT_SOURCES['healer.json'])) {
+    assert.equal(entry.approved, true, id)
     assert.ok(entry.final, id)
-    assert.equal(t(id), entry.template, id)
+    assert.equal(t(id), entry.final, id)
   }
 })
 
