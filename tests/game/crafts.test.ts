@@ -15,7 +15,7 @@ import { defenseFor } from '../../src/renderer/src/lib/game/combat'
 import { chronicle, fieldDayRenown, fieldStreak, pathsOf, renown } from '../../src/renderer/src/lib/game/dominion'
 import { fortificationValue, fortify } from '../../src/renderer/src/lib/game/land'
 import { bandOf, depthOf, isClaimableKind, strongholds } from '../../src/renderer/src/lib/game/map'
-import { migrateCampaign, migrationsOf } from '../../src/renderer/src/lib/game/migrate'
+import { archiveTag, migrateCampaign, migrationsOf } from '../../src/renderer/src/lib/game/migrate'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { DAY_PHASES, type PhaseContext } from '../../src/renderer/src/lib/game/settle'
 import { openDayOf, toPlayer } from '../../src/renderer/src/lib/game/state'
@@ -285,4 +285,12 @@ test('D-80: a campaign founded on rules 3.15.0 is born with the migration done, 
   assert.deepEqual(migrateCampaign(state).applied, [])
   assert.equal(pathsOf(state).field, undefined)
   assert.equal(fieldStreak(state, START), 0)
+})
+
+test('D-83 (C-53): the old file is kept under a name of its own for each update, so a save that kept its copy before the bend gets a fresh one before a later migration', () => {
+  assert.equal(archiveTag('3.1.0', ['bentMarches']), '3.1.0-before-bend', 'Patch 5’s name, unchanged')
+  assert.equal(archiveTag('3.1.0', ['bentMarches', 'wallsStanding']), '3.1.0-before-bend', 'a save older than the bend keeps one copy for both')
+  assert.equal(archiveTag('3.1.0', ['wallsStanding']), '3.1.0-before-wallsStanding', 'a migrated save, as the live game’s is')
+  // The archive's own rule (main/jsonFile.ts): word characters, dots and dashes only.
+  assert.match(archiveTag('3.4.0', ['wallsStanding']), /^[\w.-]+$/)
 })

@@ -45,6 +45,16 @@ export function migrateCampaign(state: CampaignState): { state: CampaignState; a
   return { state: { ...next, campaign: { ...next.campaign, migrations: [...migrationsOf(state), ...applied] } }, applied }
 }
 
+/**
+ * The name the store keeps the old file under before it writes a migrated one (C-53): `<founding version>-before-bend`
+ * when the bend is among the migrations applied, as Patch 5 named it, else `-before-<the first applied>`. An archive is
+ * never overwritten, so each update needs a name of its own: a save that kept its `-before-bend` copy in Patch 5 would
+ * otherwise get no fresh copy before a later migration (found before Patch 10 stage 1 was installed, D-83).
+ */
+export function archiveTag(ruleVersion: string, applied: readonly MigrationId[]): string {
+  return `${ruleVersion}-before-${applied.includes('bentMarches') ? 'bend' : applied[0]}`
+}
+
 /** D-80 (K2): a `fortified` event for every wall level standing on the player's hexes, in map order, dated the open day. */
 function creditStandingWalls(state: CampaignState): CampaignState {
   const events = new EventBuffer()

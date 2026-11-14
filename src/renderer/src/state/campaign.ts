@@ -5,7 +5,7 @@
 import { create } from 'zustand'
 import { settleViolations } from '../lib/game/dev/invariants'
 import { CampaignError } from '../lib/game/errors'
-import { migrateCampaign } from '../lib/game/migrate'
+import { archiveTag, migrateCampaign } from '../lib/game/migrate'
 import { needsRefounding } from '../lib/game/refound'
 import { settle, type SettleResult, type SettleSummary } from '../lib/game/settle'
 import type { CampaignState } from '../lib/game/types'
@@ -69,12 +69,12 @@ export const useCampaign = create<CampaignStore>((set, get) => ({
         set({ campaign: null, outdated: loaded, status: 'ready', error: null })
         return
       }
-      // Patch 5 (D-38, C-53): a save from before the bent marches is migrated once; the old file is kept
-      // for good first, and if it can't be, nothing is written and the campaign doesn't open.
+      // Patch 5 (D-38, C-53): an older save is migrated once; the old file is kept for good first, under a name
+      // of its own for each update (`archiveTag`, D-83), and if it can't be, nothing is written and the campaign doesn't open.
       const migrated = loaded ? migrateCampaign(loaded) : null
       if (loaded && migrated && migrated.applied.length > 0) {
-        const kept = await archiveCampaignText(`${loaded.campaign.ruleVersion}-before-bend`)
-        if (kept === null) throw new Error('The campaign could not be kept before its update to the bent map, so nothing was changed.')
+        const kept = await archiveCampaignText(archiveTag(loaded.campaign.ruleVersion, migrated.applied))
+        if (kept === null) throw new Error('The campaign could not be kept before its update, so nothing was changed.')
         set({ campaign: migrated.state, outdated: null, status: 'ready', error: null })
         scheduleSave(migrated.state)
       } else set({ campaign: loaded, outdated: null, status: 'ready', error: null })
