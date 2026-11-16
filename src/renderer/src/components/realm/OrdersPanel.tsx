@@ -145,6 +145,7 @@ export function OrdersPanel({ campaign, today }: { campaign: CampaignState; toda
           <AssaultSlot key={slot.index} view={view} slot={slot} locked={locked} onTarget={(hexId) => store(aimAssault(campaign, view.orders, today, hexId || undefined, slot.index))} />
         ))}
       </div>
+      {view.field && <p className={view.field.keeps ? 'muted' : 'orders__breaks'}>{view.field.text}</p>}
 
       <table className="orders__companies">
         <thead>

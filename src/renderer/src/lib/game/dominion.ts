@@ -271,6 +271,11 @@ export function isFieldBattle(e: GameEvent, byId: ReadonlyMap<string, HexState>)
   }
 }
 
+/** Patch 10 (K3): whether a battle on `hex` is in the Orc's field: he holds it, or it lies in his march (a seam of it too). */
+export function inField(hex: Pick<HexState, 'owner' | 'march' | 'seam'>): boolean {
+  return hex.owner === FIELD_RULER || hex.march === FIELD_RULER || hex.seam === FIELD_RULER
+}
+
 /** Patch 10 (K3): the Orc's field streak on `day`: its field days so far, 0 once a day has passed without a battle or a hold. */
 export function fieldStreak(state: CampaignState, day: ISODate): number {
   const field = pathsOf(state).field

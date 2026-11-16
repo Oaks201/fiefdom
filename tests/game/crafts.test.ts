@@ -11,7 +11,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
-import { defenseFor } from '../../src/renderer/src/lib/game/combat'
+import { defenseFor, setOrders } from '../../src/renderer/src/lib/game/combat'
+import { ordersView } from '../../src/renderer/src/lib/game/view/orders'
 import { chronicle, fieldDayRenown, fieldStreak, pathsOf, renown } from '../../src/renderer/src/lib/game/dominion'
 import { fortificationValue, fortify } from '../../src/renderer/src/lib/game/land'
 import { bandOf, depthOf, isClaimableKind, strongholds } from '../../src/renderer/src/lib/game/map'
@@ -22,8 +23,8 @@ import { openDayOf, toPlayer } from '../../src/renderer/src/lib/game/state'
 import type { CampaignState, GameEvent, GameEventMap, HexState, RivalId } from '../../src/renderer/src/lib/game/types'
 import { emptyLedger } from './fixtures/ledgers'
 import { collector, type Posted } from './support/grand'
-import { realm, withPurse } from './support/realm'
-import { START, fight, hex, plainHex, withHex, withOwner, withTiding } from './support/war'
+import { allBuildings, realm, withPurse } from './support/realm'
+import { START, fight, hex, plainHex, reachable, withHex, withOwner, withTiding } from './support/war'
 
 const K = RULES.dominion.crafts
 const D = RULES.dominion.deeds
@@ -293,4 +294,27 @@ test('D-83 (C-53): the old file is kept under a name of its own for each update,
   assert.equal(archiveTag('3.1.0', ['wallsStanding']), '3.1.0-before-wallsStanding', 'a migrated save, as the live game’s is')
   // The archive's own rule (main/jsonFile.ts): word characters, dots and dashes only.
   assert.match(archiveTag('3.4.0', ['wallsStanding']), /^[\w.-]+$/)
+})
+
+test('L4 (D-86): the orders panel says what today’s orders do to the streak in the Orc’s field: a battle there counts, none ends it, and with no streak nothing is said', () => {
+  const { state: s0, target } = reachable(allBuildings(realm(), 5), 3, (h) => h.march === 'orc' && !h.village)
+  const streak = (days: number): CampaignState => ({ ...s0, paths: { ...pathsOf(s0), field: { days, through: addDays(START, -1) } } })
+  const sent = (state: CampaignState): CampaignState => setOrders(state, { date: START, assaultTarget: target, assault: ['barracks'], defense: [] }).state
+
+  assert.equal(ordersView(s0, 1, START).field, undefined, 'no streak, no battle in his field')
+  const starts = ordersView(sent(s0), 1, START).field
+  assert.deepEqual([starts?.days, starts?.keeps], [0, true])
+  assert.match(starts?.text ?? '', new RegExp(`starts a streak in Ugrak’s field: \\+${K.fieldDay} Renown`))
+
+  const keeps = ordersView(sent(streak(3)), 1, START).field
+  assert.deepEqual([keeps?.days, keeps?.keeps], [3, true])
+  assert.match(keeps?.text ?? '', new RegExp(`day 4 in Ugrak’s field: \\+${fieldDayRenown(4)} Renown`))
+
+  const ends = ordersView(streak(3), 1, START).field
+  assert.deepEqual([ends?.days, ends?.keeps], [3, false])
+  assert.match(ends?.text ?? '', /your streak of 3 days in his field ends at the close/)
+
+  // His announced attack counts too, with nothing ordered.
+  const raided = ordersView(withTiding(streak(1), { date: START, kind: 'raid', hexId: plainHex(s0, 2).id, strength: 10, rival: 'orc' }), 1, START).field
+  assert.deepEqual([raided?.days, raided?.keeps], [1, true])
 })

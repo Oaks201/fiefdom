@@ -9,15 +9,15 @@
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, assaultOf as fieldAssault, assaultGarrison, defenseBanners, garrisonType, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
-import { bannerParts, bannersOf } from '../dominion'
+import { assaultBanners, assaultOf as fieldAssault, combatOf, assaultGarrison, defenseBanners, garrisonType, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
+import { bannerParts, bannersOf, fieldDayRenown, fieldStreak, inField } from '../dominion'
 import { realmEffects } from '../effects'
 import { fortificationValue } from '../land'
 import { claimableBy, hexIndex, hexName, pathShares } from '../map'
 import { RULES } from '../rules'
 import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
-import { bindingDeals, isRival, openDayOf } from '../state'
+import { bindingDeals, isRestDay, isRival, openDayOf } from '../state'
 import { promiseBreaks } from './requests'
 import { TAG_NAMES, rivalName } from './shell'
 import { type CampaignState, type Company, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
@@ -115,6 +115,11 @@ export interface OrdersLock {
 
 export interface OrdersView {
   date: ISODate
+  /**
+   * Patch 10 stage 4 (L4): the streak in the Orc's field (K3) against today's orders, in plain words: whether a battle
+   * ordered or announced today counts, a rest day holds it, or it ends at the close. Absent with no streak and no such battle.
+   */
+  field?: { days: number; keeps: boolean; text: string }
   /** Companies each pool may field: the banners, plus any for one pool only (the Muster Field). */
   banners: { defense: number; assault: number }
   assaultsAllowed: number
@@ -260,6 +265,30 @@ function bannerLines(state: CampaignState, sent: readonly Company[], target: str
     .map((p) => ({ tag: p.tag, name: TAG_NAMES[p.tag], ruler: rivalName(p.path), percent: Math.round(p.share * PERCENT), massed: p.massed }))
 }
 
+/**
+ * Patch 10 stage 4 (L4): what today's orders do to the streak in the Orc's field (K3). A battle counts when an assault
+ * that goes out is on a hex he holds or a hex of his march, or when today's announced attack is his. Shown while a
+ * streak is alive or today would start one; a streak that ends is said once, plainly, and never after (Ch 16).
+ */
+function fieldLine(state: CampaignState, date: ISODate, targets: readonly string[]): OrdersView['field'] {
+  const days = fieldStreak(state, date)
+  const byId = hexIndex(state.hexes)
+  const assault = targets.some((id) => {
+    const hex = byId.get(id)
+    return hex !== undefined && inField(hex)
+  })
+  const attack = combatOf(state).tidings.some((t) => t.date === date && t.rival === 'orc')
+  const name = rivalName('orc')
+  const count = (n: number): string => `${n} ${n === 1 ? 'day' : 'days'}`
+  if (assault || attack) {
+    const text = days > 0 ? `Today’s battle is day ${days + 1} in ${name}’s field: +${fieldDayRenown(days + 1)} Renown on his path at the close.` : `Today’s battle starts a streak in ${name}’s field: +${fieldDayRenown(1)} Renown on his path at the close.`
+    return { days, keeps: true, text }
+  }
+  if (days === 0) return undefined
+  if (isRestDay(state, date)) return { days, keeps: true, text: `A rest day holds your streak in ${name}’s field at ${count(days)}.` }
+  return { days, keeps: false, text: `No battle with ${name} or in his march is ordered today: your streak of ${count(days)} in his field ends at the close.` }
+}
+
 /** The orders panel for `date`, with today's Valor so far (`valor`, 0 to 1). */
 export function ordersView(state: CampaignState, valor: number, date: ISODate = openDayOf(state), effects: Effects = realmEffects(state)): OrdersView {
   const own = state.orders.find((o) => o.date === date)
@@ -286,6 +315,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
   })
   const estimate = ordersEstimate(state, orders ?? undefined, date, valor, effects)
   const siege = siegeView(state, date, valor, estimate, effects)
+  const field = fieldLine(state, date, validity.assaults.map((x) => x.target))
   return {
     date,
     banners: { defense: defenseBanners(effects), assault: assaultBanners(effects) },
@@ -307,6 +337,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
     assaults,
     targets: assaultTargets(state, date, valor, effects),
     orders,
+    ...(field ? { field } : {}),
     fromSiege: orders !== null && own === undefined,
     ...(siege ? { siege } : {}),
     problems: validity.problems,
