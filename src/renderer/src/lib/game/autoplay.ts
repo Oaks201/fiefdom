@@ -48,7 +48,7 @@ import { readinessValors, valorOn } from './settle'
 import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
 import { bindingDeals, inCoalition, isRival } from './state'
-import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId } from './types'
+import { BUILDING_IDS, RIVAL_IDS, type CampaignState, type Effects, type HexState, type ISODate, type RivalId, type Tag } from './types'
 import { trustNow } from './view/realm'
 import { realmConsistencyNow } from './view/shell'
 import { marchRule, surgeMult } from './personalities'
@@ -74,6 +74,11 @@ export interface AutoplayPlan {
   push?: boolean
   /** D-12: also press "Start battle" each day and fight every fight with the Marshal's play. */
   skirmish?: boolean
+  /**
+   * Patch 10 stage 2 (K6): the tag this player masses. Each company that lacks it carries the item that adds it
+   * before any other, and the Sworn swear to it, so the banner share of the hexes it takes leans to that tag's path.
+   */
+  banner?: Tag
 }
 
 /** The simulator's greedy player (T13): every number as the book's Ch 15 step 2 describes it. */
@@ -175,7 +180,7 @@ function sealLongest(state: CampaignState, today: ISODate, day: AutoplayDay): Ca
 }
 
 /** Wings from the list, Elites and their rank II, the Sworn, and the dearest item each company can carry. */
-function useArmory(input: CampaignState, today: ISODate): CampaignState {
+function useArmory(input: CampaignState, today: ISODate, banner?: Tag): CampaignState {
   let state = input
   for (const id of A.wingPreference) {
     const done = chooseWing(state, id, today)
@@ -187,7 +192,7 @@ function useArmory(input: CampaignState, today: ISODate): CampaignState {
     const promoted = promoteElite(state, e.id, today)
     if (promoted.ok) state = promoted.state
   }
-  const sworn = swearSworn(state, [...A.swornTags], today)
+  const sworn = swearSworn(state, banner ? [banner, ...A.swornTags.filter((t) => t !== banner)].slice(0, A.swornTags.length) : [...A.swornTags], today)
   if (sworn.ok) state = sworn.state
   const effects = realmEffects(state)
   const companies = roster(state, { day: today }, effects)
@@ -196,6 +201,18 @@ function useArmory(input: CampaignState, today: ISODate): CampaignState {
   for (const c of companies) {
     const carried = state.roster.find((s) => s.id === c.id)?.items.length ?? 0
     if (carried >= slotsFor(state, c.id, effects)) continue
+    // A banner player's company takes the item that adds its tag first (stage 2, K6).
+    const bannerItem = banner && !c.tags.includes(banner) ? CODEX.items.find((i) => i.effects.some((x) => x.kind === 'addTag' && x.tag === banner)) : undefined
+    if (bannerItem) {
+      const bought = buyItem(state, bannerItem.id, today)
+      if (bought.ok) {
+        const equipped = equipItem(bought.state, c.id, bannerItem.id, today)
+        if (equipped.ok) {
+          state = equipped.state
+          continue
+        }
+      }
+    }
     const stash = armoryOf(state).stash[0]
     const choice =
       stash ??
@@ -714,13 +731,13 @@ export function autoplay(input: CampaignState, today: ISODate, plan: AutoplayPla
   const weekStart = isWeekCloseDay(addDays(today, -1), state.campaign.weekStartsOn) || today === state.campaign.startDate
   if (weekStart) {
     const armFirst = plan.spend === 'arm' || (plan.spend === 'balanced' && campaignWeek(state.campaign.startDate, today, state.campaign.weekStartsOn) % 2 === 0)
-    if (armFirst) state = useArmory(state, today)
+    if (armFirst) state = useArmory(state, today, plan.banner)
     state = buyCheapest(state, today)
     if (plan.smarter) state = smarterWeekly(state, today)
     if (plan.land !== 'force') state = courtVillages(state, today, 1, plan.land === 'deals' ? undefined : (h) => onPlan(plan, h))
     if (plan.land === 'deals') state = buyHexes(state, today, plan)
     if (plan.contracts === 'longest' && (!plan.smarter || !accordRival(state, today))) state = sealLongest(state, today, day)
-    if (!armFirst) state = useArmory(state, today)
+    if (!armFirst) state = useArmory(state, today, plan.banner)
     if (plan.offers === 'accept') state = takeOffers(state, today)
     if (plan.smarter || plan.offers === 'accept') state = answerRequests(state, today, plan)
   }

@@ -17,10 +17,9 @@ import { milestoneBroken, realmEffects } from './effects'
 import { RULES } from './rules'
 import { refreshRoster } from './roster'
 import { EventBuffer, isPlayable, openDayOf, worldOf } from './state'
-import type { ArmoryState, CampaignState, Effects, ISODate, Tag } from './types'
+import { TAGS, type ArmoryState, type CampaignState, type Effects, type ISODate, type Tag } from './types'
 
 const UNLOCKS = RULES.milestones.unlocks
-const TAGS: readonly Tag[] = ['steel', 'coin', 'arcane', 'engine']
 
 export type ArmoryRefusal =
   | { code: 'campaignOver' }

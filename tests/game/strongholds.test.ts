@@ -139,7 +139,7 @@ test('P3-02 (D-23): a stronghold battle lost costs 5 × band tribute and 14 days
   const won = autoResolve(w.state, w.battle!.id, w.battle!.battleDate, [1, 1, 1, 1, 1, 1, 1], c.emit)
   assert.notEqual(battleOf(won, w.battle!.id)!.result, 'defeat')
   assert.equal(hex(won, fort.id).owner, 'player')
-  assert.deepEqual(c.of('hexTransfer'), [{ hexId: fort.id, from: 'neutral', to: 'player', how: 'conquest', fortification: 0 }])
+  assert.deepEqual(c.of('hexTransfer').map(({ banners: _banners, ...rest }) => rest), [{ hexId: fort.id, from: 'neutral', to: 'player', how: 'conquest', fortification: 0 }])
 })
 
 test('C-31: the automatic player challenges a stronghold it can face that won’t fall within 3 days, and besieges one it can’t', () => {

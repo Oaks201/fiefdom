@@ -22,12 +22,14 @@ import { CODEX } from './codex'
 import { bandOf, depthOf, hexIndex, hexWorth, isClaimableKind, isStronghold, marchShares, pathShares, type Shares } from './map'
 import { addDays } from './clock'
 import { RULES } from './rules'
-import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type FieldStreak, type GameEvent, type HexState, type ISODate, type LairId, type Owner, type PathsState, type RivalId } from './types'
+import { RIVAL_IDS, TAGS, type Banners, type CampaignState, type DeedKind, type Emit, type FieldStreak, type GameEvent, type HexState, type ISODate, type LairId, type Owner, type PathsState, type RivalId, type Tag } from './types'
 
 export { hexWorth, pathShares }
 
 const D = RULES.dominion
 const C = D.crafts
+/** Banner shares are kept to a thousandth. */
+const BANNER_PLACES = 1_000 // rules-ok: rounding
 /** Patch 10 (K3): the ruler whose craft is the field. */
 const FIELD_RULER: RivalId = 'orc'
 const HEARTLAND = RULES.map.heartlandRings
@@ -114,6 +116,65 @@ interface Deed {
   level?: number
   /** Patch 10: the day of the streak a field day is. */
   streak?: number
+  /** Stage 2: the banner a banner share is for, and whether it was massed. */
+  tag?: Tag
+  massed?: true
+}
+
+// ── Banners (Patch 10 stage 2, K6) ───────────────────────────────────────────
+
+/** The path a tag's banners feed: the ruler at the end of its building's road (Steel the Orc's, Coin the Goblin's, Engine the Dwarf's, Arcane the Archmage's). */
+export function pathOfTag(tag: Tag): RivalId {
+  const building = CODEX.buildings.find((b) => b.tag === tag)
+  const ruler = building && CODEX.rivals.find((r) => r.road === building.id)
+  if (!ruler) throw new Error(`No path for the ${tag} tag`)
+  return ruler.id
+}
+
+/** The tag whose banners feed `path`: its ruler's building's. */
+export function tagOfPath(path: RivalId): Tag {
+  const tag = TAGS.find((t) => pathOfTag(t) === path)
+  if (!tag) throw new Error(`No tag feeds ${path}'s path`)
+  return tag
+}
+
+/**
+ * Each tag's share of a strike (K6): every company's strike split over its tags, over the whole strike. The split is
+ * even, a tag an item adds weighing `itemTagWeight` beside the company's own. A company with no tag carries none.
+ */
+export function bannersOf(units: readonly { tags: readonly Tag[]; strike: number; itemTags?: readonly Tag[] }[]): Banners {
+  const total = units.reduce((s, u) => s + Math.max(0, u.strike), 0)
+  const out: Banners = {}
+  if (total <= 0) return out
+  for (const u of units) {
+    const weight = (tag: Tag): number => (u.itemTags?.includes(tag) ? C.itemTagWeight : 1)
+    const weights = u.tags.reduce((s, tag) => s + weight(tag), 0)
+    for (const tag of u.tags) out[tag] = (out[tag] ?? 0) + (Math.max(0, u.strike) * weight(tag)) / weights / total
+  }
+  // Kept to a thousandth: a share of a strike needs no more, and a save holds one for every assault.
+  for (const tag of TAGS) if (out[tag] !== undefined) out[tag] = Math.round((out[tag] as number) * BANNER_PLACES) / BANNER_PLACES
+  return out
+}
+
+export interface BannerPart {
+  tag: Tag
+  path: RivalId
+  /** The tag's share of the strike. */
+  share: number
+  /** It carried `massedAt` of the strike or more. */
+  massed: boolean
+  /** What it gets of the banner share, as a multiple of the banner share itself (its share, × `massedMult` when massed). */
+  weight: number
+}
+
+/** A strike's banners as the paths they feed, in the tags' own order: each tag's share and whether it is massed. */
+export function bannerParts(banners: Banners): BannerPart[] {
+  return TAGS.flatMap((tag) => {
+    const share = banners[tag] ?? 0
+    if (share <= 0) return []
+    const massed = share >= C.massedAt
+    return [{ tag, path: pathOfTag(tag), share, massed, weight: share * (massed ? C.massedMult : 1) }]
+  })
 }
 
 function spread(shares: Shares, deed: DeedKind, value: number, hexId?: string, source?: string): Deed[] {
@@ -229,8 +290,14 @@ function deedsOf(state: CampaignState, e: GameEvent, byId: ReadonlyMap<string, H
       // Taking a march hex, by any way but a rival's fall (C-10): its depth, more for walls broken.
       const hex = byId.get(e.hexId)
       if (e.to !== 'player' || e.how === 'abdication' || !hex || hex.ring <= HEARTLAND || !isClaimableKind(hex)) return []
-      const value = d.hexTakenPerDepth * depthOf(hex) + d.perFortification * (e.fortification ?? 0)
-      const taken = [...spread(pathShares(hex), 'hexTaken', value, hex.id, e.id), ...takenSignatures(state, e, hex, at)]
+      // Patch 10 stage 2 (K6): taken in battle, the banner share of its depth goes to the tags that took it; a strike
+      // no tag carried (or a save's older taking, with no banners on record) leaves that part with the march.
+      const depthValue = d.hexTakenPerDepth * depthOf(hex)
+      const parts = e.how === 'conquest' && e.banners ? bannerParts(e.banners) : []
+      const carried = Math.min(1, parts.reduce((s, p) => s + p.share, 0))
+      const value = depthValue * (1 - C.bannerFromMarch * carried) + d.perFortification * (e.fortification ?? 0)
+      const banners: Deed[] = parts.map((p) => ({ path: p.path, deed: 'bannerTaken', value: depthValue * C.bannerShare * p.weight, hexId: hex.id, source: e.id, tag: p.tag, ...(p.massed ? { massed: true as const } : {}) }))
+      const taken = [...spread(pathShares(hex), 'hexTaken', value, hex.id, e.id), ...banners, ...takenSignatures(state, e, hex, at)]
       // A stronghold (D-25) adds its own deed on top; one won in battle has the Grand Battle's too.
       if (!isStronghold(state.hexes, hex.id)) return taken
       return [...taken, ...spread(pathShares(hex), 'strongholdTaken', d.strongholdPerDepth * depthOf(hex), hex.id, e.id)]

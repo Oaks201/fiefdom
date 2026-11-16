@@ -77,8 +77,8 @@ function playOn(f: Fixture, weeks: number): { state: CampaignState; violations: 
   return { state, violations }
 }
 
-test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.15.0 takes each without a re-founding, migrating it once', () => {
-  assert.equal(RULES.ruleVersion, '3.15.0')
+test('C-48, C-50, C-94: the 3.1.0 and 3.2.0 saves are what they say, and 3.16.0 takes each without a re-founding, migrating it once', () => {
+  assert.equal(RULES.ruleVersion, '3.16.0')
   for (const [version, f] of Object.entries(FIXTURES)) {
     assert.equal(f.ruleVersion, version)
     assert.equal(f.state.campaign.ruleVersion, version)

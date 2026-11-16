@@ -172,6 +172,7 @@ function detail(state: CampaignState, options: RosterOptions, effects: Effects, 
     const prior = stored.get(b.id)
     const items = prior ? [...prior.items] : []
     const tags = new Set<Tag>(b.tags)
+    const itemTags = new Set<Tag>()
     const adds: Contribution[] = []
     const shares: Contribution[] = []
     const cuts: Contribution[] = []
@@ -193,7 +194,10 @@ function detail(state: CampaignState, options: RosterOptions, effects: Effects, 
           if (x.add) adds.push({ from, value: x.add })
           if (x.mult && x.mult > 1) shares.push({ from, value: x.mult - 1 })
           if (x.mult && x.mult < 1) cuts.push({ from, value: x.mult })
-        } else if (x.kind === 'addTag') tags.add(x.tag)
+        } else if (x.kind === 'addTag') {
+          tags.add(x.tag)
+          itemTags.add(x.tag)
+        }
         else if (x.kind === 'ignoreWeary') ignoreWeary = true
       }
     }
@@ -210,6 +214,7 @@ function detail(state: CampaignState, options: RosterOptions, effects: Effects, 
     const total = (list: Contribution[]): number => list.reduce((t, c) => t + c.value, 0)
     const power = (b.power + total(adds)) * (1 + total(shares)) * cuts.reduce((t, c) => t * c.value, 1)
     const company: Company = { id: b.id, name: b.name, source: b.source, power, tags: [...tags], reach: b.reach, items }
+    if (itemTags.size > 0) company.itemTags = [...itemTags]
     if (prior?.wearyUntil) company.wearyUntil = prior.wearyUntil
     return { company, basePower: b.power, weary, sources: [...adds, ...shares, ...cuts], parts: { adds, shares, cuts } }
   })

@@ -9,7 +9,8 @@
  * close reads. Anything these builders allow, `ordersValidity` accepts.
  */
 import { addDays, dayCloseInstant } from '../clock'
-import { assaultBanners, assaultGarrison, defenseBanners, garrisonType, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
+import { assaultBanners, assaultOf as fieldAssault, assaultGarrison, defenseBanners, garrisonType, envoyAvailable, envoyRivals, ordersEstimate, ordersFor, ordersValidity, siegeIsLive, siegeOrders, skirmishDayOf, type OrderProblem, type OrdersEstimate } from '../combat'
+import { bannerParts, bannersOf } from '../dominion'
 import { realmEffects } from '../effects'
 import { fortificationValue } from '../land'
 import { claimableBy, hexIndex, hexName, pathShares } from '../map'
@@ -18,10 +19,11 @@ import { roster } from '../roster'
 import { assaultDays, flankingMult, garrisonMult, siegeProgress, standingSiegeOf, wearCap } from '../sieges'
 import { bindingDeals, isRival, openDayOf } from '../state'
 import { promiseBreaks } from './requests'
-import { rivalName } from './shell'
-import { type CampaignState, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
+import { TAG_NAMES, rivalName } from './shell'
+import { type CampaignState, type Company, type DailyOrders, type Effects, type HexState, type ISODate, type Owner, type RivalId } from '../types'
 
 const MS_PER_SECOND = 1_000 // rules-ok: unit conversion
+const PERCENT = 100 // rules-ok: display
 
 export type Pool = 'defense' | 'assault'
 
@@ -47,6 +49,22 @@ export interface AssaultSlot {
   goesOut: boolean
   /** Patch 8 (D1, D2): its target's holder has a Truce, pact or oath binding the player, which the assault would break: what it costs, in plain words. */
   breaks?: string
+  /**
+   * Patch 10 stage 2 (K6): the banners its companies would carry against its target, the largest first: each tag's
+   * share of the strike, the ruler whose path it feeds, and whether it is massed. The player's own army: nothing hidden.
+   */
+  banners: BannerLine[]
+}
+
+export interface BannerLine {
+  tag: string
+  /** The tag as the screens name it. */
+  name: string
+  /** The ruler whose path the tag's banners feed. */
+  ruler: string
+  /** Its share of the strike, a whole percentage. */
+  percent: number
+  massed: boolean
 }
 
 export interface AssaultTarget {
@@ -229,6 +247,19 @@ function siegeView(state: CampaignState, date: ISODate, valor: number, estimate:
   }
 }
 
+/**
+ * Patch 10 stage 2 (K6): the banners `sent` would carry against `target`, as the close will read them: the companies
+ * the assault fields and each one's strike against that garrison. With no target yet, each company counts by its power.
+ */
+function bannerLines(state: CampaignState, sent: readonly Company[], target: string | undefined, valor: number, effects: Effects): BannerLine[] {
+  if (sent.length === 0) return []
+  const hex = target ? state.hexes.find((h) => h.id === target) : undefined
+  const strikes = hex ? fieldAssault(effects, sent, hex, valor).fielded.map((f) => ({ tags: f.company.tags, strike: f.strike, itemTags: f.company.itemTags })) : sent.map((c) => ({ tags: c.tags, strike: c.power, itemTags: c.itemTags }))
+  return bannerParts(bannersOf(strikes))
+    .sort((a, b) => b.share - a.share)
+    .map((p) => ({ tag: p.tag, name: TAG_NAMES[p.tag], ruler: rivalName(p.path), percent: Math.round(p.share * PERCENT), massed: p.massed }))
+}
+
 /** The orders panel for `date`, with today's Valor so far (`valor`, 0 to 1). */
 export function ordersView(state: CampaignState, valor: number, date: ISODate = openDayOf(state), effects: Effects = realmEffects(state)): OrdersView {
   const own = state.orders.find((o) => o.date === date)
@@ -239,6 +270,7 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
   const assaultOf = new Map<string, number>()
   named.slice(0, allowed).forEach((a, i) => a.companies.forEach((id) => assaultOf.has(id) || assaultOf.set(id, i)))
   const override = orders?.defenseOverride ?? null
+  const pool = roster(state, { day: date }, effects)
   const assaults: AssaultSlot[] = Array.from({ length: allowed }, (_, index) => {
     const a = named[index]
     const target = a?.target
@@ -248,7 +280,8 @@ export function ordersView(state: CampaignState, valor: number, date: ISODate = 
       ...(target ? { target: { hexId: target, label: hexName(target) } } : {}),
       companies: a ? [...a.companies] : [],
       goesOut: target !== undefined && validity.assaults.some((x) => x.target === target),
-      ...(breaks ? { breaks } : {})
+      ...(breaks ? { breaks } : {}),
+      banners: bannerLines(state, pool.filter((c) => a?.companies.includes(c.id)), target, valor, effects)
     }
   })
   const estimate = ordersEstimate(state, orders ?? undefined, date, valor, effects)

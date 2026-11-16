@@ -13,7 +13,7 @@ import { RULES } from '../rules'
 import { roster } from '../roster'
 import { openDayOf } from '../state'
 import { t, type TextFacts } from '../text'
-import type { BuildingId, CampaignState, Effects, ISODate, Tag } from '../types'
+import { TAGS, type BuildingId, type CampaignState, type Effects, type ISODate, type Tag } from '../types'
 import { effectText } from './battle'
 import { buildingName, companyArt } from './realm'
 import { amount, armoryRefusalLabel } from './refusals'
@@ -21,7 +21,6 @@ import { amount, armoryRefusalLabel } from './refusals'
 const UNLOCKS = RULES.milestones.unlocks
 const RANKS: readonly Exclude<ItemRank, 'trophy'>[] = ['I', 'II', 'III', 'legendary']
 const RANK_NAMES: Record<ItemRank, string> = { I: 'Rank I', II: 'Rank II', III: 'Rank III', legendary: 'Legendary', trophy: 'Trophies' }
-const TAGS: readonly Tag[] = ['steel', 'coin', 'arcane', 'engine']
 
 type AnyEffect = Parameters<typeof effectText>[0]
 

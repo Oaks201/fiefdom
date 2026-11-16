@@ -10,7 +10,7 @@
  * thresholds.
  */
 import { CODEX } from '../codex'
-import { pathRank, pathTotals, rankThresholds, renown } from '../dominion'
+import { pathRank, pathTotals, rankThresholds, renown, tagOfPath } from '../dominion'
 import { numeral } from '../effects'
 import { marksFor, respectChange } from '../respect'
 import { RULES } from '../rules'
@@ -18,6 +18,7 @@ import { RIVAL_IDS, type BuildingId, type CampaignState, type RivalId } from '..
 import { buildingName } from './realm'
 import { standingRules } from './diplomacy'
 import { amount, factor } from './refusals'
+import { TAG_NAMES } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
 
@@ -278,6 +279,11 @@ function deedsOf(rival: RivalId): Deed[] {
     { deed: 'A battle lost to him (his raid or attack beats your defense)', respect: c.raidLost },
     { deed: 'A hex he holds, taken by assault or Grand Battle', respect: conquered, renown: hexTaken },
     { deed: 'A wild hex of his march taken', renown: hexTaken },
+    // Patch 10 stage 2 (K6): the banner share.
+    {
+      deed: `A hex taken in battle, anywhere, under ${TAG_NAMES[tagOfPath(rival)]} banners (his building’s tag)`,
+      renown: `${pct(k.bannerShare)} of its depth × the share of the strike those banners carried (× ${amount(k.massedMult)} at ${pct(k.massedAt)} or more), on top of what the hex’s own march earns`
+    },
     { deed: 'A stronghold of his march taken', renown: `${perDepth(d.strongholdPerDepth)} more` },
     { deed: 'A village of his courted away', respect: c.villageCourted, renown: byDeal },
     ...(m.sellsHex !== null ? [{ deed: 'A hex bought from him', respect: c.tradeOrTruce, renown: byDeal }] : []),

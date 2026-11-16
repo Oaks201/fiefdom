@@ -97,7 +97,7 @@ export interface Measures {
    * Patch 10 (G-28, D-80): the crafts. Wall levels the player raised; defenses won that the walls turned; the
    * lengths of the streaks in the Orc's field, each as it ended.
    */
-  crafts?: { walls: number; wallsHeld: number; streaks: number[] }
+  crafts?: { walls: number; wallsHeld: number; streaks: number[]; banners?: { taken: number; share: Record<string, number>; massed: Record<string, number> } }
   /** Patch 8 (G-24): deals struck by the end, by kind, and binding deals broken. */
   deals?: Record<string, number>
   dealsBroken?: number
@@ -491,10 +491,22 @@ export class Recorder {
       last = e.streak
     }
     if (last > 0) streaks.push(last)
+    // Patch 10 stage 2 (G-31): the hexes taken in battle, each tag's mean share of the strikes that took them, and how many each tag took massed.
+    const banners = { taken: 0, share: {} as Record<string, number>, massed: {} as Record<string, number> }
+    for (const e of state.log) {
+      if (e.kind !== 'hexTransfer' || e.to !== 'player' || !e.banners) continue
+      banners.taken += 1
+      for (const [tag, share] of Object.entries(e.banners)) {
+        banners.share[tag] = (banners.share[tag] ?? 0) + share
+        if (share >= RULES.dominion.crafts.massedAt) banners.massed[tag] = (banners.massed[tag] ?? 0) + 1
+      }
+    }
+    for (const tag of Object.keys(banners.share)) banners.share[tag] /= Math.max(1, banners.taken)
     this.m.crafts = {
       walls: state.log.filter((e) => e.kind === 'fortified' && !e.standing).length,
       wallsHeld: state.log.filter((e) => e.kind === 'defense' && e.walls !== undefined).length,
-      streaks
+      streaks,
+      banners
     }
     const deals: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deal') deals[e.deal] = (deals[e.deal] ?? 0) + 1

@@ -41,7 +41,8 @@ import {
   type MythicSpecial,
   type Reach,
   type RivalId,
-  type Tag
+  type Tag,
+  TAGS
 } from './types'
 
 // ── Entry types ──────────────────────────────────────────────────────────────
@@ -368,7 +369,6 @@ export function requiredTextIds(codex: Codex = CODEX): string[] {
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
-const TAGS: readonly Tag[] = ['steel', 'coin', 'arcane', 'engine']
 const REACHES: readonly Reach[] = ['melee', 'ranged']
 const INTENTS: readonly Intent[] = ['strike', 'charge', 'volley', 'brace', 'shift', 'spell']
 const MYTHIC_SPECIALS: readonly MythicSpecial[] = ['broodVolley', 'petrify', 'fire', 'griffinDive', 'poison', 'huntTheWeak']

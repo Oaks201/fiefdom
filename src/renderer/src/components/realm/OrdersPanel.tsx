@@ -331,6 +331,11 @@ function AssaultSlot({ view, slot, locked, onTarget }: { view: OrdersView; slot:
       </label>
       {slot.target && !slot.goesOut && <p className="muted">{slot.companies.length === 0 ? 'Send at least one company.' : 'This assault cannot go out as ordered.'}</p>}
       {slot.breaks && <p className="orders__breaks">{slot.breaks}</p>}
+      {slot.banners.length > 0 && (
+        <p className="muted" title={`A hex taken in battle earns ${Math.round(RULES.dominion.crafts.bannerShare * 100)}% of its depth more in Renown, for the paths of the banners that took it, by each one’s share of the strike. A tag an item adds weighs ${RULES.dominion.crafts.itemTagWeight} times one of the company’s own. A banner carrying ${Math.round(RULES.dominion.crafts.massedAt * 100)}% or more is massed, and its part counts × ${RULES.dominion.crafts.massedMult}.`}>
+          Banners: {slot.banners.map((b) => `${b.name} ${b.percent}%${b.massed ? ' (massed)' : ''} to ${b.ruler}’s path`).join(' · ')}
+        </p>
+      )}
       {!slot.target && slot.companies.length > 0 && <p className="muted">No target yet: these companies defend until one is named.</p>}
     </div>
   )

@@ -10,7 +10,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { RULES } from '../src/renderer/src/lib/game/rules'
-import { RIVAL_IDS, type DeedKind, type RivalId } from '../src/renderer/src/lib/game/types'
+import { pathOfTag } from '../src/renderer/src/lib/game/dominion'
+import { RIVAL_IDS, TAGS, type DeedKind, type RivalId } from '../src/renderer/src/lib/game/types'
 import type { RunOptions, RunResult } from './campaign'
 import { G05_WEEK, LABEL, SIEGE_DAYS_CAP, SURGE_FROM_WEEK, TERMS_FROM_WEEK, type MarchMeasure, type Measures } from './measure'
 import type { PolicyId } from './policy'
@@ -56,6 +57,8 @@ export function targetPlan(seeds: number, weeks: number): RunOptions[] {
   const long = weeks < USUAL_WEEKS ? weeks : Math.max(weeks, LONG_WEEKS)
   for (const p of ['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]) add(p, 'smarter', seeds, long)
   for (const mix of MIXES) for (const policy of mix.policies) add('steadfast', policy, half, long)
+  // Patch 10 stage 2 (G-31): the smarter player massing each tag, to the week G-31 reads.
+  for (const tag of TAGS) add('steadfast', `smarter+banner:${tag}`, half, Math.min(weeks, G31.week + 1))
   // Patch 9 (G-27, D-77): the long plateau, for its siege.
   add('steadfastPlateau', 'greedy', half)
   return runs
@@ -556,6 +559,30 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       Number.isFinite(craftShare) ? craftShare >= G28.share[0] && craftShare <= G28.share[1] && eachCraft.every((s) => s >= G28.each) : null
     )
   )
+
+  // G-31 (Patch 10 stage 2, K6; restated with D-84): a build shows. The smarter player massing one tag against the
+  // same seed's smarter player without the banner: that tag's path in Dominion at week 26, as a gain.
+  const plainAt = new Map(of('steadfast', 'smarter').map((r) => [r.seed, r.measures.weeks.find((x) => x.week === G31.week)?.paths]))
+  const builds = TAGS.map((tag) => {
+    const i = RIVAL_IDS.indexOf(pathOfTag(tag))
+    const gains = of('steadfast', `smarter+banner:${tag}`).flatMap((r) => {
+      const mine = r.measures.weeks.find((x) => x.week === G31.week)?.paths
+      const plain = plainAt.get(r.seed)
+      return mine && plain && plain[i] > 0 ? [mine[i] / plain[i] - 1] : []
+    })
+    return { tag, gains }
+  })
+  const gains = builds.flatMap((b) => b.gains)
+  const signedPct = (v: number): string => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%` : '–')
+  rows.push(
+    row(
+      'G-31',
+      'A build shows (Patch 10)',
+      `The smarter Steadfast player massing one tag: that tag's path in Dominion at week ${G31.week} over the same seed's without the banner (median gain, at least ${signedPct(G31.gain)}); by tag: ${TAGS.join(', ')}`,
+      `${signedPct(median(gains))}; ${builds.map((b) => signedPct(median(b.gains))).join(', ')}`,
+      gains.length > 0 ? median(gains) >= G31.gain : null
+    )
+  )
   return rows
 }
 
@@ -834,6 +861,11 @@ const CRAFTS: readonly { ruler: string; craft: string; deeds: readonly DeedKind[
   { ruler: 'the Archmage', craft: 'the unseen', deeds: ['mythicBeaten', 'mythicHunted'] }
 ]
 const CRAFT_DEEDS: readonly DeedKind[] = CRAFTS.flatMap((c) => c.deeds)
+/**
+ * Patch 10 stage 2 (G-31, restated with D-84): a player massing one tag has that tag's path at least this much higher in
+ * Dominion at this week than the same seed's player without the banner. "The highest path" read the Dwarf's lead from walls instead.
+ */
+const G31 = { week: 26, gain: 0.1 }
 /** Patch 10 (G-28): craft deeds are this share of a Steadfast campaign's Renown, and each craft at least `each` of it. */
 const G28 = { share: [0.1, 0.2], each: 0.02 }
 /** The streak lengths the crafts section groups by: a day, 2 to 3, 4 to 6, a week to 13 days, 14 or more. */

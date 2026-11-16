@@ -574,7 +574,11 @@ export function HowToPlay(): React.JSX.Element | null {
             <>
               <ul>
                 <li>
-                  <b>Taking a hex:</b> its depth, +{deeds.perFortification} for each fortification level it had. A stronghold adds {deeds.strongholdPerDepth} × its depth more.
+                  <b>Taking a hex:</b> its depth, +{deeds.perFortification} for each fortification level it had. A stronghold adds {deeds.strongholdPerDepth} × its depth more. Taken in
+                  battle (a daily assault or a Grand Battle), it earns {Math.round(crafts.bannerShare * 100)}% of its depth more for the <b>banners</b> that took it: each tag’s share of
+                  the strike feeds its building’s ruler (Steel the Orc, Coin the Goblin, Engine the Dwarf, Arcane the Archmage). A company’s strike is split over its tags, a tag an
+                  item adds weighing {crafts.itemTagWeight} times one of its own, so a tag item turns a company toward that ruler. A tag carrying {Math.round(crafts.massedAt * 100)}% of the strike or more is <b>massed</b>: its part counts × {crafts.massedMult}. The orders
+                  panel shows the split before the day closes.
                 </li>
                 <li>
                   <b>Battles:</b> a rival’s attack beaten {deeds.battleWon}; beasts {deeds.heldAgainstBeasts} and a mythic {deeds.heldAgainstMythic} (on the hex’s paths); a

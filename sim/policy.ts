@@ -14,11 +14,13 @@
  *   `paths:orc+goblin+dwarf` three a third each; `paths:all` all four evenly).
  * - **smarter+paths:<rivals>** (Patch 4, G-18): the smarter player steered along the named paths; it takes
  *   the terms it is offered but refuses its own path's rival until that path reaches rank V (C-46).
+ * - **smarter+banner:<tag>** (Patch 10 stage 2, G-31): the smarter player massing one tag: its companies carry
+ *   the item that adds it, and the Sworn swear to it.
  */
 import { autoplay, GREEDY, type AutoplayPlan } from '../src/renderer/src/lib/game/autoplay'
-import { RIVAL_IDS, type CampaignState, type ISODate, type RivalId } from '../src/renderer/src/lib/game/types'
+import { RIVAL_IDS, TAGS, type CampaignState, type ISODate, type RivalId, type Tag } from '../src/renderer/src/lib/game/types'
 
-export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}` | `smarter+paths:${string}`
+export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}` | `smarter+paths:${string}` | `smarter+banner:${string}`
 
 export interface PolicyDay {
   policy: PolicyId
@@ -43,9 +45,21 @@ export function policyPaths(policy: PolicyId): RivalId[] | null {
   return rivals as RivalId[]
 }
 
+const SMARTER_BANNER = 'smarter+banner:'
+
+/** The tag a `smarter+banner:` policy masses. */
+export function policyBanner(policy: PolicyId): Tag | null {
+  if (!policy.startsWith(SMARTER_BANNER)) return null
+  const tag = policy.slice(SMARTER_BANNER.length)
+  if (!(TAGS as readonly string[]).includes(tag)) throw new Error(`No tag "${tag}" in policy ${policy}`)
+  return tag as Tag
+}
+
 /** The automatic player's plan for a simulator policy. */
 export function planOf(policy: PolicyId): AutoplayPlan {
   if (policy === 'smarter') return { ...GREEDY, smarter: true }
+  const banner = policyBanner(policy)
+  if (banner) return { ...GREEDY, smarter: true, banner }
   if (policy === 'push') return { ...GREEDY, push: true }
   if (policy === 'skirmish') return { ...GREEDY, skirmish: true }
   const paths = policyPaths(policy)

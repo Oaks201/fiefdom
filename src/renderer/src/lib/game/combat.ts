@@ -42,7 +42,7 @@ import { bandOf, borderHexesOf, claimableBy, depthOf, hexDistance, hexIndex, isC
 import { RULES, base, type DeepReadonly } from './rules'
 import { chance, pick, roll, weighted } from './rng'
 import { refreshRoster, roster } from './roster'
-import { pathRank } from './dominion'
+import { bannersOf, pathRank } from './dominion'
 import { dissolves, fallbackShareOn, pactBars, personalitiesOf, surgeOn, withPersonalities, inMarchOf, marchRule, orcStrikeMult, raidWeight, rulesHarden, strikeChance, wearDecayOn, wildsMayReclaim } from './personalities'
 import { decayedWear, fortificationShare, fallbackOn, fallbackStrengthOn, flankingMult, garrisonMult, siegeStands, standingSiegeOf, wearCap, withStandingSiege } from './sieges'
 import { envoyFee, marksFor, ownMark, raidRespectMult, respectChange } from './respect'
@@ -75,6 +75,7 @@ import {
   type Skirmish,
   type SkirmishDay,
   type Tag,
+  type Banners,
   type ThreatKind,
   type Tiding,
   type WeekStartsOn,
@@ -1413,7 +1414,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     const hex = byId.get(id) as HexState
     return { hexId: id, kind: hex.kind, owner: hex.owner, day }
   })
-  const taken: { hex: HexState; from: Owner }[] = []
+  const taken: { hex: HexState; from: Owner; banners: Banners }[] = []
   const dissolved: { hexId: string; day: ISODate }[] = []
   // Patch 4 (C-36): the Dwarf's path wears a siege faster.
   const wearShare = RULES.land.repulseWear + RULES.dominion.rankPerks.dwarf.repulseWear * pathRank(state, 'dwarf')
@@ -1437,15 +1438,17 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
     if (led?.hired) purse = spend(purse, day, Math.min(led.hired * RULES.buildings.merchantHall.hiredBlades.costPerBattle, balance(purse)), `hired:${led.id}`)
     const owner = hex.owner
     const ledFlag = led ? { led: true } : {}
+    // Patch 10 stage 2 (K6): the tags that carried the strike, for the banner share of a hex it takes.
+    const banners = bannersOf(fielded.map((f) => ({ tags: f.company.tags, strike: f.strike, itemTags: f.company.itemTags })))
     if (result.outcome !== 'repulsed') {
       const rout = result.outcome === 'rout'
       const perRing = rout ? RULES.combat.spoils.routPerRing : RULES.combat.spoils.winPerRing
       const amount = withBonus(perRing * bandOf(hex) * effects.spoils[foe].value * ownSpoilsMult(fielded, foe) * (led?.spoils ?? 1), bonus)
       gains.push({ kind: 'spoils', amount, source: `assault:${hex.id}` })
       if (owner !== 'neutral' && owner !== 'player') respect.push({ rival: owner, change: respectChange(owner, 'hexConquered', RULES.respect.change.hexConquered), reason: 'hexConquered' })
-      taken.push({ hex, from: owner })
+      taken.push({ hex, from: owner, banners })
       const melts = result.outcome === 'taken' && !hex.village && !hex.mythic && dissolves(marchRule(state, hex, day))
-      emit('assault', { hexId: hex.id, owner, outcome: result.outcome, spoils: roundPosting(amount), value: roundPosting(value), ...ledFlag, ...(melts ? { dissolved: true } : {}) })
+      emit('assault', { hexId: hex.id, owner, outcome: result.outcome, spoils: roundPosting(amount), value: roundPosting(value), ...ledFlag, ...(melts ? { dissolved: true } : {}), banners })
       // Beaten without a rout, the garrison falls back deeper (D-24); a rout scatters it.
       const force = result.outcome === 'taken' ? fallbackFrom(state, byId, hex, garrison, day) : undefined
       if (force) {
@@ -1461,7 +1464,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
       for (const f of fielded) wearied.add(f.company.id)
       // A breach: worn within the Assault that wore it, so the same assault would now take it.
       const breach = effectiveGarrison(worn, effects.assaultIgnoresFortification.on, prep, fallbackOn(state, hex, day), fortificationShare(state)) <= value ? { breach: true } : {}
-      emit('assault', { hexId: hex.id, owner, outcome: 'repulsed', wear: roundPosting(result.wear), value: roundPosting(value), ...breach, ...ledFlag })
+      emit('assault', { hexId: hex.id, owner, outcome: 'repulsed', wear: roundPosting(result.wear), value: roundPosting(value), ...breach, ...ledFlag, banners })
     }
   }
 
@@ -1483,7 +1486,7 @@ export function settleCombat(input: CampaignState, ctx: CombatDay): CombatOutcom
   }
   for (const t of taken) {
     setHex(toPlayer(byId.get(t.hex.id) as HexState, day, true))
-    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest', fortification: t.hex.fortification })
+    emit('hexTransfer', { hexId: t.hex.id, from: t.from, to: 'player', how: 'conquest', fortification: t.hex.fortification, banners: t.banners })
   }
   // A siege left alone fades (D-22, C-20): every worn hex not assaulted today loses part of its wear, a
   // stronghold more slowly, and none while a Grand Battle waits on it (C-28).

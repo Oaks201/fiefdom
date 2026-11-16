@@ -482,7 +482,13 @@ The 12 dare lines retire (R1).
    - **Where it reads now** (740 campaigns): victory in weeks 54 / 59 / 64 for Perfect / Steadfast / Committed; crafts 18% of Renown. Two targets are missed: G-05 as before, and G-22 by 3 points at band 4.
    - **Screens kept small:** the Herald's lines for the five new deeds, the streak as a line on Ugrak's court, and the new rows in the guide and How to Play. L3 and L4 (the tidings and the orders panel) wait for stage 4.
    - **G-28 is the only new target here.** G-29 to G-31 need commissions and banners (stages 2 and 3).
-2. **Stage 2, the banners** (3.16.0): K6, the orders panel's split, the tag marks, and K7's offset from the simulator.
+2. **Stage 2, the banners** (3.16.0): K6, the orders panel's split, the tag marks, and K7's offset from the simulator. **Built** (2026-11-15), and changed from K6 above by Rich on the simulator's reading (D-84):
+   - **Banners are paid on top, at 50%.** The hex's own march keeps its whole depth, and the banners that took it earn half the depth more. As proposed (30% moved) a player massing a tag moved its ruler's path by a few points either way.
+   - **A tag an item adds weighs triple.** With an even split a tag item reached at most about half a strike, because most companies have two tags of their own. Now a tag item alone masses a one-tag company's banner.
+   - **The Dominion marks rise again,** to 700 / 2,100 / 3,050 / 4,200, which holds campaign length at weeks 55 / 59 / 64.5.
+   - **The tag marks are not added.** They need rows in `assets.md` and the manifest, which hold the owner's uncommitted art.
+   - **G-31 is restated** as the massed tag's path against the same player without the banner at week 26 (at least +10%). It reads +8%.
+   - **Open:** G-17 fell to 28% and needs restating, since a path now also says how the player fights; the save is 2.09 MB against its 2 MB cap.
 3. **Stage 3, rulers who act** (3.17.0): R1 to R6 and their lines, X1, X4 and X6.
 4. **Stage 4, the day and the week** (no rule change): L1 to L4, X7 and X8.
 5. **Stage 5, the long game** (3.18.0): E1 and E2, measured first, and E4's readings. With F4: the Chronicle's record of the realm that won, and the victory page.

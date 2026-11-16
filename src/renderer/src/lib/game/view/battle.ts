@@ -36,7 +36,7 @@ import { openDayOf } from '../state'
 import type { BattleLogLine, BattleRoundLog, BattleSetup, CampaignState, GrandBattle, GrandTrigger, Intent, ISODate, Lane, OrderTarget, SlotKey } from '../types'
 import { companyArt } from './realm'
 import { amount, factor } from './refusals'
-import { rivalName, rivalNames } from './shell'
+import { TAG_NAMES as SHELL_TAG_NAMES, rivalName, rivalNames } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
 const G = RULES.grandBattles
@@ -115,7 +115,7 @@ const TARGETS: Record<string, string> = {
   enemyRear: 'the enemy rear'
 }
 
-const TAG_NAMES: Record<string, string> = { steel: 'Steel', coin: 'Coin', arcane: 'Arcane', engine: 'Engine' }
+const TAG_NAMES: Record<string, string> = SHELL_TAG_NAMES
 
 function times(mult: number): string {
   return mult < 1 ? `−${pct(1 - mult)}` : `+${pct(mult - 1)}`

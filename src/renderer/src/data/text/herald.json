@@ -631,6 +631,10 @@
     "template": "A mythic beaten at {hex}: {value} Renown on {rival}’s path.",
     "final": null
   },
+  "herald.deed.bannerTaken": {
+    "template": "{hex} taken under {banner} banners: {value} Renown on {rival}’s path.",
+    "final": null
+  },
   "herald.deed.mythicHunted": {
     "template": "A Mythic Hunt won at {hex}: {value} Renown on {rival}’s path.",
     "final": null

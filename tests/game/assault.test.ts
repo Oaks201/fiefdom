@@ -58,9 +58,10 @@ test('Ch 6 taken: Assault ≥ garrison takes the hex at dawn with 4 × ring spoi
   // Garrison exactly the Assault: taken, not a rout.
   const exact = quiet(orders(withHex(s0, target, { garrison: value }), { assaultTarget: target, assault: ['barracks'] }))
   const taken = fight(exact, DAY, 1)
-  assert.deepEqual(taken.of('assault'), [{ hexId: target, owner: 'neutral', outcome: 'taken', spoils: Math.round(4 * 3 * bonus * 10) / 10, value: 54 }])
+  // Patch 10 stage 2 (K6): the assault and the hex it takes record the banners that carried the strike: the Barracks' Steel alone.
+  assert.deepEqual(taken.of('assault'), [{ hexId: target, owner: 'neutral', outcome: 'taken', spoils: Math.round(4 * 3 * bonus * 10) / 10, value: 54, banners: { steel: 1 } }])
   assert.equal(hex(taken.state, target).owner, 'player')
-  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: target, from: 'neutral', to: 'player', how: 'conquest', fortification: 0 }])
+  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: target, from: 'neutral', to: 'player', how: 'conquest', fortification: 0, banners: { steel: 1 } }])
 
   // The den's own 49.5 against 54 is taken too; 30 of garrison is a rout.
   const rout = fight(quiet(orders(withHex(s0, target, { garrison: 30 }), { assaultTarget: target, assault: ['barracks'] })), DAY, 1)
@@ -185,7 +186,8 @@ test('Ch 6: a captured village Settles at half tithes for 4 weeks with half its 
   const taken = fight(quiet(orders(owned, { assaultTarget: rivalHex, assault: ['foundry', 'merchantHall'] })), DAY, 1)
   assert.notEqual(taken.of('assault')[0].outcome, 'repulsed')
   assert.equal(taken.state.rivals.goblin.respect, owned.rivals.goblin.respect - 5)
-  assert.deepEqual(taken.of('hexTransfer'), [{ hexId: rivalHex, from: 'goblin', to: 'player', how: 'conquest', fortification: 0 }])
+  assert.deepEqual(taken.of('hexTransfer').map(({ banners: _banners, ...rest }) => rest), [{ hexId: rivalHex, from: 'goblin', to: 'player', how: 'conquest', fortification: 0 }])
+  assert.deepEqual(Object.keys(taken.of('hexTransfer')[0].banners ?? {}).sort(), ['coin', 'engine'], 'K6: the two companies sent carried it')
 })
 
 test('Ch 6 / Ch 8, D-17: rival fortification adds 25% of the hex’s strength a level; Siegebreakers and the Sappers ignore it', () => {

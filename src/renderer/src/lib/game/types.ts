@@ -18,7 +18,8 @@ export type RivalId = (typeof RIVAL_IDS)[number]
 export type Owner = 'player' | RivalId | 'neutral'
 export const BUILDING_IDS = ['barracks', 'merchantHall', 'mageTower', 'foundry'] as const
 export type BuildingId = (typeof BUILDING_IDS)[number]
-export type Tag = 'steel' | 'coin' | 'arcane' | 'engine'
+export const TAGS = ['steel', 'coin', 'arcane', 'engine'] as const
+export type Tag = (typeof TAGS)[number]
 export type Reach = 'melee' | 'ranged'
 /** The between-lands, named by the direction they lie in from the castle. */
 export const LANDS = ['north', 'south', 'west', 'east'] as const
@@ -168,6 +169,8 @@ export interface Company {
   reach: Reach
   items: string[]
   wearyUntil?: ISODate
+  /** Patch 10 stage 2 (K6): the tags its items add, among `tags`; absent when none does. */
+  itemTags?: Tag[]
 }
 
 export type ContractTerm = 1 | 3 | 7 | 14 | 30 // rules-ok: literal type
@@ -368,6 +371,8 @@ export interface FieldUnit {
   /** Health at the start, H = 4 × p (or the mythic's multiple, A-47) with every health effect. */
   health: number
   tags: Tag[]
+  /** Patch 10 stage 2 (K6): the tags its items add, among `tags`. */
+  itemTags?: Tag[]
   reach: Reach
   slot: SlotKey
   /** An enemy's type for matching: its rival, or mythic (A-29); in a daily skirmish also beasts or a village's militia (D-12). */
@@ -781,7 +786,8 @@ export interface GameEventMap {
    * `value`: Patch 3, the Assault it was fought at (the formula's, at the Valor it used; a led fight's at the Valor locked when it began).
    * `breach`: Patch 3 (D-22), a repulse that wore the garrison down within that Assault: the same assault would now take it.
    */
-  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; value?: number; breach?: boolean; led?: boolean; dissolved?: boolean }
+  /** `banners`: Patch 10 stage 2 (K6), each tag's share of the strike that fought it. */
+  assault: { hexId: string; owner: Owner; outcome: 'taken' | 'rout' | 'repulsed' | 'revealed'; spoils?: number; wear?: number; value?: number; breach?: boolean; led?: boolean; dissolved?: boolean; banners?: Banners }
   /** A threat that was announced but never struck: its rival made a Truce or can no longer attack (T08). */
   calledOff: { threat: ThreatKind; hexId: string; rival?: RivalId }
   /** A trophy earned in daily combat or a Mythic Hunt (A-131, A-156); `item` is the trophy granted, if any. */
@@ -794,10 +800,13 @@ export interface GameEventMap {
     how: 'conquest' | 'influence' | 'trade' | 'reclaim' | 'event' | 'borderCampaign' | 'abdication' | 'wilds' | 'bribe'
     /** Patch 2: the fortification the hex had as it changed hands (a deed counts the levels broken). */
     fortification?: number
+    /** Patch 10 stage 2 (K6): each tag's share of the strike that took it, on a hex the player took by daily assault or Grand Battle. */
+    banners?: Banners
   }
   /** Patch 2 (D-18): a deed on a rival's path: Renown it adds, permanently. */
   /** Patch 10 (D-80): `level`, the wall level a `wallRaised` or `wallsHeld` deed counts; `streak`, the day of the streak a `fieldDay` is. */
-  deed: { path: RivalId; deed: DeedKind; value: number; hexId?: string; source?: string; level?: number; streak?: number }
+  /** Stage 2: `tag`, the banner a `bannerTaken` deed is for; `massed`, when it carried enough of the strike for the massed-banners bonus. */
+  deed: { path: RivalId; deed: DeedKind; value: number; hexId?: string; source?: string; level?: number; streak?: number; tag?: Tag; massed?: true }
   /** Patch 2 (D-18): a path reached a new rank (ranks never fall). */
   pathRank: { path: RivalId; rank: number }
   /** Patch 2 (D-19): a rival march's preparation level moved at the week close. */
@@ -878,6 +887,8 @@ export interface GameEventMap {
     marshal?: boolean
     /** T11: why a trigger was refused. */
     reason?: string
+    /** Patch 10 stage 2 (K6): each tag's share of the player's strike, on a battle fought. */
+    banners?: Banners
   }
   /** A coalition formed, broke or ended (Ch 13). */
   coalition: { members: RivalId[]; trigger: Coalition['trigger']; stage: 'formed' | 'broken' | 'ended' }
@@ -1192,12 +1203,17 @@ export type DeedKind =
   | 'fieldDay'
   | 'mythicBeaten'
   | 'mythicHunted'
+  /** Patch 10 stage 2 (K6): the banner share of a hex taken in battle, to the path of a tag that took it. */
+  | 'bannerTaken'
   /** Retired by Patch 10 (D-80; X2, X5): no longer posted, still in the log of a save that earned them. */
   | 'battleLost'
   | 'retaken'
   | 'counterBidBeaten'
   | 'siegeBroken'
   | 'summonedDefeated'
+
+/** Patch 10 stage 2 (K6): each tag's share of a strike, 0 to 1; a tag that carried none is left out. */
+export type Banners = Partial<Record<Tag, number>>
 
 /** The deeds Patch 10 retired (D-80): a save may hold them, and nothing posts them. */
 export const RETIRED_DEEDS: readonly DeedKind[] = ['battleLost', 'retaken', 'counterBidBeaten', 'siegeBroken', 'summonedDefeated']

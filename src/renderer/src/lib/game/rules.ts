@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.15.0',
+  ruleVersion: '3.16.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -707,7 +707,9 @@ const RULES_TABLE = {
      * 54 for 59). The second mark rises from 1,800 to 1,900, and the third and fourth go back to D-59's 2,700 and
      * 3,650 (from 2,500 and 3,350), which holds G-11's windows. A rank or a tier already reached never falls.
      */
-    resolution: { dominionMarks: [650, 1_900, 2_700, 3_650] },
+    // Patch 10 stage 2 (D-84): the banners' part is paid on top (K6 as Rich set it), and with it Steadfast won in week
+    // 52.5 for 59. The marks rise again, from 650 / 1,900 / 2,700 / 3,650.
+    resolution: { dominionMarks: [700, 2_100, 3_050, 4_200] },
     /** Ch 13: what a rival's fall does to the others. */
     fallout: { conqueredThreat: 15, abdicatedThreat: 10, alliedThreat: 5, conqueredLoyaltyMult: 0.5 },
     /** An allied rival may join one Grand Battle a month. */
@@ -949,7 +951,30 @@ const RULES_TABLE = {
       fieldDayCap: 1.5,
       fieldWeekDays: 7,
       mythicBeaten: 0.75,
-      mythicHunted: 5
+      mythicHunted: 5,
+      /**
+       * Patch 10 stage 2 (D-80, K6; rules 3.16.0): the banner share. Of a hex taken by daily assault or Grand
+       * Battle, `bannerShare` of its depth's Renown goes to the paths of the tags that took it, by each tag's
+       * share of the strike (a company's strike split evenly over its tags; a tag an item adds counts); the
+       * rest, and what its broken walls add, goes to its march's path as before. A tag carrying `massedAt` of
+       * the strike or more has its part × `massedMult`: the only Renown the banner share adds.
+       */
+      // D-84 (Rich, on the simulator's reading): the banners' part is paid on top of the march's, at half the hex's
+      // depth, and an item's tag weighs triple. As proposed (30% moved, an even split) a tag item could never mass a
+      // banner, and a player massing one moved its ruler's path by a few points either way.
+      bannerShare: 0.5,
+      /**
+       * What the banners' part costs the hex's own march, as a share of its depth: equal to `bannerShare` the
+       * banner share is moved, not added (the proposals' K6); 0 and the march keeps its whole depth, the banners' on top. TUNE.
+       */
+      bannerFromMarch: 0,
+      massedAt: 0.6,
+      massedMult: 1.5,
+      /**
+       * How much a tag an item adds weighs beside a company's own tags when its strike is split: 1 is the even
+       * split the proposals set (a Steel company carrying a Lucky Coin flies half Steel, half Coin). TUNE.
+       */
+      itemTagWeight: 3
     },
     /** A fully walked path: its march held (Holdings about 440), its hexes taken, its battles fought and its rival resolved (Renown about 660). TUNE. */
     fullPath: 1_100,

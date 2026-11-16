@@ -27,7 +27,7 @@ import { balance, post, roundPosting, spend, tribute as payTribute, withBonus } 
 import { realmEffects } from './effects'
 import { originalVillages } from './land'
 import { bandOf, hexIndex, isStronghold, neighbors, rivalOfRoad, strongholdBarring } from './map'
-import { pathRank } from './dominion'
+import { bannersOf, pathRank } from './dominion'
 import { pactBars } from './personalities'
 import { RULES } from './rules'
 import { pick, shuffle } from './rng'
@@ -51,7 +51,8 @@ import {
   type OrderTarget,
   type Owner,
   type RivalId,
-  type SlotKey
+  type SlotKey,
+  type Banners
 } from './types'
 import {
   FILL_ORDER,
@@ -623,7 +624,7 @@ export function startHealthAt(start: StartMods, slot: SlotKey): number {
 export function companyUnit(c: Company, slot: SlotKey, start: StartMods, extraHealth = 0, powerMult = 1): FieldUnit {
   const own = unitMods(c.id, c.items, c.reach)
   const health = G.healthPerPower * c.power * own.healthMult * startHealthAt(start, slot) + extraHealth
-  const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power * powerMult, health, tags: [...c.tags], reach: c.reach, slot }
+  const unit: FieldUnit = { id: c.id, side: 'player', name: c.name, power: c.power * powerMult, health, tags: [...c.tags], ...(c.itemTags ? { itemTags: [...c.itemTags] } : {}), reach: c.reach, slot }
   if (Object.keys(own.mods).length > 0) unit.mods = own.mods
   return unit
 }
@@ -906,10 +907,10 @@ function loseHex(state: CampaignState, hexId: string, rival: RivalId, day: ISODa
 }
 
 /** A hex the player takes by a Grand Battle: a Gate, a Lair Mouth or a revealed den (conquest, Settling, A-22). */
-function takeHex(state: CampaignState, hexId: string, day: ISODate, emit: Emit, outcome: GrandOutcome): CampaignState {
+function takeHex(state: CampaignState, hexId: string, day: ISODate, emit: Emit, outcome: GrandOutcome, banners: Banners): CampaignState {
   const hex = hexOf(state, hexId)
   if (!hex || hex.owner === 'player') return state
-  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest', fortification: hex.fortification })
+  emit('hexTransfer', { hexId: hex.id, from: hex.owner, to: 'player', how: 'conquest', fortification: hex.fortification, banners })
   outcome.hexTaken = hex.id
   return replaceHex(state, toPlayer(hex, day, true))
 }
@@ -927,6 +928,8 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
   const bonus = effects.reputationBonus.value
   const hex = hexOf(state, battle.hexId) as HexState
   const outcome: GrandOutcome = {}
+  // Patch 10 stage 2 (K6): the tags that carried the player's side, by each company's power.
+  const banners = bannersOf(field.units.filter((u) => u.side === 'player').map((u) => ({ tags: u.tags, strike: u.power, itemTags: u.itemTags })))
 
   // Reserves' hires are paid now; the purse checked them when each was played.
   const fees = Math.min(field.hired * HIRE_FEE, balance(state.purse))
@@ -974,7 +977,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
     case 'gate': {
       const rival = battle.rival as RivalId
       if (won) {
-        state = takeHex(state, battle.hexId, day, emit, outcome)
+        state = takeHex(state, battle.hexId, day, emit, outcome, banners)
         const before = state.rivals[rival].respect
         state = adjustRespect(state, rival, respectChange(rival, 'hexConquered', RULES.respect.change.hexConquered), 'hexConquered', emit)
         outcome.respect = state.rivals[rival].respect - before
@@ -999,7 +1002,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
         }
         emit('trophy', { hexId: hex.id, source: 'mythicHunt', ...(lair ? { lair } : {}), ...(trophy ? { item: trophy } : {}) })
         // A Lair Mouth won seals its lair (Ch 3 rule 5); a revealed den is taken too (A-156).
-        state = takeHex(state, battle.hexId, day, emit, outcome)
+        state = takeHex(state, battle.hexId, day, emit, outcome, banners)
       } else {
         const paid = postTribute(state, day, G.outcomes.mythicHuntLoss.tributePerRing, hex, `grandBattle:${battle.id}`)
         state = paid.state
@@ -1011,7 +1014,7 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
     case 'stronghold': {
       // D-23 (P3-02): won, the hex is taken and its garrison scatters; lost, tribute and a wait before the next challenge, the siege wear kept.
       if (won) {
-        state = takeHex(state, battle.hexId, day, emit, outcome)
+        state = takeHex(state, battle.hexId, day, emit, outcome, banners)
         if (battle.rival) {
           const before = state.rivals[battle.rival].respect
           state = adjustRespect(state, battle.rival, respectChange(battle.rival, 'hexConquered', RULES.respect.change.hexConquered), 'hexConquered', emit)
@@ -1052,7 +1055,8 @@ function settleBattle(input: CampaignState, battleId: string, field: Field, day:
     battleDate: battle.battleDate,
     ...(battle.rival ? { rival: battle.rival } : {}),
     ...(battle.quarry ? { quarry: battle.quarry } : {}),
-    ...(marshal ? { marshal: true } : {})
+    ...(marshal ? { marshal: true } : {}),
+    banners
   })
   const fought = battleOf(state, battleId) as GrandBattle
   return withBattle(state, { ...fought, result, foughtOn: day, outcome })

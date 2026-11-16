@@ -24,7 +24,7 @@ import { isPlayable, isRestDay, openDayOf, weekOn, worldOf } from '../state'
 import { t, type TextFacts } from '../text'
 import { graceTextId } from '../weight'
 import { plural } from '../../format'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type StanceBand, type Surge, type SurgeKind, type WeekStartsOn } from '../types'
+import { RIVAL_IDS, type CampaignState, type GameEvent, type GraceLevel, type ISODate, type RivalId, type StanceBand, type Surge, type SurgeKind, type Tag, type WeekStartsOn } from '../types'
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +45,9 @@ export function pagesFor(campaign: CampaignState | null, outdated = false): Page
 export function rivalName(rival: RivalId): string {
   return CODEX.rivals.find((r) => r.id === rival)?.shortName ?? rival
 }
+
+/** A tag as the screens name it. */
+export const TAG_NAMES: Record<Tag, string> = { steel: 'Steel', coin: 'Coin', arcane: 'Arcane', engine: 'Engine' }
 
 /** A list of rivals as the text names them, joined with "and". */
 export function rivalNames(rivals: readonly RivalId[]): string {
@@ -283,7 +286,7 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       return line(
         'result',
         `herald.deed.${e.deed}`,
-        { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}), ...(e.level !== undefined ? { level: e.level } : {}), ...(e.streak !== undefined ? { days: e.streak } : {}) },
+        { rival: rivalName(e.path), value: Math.round(e.value * TENTHS) / TENTHS, ...(e.hexId ? { hex: hexName(e.hexId) } : {}), ...(e.level !== undefined ? { level: e.level } : {}), ...(e.streak !== undefined ? { days: e.streak } : {}), ...(e.tag !== undefined ? { banner: TAG_NAMES[e.tag] } : {}) },
         { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) }
       )
     case 'ascendancy':

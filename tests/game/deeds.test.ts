@@ -93,11 +93,18 @@ test('D-25: a stronghold won in its Grand Battle posts the Grand Battle deed, th
   const won = autoResolve(asked.state, asked.battle!.id, asked.battle!.battleDate, [1, 1, 1, 1, 1, 1, 1], c.emit)
   assert.equal(hex(won, fort.id).owner, 'player')
   const { deeds } = posted(logged(won, c.events, asked.battle!.battleDate))
-  assert.deepEqual(rows(deeds, fort.id), [
+  const got = rows(deeds, fort.id)
+  assert.deepEqual(got.filter((r) => r[0] !== 'hexTaken' && r[0] !== 'bannerTaken'), [
     ['grandBattleWon', 'orc', D.grandBattleWon],
-    ['hexTaken', 'orc', D.hexTakenPerDepth * depthOf(fort)],
     ['strongholdTaken', 'orc', D.strongholdPerDepth * depthOf(fort)]
   ])
+  // Patch 10 stage 2 (K6): the banner share of the hex's depth goes to the tags that fought (four equal companies, none massed); the march keeps the rest.
+  const depth = D.hexTakenPerDepth * depthOf(fort)
+  const share = RULES.dominion.crafts.bannerShare
+  const sum = (kind: DeedKind): number => got.filter((r) => r[0] === kind).reduce((s, r) => s + r[2], 0)
+  assert.ok(Math.abs(sum('hexTaken') - depth * (1 - RULES.dominion.crafts.bannerFromMarch)) < 1e-9)
+  assert.ok(Math.abs(sum('bannerTaken') - depth * share) < 1e-9)
+  assert.deepEqual(got.filter((r) => r[0] === 'hexTaken').map((r) => r[1]), ['orc'])
 })
 
 test('D-25: a counterattack held is counterattackHeld (2 to the rival; 1 × the hex’s shares for beasts) and not the battle’s ordinary deed; lost, nothing', () => {
