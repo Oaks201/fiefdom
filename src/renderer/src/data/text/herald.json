@@ -632,7 +632,7 @@
     "final": null
   },
   "herald.deed.bannerTaken": {
-    "template": "{hex} taken under {banner} banners: {value} Renown on {rival}’s path.",
+    "template": "{hex} taken by {banner} companies: {value} Renown on {rival}’s path.",
     "final": null
   },
   "herald.deed.mythicHunted": {

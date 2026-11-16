@@ -281,8 +281,8 @@ function deedsOf(rival: RivalId): Deed[] {
     { deed: 'A wild hex of his march taken', renown: hexTaken },
     // Patch 10 stage 2 (K6): the banner share.
     {
-      deed: `A hex taken in battle, anywhere, under ${TAG_NAMES[tagOfPath(rival)]} banners (his building’s tag)`,
-      renown: `${pct(k.bannerShare)} of its depth × the share of the strike those banners carried (× ${amount(k.massedMult)} at ${pct(k.massedAt)} or more), on top of what the hex’s own march earns`
+      deed: `A hex taken in battle, anywhere, by ${TAG_NAMES[tagOfPath(rival)]} companies (his building’s tag)`,
+      renown: `${pct(k.bannerShare)} of its depth × the share of the strike that tag carried (× ${amount(k.massedMult)} at ${pct(k.massedAt)} or more), on top of what the hex’s own march earns`
     },
     { deed: 'A stronghold of his march taken', renown: `${perDepth(d.strongholdPerDepth)} more` },
     { deed: 'A village of his courted away', respect: c.villageCourted, renown: byDeal },

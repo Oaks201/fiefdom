@@ -16,11 +16,14 @@
  *   the terms it is offered but refuses its own path's rival until that path reaches rank V (C-46).
  * - **smarter+banner:<tag>** (Patch 10 stage 2, G-31): the smarter player massing one tag: its companies carry
  *   the item that adds it, and the Sworn swear to it.
+ * - **banner+paths:<rival>** (G-17 as restated, D-85): the greedy player steered along one rival's path and flying that
+ *   path's banner, so it both fights him and fights his way.
  */
 import { autoplay, GREEDY, type AutoplayPlan } from '../src/renderer/src/lib/game/autoplay'
+import { tagOfPath } from '../src/renderer/src/lib/game/dominion'
 import { RIVAL_IDS, TAGS, type CampaignState, type ISODate, type RivalId, type Tag } from '../src/renderer/src/lib/game/types'
 
-export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}` | `smarter+paths:${string}` | `smarter+banner:${string}`
+export type PolicyId = 'greedy' | 'smarter' | 'push' | 'skirmish' | `paths:${string}` | `smarter+paths:${string}` | `smarter+banner:${string}` | `banner+paths:${string}`
 
 export interface PolicyDay {
   policy: PolicyId
@@ -34,9 +37,10 @@ export interface PolicyDay {
 
 /** The rivals a `paths:` policy follows. */
 const SMARTER_PATHS = 'smarter+'
+const BANNER_PATHS = 'banner+'
 
 export function policyPaths(policy: PolicyId): RivalId[] | null {
-  const bare = policy.startsWith(SMARTER_PATHS) ? policy.slice(SMARTER_PATHS.length) : policy
+  const bare = policy.startsWith(SMARTER_PATHS) ? policy.slice(SMARTER_PATHS.length) : policy.startsWith(BANNER_PATHS) ? policy.slice(BANNER_PATHS.length) : policy
   if (!bare.startsWith('paths:')) return null
   const named = bare.slice('paths:'.length)
   if (named === 'all') return [...RIVAL_IDS]
@@ -63,6 +67,7 @@ export function planOf(policy: PolicyId): AutoplayPlan {
   if (policy === 'push') return { ...GREEDY, push: true }
   if (policy === 'skirmish') return { ...GREEDY, skirmish: true }
   const paths = policyPaths(policy)
+  if (paths && policy.startsWith(BANNER_PATHS)) return { ...GREEDY, paths, banner: tagOfPath(paths[0]) }
   if (paths && policy.startsWith(SMARTER_PATHS)) return { ...GREEDY, paths, smarter: true }
   return paths ? { ...GREEDY, paths } : GREEDY
 }

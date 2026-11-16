@@ -145,6 +145,6 @@ test('K6: the Herald reads a banner’s share through its catalog slot, naming t
   const h = plainIn(realm().hexes, 'orc', 3)
   const line = resultLine({ id: 'e1', day: START, kind: 'deed', path: 'dwarf', deed: 'bannerTaken', value: 1.2, hexId: h.id, tag: 'engine', massed: true })
   assert.equal(line?.textId, 'herald.deed.bannerTaken')
-  assert.match(line?.text ?? '', /Engine banners: 1\.2 Renown/)
+  assert.match(line?.text ?? '', /by Engine companies: 1\.2 Renown/)
   assert.doesNotMatch(line?.text ?? '', /\{/)
 })

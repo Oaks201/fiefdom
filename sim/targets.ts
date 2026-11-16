@@ -58,7 +58,9 @@ export function targetPlan(seeds: number, weeks: number): RunOptions[] {
   for (const p of ['perfect', 'steadfast', 'committed', 'wavering'] as ProfileId[]) add(p, 'smarter', seeds, long)
   for (const mix of MIXES) for (const policy of mix.policies) add('steadfast', policy, half, long)
   // Patch 10 stage 2 (G-31): the smarter player massing each tag, to the week G-31 reads.
-  for (const tag of TAGS) add('steadfast', `smarter+banner:${tag}`, half, Math.min(weeks, G31.week + 1))
+  for (const tag of TAGS) add('steadfast', `smarter+banner:${tag}`, half, Math.min(weeks, G31.late + 1))
+  // G-17 as restated (D-85): the one-path player flying its path's banner.
+  for (const r of RIVAL_IDS) add('steadfast', `banner+paths:${r}`, half)
   // Patch 9 (G-27, D-77): the long plateau, for its siege.
   add('steadfastPlateau', 'greedy', half)
   return runs
@@ -316,13 +318,22 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     const p = run.measures.weeks[run.measures.weeks.length - 1]?.paths ?? []
     return d.indexOf(Math.max(...d)) === i && p.indexOf(Math.max(...p)) === i
   }).length
+  // D-85 (restated): a path now also says how the player fights (K1, K6), so the story is read on the one-path player
+  // who flies its path's banner; the first reading, without the banner, is reported beside it.
+  const flying = RIVAL_IDS.flatMap((r) => of('steadfast', `banner+paths:${r}`).map((run) => ({ run, rival: r }))).filter(({ run }) => run.measures.deeds !== undefined)
+  const toldFlying = flying.filter(({ run, rival }) => {
+    const i = RIVAL_IDS.indexOf(rival)
+    const d = run.measures.deeds as number[]
+    const p = run.measures.weeks[run.measures.weeks.length - 1]?.paths ?? []
+    return d.indexOf(Math.max(...d)) === i && p.indexOf(Math.max(...p)) === i
+  }).length
   const all = results.filter((r) => r.measures.deeds !== undefined)
   const agree = all.filter((r) => {
     const d = r.measures.deeds as number[]
     const p = r.measures.weeks[r.measures.weeks.length - 1]?.paths ?? []
     return d.indexOf(Math.max(...d)) === p.indexOf(Math.max(...p))
   }).length
-  rows.push(row('G-17', 'The path tells the story', `One-path players whose path ends with both the most deeds and the most Dominion (at least ${pct(G17.told)}, D-58; every campaign: most-deeds path is the highest)`, story.length > 0 ? `${pct(told / story.length)} (${pct(agree / Math.max(1, all.length))})` : 'not yet built', story.length > 0 ? told / story.length >= G17.told : null))
+  rows.push(row('G-17', 'The path tells the story', `One-path players flying their path's banner whose path ends with both the most deeds and the most Dominion (at least ${pct(G17.told)}, D-58, restated D-85); the same without the banner, as first read; every campaign: most-deeds path is the highest`, story.length > 0 ? `${flying.length > 0 ? pct(toldFlying / flying.length) : '–'}; ${pct(told / story.length)}; (${pct(agree / Math.max(1, all.length))})` : 'not yet built', flying.length > 0 ? toldFlying / flying.length >= G17.told : story.length > 0 ? told / story.length >= G17.told : null))
 
   // G-18 (Patch 4, spec section 2): the smarter one-path players resolve rivals by terms; nobody offers before week 16; the smarter refuse some.
   const smarterOne = RIVAL_IDS.flatMap((r) => of('steadfast', `smarter+paths:${r}`))
@@ -562,24 +573,27 @@ export function targetRows(results: readonly RunResult[]): Row[] {
 
   // G-31 (Patch 10 stage 2, K6; restated with D-84): a build shows. The smarter player massing one tag against the
   // same seed's smarter player without the banner: that tag's path in Dominion at week 26, as a gain.
-  const plainAt = new Map(of('steadfast', 'smarter').map((r) => [r.seed, r.measures.weeks.find((x) => x.week === G31.week)?.paths]))
-  const builds = TAGS.map((tag) => {
-    const i = RIVAL_IDS.indexOf(pathOfTag(tag))
-    const gains = of('steadfast', `smarter+banner:${tag}`).flatMap((r) => {
-      const mine = r.measures.weeks.find((x) => x.week === G31.week)?.paths
-      const plain = plainAt.get(r.seed)
-      return mine && plain && plain[i] > 0 ? [mine[i] / plain[i] - 1] : []
+  const plainRuns = new Map(of('steadfast', 'smarter').map((r) => [r.seed, r]))
+  const gainsAt = (week: number): { tag: string; gains: number[] }[] =>
+    TAGS.map((tag) => {
+      const i = RIVAL_IDS.indexOf(pathOfTag(tag))
+      const gains = of('steadfast', `smarter+banner:${tag}`).flatMap((r) => {
+        const mine = r.measures.weeks.find((x) => x.week === week)?.paths
+        const plain = plainRuns.get(r.seed)?.measures.weeks.find((x) => x.week === week)?.paths
+        return mine && plain && plain[i] > 0 ? [mine[i] / plain[i] - 1] : []
+      })
+      return { tag, gains }
     })
-    return { tag, gains }
-  })
+  const builds = gainsAt(G31.week)
+  const later = gainsAt(G31.late)
   const gains = builds.flatMap((b) => b.gains)
   const signedPct = (v: number): string => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%` : '–')
   rows.push(
     row(
       'G-31',
       'A build shows (Patch 10)',
-      `The smarter Steadfast player massing one tag: that tag's path in Dominion at week ${G31.week} over the same seed's without the banner (median gain, at least ${signedPct(G31.gain)}); by tag: ${TAGS.join(', ')}`,
-      `${signedPct(median(gains))}; ${builds.map((b) => signedPct(median(b.gains))).join(', ')}`,
+      `The smarter Steadfast player massing one tag: that tag's path in Dominion at week ${G31.week} over the same seed's without the banner (median gain, at least ${signedPct(G31.gain)}); by tag: ${TAGS.join(', ')}; the same at week ${G31.late}, reported`,
+      `${signedPct(median(gains))}; ${builds.map((b) => signedPct(median(b.gains))).join(', ')}; week ${G31.late}: ${signedPct(median(later.flatMap((b) => b.gains)))} (${later.map((b) => signedPct(median(b.gains))).join(', ')})`,
       gains.length > 0 ? median(gains) >= G31.gain : null
     )
   )
@@ -865,7 +879,7 @@ const CRAFT_DEEDS: readonly DeedKind[] = CRAFTS.flatMap((c) => c.deeds)
  * Patch 10 stage 2 (G-31, restated with D-84): a player massing one tag has that tag's path at least this much higher in
  * Dominion at this week than the same seed's player without the banner. "The highest path" read the Dwarf's lead from walls instead.
  */
-const G31 = { week: 26, gain: 0.1 }
+const G31 = { week: 26, late: 40, gain: 0.1 }
 /** Patch 10 (G-28): craft deeds are this share of a Steadfast campaign's Renown, and each craft at least `each` of it. */
 const G28 = { share: [0.1, 0.2], each: 0.02 }
 /** The streak lengths the crafts section groups by: a day, 2 to 3, 4 to 6, a week to 13 days, 14 or more. */

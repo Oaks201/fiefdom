@@ -488,7 +488,10 @@ The 12 dare lines retire (R1).
    - **The Dominion marks rise again,** to 700 / 2,100 / 3,050 / 4,200, which holds campaign length at weeks 55 / 59 / 64.5.
    - **The tag marks are not added.** They need rows in `assets.md` and the manifest, which hold the owner's uncommitted art.
    - **G-31 is restated** as the massed tag's path against the same player without the banner at week 26 (at least +10%). It reads +8%.
-   - **Open:** G-17 fell to 28% and needs restating, since a path now also says how the player fights; the save is 2.09 MB against its 2 MB cap.
+   - **G-17 is restated** (D-85, for Rich to confirm): read on the one-path player who also flies that path's tag, it is 85%. Without the tag it is 28%.
+   - **G-31 at week 40** reads +12% (Coin +13%, Arcane +18%, Engine +12%, Steel +1%): the build shows once Milestones have opened item slots.
+   - **The player-facing word is "tags".** The game already says "banners" for how many companies a battle fields.
+   - **Open:** the save is 2.09 MB against its 2 MB cap.
 3. **Stage 3, rulers who act** (3.17.0): R1 to R6 and their lines, X1, X4 and X6.
 4. **Stage 4, the day and the week** (no rule change): L1 to L4, X7 and X8.
 5. **Stage 5, the long game** (3.18.0): E1 and E2, measured first, and E4's readings. With F4: the Chronicle's record of the realm that won, and the victory page.
