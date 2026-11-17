@@ -839,7 +839,8 @@ export interface GameEventMap {
    */
   dealEnded: { rival: RivalId; deal: Deal['kind']; how: 'kept' | 'broken'; target?: RivalId; taken?: number }
   /** Patch 8 (R1, D-66): a ruler's request made, and how it ended. */
-  request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken'; hexId?: string; itemId?: string; price?: number; until?: ISODate }
+  /** Stage 3 (R1): a commission is `accepted` or `declined`, then `met` or `missed`; `need` is what it asked and `done` what the log held; `demand` when it came as one. */
+  request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken' | 'accepted' | 'declined'; hexId?: string; itemId?: string; price?: number; until?: ISODate; need?: number; done?: number; demand?: true }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. `forWeek` (rules 3.11.1, D-71): the week close a late correction's Respect is for. */
@@ -1205,6 +1206,8 @@ export type DeedKind =
   | 'mythicHunted'
   /** Patch 10 stage 2 (K6): the banner share of a hex taken in battle, to the path of a tag that took it. */
   | 'bannerTaken'
+  /** Patch 10 stage 3 (R1): a ruler's commission met, to his path. */
+  | 'commissionMet'
   /** Retired by Patch 10 (D-80; X2, X5): no longer posted, still in the log of a save that earned them. */
   | 'battleLost'
   | 'retaken'
@@ -1289,8 +1292,9 @@ export interface WorldState {
 }
 
 /** Patch 8 (R1, D-66): what a ruler asks of the player: a dare in the habit he prizes, an offer of his own, or a demand. */
-export type RequestKind = 'dare' | 'itemOffer' | 'hexOffer' | 'liftSiege' | 'spareHex' | 'toll'
-export const REQUEST_KINDS: readonly RequestKind[] = ['dare', 'itemOffer', 'hexOffer', 'liftSiege', 'spareHex', 'toll']
+/** `commission`: Patch 10 stage 3 (R1, D-88), a deed in the ruler's craft for the week ahead; it takes the dare's place, which only an older save still holds. */
+export type RequestKind = 'dare' | 'itemOffer' | 'hexOffer' | 'liftSiege' | 'spareHex' | 'toll' | 'commission'
+export const REQUEST_KINDS: readonly RequestKind[] = ['dare', 'itemOffer', 'hexOffer', 'liftSiege', 'spareHex', 'toll', 'commission']
 
 export interface RulerRequest {
   id: string
@@ -1304,6 +1308,12 @@ export interface RulerRequest {
   itemId?: string
   /** A toll, or an offer's price after its discount. */
   price?: number
+  /** A commission: how many deeds of his craft it asks for. */
+  need?: number
+  /** A commission: the day the player took it up; absent until then. */
+  accepted?: ISODate
+  /** A commission sent as a demand by a ruler below 0 (R2): in force without being taken up. */
+  demand?: true
   /** `granted`: a demand to lift a siege or leave a hex alone, granted, standing as the player's promise to leave `hexId` alone through `until`. */
   outcome?: 'granted'
 }

@@ -20,6 +20,7 @@ import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { banksRespite, chooseRequest, daredHabits, requestMet, type HabitDay } from './healer'
 import { chronicle, pathsOf } from './dominion'
+import { settleCommissions } from './requests'
 import { respectChange } from './respect'
 import { dealEnds, recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
@@ -67,7 +68,9 @@ export const DAY_PHASE_NAMES = [
   /** Rules 3.13.0 (D-76, H3): the Healer's request met pays at that day's close; one unmet at its last day's is missed. */
   'healerRequest',
   /** Rules 3.14.0 (D-77, B1): a day kept well, or a rest day, wears the plateau siege standing. */
-  'plateau'
+  'plateau',
+  /** Patch 10 stage 3 (R1, D-88): a ruler's commission met pays at that day's close; one taken up and unmet at its last day's is missed. */
+  'commissions'
 ] as const
 
 /** Week phases, run after the day phases of a week's last day, in Appendix A's order. */
@@ -780,7 +783,11 @@ function lateRequestsMet(state: CampaignState, first: ISODate, emit: Emit): Camp
 }
 
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
+/** Patch 10 stage 3 (R1, D-88): the rulers' commissions, read from the deeds the chronicle has just posted. */
+const commissionsPhase: Phase = (state, ctx) => settleCommissions(state, ctx.day, ctx.emit)
+
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
+  commissions: commissionsPhase,
   syncNote: noop, // Fitbit syncs before `settle` is called.
   snapshotInputs,
   contractsAndDaily,

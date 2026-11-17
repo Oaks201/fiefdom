@@ -175,6 +175,7 @@ function RequestPanel({ campaign, today, card, onAnswered }: { campaign: Campaig
       </header>
       <p className="audience__asks">{card.asks}</p>
       {soFar && <p className={`audience__so-far is-${soFar}`}>{soFar === 'kept' ? 'So far this week: kept.' : card.rival === 'orc' ? 'This week: a battle already lost to his raids.' : 'So far this week: not kept yet.'}</p>}
+      {card.progress && <p className="audience__so-far">{card.progress}</p>}
       <p className="muted audience__request-rule">{card.rule}</p>
       {card.grantLabel && (
         <p className="audience__request-actions">

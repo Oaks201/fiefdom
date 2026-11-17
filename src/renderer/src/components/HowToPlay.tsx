@@ -874,8 +874,10 @@ export function HowToPlay(): React.JSX.Element | null {
                 tells it, and you answer it in his Audience within {RULES.requests.answerDays} days; silence counts as refusing it. Rulers who like you ask; those who don’t, demand.
                 <ul>
                   <li>
-                    <b>A dare:</b> keep the habit he prizes for the week ahead (Ugrak’s is narrower: lose no battle to his raids). Met, +{RULES.requests.dare.met} Respect;
-                    missed, {RULES.requests.dare.missed}. There is nothing to answer.
+                    <b>A commission:</b> a deed in his craft for the week ahead: days in Ugrak’s field, wall levels raised for Hrodgar, a hex won by coin for Skivvet, a
+                    surge or a mythic bested for Emrys. Take it up or decline in his Audience. Taken up and met, +{RULES.requests.commission.met} Respect and{' '}
+                    {RULES.requests.commission.renown} Renown on his path when that day closes; taken up and unmet, {RULES.requests.commission.missed}; declined, nothing. A
+                    ruler below 0 sends his as a demand, in turn with his toll.
                   </li>
                   <li>
                     <b>An offer:</b> Skivvet sells an Armory item, and Emrys a hex of his beside your land, {Math.round(RULES.requests.offerDiscount * 100)}% below the usual price.

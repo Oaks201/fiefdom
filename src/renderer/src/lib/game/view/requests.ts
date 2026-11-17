@@ -8,7 +8,7 @@ import { itemOffer } from '../armory'
 import { CODEX } from '../codex'
 import { buyPrice, promisesOn } from '../land'
 import { hexName } from '../map'
-import { isDemand, requestOf } from '../requests'
+import { commissionProgress, commissionStands, isDemand, requestOf } from '../requests'
 import { RULES } from '../rules'
 import { withWorld } from '../state'
 import { factText, fill, type TextFacts } from '../text'
@@ -33,12 +33,28 @@ export interface RequestCard {
   words?: string
   /** Its last day, as players read it. */
   until: string
-  /** The buttons: none for a dare, which is never answered. */
+  /** A commission: how far the week's deeds have come. */
+  progress?: string
+  /** The buttons: none for a dare, which is never answered, or a commission already in force. */
   grantLabel?: string
   refuseLabel?: string
 }
 
-const TITLES: Record<RequestKind, string> = { dare: 'His dare', itemOffer: 'His offer', hexOffer: 'His offer', liftSiege: 'His demand', spareHex: 'His demand', toll: 'His demand' }
+const TITLES: Record<RequestKind, string> = { dare: 'His dare', itemOffer: 'His offer', hexOffer: 'His offer', liftSiege: 'His demand', spareHex: 'His demand', toll: 'His demand', commission: 'His commission' }
+
+/** What `rival`'s commission asks for (stage 3, R1): `need` deeds of his craft, in plain terms. */
+export function commissionAsks(rival: RivalId, need: number): string {
+  switch (rival) {
+    case 'orc':
+      return `${need} days in his field: a day with a battle against him or in his march, won or lost`
+    case 'dwarf':
+      return `${need} wall levels raised on hexes of yours (a level counts once for each hex)`
+    case 'goblin':
+      return 'A hex won by coin: a bribe, a courtship or a trade, in any march'
+    case 'archmage':
+      return 'One of these: a hex of his march taken on its ebb, a surge strike of his held, or a mythic beaten'
+  }
+}
 
 function signed(v: number): string {
   return v > 0 ? `+${v}` : `−${-v}`
@@ -100,6 +116,17 @@ export function requestCard(state: CampaignState, rival: RivalId, today: ISODate
       return { ...base, asks: `Leave ${f.hex} alone for ${Q.spareDays} days.`, rule: `${granted}, and ${promise}. ${refused}`, grantLabel: 'Leave it alone', refuseLabel: 'Refuse' }
     case 'toll':
       return { ...base, asks: `A toll of ${f.price}.`, rule: `${granted}. ${refused}`, grantLabel: `Pay ${f.price}`, refuseLabel: 'Refuse' }
+    case 'commission': {
+      const C = Q.commission
+      const need = q.need ?? C.one
+      const done = Math.min(need, commissionProgress(state, q))
+      const pays = `${C.renown} Renown on his path`
+      const card = { ...base, asks: `${commissionAsks(rival, need)}, by ${until}.`, progress: `So far: ${done} of ${need}.` }
+      // R2: sent by a ruler below 0, it is a demand, in force without being taken up.
+      if (q.demand) return { ...card, title: 'His demand', rule: `Met by ${until}: ${signed(Q.demand.granted)} Respect and ${pays}, at the close of the day it is met. Refused or unmet: ${signed(Q.demand.refused)} Respect.`, grantLabel: 'Leave it standing', refuseLabel: 'Refuse' }
+      if (commissionStands(q)) return { ...card, title: 'His commission, taken up', rule: `Met by ${until}: ${signed(C.met)} Respect and ${pays}, at the close of the day it is met. Unmet: ${signed(C.missed)} Respect.` }
+      return { ...card, rule: `Taken up and met: ${signed(C.met)} Respect and ${pays}, at the close of the day it is met. Taken up and unmet: ${signed(C.missed)} Respect. Declined, or unanswered by ${until}: nothing. Deeds done this week before you take it up count.`, grantLabel: 'Take it up', refuseLabel: 'Decline' }
+    }
   }
 }
 
@@ -118,7 +145,8 @@ export function promiseLines(state: CampaignState, rival: RivalId, today: ISODat
 /** His court's line while a request of his waits or a promise to him stands. */
 export function requestNote(state: CampaignState, rival: RivalId, today: ISODate): string | undefined {
   const q = requestOf(state, rival, today)
-  const open = q ? (q.kind === 'dare' ? `His dare stands through ${factText(q.until)}.` : `His ${isDemand(q) ? 'demand' : 'offer'} awaits your answer in his Audience, by ${factText(q.until)}.`) : undefined
+  const standing = q && (q.kind === 'dare' || commissionStands(q))
+  const open = q ? (standing ? `His ${q.kind === 'dare' ? 'dare' : q.demand ? 'demand' : 'commission'} stands through ${factText(q.until)}.` : `His ${q.kind === 'commission' ? 'commission' : isDemand(q) ? 'demand' : 'offer'} awaits your answer in his Audience, by ${factText(q.until)}.`) : undefined
   const words = [...(open ? [open] : []), ...promiseLines(state, rival, today)]
   return words.length > 0 ? words.join(' ') : undefined
 }
@@ -136,6 +164,8 @@ export function requestRefusalText(code: string | undefined): string {
       return 'Not enough Reputation in the purse for that.'
     case 'gone':
       return 'That is no longer his to offer.'
+    case 'accepted':
+      return 'It already stands: there is nothing more to answer.'
     case 'noRequest':
     case 'dare':
       return 'He asks nothing of you to answer now.'

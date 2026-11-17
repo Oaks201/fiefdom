@@ -47,7 +47,7 @@ const COMBAT_PURSE: string[] = ['spoils', 'tribute']
 test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s order, with later patches’ appended (D-18, D-19, D-28, D-49, D-50, D-53, D-69, D-76, D-77)', () => {
   assert.deepEqual(
     [...DAY_PHASE_NAMES],
-    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones', 'weighIn', 'healerRequest', 'plateau']
+    ['syncNote', 'snapshotInputs', 'contractsAndDaily', 'combat', 'grandBattlesAuto', 'expireTimers', 'contractEnd', 'chronicle', 'marchRules', 'standings', 'fronts', 'rivalMoves', 'milestones', 'weighIn', 'healerRequest', 'plateau', 'commissions']
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],

@@ -14,6 +14,13 @@
  * the state keeps only open ones and the promises standing. Absence never costs anything (X-17): no ruler
  * asks while the player is away, and a demand or a dare that runs out then ends quietly.
  *
+ * Patch 10 stage 3 (R1, R2, D-88): **commissions** take the dares' place. A commission asks for deeds in the ruler's
+ * craft in the week ahead (`commissionNeed`), read from the `deed` events the chronicle posts (`commissionProgress`).
+ * The player takes it up or declines; the `commissions` day phase (`settleCommissions`) pays it at the close of the
+ * day it is met and judges one taken up and unmet at its last day's close. A ruler below 0 sends a toll and a
+ * commission in turn, the commission as a demand in force without being taken up. A ruler who can't ask his
+ * commission now asks nothing. Only a save from before 3.17.0 still holds a dare.
+ *
  * Pure and deterministic: draws use the week close's date with the labels `request:*`.
  */
 import { buyItem, itemOffer } from './armory'
@@ -21,15 +28,68 @@ import { addDays } from './clock'
 import { CODEX } from './codex'
 import { liftSiege } from './combat'
 import { balance, roundPosting, spend } from './economy'
-import { buyPrice, demandRefused, promisesOn } from './land'
+import { fieldStreak, inField, postDeed } from './dominion'
+import { buyPrice, demandRefused, fortificationCap, promisesOn } from './land'
 import { bandOf, isClaimableKind, touchesOwner } from './map'
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { standingSiegeOf } from './sieges'
 import { EventBuffer, adjustRespect, awayOn, hexOf, isPlayable, openDayOf, replaceHex, toPlayer, withWorld, worldOf } from './state'
-import { RIVAL_IDS, type CampaignState, type Emit, type ISODate, type RequestKind, type RivalId, type RulerRequest } from './types'
+import { RIVAL_IDS, type CampaignState, type DeedKind, type Emit, type ISODate, type RequestKind, type RivalId, type RulerRequest } from './types'
 
 const Q = RULES.requests
+const C = Q.commission
+
+/** The deeds of each ruler's craft a commission counts (K2 to K5), each on his own path. */
+const COMMISSION_DEEDS: Record<RivalId, readonly DeedKind[]> = {
+  orc: ['fieldDay'],
+  goblin: ['dealTaken'],
+  dwarf: ['wallRaised'],
+  archmage: ['surgeSeized', 'surgeWeathered', 'mythicBeaten', 'mythicHunted']
+}
+
+/** Whether a commission is in force: taken up by the player, or sent as a demand (R2). */
+export function commissionStands(q: Pick<RulerRequest, 'kind' | 'accepted' | 'demand'>): boolean {
+  return q.kind === 'commission' && (q.accepted !== undefined || q.demand === true)
+}
+
+/** The deeds of his craft the log holds for `q`'s week: after the close it came at, through its last day. */
+export function commissionProgress(state: CampaignState, q: Pick<RulerRequest, 'rival' | 'madeOn' | 'until'>): number {
+  const kinds = COMMISSION_DEEDS[q.rival]
+  let done = 0
+  // The log runs in day order: read back from its end to the close the commission came at.
+  for (let i = state.log.length - 1; i >= 0 && state.log[i].day > q.madeOn; i--) {
+    const e = state.log[i]
+    if (e.kind === 'deed' && e.path === q.rival && e.day <= q.until && kinds.includes(e.deed)) done++
+  }
+  return done
+}
+
+/** What `rival` would commission at the close of `day` (R1): how many deeds of his craft, or undefined when it can't be done now, so he asks nothing. */
+export function commissionNeed(state: CampaignState, rival: RivalId, day: ISODate): number | undefined {
+  const mine = state.hexes.filter((h) => h.owner === 'player' && isClaimableKind(h))
+  switch (rival) {
+    case 'orc': {
+      // Only while his field is in reach: a hex he holds or a hex of his march beside the player's land.
+      const reach = state.hexes.some((h) => h.owner !== 'player' && inField(h) && isClaimableKind(h) && touchesOwner(state.hexes, h.id, 'player'))
+      if (!reach) return undefined
+      return fieldStreak(state, addDays(day, 1)) >= C.streakFor ? C.fieldDaysOnStreak : C.fieldDays
+    }
+    case 'dwarf': {
+      // By the deepest band the player holds beyond the protected rings, while that many levels can still be raised.
+      const band = Math.max(0, ...mine.filter((h) => h.ring > RULES.land.protectedThroughRing).map((h) => bandOf(h)))
+      if (band === 0) return undefined
+      const need = C.wallLevels[Math.min(C.wallLevels.length - 1, Math.max(0, band - C.wallLevelsFromBand))]
+      const room = mine.reduce((s, h) => s + Math.max(0, fortificationCap('player') - h.fortification), 0)
+      return room >= need ? need : undefined
+    }
+    case 'goblin':
+      return C.one
+    case 'archmage':
+      // His surges land in his march: only while the player holds a hex of it.
+      return mine.some((h) => h.march === rival || h.seam === rival) ? C.one : undefined
+  }
+}
 
 /** The requests open now and the promises standing (the ended ones are in the log). */
 export function requestsOf(state: CampaignState): RulerRequest[] {
@@ -50,8 +110,14 @@ function dropped(state: CampaignState, q: RulerRequest): CampaignState {
   return withWorld(state, { requests: requestsOf(state).filter((x) => x.id !== q.id) })
 }
 
-function told(q: RulerRequest): { hexId?: string; itemId?: string; price?: number } {
-  return { ...(q.hexId ? { hexId: q.hexId } : {}), ...(q.itemId ? { itemId: q.itemId } : {}), ...(q.price !== undefined ? { price: q.price } : {}) }
+function told(q: RulerRequest): { hexId?: string; itemId?: string; price?: number; need?: number; demand?: true } {
+  return {
+    ...(q.hexId ? { hexId: q.hexId } : {}),
+    ...(q.itemId ? { itemId: q.itemId } : {}),
+    ...(q.price !== undefined ? { price: q.price } : {}),
+    ...(q.need !== undefined ? { need: q.need } : {}),
+    ...(q.demand ? { demand: true as const } : {})
+  }
 }
 
 /** A request ended without being granted on `day`: refused by the player or left to lapse. A demand costs Respect and he acts on it. */
@@ -61,7 +127,7 @@ function refused(input: CampaignState, q: RulerRequest, stage: 'refused' | 'laps
   return isDemand(q) ? demandRefused(state, q, day, emit) : state
 }
 
-export type RequestRefusal = 'campaignOver' | 'noRequest' | 'dare' | 'reputation' | 'gone' | string
+export type RequestRefusal = 'campaignOver' | 'noRequest' | 'dare' | 'reputation' | 'gone' | 'accepted' | string
 
 /**
  * The player answers `rival`'s open request on `today` (R1). Granting a demand lifts the siege, spares the hex or
@@ -77,6 +143,17 @@ export function answerRequest(state: CampaignState, rival: RivalId, answer: 'gra
   if (q.kind === 'dare') return no('dare')
   const events = new EventBuffer()
   const emit = events.emitter(today)
+  if (q.kind === 'commission') {
+    // Stage 3 (R1): taken up, it stands until it is met or its week ends; declined, nothing. One sent as a demand (R2) is already in force, and refusing it costs as a demand does.
+    if (q.accepted !== undefined || (answer === 'grant' && q.demand)) return no('accepted')
+    if (answer === 'grant') {
+      emit('request', { rival: q.rival, request: q.kind, stage: 'accepted', ...told(q), until: q.until })
+      return { ok: true, state: events.flush(withWorld(state, { requests: requestsOf(state).map((x) => (x.id === q.id ? { ...x, accepted: today } : x)) })), cost: 0 }
+    }
+    emit('request', { rival: q.rival, request: q.kind, stage: q.demand ? 'refused' : 'declined', ...told(q) })
+    const left = dropped(state, q)
+    return { ok: true, state: events.flush(q.demand ? adjustRespect(left, q.rival, Q.demand.refused, 'commissionRefused', emit) : left), cost: 0 }
+  }
   if (answer === 'refuse') return { ok: true, state: events.flush(refused(state, q, 'refused', today, emit)), cost: 0 }
   let next = dropped(state, q)
   let cost = 0
@@ -148,37 +225,79 @@ function assaulted(state: CampaignState, rival: RivalId, day: ISODate): string |
   return hit?.kind === 'assault' ? hit.hexId : undefined
 }
 
-/** The request `rival` makes at the close of `day`: a demand first, else a dare, or (Skivvet and Emrys, after a dare) his offer. */
-function requestFor(state: CampaignState, rival: RivalId, day: ISODate): RulerRequest {
+/**
+ * Stage 3 (R1, D-88): the `commissions` day phase. A commission in force is met at the close of the day the log holds
+ * the deeds it asked for: his Respect and Renown on his path, at once (D-53). At its last day's close one in force
+ * and unmet is missed; one never taken up lapses at no cost. Away, either ends quietly (X-17). A ruler resolved
+ * meanwhile asks nothing more.
+ */
+export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let state = input
+  for (const q of requestsOf(input)) {
+    if (q.kind !== 'commission' || q.outcome !== undefined || day <= q.madeOn) continue
+    if (state.rivals[q.rival].status !== 'active') {
+      state = dropped(state, q)
+      continue
+    }
+    const stands = commissionStands(q)
+    const done = commissionProgress(state, q)
+    const need = q.need ?? C.one
+    if (stands && done >= need) {
+      emit('request', { rival: q.rival, request: q.kind, stage: 'met', ...told(q), done })
+      state = adjustRespect(dropped(state, q), q.rival, q.demand ? Q.demand.granted : C.met, 'commissionMet', emit)
+      state = postDeed(state, { path: q.rival, deed: 'commissionMet', value: C.renown }, emit)
+    } else if (day >= q.until) {
+      state = dropped(state, q)
+      if (awayOn(state, day)) continue
+      if (!stands) emit('request', { rival: q.rival, request: q.kind, stage: 'lapsed', ...told(q) })
+      else {
+        emit('request', { rival: q.rival, request: q.kind, stage: 'missed', ...told(q), done })
+        state = adjustRespect(state, q.rival, q.demand ? Q.demand.refused : C.missed, 'commissionMissed', emit)
+      }
+    }
+  }
+  return state
+}
+
+/** The request `rival` makes at the close of `day`: a demand first, else his commission, or (Skivvet and Emrys, after a commission) his offer; undefined when he has nothing he can ask. */
+function requestFor(state: CampaignState, rival: RivalId, day: ISODate): RulerRequest | undefined {
   const base = { id: `req-${rival}-${day}`, rival, madeOn: day, until: addDays(day, Q.answerDays) }
   const siege = standingSiegeOf(state)
   if (siege && hexOf(state, siege.hexId)?.owner === rival && !promisesOn(state, day).some((q) => q.hexId === siege.hexId)) return { ...base, kind: 'liftSiege', hexId: siege.hexId }
   const spare = assaulted(state, rival, day)
   if (spare) return { ...base, kind: 'spareHex', hexId: spare }
+  const commission = (demand: boolean): RulerRequest | undefined => {
+    const need = commissionNeed(state, rival, day)
+    return need === undefined ? undefined : { ...base, kind: 'commission', need, ...(demand ? { demand: true as const } : {}) }
+  }
+  const last = lastMade(state, rival)?.kind
   if (state.rivals[rival].respect < 0) {
+    // R2: a way back. A toll and a commission in turn, the commission worded as a demand.
+    const wayBack = last === 'toll' ? commission(true) : undefined
+    if (wayBack) return wayBack
     const his = state.hexes.filter((h) => h.owner === rival && isClaimableKind(h))
     const facing = his.filter((h) => touchesOwner(state.hexes, h.id, 'player'))
     const band = Math.max(1, ...(facing.length > 0 ? facing : his).map((h) => bandOf(h)))
     return { ...base, kind: 'toll', price: Q.tollPerBand * band }
   }
-  // Skivvet and Emrys turn from a dare to an offer of their own and back; Ugrak and Hrodgar, who offer nothing, dare.
-  if (lastMade(state, rival)?.kind !== 'dare') return { ...base, kind: 'dare' }
+  // Skivvet and Emrys turn from a commission to an offer of their own and back; Ugrak and Hrodgar, who offer nothing, commission.
+  if (last !== 'commission' && last !== 'dare') return commission(false)
   if (rival === 'goblin') {
     const items = CODEX.items.flatMap((i) => {
       const offer = itemOffer(state, i.id)
       return offer.ok || offer.reason?.code === 'reputation' ? [{ id: i.id, cost: offer.cost }] : []
     })
-    if (items.length === 0) return { ...base, kind: 'dare' }
+    if (items.length === 0) return commission(false)
     const item = pick(state.campaign.seed, day, 'request:item', items)
     return { ...base, kind: 'itemOffer', itemId: item.id, price: roundPosting(item.cost * (1 - Q.offerDiscount)) }
   }
   if (rival === 'archmage') {
     const hexes = state.hexes.filter((h) => h.owner === rival && isClaimableKind(h) && h.kind !== 'gate' && h.kind !== 'lairMouth' && touchesOwner(state.hexes, h.id, 'player'))
-    if (hexes.length === 0) return { ...base, kind: 'dare' }
+    if (hexes.length === 0) return commission(false)
     const hex = pick(state.campaign.seed, day, 'request:hex', hexes)
     return { ...base, kind: 'hexOffer', hexId: hex.id, price: roundPosting(buyPrice(state, rival, hex) * (1 - Q.offerDiscount)) }
   }
-  return { ...base, kind: 'dare' }
+  return commission(false)
 }
 
 /**
@@ -192,7 +311,8 @@ export function requestsWeek(input: CampaignState, w: { day: ISODate; week: numb
   const away = awayOn(state, w.day)
   for (const q of requestsOf(state)) {
     if (q.until > w.day) continue
-    state = q.kind === 'dare' || q.outcome === 'granted' || state.rivals[q.rival].status !== 'active' || away ? dropped(state, q) : refused(state, q, 'lapsed', w.day, w.emit)
+    // A commission is judged by its own day phase (`settleCommissions`), which has run at this close; one still here ends quietly.
+    state = q.kind === 'dare' || q.kind === 'commission' || q.outcome === 'granted' || state.rivals[q.rival].status !== 'active' || away ? dropped(state, q) : refused(state, q, 'lapsed', w.day, w.emit)
   }
   if (!isPlayable(state) || away || w.week < Q.fromWeek || !chance(state.campaign.seed, w.day, 'request:roll', Q.chance)) return state
   const free = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active' && !requestsOf(state).some((q) => q.rival === r && q.outcome === undefined))
@@ -200,7 +320,10 @@ export function requestsWeek(input: CampaignState, w: { day: ISODate; week: numb
   const asked = (r: RivalId): string => lastMade(state, r)?.day ?? ''
   const least = free.map(asked).sort()[0]
   const rival = pick(state.campaign.seed, w.day, 'request:rival', free.filter((r) => asked(r) === least))
-  const q = requestFor(state, rival, w.day)
-  w.emit('request', { rival, request: q.kind, stage: 'made', ...told(q), until: q.until })
+  // Stage 3: a ruler whose commission can't be done now asks nothing, and the next who asked least lately asks in his place.
+  const turn = [rival, ...free.filter((r) => r !== rival).sort((a, b) => asked(a).localeCompare(asked(b)))]
+  const q = turn.map((r) => requestFor(state, r, w.day)).find((x) => x !== undefined)
+  if (!q) return state
+  w.emit('request', { rival: q.rival, request: q.kind, stage: 'made', ...told(q), until: q.until })
   return withWorld(state, { requests: [...requestsOf(state), q] })
 }

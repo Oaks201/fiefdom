@@ -596,11 +596,13 @@ function requestsMeasure(state: CampaignState, weeks: number): NonNullable<Measu
   const monthsMade = new Set<number>()
   for (const e of state.log) {
     if (e.kind !== 'request') continue
+    // Patch 10 stage 3 (G-30): a commission sent as a demand (R2) is counted apart, since it is never taken up.
+    const kind = e.request === 'commission' && e.demand ? 'commissionDemand' : e.request
     if (e.stage === 'made') {
-      made[e.request] = (made[e.request] ?? 0) + 1
+      made[kind] = (made[kind] ?? 0) + 1
       const week = weekOn(state, e.day)
       if (week >= REQUEST_FROM_WEEK) monthsMade.add(Math.floor((week - REQUEST_FROM_WEEK) / REQUEST_MONTH))
-    } else ended[`${e.request}:${e.stage}`] = (ended[`${e.request}:${e.stage}`] ?? 0) + 1
+    } else ended[`${kind}:${e.stage}`] = (ended[`${kind}:${e.stage}`] ?? 0) + 1
   }
   const months = Math.max(0, Math.floor((weeks - REQUEST_FROM_WEEK + 1) / REQUEST_MONTH))
   let monthsWithout = 0

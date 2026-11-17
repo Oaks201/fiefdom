@@ -85,14 +85,14 @@ test('R1: no request before week 4; from then a roll at a week close brings one 
   assert.equal(again.of('request').filter((e) => e.stage === 'made').length, 0)
 })
 
-test('R1: a friendly ruler dares first; then Skivvet offers an Armory item at his price, which the Armory honors', () => {
+test('R1 (D-88): a friendly ruler commissions first; then Skivvet offers an Armory item at his price, which the Armory honors', () => {
   const state = withMilestones(withPurse(only(withRespect(realm(), 'goblin', 30), 'goblin'), 2_000), 1, 2, 3, 4)
   const day = rollDay(state)
   const dared = week(state, day)
-  assert.equal(requestsOf(dared.state)[0].kind, 'dare')
-  // A week later, with the dare settled, he offers.
+  assert.equal(requestsOf(dared.state)[0].kind, 'commission')
+  // A week later, with the commission ended, he offers.
   const next = rollDay(state, addDays(day, 7))
-  const settled = withWorld(logged(dared.state, [{ day, kind: 'request', rival: 'goblin', request: 'dare', stage: 'made' }]), { requests: [] })
+  const settled = withWorld(logged(dared.state, [{ day, kind: 'request', rival: 'goblin', request: 'commission', stage: 'made' }]), { requests: [] })
   const offered = week(settled, next)
   const q = requestsOf(offered.state)[0]
   assert.equal(q.kind, 'itemOffer')

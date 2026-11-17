@@ -43,7 +43,7 @@ import { claimableBy, hexIndex, isStronghold, touches, touchesOwner } from './ma
 import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
-import { answerRequest, requestOf } from './requests'
+import { answerRequest, commissionStands, requestOf } from './requests'
 import { readinessValors, valorOn } from './settle'
 import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
@@ -310,6 +310,12 @@ function answerRequests(input: CampaignState, today: ISODate, plan: AutoplayPlan
   for (const r of RIVAL_IDS) {
     const q = requestOf(state, r, today)
     if (!q || q.kind === 'dare') continue
+    // Stage 3 (R1): a commission is taken up once; one sent as a demand already stands.
+    if (q.kind === 'commission') {
+      const taken = commissionStands(q) ? undefined : answerRequest(state, r, 'grant', today)
+      if (taken?.ok) state = taken.state
+      continue
+    }
     const cost = q.kind === 'itemOffer' ? itemOffer(state, q.itemId as string).cost : (q.price ?? 0)
     const grants = q.kind === 'liftSiege' || q.kind === 'spareHex' ? (plan.paths !== null && !plan.paths.includes(r)) || accordRival(state, today) === r : balance(state.purse) - cost >= A.dealReserve
     const done = answerRequest(state, r, grants ? 'grant' : 'refuse', today)

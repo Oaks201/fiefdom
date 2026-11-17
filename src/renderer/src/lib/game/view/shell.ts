@@ -339,6 +339,8 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       return e.stage === 'uprising' ? line('warning', 'herald.restless.uprising', { hex: hexName(e.hexId) }, { hexId: e.hexId }) : null
     case 'request':
       // Patch 8 (R1, D-66): a dare met or missed, a demand left unanswered, a promise broken; the player's own answers and an offer lapsing go untold.
+      // Stage 3 (R1): a commission met or missed; taking one up, declining one and one that lapses unanswered go untold.
+      if (e.request === 'commission') return e.stage === 'met' || e.stage === 'missed' ? line('result', `herald.commission.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival }) : null
       if (e.stage === 'met' || e.stage === 'missed') return line('result', `herald.request.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if (e.stage === 'broken' && e.hexId) return line('result', 'herald.request.broken', { rival: rivalName(e.rival), hex: hexName(e.hexId) }, { rival: e.rival, hexId: e.hexId })
       return e.stage === 'lapsed' && isDemand({ kind: e.request }) ? line('world', 'herald.request.lapsed', { rival: rivalName(e.rival) }, { rival: e.rival }) : null

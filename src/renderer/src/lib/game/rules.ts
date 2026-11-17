@@ -733,7 +733,17 @@ const RULES_TABLE = {
    *   player) for `demand.wrongedDays`; every other ruler walls the hex in question a level.
    * TUNE.
    */
-  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
+  /**
+   * Patch 10 stage 3 (R1, R2, D-88; rules 3.17.0): commissions take the dares' place. Where a ruler sent a dare he
+   * commissions a deed in his craft for the week ahead: Ugrak `fieldDays` days in his field (`fieldDaysOnStreak`
+   * while a streak of `streakFor` days or more is alive), Hrodgar wall levels raised (`wallLevels` by the deepest
+   * band the player holds, from band `wallLevelsFromBand`), Skivvet a hex won by coin and Emrys one deed of the
+   * unseen (`one`). The player takes it up or declines in his Audience. Taken up and met: `met` Respect and `renown`
+   * Renown on his path at the close of the day it is met; taken up and missed: `missed`; declined or unanswered:
+   * nothing. A ruler below 0 sends a toll and a commission in turn, the commission as a demand: met `demand.granted`
+   * and the Renown, refused or missed `demand.refused`. A dare open in an older save is still judged as a dare. TUNE.
+   */
+  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, commission: { met: 6, missed: -2, renown: 5, fieldDays: 4, fieldDaysOnStreak: 5, streakFor: 7, wallLevels: [2, 3, 4], wallLevelsFromBand: 3, one: 1 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
 
   defeat: {
     ascendancy: {

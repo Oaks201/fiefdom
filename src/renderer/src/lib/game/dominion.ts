@@ -376,6 +376,14 @@ export function chronicle(input: CampaignState, emit: Emit, close?: ChronicleClo
   return checkRanks({ ...input, paths: { byRival, logRead: input.log.length, ...(field ? { field } : {}) } }, emit)
 }
 
+/** Posts one deed that no log event stands for (a commission met, stage 3): its Renown, the `deed` event, and any rank the path reaches. */
+export function postDeed(state: CampaignState, deed: { path: RivalId; deed: DeedKind; value: number; source?: string }, emit: Emit): CampaignState {
+  const paths = pathsOf(state)
+  const byRival = { ...paths.byRival, [deed.path]: { ...paths.byRival[deed.path], renown: paths.byRival[deed.path].renown + deed.value } }
+  emit('deed', deed)
+  return checkRanks({ ...state, paths: { ...paths, byRival } }, emit)
+}
+
 function checkRanks(state: CampaignState, emit: Emit): CampaignState {
   const totals = pathTotals(state)
   const paths = pathsOf(state)

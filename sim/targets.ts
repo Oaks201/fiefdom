@@ -481,7 +481,8 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       'Requests answered (Patch 8)',
       `Steadfast smarter: the 4-week months from week 8 with a request (at least ${pct(G25.months)}); dares met against prized weeks kept (at least as often); requests a campaign by kind (mean)`,
       `${pct(monthShare)}; dares ${pct(dareShare)} vs prized ${pct(prizedShare)}; ${Object.entries(made).map(([k, n]) => `${k} ${f2(n / Math.max(1, reqs.length))}`).join(' · ')}`,
-      reqs.length > 0 ? monthShare >= G25.months && dareShare >= prizedShare : null
+      // Stage 3 (D-88): no dare is sent any more, so the dares' half is judged only where a campaign still settled one.
+      reqs.length > 0 ? monthShare >= G25.months && (sum((q) => q.daresSettled) === 0 || dareShare >= prizedShare) : null
     )
   )
 
@@ -568,6 +569,23 @@ export function targetRows(results: readonly RunResult[]): Row[] {
       `Steadfast smarter: craft deeds' share of the Renown posted (${pct(G28.share[0])} to ${pct(G28.share[1])}); each craft's own (at least ${pct(G28.each)}): ${CRAFTS.map((c) => c.craft).join(', ')}; wall levels raised a campaign (mean)`,
       `${pct(craftShare)}; ${eachCraft.map((s) => (Number.isFinite(s) ? `${(s * 100).toFixed(1)}%` : '–')).join(', ')}; ${f1(mean(crafty.map((r) => r.measures.crafts?.walls ?? 0)))}`,
       Number.isFinite(craftShare) ? craftShare >= G28.share[0] && craftShare <= G28.share[1] && eachCraft.every((s) => s >= G28.each) : null
+    )
+  )
+
+  // G-30 (Patch 10 stage 3, R1, D-88): commissions are answered. Of those a ruler sends (a demand's aside), the share the
+  // smarter player takes up; of those taken up, the share met.
+  const ended = (key: string): number => sum((q) => q.ended[key] ?? 0)
+  const sent = sum((q) => q.made.commission ?? 0)
+  const takenUp = ended('commission:accepted')
+  const commissionsMet = ended('commission:met') / Math.max(1, takenUp)
+  const demandsSent = sum((q) => q.made.commissionDemand ?? 0)
+  rows.push(
+    row(
+      'G-30',
+      'Commissions are answered (Patch 10)',
+      `Steadfast smarter: commissions taken up of those sent (at least ${pct(G30.takenUp)}); of those taken up, met (${pct(G30.met[0])} to ${pct(G30.met[1])}); sent a campaign (mean); sent as a demand, and those met`,
+      `${pct(takenUp / Math.max(1, sent))}; ${pct(commissionsMet)}; ${f1(sent / Math.max(1, reqs.length))}; ${f1(demandsSent / Math.max(1, reqs.length))}, ${pct(ended('commissionDemand:met') / Math.max(1, demandsSent))}`,
+      sent > 0 ? takenUp / sent >= G30.takenUp && commissionsMet >= G30.met[0] && commissionsMet <= G30.met[1] : null
     )
   )
 
@@ -880,6 +898,8 @@ const CRAFT_DEEDS: readonly DeedKind[] = CRAFTS.flatMap((c) => c.deeds)
  * Dominion at this week than the same seed's player without the banner. "The highest path" read the Dwarf's lead from walls instead.
  */
 const G31 = { week: 26, late: 40, gain: 0.1 }
+/** Patch 10 stage 3 (G-30, D-88): the smarter player takes up at least this share of the commissions it is sent, and meets this share of those. */
+const G30 = { takenUp: 0.6, met: [0.5, 0.8] }
 /** Patch 10 (G-28): craft deeds are this share of a Steadfast campaign's Renown, and each craft at least `each` of it. */
 const G28 = { share: [0.1, 0.2], each: 0.02 }
 /** The streak lengths the crafts section groups by: a day, 2 to 3, 4 to 6, a week to 13 days, 14 or more. */
