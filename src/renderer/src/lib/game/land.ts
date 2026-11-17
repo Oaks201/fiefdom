@@ -873,8 +873,13 @@ export function fortify(state: CampaignState, hexId: string, today: ISODate = op
   const hex = hexOf(state, hexId) as HexState
   const paid = { ...state, purse: spend(state.purse, today, offer.cost, `fortify:${hexId}:${offer.next}`) }
   const events = new EventBuffer()
-  events.emitter(today)('fortified', { hexId, level: offer.next })
-  return { ok: true, cost: offer.cost, state: events.flush(replaceHex(paid, { ...hex, fortification: offer.next as HexState['fortification'] })) }
+  const emit = events.emitter(today)
+  emit('fortified', { hexId, level: offer.next })
+  let next = replaceHex(paid, { ...hex, fortification: offer.next as HexState['fortification'] })
+  // Patch 10 stage 3 (R4): Ugrak scorns a wall raised in his march, while he is active.
+  const scorn = respectChange('orc', 'wallRaised', 0)
+  if (scorn !== 0 && (hex.march === 'orc' || hex.seam === 'orc') && next.rivals.orc.status === 'active') next = adjustRespect(next, 'orc', scorn, 'wallRaised', emit)
+  return { ok: true, cost: offer.cost, state: events.flush(next) }
 }
 
 // ── Reclaiming (Ch 6 "Losing land", Ch 9 Grace I) ────────────────────────────

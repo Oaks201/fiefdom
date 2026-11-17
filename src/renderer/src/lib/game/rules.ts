@@ -65,7 +65,7 @@ export interface RivalMarks {
 }
 
 const RULES_TABLE = {
-  ruleVersion: '3.16.0',
+  ruleVersion: '3.17.0',
 
   clock: {
     /** Day D closes at 04:00 on D+1 in the campaign time zone (A-01). */
@@ -620,7 +620,8 @@ const RULES_TABLE = {
      * his field. X3, as Rich set it on the simulator's reading (D-82): the Goblin's bid held against him costs 1 (it was 2; at nothing he sat at Peace 69% of his weeks). TUNE.
      */
     byRival: {
-      orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5, raidDefeated: 2, fieldWeek: 2 },
+      // Stage 3 (R4, D-87; rules 3.17.0): each wall level the player raises on a hex of the Orc's march costs `wallRaised` with him.
+      orc: { hexConquered: -2, truce: 0, grandBattleWon: 5, grandBattleLost: -5, raidDefeated: 2, fieldWeek: 2, wallRaised: -1 },
       goblin: { bribePaid: 2, buyOffAccepted: 10, buyOffRefused: -5, bidHeld: -1 },
       dwarf: { wallBroken: -1 },
       archmage: { constantWeek: 1, surgeHeld: 2, ritualEndured: 2 }

@@ -315,7 +315,9 @@ function deedsOf(rival: RivalId): Deed[] {
           deed: 'A day in his field: any battle against him or in his march, won or lost. A rest day or a day away holds the streak',
           renown: `+${k.fieldDay} on a streak’s first day, +${k.fieldDay} more each day after, up to +${k.fieldDayCap} a day`
         },
-        { deed: `Every ${k.fieldWeekDays}th day of a streak in his field`, respect: own.orc.fieldWeek }
+        { deed: `Every ${k.fieldWeekDays}th day of a streak in his field`, respect: own.orc.fieldWeek },
+        // Stage 3 (R4): he scorns walls.
+        { deed: 'A wall level you raise on a hex of his march', respect: own.orc.wallRaised }
       ]
     case 'goblin':
       return [

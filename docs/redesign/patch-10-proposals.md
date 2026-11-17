@@ -492,7 +492,7 @@ The 12 dare lines retire (R1).
    - **G-31 at week 40** reads +12% (Coin +13%, Arcane +18%, Engine +12%, Steel +1%): the build shows once Milestones have opened item slots.
    - **The player-facing word is "tags".** The game already says "banners" for how many companies a battle fields.
    - **Open:** the save is 2.09 MB against its 2 MB cap.
-3. **Stage 3, rulers who act** (3.17.0): R1 to R6 and their lines, X1, X4 and X6.
+3. **Stage 3, rulers who act** (3.17.0): R1 to R6 and their lines, X1, X4 and X6. **Begun:** R4 is built (D-87): a wall level raised in Ugrak's march costs 1 Respect with him. It has not been through a targets run. The rest is not built.
 4. **Stage 4, the day and the week** (no rule change): L1 to L4, X7 and X8. **L4 is built** (D-86), brought forward: the orders panel says whether today's orders keep the streak. **L3 came with stage 1:** the walls-held deed's Herald line shows in the Dawn tidings. L1, L2, X7 and X8 remain.
 5. **Stage 5, the long game** (3.18.0): E1 and E2, measured first, and E4's readings. With F4: the Chronicle's record of the realm that won, and the victory page.
 6. **Stage 6, the Grace turned** (F1; 3.19.0): the stronger hosts and their prizes, sized from the run made in stage 1. Its numbers come to Rich as a short spec of their own before it is built.

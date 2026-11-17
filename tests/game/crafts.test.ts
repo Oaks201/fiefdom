@@ -318,3 +318,25 @@ test('L4 (D-86): the orders panel says what today’s orders do to the streak in
   const raided = ordersView(withTiding(streak(1), { date: START, kind: 'raid', hexId: plainHex(s0, 2).id, strength: 10, rival: 'orc' }), 1, START).field
   assert.deepEqual([raided?.days, raided?.keeps], [1, true])
 })
+
+test('R4 (D-87): a wall level raised on a hex of the Orc’s march costs his Respect his own weight, at once; elsewhere, or once he is resolved, nothing', () => {
+  const s0 = read()
+  const his = plainIn(s0.hexes, 'orc', 4)
+  const other = plainIn(s0.hexes, 'goblin', 4)
+  const state = withPurse(withOwner(s0, [his.id, other.id], 'player'), 5_000)
+  const scorn = RULES.respect.byRival.orc.wallRaised
+  assert.ok(scorn < 0)
+
+  const walled = fortify(state, his.id)
+  assert.equal(walled.state.rivals.orc.respect, state.rivals.orc.respect + scorn)
+  assert.deepEqual(walled.state.log.slice(state.log.length).map((e) => (e.kind === 'respect' ? [e.kind, e.rival, e.change, e.reason] : [e.kind])), [['fortified'], ['respect', 'orc', scorn, 'wallRaised']])
+  const twice = fortify(walled.state, his.id)
+  assert.equal(twice.state.rivals.orc.respect, state.rivals.orc.respect + 2 * scorn, 'each level')
+
+  const elsewhere = fortify(state, other.id)
+  assert.equal(elsewhere.state.rivals.orc.respect, state.rivals.orc.respect)
+  assert.equal(elsewhere.state.log.filter((e) => e.kind === 'respect').length, state.log.filter((e) => e.kind === 'respect').length)
+
+  const resolved: CampaignState = { ...state, rivals: { ...state.rivals, orc: { ...state.rivals.orc, status: 'conquered' } } }
+  assert.equal(fortify(resolved, his.id).state.rivals.orc.respect, resolved.rivals.orc.respect)
+})
