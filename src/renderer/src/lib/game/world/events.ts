@@ -566,6 +566,9 @@ function trialOutcome(input: CampaignState, battle: GrandBattle, ctx: OutcomeCon
     const truce: Deal = { id: `deal-trial-${battle.id}`, rival: 'orc', kind: 'truce', madeOn: addDays(ctx.day, 1), until: addDays(ctx.day, T.raidsStopDays), price: 0 }
     return { state: { ...input, deals: [...input.deals, truce] }, outcome: {} }
   }
+  // Stage 3 (R3): a trial he offered as his answer to a craft mark costs nothing lost.
+  const last = input.log.findLast((e) => e.kind === 'deal' && e.rival === 'orc' && e.deal === 'trial')
+  if (last?.kind === 'deal' && last.gift) return { state: input, outcome: {} }
   const paid = postTribute(input, ctx.day, T.loseTributePerRing, hexOf(input, battle.hexId) as HexState, `grandBattle:${battle.id}`)
   return { state: paid.state, outcome: { tribute: paid.amount } }
 }

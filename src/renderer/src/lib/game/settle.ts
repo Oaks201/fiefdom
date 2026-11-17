@@ -20,7 +20,7 @@ import { realmEffects } from './effects'
 import { announceGrandBattle, announceRequests, grandBattlesDue, raiseIncursions, restGrandBattles } from './grand'
 import { banksRespite, chooseRequest, daredHabits, requestMet, type HabitDay } from './healer'
 import { chronicle, pathsOf } from './dominion'
-import { settleCommissions } from './requests'
+import { craftMarks, settleCommissions } from './requests'
 import { respectChange } from './respect'
 import { dealEnds, recoverLoyalty, resolveCourtships, resolveRivalCourtships } from './land'
 import { bandOf } from './map'
@@ -786,7 +786,7 @@ function lateRequestsMet(state: CampaignState, first: ISODate, emit: Emit): Camp
 
 /** The day phases. Later tasks replace their entry (T08 `combat`, T11 `grandBattlesAuto`). */
 /** Patch 10 stage 3 (R1, D-88): the rulers' commissions, read from the deeds the chronicle has just posted. */
-const commissionsPhase: Phase = (state, ctx) => settleCommissions(state, ctx.day, ctx.emit)
+const commissionsPhase: Phase = (state, ctx) => craftMarks(settleCommissions(state, ctx.day, ctx.emit), ctx.day, ctx.emit)
 
 export const DAY_PHASES: Record<DayPhaseName, Phase> = {
   commissions: commissionsPhase,

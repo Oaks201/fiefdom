@@ -551,6 +551,10 @@
     "template": "{rival} has a commission for you, through {date}. See his Audience.",
     "final": null
   },
+  "herald.craftMark": {
+    "template": "{rival} offers you his own deal at no price, once. See his Audience.",
+    "final": null
+  },
   "herald.commission.met": {
     "template": "You met {rival}’s commission.",
     "final": null

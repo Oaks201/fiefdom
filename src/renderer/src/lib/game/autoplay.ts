@@ -38,7 +38,7 @@ import { balance } from './economy'
 import { realmEffects } from './effects'
 import { battleOf, begin, challenge, fieldOf, pendingBattles, playRound, setDoctrine } from './grand'
 import { isOver, marshalPlay } from './grand/field'
-import { bidCheck, fortify, fortifyOffer, makeDeal, offerDeal, placeBid, promisesOn, resistance, type DealRequest } from './land'
+import { OWN_DEAL, bidCheck, fortify, fortifyOffer, isGift, makeDeal, offerDeal, placeBid, promisesOn, resistance, type DealRequest } from './land'
 import { claimableBy, hexIndex, isStronghold, touches, touchesOwner } from './map'
 import { RULES } from './rules'
 import { rivalView } from './rivals'
@@ -705,6 +705,8 @@ function weeklyDeals(input: CampaignState, today: ISODate): CampaignState {
   const attacksBy = (r: RivalId): number => state.log.filter((e) => e.kind === 'defense' && e.rival === r && e.day >= since).length
   const assaulted = (r: RivalId): boolean => state.log.some((e) => e.kind === 'assault' && e.owner === r && e.day >= since)
   const active = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active')
+  // Stage 3 (R3): a ruler's own deal offered free for a craft mark is taken.
+  for (const r of active) if (isGift(state, r, OWN_DEAL[r])) state = tryDeal(state, r, r === 'archmage' ? { kind: OWN_DEAL[r], choice: 'ward' } : { kind: OWN_DEAL[r] }, today)
   for (const r of active) if (attacksBy(r) >= A.pactRaids && !assaulted(r)) state = tryDeal(state, r, { kind: r === 'dwarf' ? 'oath' : 'pact' }, today)
   // A ruler at War with it, or one whose raids keep coming, is worth setting a neighbor on.
   for (const target of active.filter((t) => state.rivals[t].disposition.player === 'war' || attacksBy(t) >= A.pactRaids)) {

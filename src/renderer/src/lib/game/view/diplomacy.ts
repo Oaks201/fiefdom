@@ -544,6 +544,8 @@ export function dealsView(state: CampaignState, rival: RivalId, today: ISODate =
         line.choice = d.choice
         line.name = BARGAIN_WORDS[d.choice]
       }
+      // Stage 3 (R3): his answer to the player's first mark in his craft.
+      if (d.gift) line.effect = `${line.effect} His gift for your first mark in his craft: at no price, this once${d.kind === 'trial' ? ', with no wait and no tribute if you lose' : ''}.`
       if (!d.allowed && d.reason) {
         const facts = {
           rival: name,

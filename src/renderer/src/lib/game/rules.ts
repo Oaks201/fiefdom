@@ -744,7 +744,14 @@ const RULES_TABLE = {
    * and the Renown, refused or missed `demand.refused`. A dare open in an older save is still judged as a dare. TUNE.
    * The simulator's first reading (D-88): Ugrak's days are 3 and 4 (the proposals' 4 and 5 were met 43% of the time).
    */
-  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, commission: { met: 6, missed: -2, renown: 5, fieldDays: 3, fieldDaysOnStreak: 4, streakFor: 7, wallLevels: [2, 3, 4], wallLevelsFromBand: 3, one: 1 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
+  /**
+   * Stage 3 (R3, D-89): `craftMarks`. The first time the player reaches a mark in a ruler's craft he offers his own
+   * deal (Patch 8's D4) at no price, once: Ugrak his trial of champions (no wait, and no tribute if it is lost) at a
+   * streak of `fieldStreak` days in his field, Hrodgar his oath of stone at `wallLevels` wall levels raised, Skivvet
+   * his mercenaries at `coinHexes` hexes won by coin, Emrys his bargain at `ebbHexes` hexes of his march taken on
+   * their ebb. The deal's other conditions (his Respect, a deal already in force) still hold. TUNE.
+   */
+  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, craftMarks: { fieldStreak: 7, wallLevels: 10, coinHexes: 5, ebbHexes: 1 }, dare: { met: 6, missed: -2 }, commission: { met: 6, missed: -2, renown: 5, fieldDays: 3, fieldDaysOnStreak: 4, streakFor: 7, wallLevels: [2, 3, 4], wallLevelsFromBand: 3, one: 1 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
 
   defeat: {
     ascendancy: {

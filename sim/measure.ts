@@ -97,7 +97,7 @@ export interface Measures {
    * Patch 10 (G-28, D-80): the crafts. Wall levels the player raised; defenses won that the walls turned; the
    * lengths of the streaks in the Orc's field, each as it ended.
    */
-  crafts?: { walls: number; wallsHeld: number; streaks: number[]; banners?: { taken: number; share: Record<string, number>; massed: Record<string, number> } }
+  crafts?: { walls: number; wallsHeld: number; streaks: number[]; banners?: { taken: number; share: Record<string, number>; massed: Record<string, number> }; gifts?: { offered: number; taken: number } }
   /** Patch 8 (G-24): deals struck by the end, by kind, and binding deals broken. */
   deals?: Record<string, number>
   dealsBroken?: number
@@ -506,7 +506,9 @@ export class Recorder {
       walls: state.log.filter((e) => e.kind === 'fortified' && !e.standing).length,
       wallsHeld: state.log.filter((e) => e.kind === 'defense' && e.walls !== undefined).length,
       streaks,
-      banners
+      banners,
+      // Stage 3 (R3): craft marks reached (a ruler's own deal offered free) and those gifts taken.
+      gifts: { offered: state.log.filter((e) => e.kind === 'craftMark').length, taken: state.log.filter((e) => e.kind === 'deal' && e.gift === true).length }
     }
     const deals: Record<string, number> = {}
     for (const e of state.log) if (e.kind === 'deal') deals[e.deal] = (deals[e.deal] ?? 0) + 1

@@ -9,10 +9,13 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { chronicle, pathsOf, renown } from '../../src/renderer/src/lib/game/dominion'
 import { depthOf, isClaimableKind, strongholds } from '../../src/renderer/src/lib/game/map'
-import { answerRequest, commissionNeed, commissionProgress, requestOf, requestsOf, requestsWeek, settleCommissions } from '../../src/renderer/src/lib/game/requests'
+import { makeDeal, offerDeal } from '../../src/renderer/src/lib/game/land'
+import { answerRequest, commissionNeed, commissionProgress, craftMarks, requestOf, requestsOf, requestsWeek, settleCommissions } from '../../src/renderer/src/lib/game/requests'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
-import { withWorld } from '../../src/renderer/src/lib/game/state'
+import { withWorld, worldOf } from '../../src/renderer/src/lib/game/state'
+import { dealsView } from '../../src/renderer/src/lib/game/view/diplomacy'
+import { withPurse } from './support/realm'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type GameEventKind, type GameEventMap, type HexState, type RivalId, type RulerRequest } from '../../src/renderer/src/lib/game/types'
 import { requestCard, requestNote } from '../../src/renderer/src/lib/game/view/requests'
 import { resultLine } from '../../src/renderer/src/lib/game/view/shell'
@@ -206,4 +209,52 @@ test('R1: the Audience’s card says what he asks, how far it has come and what 
   assert.equal(resultLine({ id: 'e2', day: START, kind: 'request', rival: 'orc', request: 'commission', stage: 'accepted', need: 4 }), null, 'the player’s own answer goes untold')
   const deed = resultLine({ id: 'e3', day: START, kind: 'deed', path: 'orc', deed: 'commissionMet', value: C.renown })
   assert.match(deed?.text ?? '', new RegExp(`commission met: ${C.renown} Renown`))
+})
+
+test('R3 (D-89): the first time the player reaches a mark in a ruler’s craft he offers his own deal at no price, once', () => {
+  const marks = Q.craftMarks
+  const wall = (day: string, i: number): { day: string; kind: GameEventKind } & Record<string, unknown> => ({ day, kind: 'deed', path: 'dwarf', deed: 'wallRaised', value: 1.2, level: 1, hexId: `h${i}` })
+  const s0 = withPurse(withRespect(realm(), 'dwarf', 80), 1_000)
+  const usual = offerDeal(s0, 'dwarf', { kind: 'oath' }, START)
+  assert.ok(usual.allowed && usual.price > 0 && usual.gift === undefined)
+
+  // One level short: nothing. The tenth level, raised today: he offers.
+  const short = logged(s0, Array.from({ length: marks.wallLevels - 1 }, (_, i) => wall(START, i)))
+  const none = collector()
+  assert.equal(worldOf(craftMarks(short, START, none.emit)).craftGifts?.dwarf, undefined)
+  const reached = logged(short, [wall(START, 99)])
+  const c = collector()
+  const offered = craftMarks(reached, START, c.emit)
+  assert.equal(worldOf(offered).craftGifts?.dwarf, 'offered')
+  assert.deepEqual(c.of('craftMark'), [{ rival: 'dwarf' }])
+  assert.deepEqual(collector().events.length + craftMarks(offered, START, none.emit).log.length, offered.log.length, 'once')
+  assert.equal(none.of('craftMark').length, 0)
+
+  const gift = offerDeal(offered, 'dwarf', { kind: 'oath' }, START)
+  assert.deepEqual([gift.allowed, gift.price, gift.gift], [true, 0, true])
+  assert.equal(offerDeal(offered, 'dwarf', { kind: 'pact' }, START).price, usual.price, 'only his own deal')
+  assert.match(dealsView(offered, 'dwarf', START).find((d) => d.kind === 'oath')?.effect ?? '', /His gift for your first mark in his craft: at no price, this once\./)
+
+  const struck = makeDeal(offered, 'dwarf', { kind: 'oath' }, START)
+  assert.deepEqual([struck.ok, struck.cost], [true, 0])
+  assert.equal(worldOf(struck.state).craftGifts?.dwarf, 'taken')
+  assert.equal(struck.state.log.findLast((e) => e.kind === 'deal')?.kind === 'deal' && struck.state.log.findLast((e) => e.kind === 'deal' && e.gift === true) !== undefined, true)
+  // Taken, it is never offered again: more walls change nothing.
+  const later = craftMarks(logged(struck.state, [wall(addDays(START, 1), 100)]), addDays(START, 1), none.emit)
+  assert.equal(worldOf(later).craftGifts?.dwarf, 'taken')
+})
+
+test('R3 (D-89): Ugrak’s mark is a streak of a week in his field; his gift is the trial with no wait', () => {
+  const s0 = realm()
+  const tried = logged(s0, [{ day: addDays(START, -3), kind: 'deal', rival: 'orc', deal: 'trial', price: 0 }])
+  assert.equal(offerDeal(tried, 'orc', { kind: 'trial' }, START).reason?.code, 'tooSoon')
+  const onStreak: CampaignState = { ...tried, paths: { ...pathsOf(tried), field: { days: Q.craftMarks.fieldStreak, through: START } } }
+  const c = collector()
+  const offered = craftMarks(onStreak, START, c.emit)
+  assert.deepEqual(c.of('craftMark'), [{ rival: 'orc' }])
+  const gift = offerDeal(offered, 'orc', { kind: 'trial' }, START)
+  assert.deepEqual([gift.allowed, gift.gift], [true, true])
+  // A day short, or a streak that only held through today without counting, offers nothing.
+  const shortStreak: CampaignState = { ...tried, paths: { ...pathsOf(tried), field: { days: Q.craftMarks.fieldStreak - 1, through: START } } }
+  assert.equal(worldOf(craftMarks(shortStreak, START, c.emit)).craftGifts?.orc, undefined)
 })

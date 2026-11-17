@@ -280,6 +280,9 @@ export function resultLine(e: GameEvent): HeraldLine | null {
       return line('world', 'herald.worldEvent', { event: t(`events.${e.eventId}.title`) })
     case 'milestone':
       return line('result', 'herald.milestone', { index: e.index })
+    case 'craftMark':
+      // Stage 3 (R3): a ruler answers the player's first mark in his craft.
+      return line('world', 'herald.craftMark', { rival: rivalName(e.rival) }, { rival: e.rival })
     case 'pathRank':
       return line('result', 'herald.pathRank', { rival: rivalName(e.path), rank: numeral(e.rank) }, { rival: e.path })
     case 'deed':

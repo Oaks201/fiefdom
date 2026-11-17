@@ -832,7 +832,10 @@ export interface GameEventMap {
   /** A courtship resolved at week close (Ch 6). `void`: the village could no longer be courted, and the bid came back in full (T09). */
   courtship: { hexId: string; outcome: 'defected' | 'held' | 'void'; bid: number; loyaltyDrop?: number; winner?: Owner; rivals?: RivalId[] }
   /** A deal with a rival: a hex bought or sold, a Truce, a pact, a call to arms. `until`: the last day of one that runs (the Dwarf's pact kept is read from it). */
-  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId; until?: ISODate; choice?: BargainChoice }
+  /** `gift`: stage 3 (R3), his own deal struck at no price as his answer to a craft mark. */
+  deal: { rival: RivalId; deal: Deal['kind']; price: number; hexId?: string; target?: RivalId; until?: ISODate; choice?: BargainChoice; gift?: true }
+  /** Patch 10 stage 3 (R3, D-89): the player reached a mark in `rival`'s craft for the first time, and he offers his own deal free, once. */
+  craftMark: { rival: RivalId }
   /**
    * Patch 8 (D-64): a Truce, pact, oath or call to arms ended: `kept` to its last day, or `broken` by the player's
    * assault on his land; a call to arms reports the hexes it took from its `target`.
@@ -1289,6 +1292,8 @@ export interface WorldState {
   auction?: { until: ISODate; lots: { hexId: string; bids: Partial<Record<'player' | RivalId, number>> }[] }
   /** Patch 8 (R1, D-66): the rulers' open requests, and the hexes the player promised to leave alone (`granted`); ended ones are in the log. */
   requests?: RulerRequest[]
+  /** Patch 10 stage 3 (R3, D-89): each ruler's own deal, free once: `offered` from the player's first mark in his craft, `taken` once struck. */
+  craftGifts?: Partial<Record<RivalId, 'offered' | 'taken'>>
 }
 
 /** Patch 8 (R1, D-66): what a ruler asks of the player: a dare in the habit he prizes, an offer of his own, or a demand. */

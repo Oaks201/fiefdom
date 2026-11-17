@@ -28,7 +28,7 @@ import { addDays } from './clock'
 import { CODEX } from './codex'
 import { liftSiege } from './combat'
 import { balance, roundPosting, spend } from './economy'
-import { fieldStreak, inField, postDeed } from './dominion'
+import { fieldStreak, inField, pathsOf, postDeed } from './dominion'
 import { buyPrice, demandRefused, fortificationCap, promisesOn } from './land'
 import { bandOf, isClaimableKind, touchesOwner } from './map'
 import { RULES } from './rules'
@@ -257,6 +257,43 @@ export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit
         state = adjustRespect(state, q.rival, q.demand ? Q.demand.refused : C.missed, 'commissionMissed', emit)
       }
     }
+  }
+  return state
+}
+
+/** Stage 3 (R3): the deed whose count is each ruler's craft mark, and the count it needs (the Orc's is his streak). */
+const MARK_DEED: Partial<Record<RivalId, { deed: DeedKind; need: number }>> = {
+  dwarf: { deed: 'wallRaised', need: Q.craftMarks.wallLevels },
+  goblin: { deed: 'dealTaken', need: Q.craftMarks.coinHexes },
+  archmage: { deed: 'surgeSeized', need: Q.craftMarks.ebbHexes }
+}
+
+/**
+ * Stage 3 (R3, D-89): at a day's close, each active ruler whose craft mark the player has just reached for the first
+ * time offers his own deal free, once (`craftGifts`, `isGift` in land.ts). Read only on a day that posted a deed of
+ * his craft, so the count over the log is made a handful of times a campaign.
+ */
+export function craftMarks(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+  let state = input
+  const gifts = worldOf(input).craftGifts ?? {}
+  for (const rival of RIVAL_IDS) {
+    if (gifts[rival] !== undefined || state.rivals[rival].status !== 'active') continue
+    const mark = MARK_DEED[rival]
+    let reached = false
+    if (!mark) {
+      const field = pathsOf(state).field
+      reached = field !== undefined && field.through === day && field.days >= Q.craftMarks.fieldStreak
+    } else {
+      let today = false
+      for (let i = state.log.length - 1; i >= 0 && state.log[i].day >= day; i--) {
+        const e = state.log[i]
+        if (e.kind === 'deed' && e.path === rival && e.deed === mark.deed) today = true
+      }
+      reached = today && state.log.filter((e) => e.kind === 'deed' && e.path === rival && e.deed === mark.deed).length >= mark.need
+    }
+    if (!reached) continue
+    emit('craftMark', { rival })
+    state = withWorld(state, { craftGifts: { ...worldOf(state).craftGifts, [rival]: 'offered' } })
   }
   return state
 }

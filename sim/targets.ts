@@ -943,6 +943,7 @@ export function craftLines(results: readonly RunResult[]): string[] {
     row('Renown from every craft: share', (runs) => pct(deedShare(runs, CRAFT_DEEDS))),
     row('Wall levels raised', (runs) => per(runs, (r) => r.measures.crafts?.walls ?? 0)),
     row('Defenses won that the walls turned', (runs) => per(runs, (r) => r.measures.crafts?.wallsHeld ?? 0)),
+    row('Craft marks reached, of 4 (his own deal offered free, R3); those gifts taken', (runs) => `${per(runs, (r) => r.measures.crafts?.gifts?.offered ?? 0)}; ${per(runs, (r) => r.measures.crafts?.gifts?.taken ?? 0)}`),
     ...STREAK_GROUPS.map(([label, from, to]) => row(`Streaks in the Orc’s field of ${label} ${to === 1 ? 'day' : 'days'}`, (runs) => streaks(runs, from, to))),
     row('Longest streak (the longest of any campaign)', (runs) => String(max(runs.flatMap((r) => r.measures.crafts?.streaks ?? [0]))))
   ]

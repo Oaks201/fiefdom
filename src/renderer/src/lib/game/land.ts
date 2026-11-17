@@ -387,7 +387,17 @@ export interface DealRequest {
   choice?: BargainChoice
 }
 
+/** Patch 8 (D4): the deal only each ruler offers. */
+export const OWN_DEAL: Record<RivalId, Deal['kind']> = { orc: 'trial', goblin: 'mercenaries', dwarf: 'oath', archmage: 'bargain' }
+
+/** Stage 3 (R3): whether `kind` is `rival`'s own deal standing as his gift for a craft mark: offered, and not yet taken. */
+export function isGift(state: CampaignState, rival: RivalId, kind: Deal['kind']): boolean {
+  return OWN_DEAL[rival] === kind && worldOf(state).craftGifts?.[rival] === 'offered'
+}
+
 export interface DealOffer extends DealRequest {
+  /** Stage 3 (R3): his gift for a craft mark: at no price, once. */
+  gift?: true
   rival: RivalId
   /** What the player pays, or for a sold hex what the player receives. Exact; it posts rounded to 0.1. */
   price: number
@@ -604,7 +614,9 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
   const hex = request.hexId !== undefined ? hexOf(state, request.hexId) : undefined
   // Patch 8 (D4): the Book of Grudges puts the Dwarf's prices up for the rest of the campaign.
   const grudge = r.grudge && request.kind !== 'sellHex' ? t.oath.grudgeMult : 1
-  const offer = (price: number): Omit<DealOffer, 'allowed' | 'reason'> => ({ ...request, rival, price: price * grudge })
+  // Stage 3 (R3): his own deal, offered as his answer to a craft mark, costs nothing once.
+  const gift = isGift(state, rival, request.kind)
+  const offer = (price: number): Omit<DealOffer, 'allowed' | 'reason'> => ({ ...request, rival, price: gift ? 0 : price * grudge, ...(gift ? { gift: true as const } : {}) })
 
   switch (request.kind) {
     case 'buyHex': {
@@ -647,7 +659,7 @@ export function offerDeal(state: CampaignState, rival: RivalId, request: DealReq
       return judged(state, offer(0), [
         rival !== 'orc' ? dealRefusal('notOffered') : null,
         grandBattleWarning(state, today) ? dealRefusal('grandBattleWarning') : null,
-        last !== undefined && diffDays(last, today) < t.trial.everyWeeks * RULES.clock.daysPerWeek ? dealRefusal('tooSoon') : null
+        !gift && last !== undefined && diffDays(last, today) < t.trial.everyWeeks * RULES.clock.daysPerWeek ? dealRefusal('tooSoon') : null
       ])
     }
     case 'mercenaries': {
@@ -825,8 +837,9 @@ export function makeDeal(state: CampaignState, rival: RivalId, request: DealRequ
     case 'buyOff':
       break
   }
-  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}), ...(deal.until ? { until: deal.until } : {}), ...(deal.choice ? { choice: deal.choice } : {}) })
+  emit('deal', { rival, deal: request.kind, price: deal.price, ...(deal.hexId ? { hexId: deal.hexId } : {}), ...(deal.target ? { target: deal.target } : {}), ...(deal.until ? { until: deal.until } : {}), ...(deal.choice ? { choice: deal.choice } : {}), ...(offer.gift ? { gift: true as const } : {}) })
   next = events.flush({ ...next, deals: [...next.deals, deal] })
+  if (offer.gift) next = withWorld(next, { craftGifts: { ...worldOf(next).craftGifts, [rival]: 'taken' } })
   return { ok: true, state: next, cost: offer.price, deal }
 }
 
