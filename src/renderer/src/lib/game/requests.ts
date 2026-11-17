@@ -227,11 +227,13 @@ function assaulted(state: CampaignState, rival: RivalId, day: ISODate): string |
 
 /**
  * Stage 3 (R1, D-88): the `commissions` day phase. A commission in force is met at the close of the day the log holds
- * the deeds it asked for: his Respect and Renown on his path, at once (D-53). At its last day's close one in force
- * and unmet is missed; one never taken up lapses at no cost. Away, either ends quietly (X-17). A ruler resolved
+ * the deeds it asked for: his Respect and Renown on his path, at once (D-53). Its last day is a week close, and what
+ * that close's own phases post still counts (a courtship won there is a hex won by coin): so its end is judged by the
+ * `commissions` week phase (`closing`), after the week's chronicle. There one in force and unmet is missed, and one
+ * never taken up lapses at no cost. Away, either ends quietly (X-17). A ruler resolved
  * meanwhile asks nothing more.
  */
-export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit): CampaignState {
+export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit, closing = false): CampaignState {
   let state = input
   for (const q of requestsOf(input)) {
     if (q.kind !== 'commission' || q.outcome !== undefined || day <= q.madeOn) continue
@@ -246,7 +248,7 @@ export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit
       emit('request', { rival: q.rival, request: q.kind, stage: 'met', ...told(q), done })
       state = adjustRespect(dropped(state, q), q.rival, q.demand ? Q.demand.granted : C.met, 'commissionMet', emit)
       state = postDeed(state, { path: q.rival, deed: 'commissionMet', value: C.renown }, emit)
-    } else if (day >= q.until) {
+    } else if (closing ? day >= q.until : day > q.until) {
       state = dropped(state, q)
       if (awayOn(state, day)) continue
       if (!stands) emit('request', { rival: q.rival, request: q.kind, stage: 'lapsed', ...told(q) })
@@ -311,8 +313,9 @@ export function requestsWeek(input: CampaignState, w: { day: ISODate; week: numb
   const away = awayOn(state, w.day)
   for (const q of requestsOf(state)) {
     if (q.until > w.day) continue
-    // A commission is judged by its own day phase (`settleCommissions`), which has run at this close; one still here ends quietly.
-    state = q.kind === 'dare' || q.kind === 'commission' || q.outcome === 'granted' || state.rivals[q.rival].status !== 'active' || away ? dropped(state, q) : refused(state, q, 'lapsed', w.day, w.emit)
+    // A commission is judged by its own phases (`settleCommissions`), the last at the end of this close.
+    if (q.kind === 'commission') continue
+    state = q.kind === 'dare' || q.outcome === 'granted' || state.rivals[q.rival].status !== 'active' || away ? dropped(state, q) : refused(state, q, 'lapsed', w.day, w.emit)
   }
   if (!isPlayable(state) || away || w.week < Q.fromWeek || !chance(state.campaign.seed, w.day, 'request:roll', Q.chance)) return state
   const free = RIVAL_IDS.filter((r) => state.rivals[r].status === 'active' && !requestsOf(state).some((q) => q.rival === r && q.outcome === undefined))

@@ -43,7 +43,7 @@ import { claimableBy, hexIndex, isStronghold, touches, touchesOwner } from './ma
 import { RULES } from './rules'
 import { rivalView } from './rivals'
 import { roster } from './roster'
-import { answerRequest, commissionStands, requestOf } from './requests'
+import { answerRequest, commissionProgress, commissionStands, requestOf, requestsOf } from './requests'
 import { readinessValors, valorOn } from './settle'
 import { assaultDays, fortificationShare, fallbackOn, fallsWithin, flankingMult, garrisonMult, standingSiegeOf } from './sieges'
 import { marshalAllFights } from './skirmish'
@@ -669,14 +669,17 @@ function wallFrontier(state: CampaignState, today: ISODate): CampaignState {
     return state.rivals[r].status === 'active' && (W.facing === 'war' ? standing === 'war' : W.facing === 'hostile' ? standing !== 'peace' : false)
   }
   const facing = RIVAL_IDS.filter(faces)
+  // Stage 3 (R1): Hrodgar's commission taken up and unmet. It walls toward it: any hex beyond the protected rings, the shallowest first.
+  const asked = requestsOf(state).some((q) => q.rival === 'dwarf' && q.outcome === undefined && commissionStands(q) && commissionProgress(state, q) < (q.need ?? 1))
   const inDanger = state.hexes
     .filter((h) => h.owner === 'player' && h.ring > RULES.land.protectedThroughRing && h.fortification < W.toLevel)
-    .filter((h) => (hits.get(h.id) ?? 0) >= W.minHits || facing.some((r) => touchesOwner(state.hexes, h.id, r)))
-    .sort((a, b) => (hits.get(b.id) ?? 0) - (hits.get(a.id) ?? 0) || b.ring - a.ring || a.id.localeCompare(b.id))
+    .filter((h) => asked || (hits.get(h.id) ?? 0) >= W.minHits || facing.some((r) => touchesOwner(state.hexes, h.id, r)))
+    .sort((a, b) => (asked ? a.ring - b.ring : 0) || (hits.get(b.id) ?? 0) - (hits.get(a.id) ?? 0) || b.ring - a.ring || a.id.localeCompare(b.id))
   const purse = balance(state.purse)
+  const share = asked ? W.commissionShare : W.purseShare
   for (const h of inDanger) {
     const offer = fortifyOffer(state, h.id)
-    if (!offer.ok || offer.cost > W.purseShare * purse) continue
+    if (!offer.ok || offer.cost > share * purse) continue
     const done = fortify(state, h.id, today)
     return done.ok ? done.state : state
   }

@@ -86,7 +86,9 @@ export const WEEK_PHASE_NAMES = [
   'marches',
   'chronicle',
   /** Rules 3.13.0 (D-76, H3): the Healer's request for the week ahead, after the rulers' dares (`world`). */
-  'healer'
+  'healer',
+  /** Patch 10 stage 3 (R1, D-88): a commission's last day is judged here, after the week's own phases and its chronicle. */
+  'commissions'
 ] as const
 
 export type DayPhaseName = (typeof DAY_PHASE_NAMES)[number]
@@ -808,6 +810,7 @@ export const DAY_PHASES: Record<DayPhaseName, Phase> = {
 
 /** The week phases. Later tasks replace their entry (T09 `courtships`, T10 `rivalTurn` `fronts` `borderCampaigns`, T12 `world`). */
 export const WEEK_PHASES: Record<WeekPhaseName, Phase> = {
+  commissions: (state, ctx) => settleCommissions(state, ctx.day, ctx.emit, true),
   weeklyIncome: weeklyIncomePhase,
   courtships: courtshipsPhase, // T09
   weight: weightPhase,

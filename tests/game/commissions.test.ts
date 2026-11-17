@@ -65,9 +65,10 @@ function logged(state: CampaignState, events: ({ day: string; kind: GameEventKin
 
 const fieldDay = (day: string, streak: number): { day: string; kind: GameEventKind } & Record<string, unknown> => ({ day, kind: 'deed', path: 'orc', deed: 'fieldDay', value: 0.25, streak })
 
-function settled(state: CampaignState, day: string): { state: CampaignState; requests: GameEventMap['request'][]; respect: GameEventMap['respect'][]; deeds: GameEventMap['deed'][] } {
+/** The `commissions` phase at the close of `day`: the day's (`closing` false), or the week's, which judges a commission's last day. */
+function settled(state: CampaignState, day: string, closing = false): { state: CampaignState; requests: GameEventMap['request'][]; respect: GameEventMap['respect'][]; deeds: GameEventMap['deed'][] } {
   const c = collector()
-  const next = settleCommissions(state, day, c.emit)
+  const next = settleCommissions(state, day, c.emit, closing)
   return { state: next, requests: c.of('request'), respect: c.of('respect'), deeds: c.of('deed') }
 }
 
@@ -128,16 +129,18 @@ test('R1: taken up and unmet it costs a little at its last day’s close; never 
   const s0 = commissioned(only(realm(), 'orc'), 'orc', 4)
   const taken = answerRequest(s0, 'orc', 'grant', START).state
   assert.deepEqual(settled(taken, addDays(LAST, -1)).requests, [], 'not before its last day')
-  const missed = settled(taken, LAST)
+  // Its last day is a week close: the day's phase leaves it for the week's, which runs after that close's own postings.
+  assert.deepEqual(settled(taken, LAST).requests, [])
+  const missed = settled(taken, LAST, true)
   assert.deepEqual(missed.requests.map((e) => [e.stage, e.need, e.done]), [['missed', 4, 0]])
   assert.deepEqual(missed.respect.map((e) => [e.change, e.reason]), [[C.missed, 'commissionMissed']])
   assert.equal(requestsOf(missed.state).length, 0)
 
-  const lapsed = settled(s0, LAST)
+  const lapsed = settled(s0, LAST, true)
   assert.deepEqual([lapsed.requests.map((e) => e.stage), lapsed.respect, requestsOf(lapsed.state).length], [['lapsed'], [], 0])
 
   const away: CampaignState = { ...taken, settlement: { ...taken.settlement, lastLaunch: addDays(LAST, -RULES.clock.absenceDays) } }
-  const quiet = settled(away, LAST)
+  const quiet = settled(away, LAST, true)
   assert.deepEqual([quiet.requests, quiet.respect, requestsOf(quiet.state).length], [[], [], 0])
   assert.equal(quiet.state.rivals.orc.respect, away.rivals.orc.respect)
 })
@@ -160,7 +163,7 @@ test('R1, R2: declined, a commission costs nothing; sent as a demand by a ruler 
   const met = settled(logged(demanded, [wall(START, 1), wall(START, 2)]), START)
   assert.deepEqual(met.respect.map((e) => [e.change, e.reason]), [[Q.demand.granted, 'commissionMet']])
   assert.deepEqual(met.deeds.map((e) => [e.deed, e.value]), [['commissionMet', C.renown]])
-  const unmet = settled(demanded, LAST)
+  const unmet = settled(demanded, LAST, true)
   assert.deepEqual(unmet.respect.map((e) => [e.change, e.reason]), [[Q.demand.refused, 'commissionMissed']])
 })
 

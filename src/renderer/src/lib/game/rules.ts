@@ -742,8 +742,9 @@ const RULES_TABLE = {
    * Renown on his path at the close of the day it is met; taken up and missed: `missed`; declined or unanswered:
    * nothing. A ruler below 0 sends a toll and a commission in turn, the commission as a demand: met `demand.granted`
    * and the Renown, refused or missed `demand.refused`. A dare open in an older save is still judged as a dare. TUNE.
+   * The simulator's first reading (D-88): Ugrak's days are 3 and 4 (the proposals' 4 and 5 were met 43% of the time).
    */
-  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, commission: { met: 6, missed: -2, renown: 5, fieldDays: 4, fieldDaysOnStreak: 5, streakFor: 7, wallLevels: [2, 3, 4], wallLevelsFromBand: 3, one: 1 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
+  requests: { fromWeek: 4, chance: 0.5, answerDays: 7, dare: { met: 6, missed: -2 }, commission: { met: 6, missed: -2, renown: 5, fieldDays: 3, fieldDaysOnStreak: 4, streakFor: 7, wallLevels: [2, 3, 4], wallLevelsFromBand: 3, one: 1 }, demand: { granted: 5, refused: -5, wrongedDays: 14 }, spareAfterDays: 7, spareDays: 14, tollPerBand: 20, offerDiscount: 0.25 },
 
   defeat: {
     ascendancy: {
@@ -1106,7 +1107,8 @@ const RULES_TABLE = {
      * Tension or War, at up to 15% of the purse, raised 214 levels a campaign and starved a weak player's army
      * (29 of 40 Wavering campaigns fell); this one raises about 100. TUNE.
      */
-    walls: { toLevel: 2, purseShare: 0.1, memoryDays: 14, minHits: 2, facing: 'war' as 'none' | 'war' | 'hostile' },
+    // `commissionShare` (stage 3): with Hrodgar's commission taken up and unmet it walls toward it, any hex beyond the protected rings, the shallowest first, at this share of the purse.
+    walls: { toLevel: 2, purseShare: 0.1, commissionShare: 0.25, memoryDays: 14, minHits: 2, facing: 'war' as 'none' | 'war' | 'hostile' },
     /** The share over resistance the smarter player bids on a rival's last villages, against its unknown counter-bid. */
     defectionMargin: 1.3,
     /** The Valor the player expects before any day is settled. */

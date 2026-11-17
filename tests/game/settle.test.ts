@@ -51,7 +51,7 @@ test('Ch 2 / Appendix A: the phase registry holds every phase, in the book’s o
   )
   assert.deepEqual(
     [...WEEK_PHASE_NAMES],
-    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule', 'marches', 'chronicle', 'healer']
+    ['weeklyIncome', 'courtships', 'weight', 'rivalTurn', 'fronts', 'borderCampaigns', 'world', 'resetAndSchedule', 'marches', 'chronicle', 'healer', 'commissions']
   )
   assert.deepEqual(Object.keys(DAY_PHASES).sort(), [...DAY_PHASE_NAMES].sort())
   assert.deepEqual(Object.keys(WEEK_PHASES).sort(), [...WEEK_PHASE_NAMES].sort())
