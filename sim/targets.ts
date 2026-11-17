@@ -583,8 +583,8 @@ export function targetRows(results: readonly RunResult[]): Row[] {
     row(
       'G-30',
       'Commissions are answered (Patch 10)',
-      `Steadfast smarter: commissions taken up of those sent (at least ${pct(G30.takenUp)}); of those taken up, met (${pct(G30.met[0])} to ${pct(G30.met[1])}); sent a campaign (mean); sent as a demand, and those met`,
-      `${pct(takenUp / Math.max(1, sent))}; ${pct(commissionsMet)}; ${f1(sent / Math.max(1, reqs.length))}; ${f1(demandsSent / Math.max(1, reqs.length))}, ${pct(ended('commissionDemand:met') / Math.max(1, demandsSent))}`,
+      `Steadfast smarter: commissions taken up of those sent (at least ${pct(G30.takenUp)}); of those taken up, met (${pct(G30.met[0])} to ${pct(G30.met[1])}); sent a campaign (mean); sent as a demand, and those met; named in an Ultimatum (R6), and those met`,
+      `${pct(takenUp / Math.max(1, sent))}; ${pct(commissionsMet)}; ${f1(sent / Math.max(1, reqs.length))}; ${f1(demandsSent / Math.max(1, reqs.length))}, ${pct(ended('commissionDemand:met') / Math.max(1, demandsSent))}; ${f2(sum((q) => q.made.commissionUltimatum ?? 0) / Math.max(1, reqs.length))}, ${pct(ended('commissionUltimatum:met') / Math.max(1, sum((q) => q.made.commissionUltimatum ?? 0)))}`,
       sent > 0 ? takenUp / sent >= G30.takenUp && commissionsMet >= G30.met[0] && commissionsMet <= G30.met[1] : null
     )
   )

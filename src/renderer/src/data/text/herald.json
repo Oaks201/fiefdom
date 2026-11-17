@@ -123,6 +123,10 @@
     "template": "{rival}'s Ultimatum is lifted.",
     "final": null
   },
+  "herald.ascendancy.stoodDown": {
+    "template": "{rival} stands down from the Siege of the Crown.",
+    "final": null
+  },
   "herald.ascendancy.delayed": {
     "template": "{rival}'s siege is delayed until {date}.",
     "final": null
@@ -549,6 +553,10 @@
   },
   "herald.request.commission": {
     "template": "{rival} has a commission for you, through {date}. See his Audience.",
+    "final": null
+  },
+  "herald.request.ultimatum": {
+    "template": "{rival} will stand down from the Siege of the Crown if you meet his commission by {date}. See his Audience.",
     "final": null
   },
   "herald.craftMark": {

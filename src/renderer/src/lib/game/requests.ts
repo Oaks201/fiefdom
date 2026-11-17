@@ -49,8 +49,8 @@ const COMMISSION_DEEDS: Record<RivalId, readonly DeedKind[]> = {
 }
 
 /** Whether a commission is in force: taken up by the player, or sent as a demand (R2). */
-export function commissionStands(q: Pick<RulerRequest, 'kind' | 'accepted' | 'demand'>): boolean {
-  return q.kind === 'commission' && (q.accepted !== undefined || q.demand === true)
+export function commissionStands(q: Pick<RulerRequest, 'kind' | 'accepted' | 'demand' | 'ultimatum'>): boolean {
+  return q.kind === 'commission' && (q.accepted !== undefined || q.demand === true || q.ultimatum === true)
 }
 
 /** The deeds of his craft the log holds for `q`'s week: after the close it came at, through its last day. */
@@ -110,13 +110,14 @@ function dropped(state: CampaignState, q: RulerRequest): CampaignState {
   return withWorld(state, { requests: requestsOf(state).filter((x) => x.id !== q.id) })
 }
 
-function told(q: RulerRequest): { hexId?: string; itemId?: string; price?: number; need?: number; demand?: true } {
+function told(q: RulerRequest): { hexId?: string; itemId?: string; price?: number; need?: number; demand?: true; ultimatum?: true } {
   return {
     ...(q.hexId ? { hexId: q.hexId } : {}),
     ...(q.itemId ? { itemId: q.itemId } : {}),
     ...(q.price !== undefined ? { price: q.price } : {}),
     ...(q.need !== undefined ? { need: q.need } : {}),
-    ...(q.demand ? { demand: true as const } : {})
+    ...(q.demand ? { demand: true as const } : {}),
+    ...(q.ultimatum ? { ultimatum: true as const } : {})
   }
 }
 
@@ -145,7 +146,8 @@ export function answerRequest(state: CampaignState, rival: RivalId, answer: 'gra
   const emit = events.emitter(today)
   if (q.kind === 'commission') {
     // Stage 3 (R1): taken up, it stands until it is met or its week ends; declined, nothing. One sent as a demand (R2) is already in force, and refusing it costs as a demand does.
-    if (q.accepted !== undefined || (answer === 'grant' && q.demand)) return no('accepted')
+    // Named in an Ultimatum (R6), it stands without an answer and can't be refused.
+    if (q.accepted !== undefined || q.ultimatum || (answer === 'grant' && q.demand)) return no('accepted')
     if (answer === 'grant') {
       emit('request', { rival: q.rival, request: q.kind, stage: 'accepted', ...told(q), until: q.until })
       return { ok: true, state: events.flush(withWorld(state, { requests: requestsOf(state).map((x) => (x.id === q.id ? { ...x, accepted: today } : x)) })), cost: 0 }
@@ -237,7 +239,8 @@ export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit
   let state = input
   for (const q of requestsOf(input)) {
     if (q.kind !== 'commission' || q.outcome !== undefined || day <= q.madeOn) continue
-    if (state.rivals[q.rival].status !== 'active') {
+    // R6: a commission named in an Ultimatum ends quietly once that Ultimatum has (lifted, fought or stood down).
+    if (state.rivals[q.rival].status !== 'active' || (q.ultimatum && state.rivals[q.rival].ultimatumUntil === undefined)) {
       state = dropped(state, q)
       continue
     }
@@ -248,13 +251,15 @@ export function settleCommissions(input: CampaignState, day: ISODate, emit: Emit
       emit('request', { rival: q.rival, request: q.kind, stage: 'met', ...told(q), done })
       state = adjustRespect(dropped(state, q), q.rival, q.demand ? Q.demand.granted : C.met, 'commissionMet', emit)
       state = postDeed(state, { path: q.rival, deed: 'commissionMet', value: C.renown }, emit)
+      if (q.ultimatum) state = standDown(state, q.rival, emit)
     } else if (closing ? day >= q.until : day > q.until) {
       state = dropped(state, q)
       if (awayOn(state, day)) continue
       if (!stands) emit('request', { rival: q.rival, request: q.kind, stage: 'lapsed', ...told(q) })
       else {
         emit('request', { rival: q.rival, request: q.kind, stage: 'missed', ...told(q), done })
-        state = adjustRespect(state, q.rival, q.demand ? Q.demand.refused : C.missed, 'commissionMissed', emit)
+        // R6: unmet, an Ultimatum's terms cost nothing more: the Siege still comes.
+        if (!q.ultimatum) state = adjustRespect(state, q.rival, q.demand ? Q.demand.refused : C.missed, 'commissionMissed', emit)
       }
     }
   }
@@ -295,6 +300,41 @@ export function craftMarks(input: CampaignState, day: ISODate, emit: Emit): Camp
     emit('craftMark', { rival })
     state = withWorld(state, { craftGifts: { ...worldOf(state).craftGifts, [rival]: 'offered' } })
   }
+  return state
+}
+
+/**
+ * Stage 3 (R6, D-90): an Ultimatum begun at the close of `day`. Each ruler in it who can ask (`commissionNeed`) names a
+ * commission of his craft, in force at once, through `until` (the day before the Siege). Met, he stands down
+ * (`standDown`). A request of his still open gives way to it, quietly; a promise to him stands.
+ */
+export function ultimatumCommissions(input: CampaignState, members: readonly RivalId[], day: ISODate, until: ISODate, emit: Emit): CampaignState {
+  let state = input
+  for (const rival of members) {
+    const need = commissionNeed(state, rival, day)
+    if (need === undefined) continue
+    const q: RulerRequest = { id: `req-${rival}-${day}-ultimatum`, rival, kind: 'commission', madeOn: day, until, need, ultimatum: true }
+    state = withWorld(state, { requests: [...requestsOf(state).filter((x) => x.rival !== rival || x.outcome !== undefined), q] })
+    emit('request', { rival, request: q.kind, stage: 'made', ...told(q), until })
+  }
+  return state
+}
+
+/**
+ * Stage 3 (R6): `rival` stands down from the Siege of the Crown, his Ultimatum's terms met. A Siege sent by several
+ * stands while any of them still sends it, and is called off once none does; one already begun is fought.
+ */
+function standDown(input: CampaignState, rival: RivalId, emit: Emit): CampaignState {
+  const rv = { ...input.rivals[rival], ascendancyStreak: 0 }
+  delete rv.ultimatumUntil
+  let state: CampaignState = { ...input, rivals: { ...input.rivals, [rival]: rv } }
+  const siege = state.grandBattles.find((b) => b.trigger === 'siege' && b.result === undefined && (b.rival === rival || b.members?.includes(rival)))
+  const senders = siege ? (siege.members ?? (siege.rival ? [siege.rival] : [rival])) : [rival]
+  if (senders.length > 1) emit('ascendancy', { rival, stage: 'stoodDown' })
+  if (!siege || siege.setup || senders.some((r) => state.rivals[r].ultimatumUntil !== undefined)) return state
+  state = { ...state, grandBattles: state.grandBattles.filter((b) => b.id !== siege.id) }
+  emit('grandBattle', { battleId: siege.id, trigger: 'siege', hexId: siege.hexId, stage: 'cancelled', rival: senders[0] })
+  emit('ascendancy', { rival: senders[0], stage: 'lifted', ...(senders.length > 1 ? { members: [...senders] } : {}) })
   return state
 }
 

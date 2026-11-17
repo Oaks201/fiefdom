@@ -222,7 +222,7 @@ function requestLines(state: CampaignState, today: ISODate): HeraldLine[] {
     const q = requestOf(state, r, today)
     if (!q) return []
     const facts: TextFacts = { rival: rivalName(r), date: q.until, ...(q.hexId ? { hex: hexName(q.hexId) } : {}), ...(q.price !== undefined ? { price: q.price } : {}), ...(q.itemId ? { item: CODEX.items.find((i) => i.id === q.itemId)?.name ?? q.itemId } : {}), ...(q.kind === 'spareHex' ? { days: RULES.requests.spareDays } : {}) }
-    return [line('warning', `herald.request.${q.kind}`, facts, { rival: r, ...(q.hexId ? { hexId: q.hexId } : {}) })]
+    return [line('warning', q.ultimatum ? 'herald.request.ultimatum' : `herald.request.${q.kind}`, facts, { rival: r, ...(q.hexId ? { hexId: q.hexId } : {}) })]
   })
 }
 
@@ -293,7 +293,7 @@ export function resultLine(e: GameEvent): HeraldLine | null {
         { rival: e.path, ...(e.hexId ? { hexId: e.hexId } : {}) }
       )
     case 'ascendancy':
-      if (e.stage === 'warning' || e.stage === 'lifted') return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
+      if (e.stage === 'warning' || e.stage === 'lifted' || e.stage === 'stoodDown') return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival) }, { rival: e.rival })
       if ((e.stage === 'delayed' || e.stage === 'humbled') && e.until) return line('world', `herald.ascendancy.${e.stage}`, { rival: rivalName(e.rival), date: e.until }, { rival: e.rival })
       return null
     case 'grandBattle':

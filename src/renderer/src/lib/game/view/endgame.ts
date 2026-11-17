@@ -22,6 +22,7 @@ import { resultView } from './battle'
 import { dealsView, type DealLine } from './diplomacy'
 import { milestoneCard } from './armory'
 import { amount } from './refusals'
+import { requestsOf } from '../requests'
 import { giftWords, realmConsistencyNow, rivalName, rivalNames } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
@@ -134,6 +135,10 @@ export interface UltimatumBanner {
 export function ultimatumBanners(state: CampaignState, today: ISODate = openDayOf(state)): UltimatumBanner[] {
   return ultimatumView(state, today).map((u) => {
     const names = rivalNames(u.members)
+    // Stage 3 (R6): the commissions named to stand down, if any.
+    const named = requestsOf(state).filter((q) => q.ultimatum && q.outcome === undefined && u.members.includes(q.rival)).map((q) => q.rival)
+    const many = named.length > 1
+    const terms = named.length > 0 ? ` Or meet the commission ${rivalNames(named)} ${many ? 'each name' : 'names'} in ${many ? 'their' : 'his'} Audience: met, ${many ? 'each' : 'he'} stands down${u.members.length > 1 ? ', and the Siege is called off once all who send it have' : ', and the Siege is called off'}.` : ''
     return {
       rival: u.rival,
       names,
@@ -141,7 +146,7 @@ export function ultimatumBanners(state: CampaignState, today: ISODate = openDayO
       daysLeft: u.daysLeft,
       textId: 'endings.ultimatum',
       text: t('endings.ultimatum', { rival: names, date: u.siegeOn }),
-      lifts: `It lifts if, at a week close before the Siege, their power falls below ${amount(RULES.defeat.ascendancy.liftBelowRatio)}× yours. Taking their land, Humbling them in battle or growing your own realm all count.`,
+      lifts: `It lifts if, at a week close before the Siege, their power falls below ${amount(RULES.defeat.ascendancy.liftBelowRatio)}× yours. Taking their land, Humbling them in battle or growing your own realm all count.${terms}`,
       bendPrice: u.bendPrice,
       canBend: u.canBend,
       battleId: u.battleId

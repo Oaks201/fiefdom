@@ -843,7 +843,7 @@ export interface GameEventMap {
   dealEnded: { rival: RivalId; deal: Deal['kind']; how: 'kept' | 'broken'; target?: RivalId; taken?: number }
   /** Patch 8 (R1, D-66): a ruler's request made, and how it ended. */
   /** Stage 3 (R1): a commission is `accepted` or `declined`, then `met` or `missed`; `need` is what it asked and `done` what the log held; `demand` when it came as one. */
-  request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken' | 'accepted' | 'declined'; hexId?: string; itemId?: string; price?: number; until?: ISODate; need?: number; done?: number; demand?: true }
+  request: { rival: RivalId; request: RequestKind; stage: 'made' | 'granted' | 'refused' | 'lapsed' | 'met' | 'missed' | 'broken' | 'accepted' | 'declined'; hexId?: string; itemId?: string; price?: number; until?: ISODate; need?: number; done?: number; demand?: true; ultimatum?: true }
   /** Rival news the Herald may pass on as rumor or report. */
   rivalNews: { rival: RivalId; news: string; hexId?: string; other?: RivalId }
   /** A rival's Respect toward the player changed. `forWeek` (rules 3.11.1, D-71): the week close a late correction's Respect is for. */
@@ -901,7 +901,8 @@ export interface GameEventMap {
   /** The Archmage cast a Ritual. */
   ritual: { ritualId: string; until?: ISODate; hexId?: string; companyId?: string }
   /** Ascendancy warnings, Ultimatums and Sieges (Ch 14). `until`: the Siege's day; `members`: a coalition's. */
-  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' | 'humbled'; until?: ISODate; members?: RivalId[]; price?: number }
+  /** `stoodDown`: stage 3 (R6), one ruler of a coalition's Ultimatum stood down, his commission met; the Siege stands while another still sends it. */
+  ascendancy: { rival: RivalId; stage: 'warning' | 'ultimatum' | 'lifted' | 'delayed' | 'siege' | 'humbled' | 'stoodDown'; until?: ISODate; members?: RivalId[]; price?: number }
   /** A rival was resolved (Ch 14). `dominion`: the realm's total Dominion that met the mark (Patch 7, A1a), from 3.8.0. */
   rivalResolved: { rival: RivalId; how: 'conquered' | 'abdicated' | 'allied'; dominion?: number }
   /** The campaign ended (Ch 14). */
@@ -1319,6 +1320,8 @@ export interface RulerRequest {
   accepted?: ISODate
   /** A commission sent as a demand by a ruler below 0 (R2): in force without being taken up. */
   demand?: true
+  /** Stage 3 (R6, D-90): a commission named by a ruler in an Ultimatum, in force at once; met, he stands down from the Siege. */
+  ultimatum?: true
   /** `granted`: a demand to lift a siege or leave a hex alone, granted, standing as the player's promise to leave `hexId` alone through `until`. */
   outcome?: 'granted'
 }

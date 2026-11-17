@@ -983,7 +983,8 @@ export function HowToPlay(): React.JSX.Element | null {
               </p>
               <p>
                 <b>You can lose</b> only from week {RULES.defeat.ascendancy.fromWeek}, and only if a rival grows far stronger than you for weeks on end. He then issues an Ultimatum,
-                giving you {RULES.defeat.ascendancy.ultimatumDays} days before he lays siege to your castle. The Herald warns you well before.
+                giving you {RULES.defeat.ascendancy.ultimatumDays} days before he lays siege to your castle. The Herald warns you well before. Each ruler sending it names a
+                commission of his craft in his Audience: meet it before the Siege and he stands down, and the Siege is called off once all who send it have.
               </p>
             </>
           )

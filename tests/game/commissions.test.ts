@@ -10,7 +10,8 @@ import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { chronicle, pathsOf, renown } from '../../src/renderer/src/lib/game/dominion'
 import { depthOf, isClaimableKind, strongholds } from '../../src/renderer/src/lib/game/map'
 import { makeDeal, offerDeal } from '../../src/renderer/src/lib/game/land'
-import { answerRequest, commissionNeed, commissionProgress, craftMarks, requestOf, requestsOf, requestsWeek, settleCommissions } from '../../src/renderer/src/lib/game/requests'
+import { answerRequest, commissionNeed, commissionProgress, craftMarks, requestOf, requestsOf, requestsWeek, settleCommissions, ultimatumCommissions } from '../../src/renderer/src/lib/game/requests'
+import { ultimatumBanners } from '../../src/renderer/src/lib/game/view/endgame'
 import { chance } from '../../src/renderer/src/lib/game/rng'
 import { RULES } from '../../src/renderer/src/lib/game/rules'
 import { withWorld, worldOf } from '../../src/renderer/src/lib/game/state'
@@ -257,4 +258,82 @@ test('R3 (D-89): Ugrak’s mark is a streak of a week in his field; his gift is 
   // A day short, or a streak that only held through today without counting, offers nothing.
   const shortStreak: CampaignState = { ...tried, paths: { ...pathsOf(tried), field: { days: Q.craftMarks.fieldStreak - 1, through: START } } }
   assert.equal(worldOf(craftMarks(shortStreak, START, c.emit)).craftGifts?.orc, undefined)
+})
+
+// ── R6: an Ultimatum answered by commissions ─────────────────────────────────
+
+/** A pending Siege of the Crown sent by `members`, on `battleDate`, with each member's Ultimatum standing. */
+function besieged(state: CampaignState, members: RivalId[], battleDate: string): CampaignState {
+  const castle = state.hexes.find((h) => h.kind === 'castle') as HexState
+  const siege = { id: 'gb-siege', trigger: 'siege' as const, hexId: castle.id, announcedOn: YESTERDAY, battleDate, enemy: [], rival: members[0], ...(members.length > 1 ? { members } : {}) }
+  const rivals = { ...state.rivals }
+  for (const r of members) rivals[r] = { ...rivals[r], ultimatumUntil: battleDate, ascendancyStreak: 4 }
+  return { ...state, rivals, grandBattles: [...state.grandBattles, siege] }
+}
+
+test('R6 (D-90): an Ultimatum’s rulers each name a commission of their craft, in force at once and never refused; any request of theirs still open gives way', () => {
+  const s0 = chronicle(realm(), () => undefined)
+  const near = withOwner(s0, [plainIn(s0.hexes, 'dwarf', 1).id, plainIn(s0.hexes, 'orc', 1).id], 'player')
+  const open = withWorld(near, { requests: [{ id: 'old', rival: 'dwarf', kind: 'toll', madeOn: addDays(YESTERDAY, -2), until: addDays(YESTERDAY, 5), price: 40 }] })
+  const c = collector()
+  const until = addDays(YESTERDAY, 14)
+  const named = ultimatumCommissions(besieged(open, ['dwarf', 'orc'], addDays(until, 1)), ['dwarf', 'orc'], YESTERDAY, until, c.emit)
+  const qs = requestsOf(named)
+  assert.deepEqual(qs.map((q) => [q.rival, q.kind, q.ultimatum, q.until, q.need]), [['dwarf', 'commission', true, until, C.wallLevels[0]], ['orc', 'commission', true, until, C.fieldDays]])
+  assert.deepEqual(c.of('request').map((e) => [e.rival, e.stage, e.ultimatum]), [['dwarf', 'made', true], ['orc', 'made', true]])
+  assert.equal(answerRequest(named, 'dwarf', 'grant', START).reason, 'accepted')
+  assert.equal(answerRequest(named, 'dwarf', 'refuse', START).reason, 'accepted')
+  const card = requestCard(named, 'dwarf', START, linesJson)
+  assert.deepEqual([card?.title, card?.grantLabel], ['His terms to stand down', undefined])
+  assert.match(card?.rule ?? '', /he stands down from the Siege of the Crown/)
+  assert.match(requestNote(named, 'dwarf', START) ?? '', /His terms to stand down from the Siege stand through/)
+  assert.match(ultimatumBanners(named, START)[0]?.lifts ?? '', /Or meet the commission Hrodgar and Ugrak each name in their Audience/)
+})
+
+test('R6 (D-90): a lone ruler’s terms met, he stands down and the Siege is called off; unmet, it costs nothing more', () => {
+  const until = addDays(YESTERDAY, 14)
+  const s0 = besieged(commissioned(only(realm(), 'dwarf'), 'dwarf', 2, { ultimatum: true, until }), ['dwarf'], addDays(until, 1))
+  const wall = (day: string, i: number): { day: string; kind: GameEventKind } & Record<string, unknown> => ({ day, kind: 'deed', path: 'dwarf', deed: 'wallRaised', value: 1.2, level: 1, hexId: `w${i}` })
+  const c = collector()
+  const met = settleCommissions(logged(s0, [wall(START, 1), wall(START, 2)]), START, c.emit)
+  assert.equal(met.rivals.dwarf.ultimatumUntil, undefined)
+  assert.equal(met.rivals.dwarf.ascendancyStreak, 0)
+  assert.equal(met.grandBattles.some((b) => b.trigger === 'siege'), false, 'the Siege is called off')
+  assert.deepEqual(c.of('ascendancy').map((e) => [e.rival, e.stage]), [['dwarf', 'lifted']])
+  assert.deepEqual(c.of('respect').map((e) => [e.change, e.reason]), [[C.met, 'commissionMet']])
+  assert.deepEqual(c.of('deed').map((e) => e.deed), ['commissionMet'])
+
+  const u = collector()
+  // Present that day (a launch), so the miss is told: away, it would end quietly (X-17).
+  const unmet = settleCommissions({ ...s0, settlement: { ...s0.settlement, lastLaunch: until } }, until, u.emit, true)
+  assert.deepEqual(u.of('request').map((e) => [e.stage, e.ultimatum]), [['missed', true]])
+  assert.deepEqual(u.of('respect'), [], 'no Respect lost: the Siege still comes')
+  assert.equal(unmet.grandBattles.some((b) => b.trigger === 'siege'), true)
+
+  // The Ultimatum gone some other way (lifted, fought): its terms end quietly.
+  const lifted: CampaignState = { ...s0, rivals: { ...s0.rivals, dwarf: { ...s0.rivals.dwarf, ultimatumUntil: undefined } } }
+  const q = collector()
+  assert.equal(requestsOf(settleCommissions(lifted, START, q.emit)).length, 0)
+  assert.deepEqual(q.events, [])
+})
+
+test('R6 (D-90): a coalition’s Siege stands while any member still sends it, and is called off once all have stood down', () => {
+  const until = addDays(YESTERDAY, 14)
+  const both = withWorld(besieged(realm(), ['dwarf', 'goblin'], addDays(until, 1)), {
+    requests: [
+      { id: 'u-dwarf', rival: 'dwarf', kind: 'commission', madeOn: YESTERDAY, until, need: 1, ultimatum: true },
+      { id: 'u-goblin', rival: 'goblin', kind: 'commission', madeOn: YESTERDAY, until, need: 1, ultimatum: true }
+    ]
+  })
+  const deed = (path: RivalId, d: string, day: string): { day: string; kind: GameEventKind } & Record<string, unknown> => ({ day, kind: 'deed', path, deed: d, value: 1, level: 1, hexId: `${path}-h` })
+  const c1 = collector()
+  const one = settleCommissions(logged(both, [deed('dwarf', 'wallRaised', START)]), START, c1.emit)
+  assert.deepEqual(c1.of('ascendancy').map((e) => [e.rival, e.stage]), [['dwarf', 'stoodDown']])
+  assert.equal(one.grandBattles.some((b) => b.trigger === 'siege'), true, 'Skivvet still sends it')
+  assert.equal(one.rivals.goblin.ultimatumUntil, addDays(until, 1))
+  const c2 = collector()
+  const all = settleCommissions(logged(one, [deed('goblin', 'dealTaken', addDays(START, 1))]), addDays(START, 1), c2.emit)
+  assert.deepEqual(c2.of('ascendancy').map((e) => [e.rival, e.stage, e.members]), [['goblin', 'stoodDown', undefined], ['dwarf', 'lifted', ['dwarf', 'goblin']]])
+  assert.equal(all.grandBattles.some((b) => b.trigger === 'siege'), false)
+  for (const stage of ['stoodDown', 'lifted'] as const) assert.doesNotMatch(resultLine({ id: 'e', day: START, kind: 'ascendancy', rival: 'goblin', stage })?.text ?? '{', /\{/)
 })

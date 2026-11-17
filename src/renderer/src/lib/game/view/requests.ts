@@ -122,6 +122,8 @@ export function requestCard(state: CampaignState, rival: RivalId, today: ISODate
       const done = Math.min(need, commissionProgress(state, q))
       const pays = `${C.renown} Renown on his path`
       const card = { ...base, asks: `${commissionAsks(rival, need)}, by ${until}.`, progress: `So far: ${done} of ${need}.` }
+      // R6: named in an Ultimatum, it stands at once; met, he stands down from the Siege.
+      if (q.ultimatum) return { ...card, title: 'His terms to stand down', rule: `Met by ${until}: he stands down from the Siege of the Crown, with ${signed(C.met)} Respect and ${pays}, at the close of the day it is met. Unmet: the Siege still comes; it costs nothing more.` }
       // R2: sent by a ruler below 0, it is a demand, in force without being taken up.
       if (q.demand) return { ...card, title: 'His demand', rule: `Met by ${until}: ${signed(Q.demand.granted)} Respect and ${pays}, at the close of the day it is met. Refused or unmet: ${signed(Q.demand.refused)} Respect.`, grantLabel: 'Leave it standing', refuseLabel: 'Refuse' }
       if (commissionStands(q)) return { ...card, title: 'His commission, taken up', rule: `Met by ${until}: ${signed(C.met)} Respect and ${pays}, at the close of the day it is met. Unmet: ${signed(C.missed)} Respect.` }
@@ -146,7 +148,7 @@ export function promiseLines(state: CampaignState, rival: RivalId, today: ISODat
 export function requestNote(state: CampaignState, rival: RivalId, today: ISODate): string | undefined {
   const q = requestOf(state, rival, today)
   const standing = q && (q.kind === 'dare' || commissionStands(q))
-  const open = q ? (standing ? `His ${q.kind === 'dare' ? 'dare' : q.demand ? 'demand' : 'commission'} stands through ${factText(q.until)}.` : `His ${q.kind === 'commission' ? 'commission' : isDemand(q) ? 'demand' : 'offer'} awaits your answer in his Audience, by ${factText(q.until)}.`) : undefined
+  const open = q ? (q.ultimatum ? `His terms to stand down from the Siege stand through ${factText(q.until)}.` : standing ? `His ${q.kind === 'dare' ? 'dare' : q.demand ? 'demand' : 'commission'} stands through ${factText(q.until)}.` : `His ${q.kind === 'commission' ? 'commission' : isDemand(q) ? 'demand' : 'offer'} awaits your answer in his Audience, by ${factText(q.until)}.`) : undefined
   const words = [...(open ? [open] : []), ...promiseLines(state, rival, today)]
   return words.length > 0 ? words.join(' ') : undefined
 }

@@ -32,7 +32,7 @@ import { bandOf, borderHexesOf, capitals, hexDistance, hexIndex, isClaimableKind
 import { RULES } from './rules'
 import { chance, pick } from './rng'
 import { holdings, playerPower, rivalIncome, rivalPower, sharedBorder, threatOf, treasuryBand } from './rivals'
-import { requestsWeek } from './requests'
+import { requestsWeek, ultimatumCommissions } from './requests'
 import { refreshRoster } from './roster'
 import {
   EventBuffer,
@@ -547,6 +547,8 @@ function ascendancyWeek(input: CampaignState, w: { day: ISODate; week: number; e
     state = done.state
     for (const r of members) state = patchRival(state, r, { ultimatumUntil: done.battle.battleDate })
     w.emit('ascendancy', { rival: lead, stage: 'ultimatum', until: done.battle.battleDate, ...group })
+    // Patch 10 stage 3 (R6, D-90): each ruler sending it names a commission; met, he stands down.
+    state = ultimatumCommissions(state, members, w.day, addDays(done.battle.battleDate, -1), w.emit)
   }
   return withWorld(state, { warned })
 }

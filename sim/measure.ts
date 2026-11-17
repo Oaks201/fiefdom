@@ -599,7 +599,7 @@ function requestsMeasure(state: CampaignState, weeks: number): NonNullable<Measu
   for (const e of state.log) {
     if (e.kind !== 'request') continue
     // Patch 10 stage 3 (G-30): a commission sent as a demand (R2) is counted apart, since it is never taken up.
-    const kind = e.request === 'commission' && e.demand ? 'commissionDemand' : e.request
+    const kind = e.request === 'commission' && e.ultimatum ? 'commissionUltimatum' : e.request === 'commission' && e.demand ? 'commissionDemand' : e.request
     if (e.stage === 'made') {
       made[kind] = (made[kind] ?? 0) + 1
       const week = weekOn(state, e.day)
