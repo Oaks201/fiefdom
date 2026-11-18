@@ -12,11 +12,17 @@
  * topics and answers `audienceTalk.ts` reads. Claude's drafts of them live apart, in
  * `rivalLines.draft.json`: `withDrafts` lays them beside Rich's lines for a development build, and a
  * release build reads his file alone, so no draft shows until he moves it into his file.
+ *
+ * Patch 10 stage 3 (R5, F3, D-79, D-91): a line may also be built from **parts**. Where a key holds an object
+ * `{ open, body, close }` (each a list) instead of a string, the line is one body, with an opening before it and
+ * a close after it when those lists have any, each picked by the campaign's seeded draw for the day
+ * (`partsLine`): so the same visit reads the same all day, and more lines come from fewer approved parts.
  */
 import draftJson from '../../../../../../rivalLines.draft.json'
 import linesJson from '../../../../../../rivalLines.json'
 import { diffDays } from '../clock'
-import { shuffle } from '../rng'
+import { pick, shuffle } from '../rng'
+import { fill, type TextFacts } from '../text'
 import type { CampaignState, ISODate, RivalId } from '../types'
 
 /** Each rival's key in rivalLines.json. */
@@ -38,6 +44,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** A usable line: a string with words in it. */
 export function isLine(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== ''
+}
+
+/** Stage 3 (R5): a line in parts. Its body is required; an opening and a close are optional. */
+export interface LineParts {
+  open?: string[]
+  body: string[]
+  close?: string[]
+}
+
+/** Whether `value` is a line in parts with at least one usable body. */
+export function isParts(value: unknown): value is LineParts {
+  return isRecord(value) && Array.isArray(value.body) && value.body.some(isLine)
+}
+
+/**
+ * Stage 3 (R5, D-91): the line `value` gives, filled with `facts`: a string as it is, or a line built from its
+ * parts, each part picked by the campaign's seeded draw for `day` under `label`. Undefined when it gives none.
+ */
+export function lineFrom(value: unknown, facts: TextFacts, seed: number, day: ISODate, label: string): string | undefined {
+  if (isLine(value)) return fill(value, facts)
+  if (!isParts(value)) return undefined
+  const part = (list: unknown, which: string): string | undefined => {
+    const usable = Array.isArray(list) ? list.filter(isLine) : []
+    return usable.length > 0 ? pick(seed, day, `line:${label}:${which}`, usable) : undefined
+  }
+  const words = [part(value.open, 'open'), part(value.body, 'body'), part(value.close, 'close')].filter((w): w is string => w !== undefined)
+  return fill(words.join(' '), facts)
 }
 
 /**

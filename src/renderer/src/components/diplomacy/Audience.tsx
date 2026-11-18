@@ -66,7 +66,7 @@ export function Audience({ campaign, today, panel, highlight, onClose }: { campa
   }
   const settled = (answer: 'grant' | 'refuse'): void => {
     setAsked(null)
-    const words = requestReply(rival, answer, LINES)
+    const words = requestReply(rival, answer, LINES, request?.kind, { seed: campaign.campaign.seed, day: today })
     setReply(words ? { text: words } : null)
   }
 

@@ -13,23 +13,24 @@
  * is left out, so the Audience speaks only lines the file has.
  */
 import { addDays, diffDays } from '../clock'
+import { bannerParts, fieldStreak, pathOfTag } from '../dominion'
 import { CODEX } from '../codex'
-import { hexName } from '../map'
+import { hexName, touchesOwner } from '../map'
 import { RULES } from '../rules'
 import { isDemand } from '../requests'
 import { lostBattle, lostToRaids } from '../rivals'
 import { weekPillars } from '../score'
 import { charterOn, currentTerms } from '../settle'
 import { standingSiegeOf } from '../sieges'
-import { inCoalition, respiteDays } from '../state'
+import { inCoalition, respiteDays, weekOn } from '../state'
 import { fill, type TextFacts } from '../text'
-import { RIVAL_IDS, type CampaignState, type GameEvent, type ISODate, type RivalId } from '../types'
+import { RIVAL_IDS, TAGS, type CampaignState, type GameEvent, type ISODate, type RivalId, type Tag } from '../types'
 import type { Ledger } from '../../types'
-import { dailyPick, isLine, LINE_KEYS, linesOf, listOf, rulerEntry } from './audience'
+import { dailyPick, isLine, LINE_KEYS, lineFrom, linesOf, listOf, rulerEntry } from './audience'
 import { liveWeek, stepPace } from './chronicle'
 import { nextMarks, respectMarks } from './diplomacy'
 import { prizedHabit } from './rivalGuide'
-import { rivalName } from './shell'
+import { TAG_NAMES, rivalName } from './shell'
 
 /** What a ruler can speak of (A2). */
 export type TopicId =
@@ -67,6 +68,17 @@ export type TopicId =
   | 'dareMissed'
   | 'demandRefused'
   | 'promiseBroken'
+  /** Patch 10 stage 3 (R5, D-91): his commission met or missed; walls raised near him; the field streak; the player's leading tag. */
+  | 'commissionMet'
+  | 'commissionMissed'
+  | 'wallsRaised'
+  | 'fieldStreak'
+  | 'heardStreak'
+  | 'leadingTag'
+  /** R5: what he recalls on a day with nothing fresh. */
+  | 'memoryFirstHex'
+  | 'memoryGrandBattle'
+  | 'memoryPact'
 
 /** Every topic, with the facts its line may name. */
 export const TOPICS: Record<TopicId, readonly string[]> = {
@@ -103,11 +115,26 @@ export const TOPICS: Record<TopicId, readonly string[]> = {
   dareMet: [],
   dareMissed: [],
   demandRefused: [],
-  promiseBroken: ['hex']
+  promiseBroken: ['hex'],
+  commissionMet: [],
+  commissionMissed: [],
+  wallsRaised: ['hex', 'level'],
+  fieldStreak: ['days'],
+  heardStreak: ['rival', 'days'],
+  leadingTag: ['tag'],
+  memoryFirstHex: ['hex', 'week'],
+  memoryGrandBattle: ['hex', 'week'],
+  memoryPact: ['week']
 }
 
+/** R5 (D-91): the topics drafted with Patch 10's stage 3, spoken from `rivalLines.draft.json` until Rich approves them. */
+export const R5_TOPICS: readonly TopicId[] = ['commissionMet', 'commissionMissed', 'wallsRaised', 'fieldStreak', 'heardStreak', 'leadingTag', 'memoryFirstHex', 'memoryGrandBattle', 'memoryPact']
+
 /** Patch 8 (D4): topics only one ruler has, from his own deal. */
-export const RULER_TOPICS: Partial<Record<TopicId, RivalId>> = { trialWon: 'orc', trialLost: 'orc' }
+export const RULER_TOPICS: Partial<Record<TopicId, RivalId>> = { trialWon: 'orc', trialLost: 'orc', fieldStreak: 'orc' }
+
+/** R5: topics every ruler but one has (the others on his craft). */
+export const NOT_RULER_TOPICS: Partial<Record<TopicId, RivalId>> = { heardStreak: 'orc' }
 
 /** Deals broken are remembered a month, like a neighbor's fall, and (R1) a promise broken. */
 const REMEMBERED: ReadonlySet<TopicId> = new Set<TopicId>(['neighborFell', 'neighborAllied', 'truceBroken', 'pactBroken', 'heardBroken', 'promiseBroken'])
@@ -218,15 +245,60 @@ function eventFact(state: CampaignState, rival: RivalId, e: GameEvent): TopicFac
       if (e.stage !== 'fought' || e.rival !== rival || state.grandBattles.find((b) => b.id === e.battleId)?.eventId !== 'trial') return undefined
       return at(e.result === 'defeat' ? 'trialLost' : 'trialWon', {})
     }
-    // Patch 8 (R1): his dare met or missed, his demand refused (by word or silence), a promise to him broken.
+    // Patch 8 (R1): his dare met or missed, his demand refused (by word or silence), a promise to him broken. Stage 3 (R5): his commission met or missed.
     case 'request':
       if (e.rival !== rival) return undefined
+      if (e.request === 'commission' && (e.stage === 'met' || e.stage === 'missed')) return at(e.stage === 'met' ? 'commissionMet' : 'commissionMissed', {})
       if (e.stage === 'met' || e.stage === 'missed') return at(e.stage === 'met' ? 'dareMet' : 'dareMissed', {})
       if (e.stage === 'broken' && e.hexId) return at('promiseBroken', { hex: hexName(e.hexId) })
       return (e.stage === 'refused' || e.stage === 'lapsed') && isDemand({ kind: e.request }) ? at('demandRefused', {}) : undefined
+    // Stage 3 (R5): walls raised near him: in or beside his march, or anywhere for the Dwarf, whose craft is stone.
+    case 'fortified': {
+      if (e.standing) return undefined
+      const hex = state.hexes.find((h) => h.id === e.hexId)
+      if (!hex) return undefined
+      const near = rival === 'dwarf' || hex.march === rival || hex.seam === rival || touchesOwner(state.hexes, hex.id, rival)
+      return near ? at('wallsRaised', { hex: hexName(hex.id), level: e.level }) : undefined
+    }
     default:
       return undefined
   }
+}
+
+/** Stage 3 (R5): the tag that carried at least half the strike of the hexes taken in battle in the week to `today`, if one did. */
+function leadingTag(state: CampaignState, today: ISODate): Tag | undefined {
+  const from = addDays(today, -RECENT_DAYS)
+  const sum: Partial<Record<Tag, number>> = {}
+  let n = 0
+  for (let i = state.log.length - 1; i >= 0 && state.log[i].day >= from; i--) {
+    const e = state.log[i]
+    if (e.kind !== 'hexTransfer' || e.to !== 'player' || !e.banners || e.day > today) continue
+    n++
+    for (const p of bannerParts(e.banners)) sum[p.tag] = (sum[p.tag] ?? 0) + p.share
+  }
+  const top = TAGS.filter((t) => (sum[t] ?? 0) / Math.max(1, n) >= LEADING_SHARE).sort((a, b) => (sum[b] ?? 0) - (sum[a] ?? 0))[0]
+  return n > 0 ? top : undefined
+}
+
+/** A tag leads when it carried this share of the week's strikes. */
+const LEADING_SHARE = 0.5 // rules-ok: words only, when a ruler remarks on the player's leading tag
+/** A streak in the Orc's field he speaks of from this many days; the others, from the craft mark (R3). */
+const STREAK_SPOKEN = 3 // rules-ok: words only, when the streak is worth a word
+
+/**
+ * Stage 3 (R5): what `rival` recalls on a day with nothing fresh: the first hex the player took from him, the last
+ * Grand Battle fought against him, the last pact or oath with him kept to its end. Each with the week it was.
+ */
+export function memoryFacts(state: CampaignState, rival: RivalId): TopicFact[] {
+  const out: TopicFact[] = []
+  const week = (day: ISODate): number => weekOn(state, day)
+  const first = state.log.find((e) => e.kind === 'hexTransfer' && e.from === rival && e.to === 'player' && e.how === 'conquest')
+  if (first?.kind === 'hexTransfer') out.push({ id: 'memoryFirstHex', facts: { hex: hexName(first.hexId), week: week(first.day) }, neighbor: false, day: first.day })
+  const battle = state.log.findLast((e) => e.kind === 'grandBattle' && e.stage === 'fought' && e.rival === rival && state.grandBattles.find((b) => b.id === e.battleId)?.eventId !== 'trial')
+  if (battle?.kind === 'grandBattle') out.push({ id: 'memoryGrandBattle', facts: { hex: hexName(battle.hexId), week: week(battle.day) }, neighbor: false, day: battle.day })
+  const pact = state.log.findLast((e) => e.kind === 'dealEnded' && e.rival === rival && e.how === 'kept' && (e.deal === 'pact' || e.deal === 'oath'))
+  if (pact) out.push({ id: 'memoryPact', facts: { week: week(pact.day) }, neighbor: false, day: pact.day })
+  return out
 }
 
 /** The facts that stand on `today`, in the order he would raise them. */
@@ -254,6 +326,13 @@ function standingFacts(state: CampaignState, rival: RivalId, today: ISODate, hab
   }
   const pact = running('pact')
   if (pact !== undefined) now('pactHolds', { days: span(pact) })
+  // Stage 3 (R5): the streak in the Orc's field: his own, and, once it reaches the craft mark, the others'.
+  const streak = fieldStreak(state, today)
+  if (rival === 'orc' && streak >= STREAK_SPOKEN) now('fieldStreak', { days: streak })
+  if (rival !== 'orc' && streak >= RULES.requests.craftMarks.fieldStreak) now('heardStreak', { rival: rivalName('orc'), days: streak }, true)
+  // Stage 3 (R5): the player's leading tag, by the ruler whose path it feeds.
+  const tag = leadingTag(state, today)
+  if (tag && pathOfTag(tag) === rival) now('leadingTag', { tag: TAG_NAMES[tag] })
   if (habit) now(habit === 'kept' ? 'habitKept' : 'habitSlipping')
   return out
 }
@@ -283,10 +362,9 @@ export function topicFacts(state: CampaignState, rival: RivalId, today: ISODate,
   return [...out, ...standingFacts(state, rival, today, habit)]
 }
 
-/** A topic's line in `rival`'s words, if the file has one. */
-function topicLine(lines: unknown, rival: RivalId, fact: TopicFact): string | undefined {
-  const template = linesOf(rulerEntry(lines, rival), 'topics')[fact.id]
-  return isLine(template) ? fill(template, fact.facts) : undefined
+/** A topic's line in `rival`'s words, if the file has one: a line, or (R5) one built from its parts for `day`. */
+function topicLine(lines: unknown, rival: RivalId, fact: TopicFact, seed = 0, day: ISODate = ''): string | undefined {
+  return lineFrom(linesOf(rulerEntry(lines, rival), 'topics')[fact.id], fact.facts, seed, day, `topic:${rival}:${fact.id}`)
 }
 
 /** How many of the freshest facts a day's topic is drawn from, so he doesn't say the same thing every day. */
@@ -297,13 +375,29 @@ const TOPIC_CHOICE = 3 // rules-ok: words only, how varied a day's topic is
  * his three freshest facts with a line, by the day.
  */
 export function audienceTopic(state: CampaignState, rival: RivalId, today: ISODate, lines: unknown, habit?: HabitSoFar): { id: TopicId; text: string } | undefined {
-  const fresh = addDays(today, -FRESH_DAYS)
-  const spoken = topicFacts(state, rival, today, habit).flatMap((fact) => {
-    const text = topicLine(lines, rival, fact)
-    return text ? [{ id: fact.id, text, news: REACTIONS.has(fact.id) && fact.day !== undefined && fact.day >= fresh }] : []
-  })
-  const chosen = spoken.find((s) => s.news) ?? dailyPick(state, today, `topic:${rival}`, spoken.slice(0, TOPIC_CHOICE))
+  // R5: never the same topic two days running, news aside; and on a day with nothing fresh, a memory.
+  const yesterday = chooseTopic(state, rival, addDays(today, -1), lines, habit)
+  const chosen = chooseTopic(state, rival, today, lines, habit, yesterday?.news ? undefined : yesterday?.id)
   return chosen && { id: chosen.id, text: chosen.text }
+}
+
+function chooseTopic(state: CampaignState, rival: RivalId, today: ISODate, lines: unknown, habit?: HabitSoFar, not?: TopicId): { id: TopicId; text: string; news: boolean } | undefined {
+  const fresh = addDays(today, -FRESH_DAYS)
+  const say = (facts: TopicFact[]): { id: TopicId; text: string; news: boolean }[] =>
+    facts.flatMap((fact) => {
+      const text = topicLine(lines, rival, fact, state.campaign.seed, today)
+      return text ? [{ id: fact.id, text, news: REACTIONS.has(fact.id) && fact.day !== undefined && fact.day >= fresh }] : []
+    })
+  const spoken = say(topicFacts(state, rival, today, habit))
+  const news = spoken.find((s) => s.news)
+  if (news) return news
+  const choices = spoken.filter((s) => s.id !== not)
+  if (choices.length > 0) return dailyPick(state, today, `topic:${rival}`, choices.slice(0, TOPIC_CHOICE))
+  if (state.rivals[rival].status !== 'active') return undefined
+  // A memory in its place; and when every topic he has was yesterday's, he may say it again rather than nothing.
+  const memories = say(memoryFacts(state, rival).filter((m) => m.day === undefined || m.day <= today))
+  const fresher = memories.filter((s) => s.id !== not)
+  return dailyPick(state, today, `memory:${rival}`, fresher.length > 0 ? fresher : [...spoken, ...memories])
 }
 
 /** One ruler's words on the realm's news, as the Herald quotes him (R2). */
@@ -320,7 +414,7 @@ export interface Reaction {
 export function reactionsTo(state: CampaignState, e: GameEvent, lines: unknown): Reaction[] {
   return RIVAL_IDS.filter((r) => state.rivals[r].status === 'active').flatMap((r) => {
     const fact = eventFact(state, r, e)
-    const text = fact && REACTIONS.has(fact.id) ? topicLine(lines, r, fact) : undefined
+    const text = fact && REACTIONS.has(fact.id) ? topicLine(lines, r, fact, state.campaign.seed, e.day) : undefined
     return text ? [{ rival: r, text }] : []
   })
 }

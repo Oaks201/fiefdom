@@ -10,7 +10,7 @@ import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { placeholders } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type RivalId } from '../../src/renderer/src/lib/game/types'
 import { dealAcceptLine, greetingFor, greetingPool, LINE_KEYS, lineTiers, refusalKey, refusalLine, rulerLines, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
-import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
+import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, R5_TOPICS, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { emptyLedger } from './fixtures/ledgers'
 import { hexName } from '../../src/renderer/src/lib/game/map'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
@@ -73,7 +73,8 @@ test('the lines: every ruler has a line for every topic, standing, deal and reas
     const part = (k: string): Record<string, string> => e[k] as Record<string, string>
     for (const [id, facts] of Object.entries(TOPICS)) {
       const only = RULER_TOPICS[id as TopicId]
-      if (only && only !== rival) continue
+      // Patch 10 stage 3 (R5, D-91): its topics are drafts until Rich approves them (tests/game/lineParts.test.ts).
+      if ((only && only !== rival) || R5_TOPICS.includes(id as TopicId)) continue
       const line = part('topics')[id]
       assert.ok(typeof line === 'string' && line.trim(), `${rival}: topic ${id}`)
       for (const name of placeholders(line)) assert.ok(facts.includes(name), `${rival}: topic ${id} names {${name}}`)

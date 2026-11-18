@@ -11,9 +11,9 @@ import { hexName } from '../map'
 import { commissionProgress, commissionStands, isDemand, requestOf } from '../requests'
 import { RULES } from '../rules'
 import { withWorld } from '../state'
-import { factText, fill, type TextFacts } from '../text'
+import { factText, type TextFacts } from '../text'
 import type { CampaignState, ISODate, RequestKind, RivalId, RulerRequest } from '../types'
-import { isLine, linesOf, rulerEntry } from './audience'
+import { lineFrom, linesOf, rulerEntry } from './audience'
 import { prizedHabit } from './rivalGuide'
 import { amount } from './refusals'
 import { rivalName } from './shell'
@@ -81,18 +81,18 @@ function facts(q: RulerRequest): TextFacts {
   }
 }
 
-/** His words in the file's `requests` part for `key`, filled, if it has them. */
-function said(lines: unknown, rival: RivalId, key: string, f: TextFacts = {}): string | undefined {
-  const line = linesOf(rulerEntry(lines, rival), 'requests')[key]
-  return isLine(line) ? fill(line, f) : undefined
+/** His words in the file's `requests` part for `key`, filled, if it has them: a line, or one built from its parts (R5) for `day`. */
+function said(lines: unknown, rival: RivalId, key: string, f: TextFacts = {}, at?: { seed: number; day: ISODate }): string | undefined {
+  return lineFrom(linesOf(rulerEntry(lines, rival), 'requests')[key], f, at?.seed ?? 0, at?.day ?? '', `request:${rival}:${key}`)
 }
 
 /** `rival`'s request open on `today` as his Audience shows it, if he has one. */
 export function requestCard(state: CampaignState, rival: RivalId, today: ISODate, lines: unknown): RequestCard | undefined {
   const q = requestOf(state, rival, today)
   if (!q) return undefined
+  // R5: a commission's words name what it asks; one named in an Ultimatum has its own (`ultimatumTerms`).
   const f = facts(q)
-  const words = said(lines, rival, q.kind, f)
+  const words = said(lines, rival, q.ultimatum ? 'ultimatumTerms' : q.kind, { ...f, ...(q.need !== undefined ? { need: q.need } : {}), until: factText(q.until) }, { seed: state.campaign.seed, day: q.madeOn })
   const granted = `Granted: ${signed(Q.demand.granted)} Respect`
   const until = factText(q.until)
   const refused = `Refused, or unanswered by ${until}: ${signed(Q.demand.refused)} Respect, and ${actsOn(q)}.`
@@ -132,9 +132,13 @@ export function requestCard(state: CampaignState, rival: RivalId, today: ISODate
   }
 }
 
-/** What `rival` says when the player grants or refuses his request (his `granted` and `refused` lines), if the file has it. */
-export function requestReply(rival: RivalId, answer: 'grant' | 'refuse', lines: unknown): string | undefined {
-  return said(lines, rival, answer === 'grant' ? 'granted' : 'refused')
+/**
+ * What `rival` says when the player grants or refuses his request (his `granted` and `refused` lines), if the file has
+ * it. A commission (R5) has its own: `taken` and `declined`, falling back to the others.
+ */
+export function requestReply(rival: RivalId, answer: 'grant' | 'refuse', lines: unknown, kind?: RequestKind, at?: { seed: number; day: ISODate }): string | undefined {
+  const own = kind === 'commission' ? said(lines, rival, answer === 'grant' ? 'taken' : 'declined', {}, at) : undefined
+  return own ?? said(lines, rival, answer === 'grant' ? 'granted' : 'refused')
 }
 
 /** The promises the player keeps to `rival` on `today`, in plain words. */
