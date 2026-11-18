@@ -9,8 +9,8 @@ import assert from 'node:assert/strict'
 import { addDays } from '../../src/renderer/src/lib/game/clock'
 import { placeholders } from '../../src/renderer/src/lib/game/text'
 import { RIVAL_IDS, type CampaignState, type GameEvent, type RivalId } from '../../src/renderer/src/lib/game/types'
-import { dealAcceptLine, greetingFor, greetingPool, LINE_KEYS, lineTiers, refusalKey, refusalLine, rulerLines, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
-import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, R5_TOPICS, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
+import { dealAcceptLine, greetingFor, greetingPool, isParts, LINE_KEYS, lineTiers, refusalKey, refusalLine, rulerLines, withDrafts } from '../../src/renderer/src/lib/game/view/audience'
+import { audienceQuestions, audienceTopic, prizedSoFar, relationTo, NOT_RULER_TOPICS, RULER_TOPICS, TOPICS, topicFacts, type TopicId } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { emptyLedger } from './fixtures/ledgers'
 import { hexName } from '../../src/renderer/src/lib/game/map'
 import { rivalName } from '../../src/renderer/src/lib/game/view/shell'
@@ -73,11 +73,12 @@ test('the lines: every ruler has a line for every topic, standing, deal and reas
     const part = (k: string): Record<string, string> => e[k] as Record<string, string>
     for (const [id, facts] of Object.entries(TOPICS)) {
       const only = RULER_TOPICS[id as TopicId]
-      // Patch 10 stage 3 (R5, D-91): its topics are drafts until Rich approves them (tests/game/lineParts.test.ts).
-      if ((only && only !== rival) || R5_TOPICS.includes(id as TopicId)) continue
-      const line = part('topics')[id]
-      assert.ok(typeof line === 'string' && line.trim(), `${rival}: topic ${id}`)
-      for (const name of placeholders(line)) assert.ok(facts.includes(name), `${rival}: topic ${id} names {${name}}`)
+      if ((only && only !== rival) || NOT_RULER_TOPICS[id as TopicId] === rival) continue
+      // Patch 10 stage 3 (R5, D-91, D-92): a topic's line may be in parts; every part names only the topic's facts.
+      const line = part('topics')[id] as unknown
+      assert.ok((typeof line === 'string' && line.trim()) || isParts(line), `${rival}: topic ${id}`)
+      const words = typeof line === 'string' ? [line] : isParts(line) ? [...(line.open ?? []), ...line.body, ...(line.close ?? [])] : []
+      for (const name of words.flatMap((w) => placeholders(w))) assert.ok(facts.includes(name), `${rival}: topic ${id} names {${name}}`)
     }
     for (const r of relations) assert.deepEqual(placeholders(part('relations')[r] ?? ''), ['rival'], `${rival}: relation ${r}`)
     for (const r of reasons) assert.ok(part('refusals')[r], `${rival}: refusal ${r}`)

@@ -12,6 +12,7 @@ import { isParts, lineFrom, rulerEntry, withDrafts } from '../../src/renderer/sr
 import { NOT_RULER_TOPICS, R5_TOPICS, RULER_TOPICS, TOPICS, audienceTopic, memoryFacts, topicFacts } from '../../src/renderer/src/lib/game/view/audienceTalk'
 import { requestCard, requestReply } from '../../src/renderer/src/lib/game/view/requests'
 import { withWorld } from '../../src/renderer/src/lib/game/state'
+import linesJson from '../../rivalLines.json'
 import { realm } from './support/realm'
 import { START, withOwner } from './support/war'
 
@@ -35,14 +36,14 @@ test('R5 (F3): a line in parts is one body, with an opening and a close when giv
   assert.equal(isParts({ open: ['x'] }), false)
 })
 
-test('R5: every ruler has drafted words for his commission, his terms, his replies and each new topic, naming only its facts', () => {
+test('R5, D-92: every ruler has approved words for his commission, his terms, his replies and each new topic, naming only its facts', () => {
   const requestFacts: Record<string, string[]> = { commission: ['need', 'until'], ultimatumTerms: ['need', 'until'], taken: [], declined: [] }
   const named = (value: unknown): string[] => {
     const all = typeof value === 'string' ? [value] : isParts(value) ? [...(value.open ?? []), ...value.body, ...(value.close ?? [])] : []
     return all.flatMap((s) => placeholders(s))
   }
   for (const rival of RIVAL_IDS) {
-    const entry = rulerEntry(DEV, rival) as Record<string, Record<string, unknown>>
+    const entry = rulerEntry(linesJson, rival) as Record<string, Record<string, unknown>>
     for (const [key, facts] of Object.entries(requestFacts)) {
       const value = entry.requests[key]
       assert.ok(isParts(value), `${rival}: request ${key}`)

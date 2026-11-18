@@ -127,7 +127,7 @@ export const TOPICS: Record<TopicId, readonly string[]> = {
   memoryPact: ['week']
 }
 
-/** R5 (D-91): the topics drafted with Patch 10's stage 3, spoken from `rivalLines.draft.json` until Rich approves them. */
+/** R5 (D-91): the topics Patch 10's stage 3 added; Rich approved their lines, in parts, as written (D-92). */
 export const R5_TOPICS: readonly TopicId[] = ['commissionMet', 'commissionMissed', 'wallsRaised', 'fieldStreak', 'heardStreak', 'leadingTag', 'memoryFirstHex', 'memoryGrandBattle', 'memoryPact']
 
 /** Patch 8 (D4): topics only one ruler has, from his own deal. */

@@ -1,6 +1,6 @@
 # Patch 10 stage 3: the rulers’ words in parts (for Rich’s approval)
 
-Drafted 2026-11-17 by Claude (R5, D-91), in `rivalLines.draft.json`. Development builds speak them; a release build speaks none of them until they are approved (F3, D-79).
+Drafted 2026-11-17 by Claude (R5, D-91). **Approved by Rich as written the same day (D-92)** and moved into `rivalLines.json`, so every build speaks them.
 
 **How a line is built.** Each slot below holds parts: one **body**, with an **opening** before it and a **close** after it where the slot has them. The game picks one of each by the campaign’s seeded draw for the day, so a visit reads the same all day and the next day may differ. Approve the parts; the built lines under each slot are samples, with example facts filled in (Ashgate for a hex, week 12, Mon, Nov 23 for a last day).
 
