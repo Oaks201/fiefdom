@@ -128,6 +128,21 @@ export function healerRequestView(state: CampaignState, ledger: Ledger, today: I
   }
 }
 
+/** Patch 10 stage 4 (L1): what her request asks, in brief plain terms, for the week ahead: "food logged on 6 days". */
+export function requestBrief(r: Pick<HealerRequestView, 'habit' | 'target'>): string {
+  const days = `${r.target} ${r.target === 1 ? 'day' : 'days'}`
+  switch (r.habit) {
+    case 'foodLogged':
+      return `food logged on ${days}`
+    case 'withinLimit':
+      return `${days} within the calorie limit`
+    case 'steps':
+      return `${r.target}% of the step pool walked`
+    case 'duties':
+      return `every duty kept on ${days}`
+  }
+}
+
 // ── An Audience with her (H4) ────────────────────────────────────────────────
 
 export interface HealerQuestion {

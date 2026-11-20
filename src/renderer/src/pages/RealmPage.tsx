@@ -6,6 +6,7 @@ import { BuildingsPanel, CrossingsPanel, RosterPanel } from '../components/realm
 import { HexMap, MapLegend } from '../components/realm/HexMap'
 import { HexPanel } from '../components/realm/HexPanel'
 import { OrdersPanel } from '../components/realm/OrdersPanel'
+import { WeekAhead } from '../components/realm/WeekAhead'
 import { useCampaignState, useCampaignToday } from '../state/campaignHooks'
 
 type Tab = 'buildings' | 'crossings' | 'army'
@@ -23,7 +24,8 @@ const recordCommit: ProfilerOnRenderCallback = (id, phase, actualDuration) => {
 
 /**
  * The Realm (T15): the war table. The hex map with the hex panel, the day's orders and the Herald
- * beside it; below, the buildings and castle, the Crossings and the army.
+ * beside it; below, the buildings and castle, the Crossings and the army. Patch 10 stage 4 (L1): above the map,
+ * the week ahead.
  */
 export function RealmPage(): React.JSX.Element | null {
   const campaign = useCampaignState()
@@ -39,6 +41,7 @@ export function RealmPage(): React.JSX.Element | null {
         <WeekCloseNote weekStartsOn={campaign.campaign.weekStartsOn} today={today} className="page-week" />
       </header>
       <EndgameRecord campaign={campaign} />
+      <WeekAhead campaign={campaign} today={today} />
       <div className="realm-board">
         <div className="realm-board__map">
           <HexMap campaign={campaign} today={today} selected={selected} onSelect={setSelected} />

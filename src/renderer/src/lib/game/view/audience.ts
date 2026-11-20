@@ -97,6 +97,15 @@ export function rulerLines(dev: boolean): unknown {
   return dev ? withDrafts() : linesJson
 }
 
+/**
+ * Patch 10 stage 4 (L2): what `rival` says when the player's Dominion on his path reaches `rank` (his `ranks` lines,
+ * one whole line a rank, F3), if the file has it.
+ */
+export function rankLine(rival: RivalId, rank: number, lines: unknown = linesJson): string | undefined {
+  const line = linesOf(rulerEntry(lines, rival), 'ranks')[String(rank)]
+  return isLine(line) ? line : undefined
+}
+
 /** The tier floors the file lists; empty when `tiers` is missing or malformed. */
 export function lineTiers(lines: unknown = linesJson): number[] {
   const tiers = isRecord(lines) ? lines.tiers : undefined

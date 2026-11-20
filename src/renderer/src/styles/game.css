@@ -78,6 +78,22 @@
   color: var(--ink-2);
 }
 
+/* Patch 10 stage 4 (L2): a ruler's word on a rank of his path. */
+.moment__quote {
+  max-width: 56ch;
+  margin: 0;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.moment__quote cite {
+  display: block;
+  margin-top: 4px;
+  font: 600 13px var(--font-caps);
+  font-style: normal;
+  color: var(--ink-3, var(--ink-2));
+}
+
 /* Rules 3.14.0 (D-77, B2): the Heart Oak at its new stage, under a Milestone's title. */
 .moment__inset {
   display: flex;

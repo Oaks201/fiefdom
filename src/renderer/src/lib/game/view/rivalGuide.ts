@@ -40,9 +40,10 @@ export interface DeedRow {
   renown?: string
 }
 
-export type DeedGroupId = 'both' | 'costly' | 'respect' | 'renown' | 'resented'
+/** Patch 10 stage 4 (X7): his craft (anywhere), his march, and his Respect alone. */
+export type DeedGroupId = 'craft' | 'march' | 'respect'
 
-/** The deeds grouped by what they do, so the trade-offs show: Renown that costs Respect, Respect that earns no Renown. */
+/** The deeds grouped by where they are done (X7): his craft first, then his march, then what moves his Respect alone. */
 export interface DeedGroup {
   id: DeedGroupId
   title: string
@@ -238,14 +239,24 @@ function marchOf(rival: RivalId): GuideLine[] {
 
 interface Deed {
   deed: string
-  respect?: number
+  /** A number, or words where it depends ("−3 if he held it"). */
+  respect?: number | string
   /** Said after his Respect's change: "a level". */
   respectPer?: string
   renown?: string
 }
 
-/** Every deed that moves his Respect or adds Renown to his path (P5-07, D-18, D-25, D-34), his own and the common ones. */
-function deedsOf(rival: RivalId): Deed[] {
+/** `a` when one thing, `b` when the other: "+6 met, −2 unmet". */
+const either = (a: number, whenA: string, b: number, whenB: string): string => `${signed(a)} ${whenA}, ${signed(b)} ${whenB}`
+
+/**
+ * Every deed that moves his Respect or adds Renown to his path (P5-07, D-18, D-25, D-34), his own and the common ones.
+ * Patch 10 stage 4 (X7): by where they are done: his craft, anywhere, first; then his march, its battles and land; then
+ * what he values and the player's word, which move his Respect alone. Deeds that are sides of one (a commission met or
+ * unmet, a Grand Battle won, a pact kept or broken, a request granted or refused, his buy-off taken or refused, an oath
+ * kept or broken) share a row.
+ */
+function deedsOf(rival: RivalId): Record<DeedGroupId, Deed[]> {
   const c = RULES.respect.change
   const d = RULES.dominion.deeds
   const own = RULES.respect.byRival
@@ -257,9 +268,42 @@ function deedsOf(rival: RivalId): Deed[] {
   const byDeal = perDepth(d.hexTakenPerDepth + (rival === 'goblin' ? d.dealTakenPerDepth : 0))
   // Patch 10 (D-80): each ruler's craft, and his own weight for an attack of his beaten (K3).
   const k = RULES.dominion.crafts
+  const C = RULES.requests.commission
   const beaten = respectChange(rival, 'raidDefeated', c.raidDefeated)
 
-  const raids: Deed[] = [{ deed: 'His raid or conquest attempt beaten', respect: beaten, renown: signed(d.battleWon) }]
+  const ownCraft: Record<RivalId, Deed[]> = {
+    // K3: the field.
+    orc: [
+      {
+        deed: 'A day in his field: any battle against him or in his march, won or lost. A rest day or a day away holds the streak',
+        renown: `+${k.fieldDay} on a streak’s first day, +${k.fieldDay} more each day after, up to +${k.fieldDayCap} a day`
+      },
+      { deed: `Every ${k.fieldWeekDays}th day of a streak in his field`, respect: own.orc.fieldWeek }
+    ],
+    // K4: the deal.
+    goblin: [{ deed: 'A hex won by a bribe, a courtship or a trade in any other march', renown: perDepth(d.dealTakenPerDepth) }],
+    // K2: stone.
+    dwarf: [
+      { deed: 'A wall level you raise on any hex of yours, once for each hex and level', renown: `+${amount(k.wallRaisedPerLevelBand)} × the level × the hex’s band` },
+      { deed: 'A defense won that your walls turned, on any hex', renown: `+${amount(k.wallsHeld)} a wall level more` }
+    ],
+    // K5: the unseen.
+    archmage: [
+      { deed: 'A mythic beaten in a defense, on any hex', renown: `+${k.mythicBeaten} more` },
+      { deed: 'A Mythic Hunt won', renown: `+${amount(k.mythicHunted)} more` }
+    ]
+  }
+  const craft: Deed[] = [
+    ...ownCraft[rival],
+    // Patch 10 stage 2 (K6): the banner share.
+    {
+      deed: `A hex taken in battle, anywhere, by ${TAG_NAMES[tagOfPath(rival)]} companies (his building’s tag)`,
+      renown: `${pct(k.bannerShare)} of its depth × the share of the strike that tag carried (× ${amount(k.massedMult)} at ${pct(k.massedAt)} or more), on top of what the hex’s own march earns`
+    },
+    // Stage 3 (R1): his commissions take the dares' place.
+    { deed: 'His commission taken up (deeds of his craft, that week)', respect: either(C.met, 'met', C.missed, 'unmet'), renown: `${signed(C.renown)} met` }
+  ]
+
   const grand: Deed[] =
     rival === 'orc'
       ? c.incursionWon === own.orc.grandBattleWon
@@ -268,146 +312,151 @@ function deedsOf(rival: RivalId): Deed[] {
             { deed: 'His invasion beaten in a Grand Battle', respect: c.incursionWon, renown: signed(d.grandBattleWon) },
             { deed: 'Any other Grand Battle against him won', respect: own.orc.grandBattleWon, renown: signed(d.grandBattleWon) }
           ]
-      : [
-          { deed: 'His invasion beaten in a Grand Battle', respect: c.incursionWon, renown: signed(d.grandBattleWon) },
-          { deed: 'Any other Grand Battle against him won (his Gate, capital or a stronghold)', renown: signed(d.grandBattleWon) }
-        ]
-
-  const common: Deed[] = [
-    ...raids,
+      : [{ deed: 'A Grand Battle against him won (his invasion beaten, or his Gate, capital or a stronghold taken)', respect: `${signed(c.incursionWon)} if it beat his invasion`, renown: signed(d.grandBattleWon) }]
+  const ownMarch: Record<RivalId, Deed[]> = {
+    orc: [
+      { deed: 'His counterattack held', respect: beaten, renown: signed(d.counterattackHeld) },
+      { deed: 'A Grand Battle against him lost', respect: own.orc.grandBattleLost }
+    ],
+    goblin: [
+      { deed: 'A bribe paid for a hex of his march', respect: own.goblin.bribePaid, renown: `${byDeal}, +${amount(d.bargain)} more below the garrison it bought` },
+      { deed: 'His bid for your village held off', respect: own.goblin.bidHeld, renown: signed(d.bribeBeaten) }
+    ],
+    dwarf: [
+      { deed: 'Each of his wall levels broken (a walled hex of his march taken)', respect: own.dwarf.wallBroken, respectPer: 'a level', renown: `+${amount(d.wallsBroken)} a level more` },
+      { deed: 'A hex of his march taken by siege', renown: `+${amount(d.siegeEndured)} for each repulse before it, up to +${amount(d.siegeEndured * d.siegeEnduredCap)}` }
+    ],
+    archmage: [
+      { deed: 'His surge strike held', respect: own.archmage.surgeHeld, renown: signed(d.surgeWeathered) },
+      { deed: 'His Ritual endured', respect: own.archmage.ritualEndured, renown: signed(d.ritualEndured) },
+      { deed: 'A hex of his march taken on its ebb', renown: `+${amount(d.surgeSeized)} more` }
+    ]
+  }
+  const march: Deed[] = [
+    { deed: 'His raid or conquest attempt beaten', respect: beaten, renown: signed(d.battleWon) },
     ...grand,
     { deed: 'A battle lost to him (his raid or attack beats your defense)', respect: c.raidLost },
-    { deed: 'A hex he holds, taken by assault or Grand Battle', respect: conquered, renown: hexTaken },
-    { deed: 'A wild hex of his march taken', renown: hexTaken },
-    // Patch 10 stage 2 (K6): the banner share.
-    {
-      deed: `A hex taken in battle, anywhere, by ${TAG_NAMES[tagOfPath(rival)]} companies (his building’s tag)`,
-      renown: `${pct(k.bannerShare)} of its depth × the share of the strike that tag carried (× ${amount(k.massedMult)} at ${pct(k.massedAt)} or more), on top of what the hex’s own march earns`
-    },
+    { deed: 'A hex of his march taken by assault or Grand Battle', respect: `${signed(conquered)} if he held it`, renown: hexTaken },
     { deed: 'A stronghold of his march taken', renown: `${perDepth(d.strongholdPerDepth)} more` },
     { deed: 'A village of his courted away', respect: c.villageCourted, renown: byDeal },
     ...(m.sellsHex !== null ? [{ deed: 'A hex bought from him', respect: c.tradeOrTruce, renown: byDeal }] : []),
     { deed: 'A hex of yours sold to him', respect: c.hexSold },
-    ...(truce !== 0 ? [{ deed: 'A Truce with him', respect: truce }] : []),
-    // Patch 8 (D1, D2, D-64): deals that bind both sides, kept or broken.
-    { deed: 'A pact with him kept to its end', respect: RULES.trade.pact.keptRespect },
-    { deed: 'A Truce with him broken by your assault', respect: RULES.trade.truce.brokenRespect },
-    { deed: 'A pact with him broken by your assault (and War with him a while)', respect: RULES.trade.pact.brokenRespect },
-    { deed: 'A pact or oath with another ruler broken (word travels)', respect: RULES.trade.pact.heardRespect },
-    { deed: prizedHabit(rival), respect: c.prizedWeek },
-    // Patch 8 (R1, D-66): his requests.
-    // Stage 3 (R1): his commissions take the dares' place.
-    { deed: 'His commission taken up and met (a deed in his craft, that week)', respect: RULES.requests.commission.met, renown: signed(RULES.requests.commission.renown) },
-    { deed: 'His commission taken up and unmet', respect: RULES.requests.commission.missed },
-    { deed: 'His request granted (an offer taken, a demand met)', respect: RULES.requests.demand.granted },
-    { deed: `His demand refused, left unanswered, or a promise to him broken (and ${rival === 'orc' ? 'War with him a while' : 'he walls the hex'})`, respect: RULES.requests.demand.refused },
     { deed: 'Beasts beaten on a hex of his march', renown: `${signed(d.heldAgainstBeasts)} (a mythic ${signed(d.heldAgainstMythic)})` },
+    ...ownMarch[rival],
     { deed: 'Resolving him, by any way', renown: signed(d.resolved) }
   ]
 
-  switch (rival) {
-    case 'orc':
-      return [
-        ...common,
-        { deed: 'His counterattack held', respect: beaten, renown: signed(d.counterattackHeld) },
-        { deed: 'A Grand Battle against him lost', respect: own.orc.grandBattleLost },
-        // Patch 10 (K3): his craft is the field.
-        {
-          deed: 'A day in his field: any battle against him or in his march, won or lost. A rest day or a day away holds the streak',
-          renown: `+${k.fieldDay} on a streak’s first day, +${k.fieldDay} more each day after, up to +${k.fieldDayCap} a day`
-        },
-        { deed: `Every ${k.fieldWeekDays}th day of a streak in his field`, respect: own.orc.fieldWeek },
-        // Stage 3 (R4): he scorns walls.
-        { deed: 'A wall level you raise on a hex of his march', respect: own.orc.wallRaised }
-      ]
-    case 'goblin':
-      return [
-        ...common,
-        { deed: 'A bribe paid for a hex of his march', respect: own.goblin.bribePaid, renown: byDeal },
-        { deed: 'A bribe paid below the garrison it bought', renown: `+${amount(d.bargain)} more` },
-        { deed: 'His bid for your village held off', respect: own.goblin.bidHeld, renown: signed(d.bribeBeaten) },
-        // Patch 10 (K4): his craft is the deal.
-        { deed: 'A hex won by a bribe, a courtship or a trade in any other march', renown: perDepth(d.dealTakenPerDepth) },
-        { deed: 'His buy-off taken', respect: own.goblin.buyOffAccepted },
-        { deed: 'His buy-off refused, or left to lapse', respect: own.goblin.buyOffRefused }
-      ]
-    case 'dwarf':
-      return [
-        ...common,
-        { deed: 'Each of his wall levels broken (a walled hex of his march taken)', respect: own.dwarf.wallBroken, respectPer: 'a level', renown: `+${amount(d.wallsBroken)} a level more` },
-        { deed: 'A hex of his march taken by siege', renown: `+${amount(d.siegeEndured)} for each repulse before it, up to +${amount(d.siegeEndured * d.siegeEnduredCap)}` },
-        // Patch 10 (K2): his craft is stone.
-        { deed: 'A wall level you raise on any hex of yours, once for each hex and level', renown: `+${amount(k.wallRaisedPerLevelBand)} × the level × the hex’s band` },
-        { deed: 'A defense won that your walls turned, on any hex', renown: `+${amount(k.wallsHeld)} a wall level more` },
-        { deed: 'An oath of stone with him kept to its end', respect: RULES.trade.oath.keptRespect },
-        { deed: 'An oath of stone with him broken (the Book of Grudges opens)', respect: RULES.trade.oath.brokenRespect }
-      ]
-    case 'archmage':
-      return [
-        ...common,
-        { deed: 'His surge strike held', respect: own.archmage.surgeHeld, renown: signed(d.surgeWeathered) },
-        { deed: 'His Ritual endured', respect: own.archmage.ritualEndured, renown: signed(d.ritualEndured) },
-        { deed: `A week at Realm Consistency ${pct(RULES.respect.constantWeekAt)} or more`, respect: own.archmage.constantWeek },
-        { deed: 'A hex of his march taken on its ebb', renown: `+${amount(d.surgeSeized)} more` },
-        // Patch 10 (K5): his craft is the unseen.
-        { deed: 'A mythic beaten in a defense, on any hex', renown: `+${k.mythicBeaten} more` },
-        { deed: 'A Mythic Hunt won', renown: `+${amount(k.mythicHunted)} more` }
-      ]
+  const ownRespect: Record<RivalId, Deed[]> = {
+    // Stage 3 (R4): he scorns walls.
+    orc: [{ deed: 'A wall level you raise on a hex of his march', respect: own.orc.wallRaised }],
+    goblin: [{ deed: 'His buy-off', respect: either(own.goblin.buyOffAccepted, 'taken', own.goblin.buyOffRefused, 'refused or left to lapse') }],
+    dwarf: [{ deed: 'An oath of stone with him (broken, the Book of Grudges opens)', respect: either(RULES.trade.oath.keptRespect, 'kept to its end', RULES.trade.oath.brokenRespect, 'broken') }],
+    archmage: [{ deed: `A week at Realm Consistency ${pct(RULES.respect.constantWeekAt)} or more`, respect: own.archmage.constantWeek }]
   }
+  const respect: Deed[] = [
+    { deed: prizedHabit(rival), respect: c.prizedWeek },
+    ...(truce !== 0 ? [{ deed: 'A Truce with him', respect: truce }] : []),
+    // Patch 8 (D1, D2, D-64): deals that bind both sides, kept or broken.
+    {
+      deed: 'A pact with him kept to its end, or a Truce or pact broken by your assault (a broken pact brings War with him a while)',
+      respect: `${signed(RULES.trade.pact.keptRespect)} a pact kept, ${signed(RULES.trade.truce.brokenRespect)} a Truce broken, ${signed(RULES.trade.pact.brokenRespect)} a pact broken`
+    },
+    { deed: 'A pact or oath with another ruler broken (word travels)', respect: RULES.trade.pact.heardRespect },
+    // Patch 8 (R1, D-66): his requests.
+    {
+      deed: `His request: granted (an offer taken, a demand met), or his demand refused, left unanswered, or a promise to him broken (and ${rival === 'orc' ? 'War with him a while' : 'he walls the hex'})`,
+      respect: either(RULES.requests.demand.granted, 'granted', RULES.requests.demand.refused, 'refused or broken')
+    },
+    ...ownRespect[rival]
+  ]
+  return { craft, march, respect }
 }
 
-const GROUPS: { id: DeedGroupId; title: string; holds: (d: Deed) => boolean }[] = [
-  { id: 'both', title: 'Raises his Respect and adds Renown', holds: (d) => (d.respect ?? 0) > 0 && d.renown !== undefined },
-  { id: 'costly', title: 'Adds Renown, costs Respect', holds: (d) => (d.respect ?? 0) < 0 && d.renown !== undefined },
-  { id: 'renown', title: 'Adds Renown only', holds: (d) => d.respect === undefined && d.renown !== undefined },
-  { id: 'respect', title: 'Raises his Respect only', holds: (d) => (d.respect ?? 0) > 0 && d.renown === undefined },
-  { id: 'resented', title: 'Costs Respect only', holds: (d) => (d.respect ?? 0) < 0 && d.renown === undefined }
+const GROUPS: { id: DeedGroupId; title: string }[] = [
+  { id: 'craft', title: 'His craft, anywhere' },
+  { id: 'march', title: 'His march: its battles and its land' },
+  { id: 'respect', title: 'What he values, and your word (his Respect only)' }
 ]
 
-/** His deeds by what they do, each group in the order the deeds are listed; an empty group is left out. */
+/** His deeds by where they are done (X7), his craft first, each group in the order the deeds are listed. */
 function deedGroups(rival: RivalId): DeedGroup[] {
   const deeds = deedsOf(rival)
-  return GROUPS.flatMap((g) => {
-    const rows = deeds.filter(g.holds).map((d) => ({
+  return GROUPS.map((g) => ({
+    id: g.id,
+    title: g.title,
+    rows: deeds[g.id].map((d) => ({
       deed: d.deed,
-      ...(d.respect !== undefined ? { respect: d.respectPer ? `${signed(d.respect)} ${d.respectPer}` : signed(d.respect) } : {}),
+      ...(d.respect !== undefined ? { respect: typeof d.respect === 'string' ? d.respect : d.respectPer ? `${signed(d.respect)} ${d.respectPer}` : signed(d.respect) } : {}),
       ...(d.renown !== undefined ? { renown: d.renown } : {})
     }))
-    return rows.length > 0 ? [{ id: g.id, title: g.title, rows }] : []
-  })
+  }))
 }
 
-/** His path's perks (Patch 2's rank perks, `RULES.dominion.rankPerks`): what every rank adds, then the named ranks. */
-function perksOf(rival: RivalId): GuideLine[] {
+/**
+ * His path's perks (Patch 2's rank perks, `RULES.dominion.rankPerks`): what `ranks` of it add together (every rank's
+ * perk grows with each), and the perks a named rank adds, at that rank.
+ */
+function pathPerks(rival: RivalId): { every(ranks: number): string; named: { at: number; text: string }[] } {
   const rp = RULES.dominion.rankPerks
   const sg = RULES.sieges
   switch (rival) {
     case 'orc':
-      return [
-        { term: 'Every rank', text: `Your rally floor +${pct(rp.orc.rallyFloor)}, and Weary ${pct(rp.orc.wearyEase)} lighter.` },
-        { term: `Rank ${numeral(rp.orc.grandWearyRank)}`, text: `A Grand Battle’s Weary lasts ${rp.orc.grandWearyDays} day less.` },
-        { term: `Rank ${numeral(rp.orc.ironRanksRank)}`, text: 'No company is made Weary by a repulsed assault.' }
-      ]
+      return {
+        every: (n) => `Your rally floor +${pct(rp.orc.rallyFloor * n)}, and Weary ${pct(rp.orc.wearyEase * n)} lighter.`,
+        named: [
+          { at: rp.orc.grandWearyRank, text: `A Grand Battle’s Weary lasts ${rp.orc.grandWearyDays} day less.` },
+          { at: rp.orc.ironRanksRank, text: 'No company is made Weary by a repulsed assault.' }
+        ]
+      }
     case 'goblin':
-      return [
-        { term: 'Every rank', text: `Trust +${factor(rp.goblin.trust)}, and bribes and trades ${pct(rp.goblin.prices)} cheaper.` },
-        { term: `Rank ${numeral(rp.goblin.holdRank)}`, text: `Your holds against his bids count ×${factor(rp.goblin.holdMult)}.` },
-        { term: `Rank ${numeral(rp.goblin.slotRank)}`, text: `${rp.goblin.slots === 1 ? 'One more courtship' : `${rp.goblin.slots} more courtships`} at a time.` }
-      ]
+      return {
+        every: (n) => `Trust +${factor(rp.goblin.trust * n)}, and bribes and trades ${pct(rp.goblin.prices * n)} cheaper.`,
+        named: [
+          { at: rp.goblin.holdRank, text: `Your holds against his bids count ×${factor(rp.goblin.holdMult)}.` },
+          { at: rp.goblin.slotRank, text: `${rp.goblin.slots === 1 ? 'One more courtship' : `${rp.goblin.slots} more courtships`} at a time.` }
+        ]
+      }
     case 'dwarf':
-      return [
-        { term: 'Every rank', text: `Each repulse wears ${pct(rp.dwarf.repulseWear)} more off a garrison, walls count ${pct(rp.dwarf.fortificationCut)} less against your assault, and every defense gains ${rp.dwarf.walls} wall.` },
-        { term: `Rank ${numeral(rp.dwarf.slowDecayRank)}`, text: `Your siege wear fades ${rp.dwarf.slowDecayMult === 1 / 2 ? 'half as fast' : `×${factor(rp.dwarf.slowDecayMult)} as fast`}.` },
-        { term: `Rank ${numeral(rp.dwarf.strongholdRank)}`, text: `A stronghold’s garrison counts ×${factor(rp.dwarf.strongholdMult)} instead of ×${factor(sg.stronghold.garrisonMult)}.` }
-      ]
+      return {
+        every: (n) => {
+          const walls = rp.dwarf.walls * n
+          return `Each repulse wears ${pct(rp.dwarf.repulseWear * n)} more off a garrison, walls count ${pct(rp.dwarf.fortificationCut * n)} less against your assault, and every defense gains ${walls} ${walls === 1 ? 'wall' : 'walls'}.`
+        },
+        named: [
+          { at: rp.dwarf.slowDecayRank, text: `Your siege wear fades ${rp.dwarf.slowDecayMult === 1 / 2 ? 'half as fast' : `×${factor(rp.dwarf.slowDecayMult)} as fast`}.` },
+          { at: rp.dwarf.strongholdRank, text: `A stronghold’s garrison counts ×${factor(rp.dwarf.strongholdMult)} instead of ×${factor(sg.stronghold.garrisonMult)}.` }
+        ]
+      }
     case 'archmage':
-      return [
-        { term: `Rank ${numeral(rp.archmage.foresightRank)}`, text: 'Tomorrow’s surge is foretold.' },
-        { term: 'Every rank', text: `Mythics and surge strikes ${pct(rp.archmage.mythicCut)} weaker.` },
-        { term: `Rank ${numeral(rp.archmage.curseBlockRank)}`, text: 'No curse lands on your companies.' },
-        { term: `Rank ${numeral(rp.archmage.bendRank)}`, text: 'Once a week, bend a foretold swell into an ebb (on its hex’s panel).' }
-      ]
+      return {
+        every: (n) => `Mythics and surge strikes ${pct(rp.archmage.mythicCut * n)} weaker.`,
+        named: [
+          { at: rp.archmage.foresightRank, text: 'Tomorrow’s surge is foretold.' },
+          { at: rp.archmage.curseBlockRank, text: 'No curse lands on your companies.' },
+          { at: rp.archmage.bendRank, text: 'Once a week, bend a foretold swell into an ebb (on its hex’s panel).' }
+        ]
+      }
   }
+}
+
+/** His path's perks for his guide: what every rank adds, then what the named ranks add, in rank order. */
+function perksOf(rival: RivalId): GuideLine[] {
+  const p = pathPerks(rival)
+  return [{ term: 'Every rank', text: p.every(1) }, ...p.named.map((x) => ({ term: `Rank ${numeral(x.at)}`, text: x.text }))]
+}
+
+/**
+ * Patch 10 stage 4 (L2): what `rival`'s path gives at `rank`, in plain words, for the card the rank raises: the perk a
+ * named rank adds, then what all its ranks add together, then where the next rank lies. Public figures only.
+ */
+export function rankPerkLines(rival: RivalId, rank: number): string[] {
+  const p = pathPerks(rival)
+  const next = rankThresholds()[rank]
+  return [
+    ...p.named.filter((x) => x.at === rank).map((x) => `New at rank ${numeral(rank)}: ${x.text}`),
+    `${rank === 1 ? 'Its first rank' : 'Its ranks together'}: ${p.every(rank)}`,
+    ...(next !== undefined ? [`Rank ${numeral(rank + 1)} at Dominion ${amount(next)} on his path.`] : ['The top rank of his path.'])
+  ]
 }
 
 /** The ways he can be resolved (Ch 13, D-33): conquest, his own terms, an Accord, defection. No terms threshold is told. */
@@ -461,7 +510,7 @@ export function rivalGuide(state: CampaignState, rival: RivalId): RivalGuide {
     measures: measuresOf(rival),
     march: marchOf(rival),
     deeds: deedGroups(rival),
-    deedsNote: 'Rows add up: a Gate won in a Grand Battle counts as a Grand Battle won and as his hex taken. On a seam, where two marches meet, a hex’s deeds count half on each path. Respect from his own values and the habit he prizes posts at the week’s close; the rest when the deed is done.',
+    deedsNote: 'Rows add up: a Gate won in a Grand Battle counts as a Grand Battle won and as his hex taken. His craft counts on his path wherever you do it; on a seam, where two marches meet, a hex’s other deeds count half on each path. Respect from his own values and the habit he prizes posts at the week’s close; the rest when the deed is done.',
     ranks: thresholds.map((at, i) => ({ rank: i + 1, at, reached: rank > i })),
     perks: perksOf(rival),
     standing: standingRules(rival),

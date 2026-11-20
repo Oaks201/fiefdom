@@ -217,6 +217,13 @@
             "No? Ugrak will find someone braver to fight."
           ]
         }
+      },
+      "ranks": {
+        "1": "So. You took a blow and stayed standing. Every warrior of the Steppe starts there.",
+        "2": "Your warriors bleed and keep their feet. Ugrak sees it.",
+        "3": "Your warriors rise from a Grand Battle quicker than mine. Ugrak does not like it. Ugrak respects it.",
+        "4": "The Steppe knows your banners now. They do not run. Neither do you.",
+        "5": "Iron ranks. You fight like the Steppe raised you. Ugrak has nothing left to teach you, lordling."
       }
     },
     "skivvet": {
@@ -435,6 +442,13 @@
             "Pity. The offer was a bargain."
           ]
         }
+      },
+      "ranks": {
+        "1": "You've started haggling. I can tell. My margins can tell.",
+        "2": "Cheaper bribes, sharper deals. Who taught you that? Don't answer. I know.",
+        "3": "You hang on to what's yours like a goblin to a copper. I'm almost proud.",
+        "4": "The Warren's brokers talk about you now. Mostly they complain. Best review there is.",
+        "5": "More courtships than any lord should manage. That's not a customer, friend. That's a competitor."
       }
     },
     "hrodgar": {
@@ -652,6 +666,13 @@
             "Then the stone waits. It is patient. So am I."
           ]
         }
+      },
+      "ranks": {
+        "1": "You have begun to learn stone. The first lesson is the slowest. Keep at it.",
+        "2": "Your siege lines run straighter than they did. It is in the book. In pencil, for now.",
+        "3": "Your sieges keep their ground. That is a dwarf's patience, outsider. Where did you find it?",
+        "4": "The masons of Dun Kaldor looked at your walls and said nothing. From them, that is praise.",
+        "5": "Strongholds fall to you now. You build and break like a clan of the deep halls. It is carved: you know stone."
       }
     },
     "emrys": {
@@ -871,6 +892,13 @@
             "Pity. I did so want the data."
           ]
         }
+      },
+      "ranks": {
+        "1": "You've started reading the surges. Badly. But reading.",
+        "2": "My mythics hit you softer than they used to. I shall be looking into that. Personally.",
+        "3": "My curses slide off you now. How rude. I spent a century on those.",
+        "4": "You read the currents almost as well as I do. Almost. Don't let it go to your head.",
+        "5": "You bend my surges now. You. I would be furious, if I weren't so interested."
       }
     }
   }

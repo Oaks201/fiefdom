@@ -253,6 +253,14 @@ function siegeView(state: CampaignState, date: ISODate, valor: number, estimate:
 }
 
 /**
+ * Patch 10 stage 4 (L1): the standing siege as the week ahead reads it: pressed by the standing siege's own orders at
+ * `valor` (a full day's Valor unless told), whatever today's orders are. Undefined while no siege stands.
+ */
+export function standingSiegeView(state: CampaignState, date: ISODate = openDayOf(state), valor = 1, effects: Effects = realmEffects(state)): SiegeView | undefined {
+  return siegeView(state, date, valor, { defenses: [], assaults: [] }, effects)
+}
+
+/**
  * Patch 10 stage 2 (K6): the banners `sent` would carry against `target`, as the close will read them: the companies
  * the assault fields and each one's strike against that garrison. With no target yet, each company counts by its power.
  */

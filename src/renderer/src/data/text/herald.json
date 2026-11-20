@@ -335,6 +335,10 @@
     "template": "{rival}’s path reached rank {rank}.",
     "final": null
   },
+  "herald.pathRank.title": {
+    "template": "{rival}’s path: rank {rank}",
+    "final": null
+  },
   "herald.siege.lapsed": {
     "template": "The siege of {hex} is lifted: it can no longer be assaulted.",
     "final": null

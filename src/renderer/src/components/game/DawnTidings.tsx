@@ -12,6 +12,8 @@ import { Modal } from '../Modal'
 import { calorieCatchUpLine, stepCatchUpLine } from '../campaign/catchUpLines'
 import { WeighInBanner } from '../campaign/ChronicleCampaign'
 import { WeighInTidings } from '../campaign/WeighInCard'
+import { weekBegins } from '../../lib/game/view/weekAhead'
+import { WeekAhead } from '../realm/WeekAhead'
 import { GameArt } from './GameArt'
 import { Herald } from './Herald'
 
@@ -23,7 +25,8 @@ const ART_WIDTH = 960
  * open on it, the Herald's tidings and today's catch-up figures (and the morning after a weigh-in
  * settled its week, the Healer's report and what it paid, D-69), after any Homecoming or big-moment
  * card and never over another dialog (C-78). The words are the Herald's catalog lines and interface
- * labels (C-80); the art band is `moment.dawnTidings`, with the horn until its picture exists (C-81).
+ * labels (C-80); the art band is `moment.dawnTidings`, with the horn until its picture exists (C-81). Patch 10
+ * stage 4 (L1): on the week's first day, the week ahead above the Herald, where a long dawn can't bury it.
  */
 export function DawnTidings(): React.JSX.Element | null {
   const campaign = useCampaignState()
@@ -82,6 +85,7 @@ export function DawnTidings(): React.JSX.Element | null {
             ))}
           </ul>
         )}
+        {weekBegins(campaign, openDay) && <WeekAhead campaign={campaign} today={openDay} onGo={close} />}
         <Herald today={openDay} bare />
         <div className="modal__actions">
           <button type="button" className="btn btn--ghost" onClick={() => to('realm')}>

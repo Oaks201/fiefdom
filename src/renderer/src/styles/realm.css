@@ -19,6 +19,88 @@
   margin-bottom: 0;
 }
 
+/* Patch 10 stage 4 (L1): the week ahead, up to three aims with how each stands. */
+.week-ahead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.week-ahead__title {
+  margin: 0;
+  font: 700 15px var(--font-caps);
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.week-ahead__aims {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week-aim__go {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-2);
+  background: rgba(255, 249, 232, 0.45);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+button.week-aim__go {
+  cursor: pointer;
+}
+
+button.week-aim__go:hover,
+button.week-aim__go:focus-visible {
+  border-color: var(--gold-deep);
+  background: rgba(255, 249, 232, 0.7);
+}
+
+.week-aim__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.week-aim__text {
+  font-size: 14px;
+}
+
+.week-aim__bar {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--gold) calc(var(--fill, 0) * 100%), var(--rule-soft) 0);
+}
+
+.week-aim__progress {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.week-aim.is-done .week-aim__go {
+  border-color: var(--forest);
+}
+
+.week-aim.is-done .week-aim__bar {
+  background: var(--forest);
+}
+
+/* In the Dawn tidings it sits above the Herald. */
+.dawn .week-ahead {
+  margin: 4px 0 12px;
+}
+
 .realm-board {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr);

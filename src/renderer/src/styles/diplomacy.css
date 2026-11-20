@@ -415,6 +415,28 @@
   transform: translate(-50%, -50%);
 }
 
+/* Patch 10 stage 4 (X8): what is read now and then, behind a tap. */
+.court__more {
+  margin-top: 6px;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 6px;
+}
+
+.court__more > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.court__more > summary:hover,
+.court__more[open] > summary {
+  color: var(--ink-2);
+}
+
+.court__more[open] > summary {
+  margin-bottom: 6px;
+}
+
 /* What Peace, Tension or War means for this court, and what would change it. */
 .court__why {
   margin: 2px 0 0;
@@ -857,24 +879,17 @@
   vertical-align: top;
 }
 
-.rival-guide__group--both {
-  --group: var(--forest);
-}
-
-.rival-guide__group--costly {
-  --group: #9c6430;
-}
-
-.rival-guide__group--renown {
+/* Patch 10 stage 4 (X7): his craft, his march, his Respect alone. */
+.rival-guide__group--craft {
   --group: var(--gold-deep);
+}
+
+.rival-guide__group--march {
+  --group: var(--crimson);
 }
 
 .rival-guide__group--respect {
   --group: var(--royal);
-}
-
-.rival-guide__group--resented {
-  --group: var(--crimson);
 }
 
 /* His path's ranks I to V, the reached ones filled. */

@@ -14,6 +14,14 @@ const ARMY: Record<string, string> = { weaker: 'Weaker than yours', matched: 'Ma
 const FRONTS: Record<string, string> = { north: 'North', south: 'South', west: 'West', east: 'East' }
 const signedRespect = (v: number): string => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
+/** X8: what the tap opens, named by what it holds: "More: his standing, wealth, wars and 2 rumors". */
+function moreLabel(panel: RivalPanel): string {
+  const parts = [...(panel.status === 'active' ? ['standing'] : []), 'wealth', ...(panel.fronts.length > 0 ? ['wars'] : [])]
+  const rumors = panel.rumors.length === 0 ? [] : [panel.rumors.length === 1 ? 'a rumor' : `${panel.rumors.length} rumors`]
+  const all = [...parts, ...rumors]
+  return `More: his ${all.length < 2 ? all.join('') : `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}`}`
+}
+
 /**
  * Respect toward the player on a −100 to +100 meter (D-39), with his marks on both sides. `full` (his
  * guide) lists every mark and what it brings; the court shows the next mark each way and links to the
@@ -62,6 +70,10 @@ export function RespectMeter({ panel, full = false, onMore }: { panel: RivalPane
  * army as bands (numbers only when revealed), its war tracks drawn as tugs of war (the Orc's against you,
  * and each Rim front) with what they mean, and the rumors. The portrait and the Audience button open an
  * audience with it, where its deals are. Patch 8 (R1): `request` says a request of his waits, or a promise to him stands.
+ *
+ * Patch 10 stage 4 (X8): what the player acts on shows first: his standing, what waits on him, his request, the
+ * Audience, his Respect with its next marks, the Orc's war on you and his march today. What is read now and then (what
+ * his standing means, his treasury and army, his wars with the other rivals and the rumors) waits behind a tap.
  */
 export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience, onGuide }: { panel: RivalPanel; request?: string; onAudience(): void; onGuide(): void }): React.JSX.Element {
   const resolved = panel.status !== 'active'
@@ -95,11 +107,6 @@ export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience,
             {panel.waits} <HelpLink section="winning" label="The Dominion marks" />
           </p>
         )}
-        {!resolved && panel.standingNote && (
-          <p className="court__why">
-            {panel.standingNote} <HelpLink section="diplomacy" label="Peace, Tension and War" />
-          </p>
-        )}
         {request && <p className="court__request">{request}</p>}
         <p className="court__audience">
           <button type="button" className="btn btn--small" onClick={onAudience}>
@@ -110,26 +117,6 @@ export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience,
           </button>
         </p>
         <RespectMeter panel={panel} onMore={onGuide} />
-        <dl className="court__strength">
-          <div>
-            <dt>
-              <GiCoins aria-hidden="true" /> Treasury
-            </dt>
-            <dd>
-              {TREASURY[panel.treasuryBand]}
-              {panel.treasury !== undefined && <span className="court__exact"> ({amount(Math.floor(panel.treasury))})</span>}
-            </dd>
-          </div>
-          <div>
-            <dt>
-              <GiCrossedSwords aria-hidden="true" /> Army
-            </dt>
-            <dd>
-              {ARMY[panel.armyBand]}
-              {panel.army !== undefined && <span className="court__exact"> ({amount(panel.army)})</span>}
-            </dd>
-          </div>
-        </dl>
         {panel.orcWar && (
           <section className="war war--you" aria-label="His war track against you">
             <header className="war__head" title={panel.orcWar.how}>
@@ -143,26 +130,6 @@ export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience,
             <p className="war__now">{panel.orcWar.field}</p>
           </section>
         )}
-        {panel.fronts.length > 0 && (
-          <section className="court__wars" aria-label="His wars with the other rivals">
-            <h4 className="court__wars-title">
-              His wars with the other rivals <HelpLink section="diplomacy" label="How the rivals’ own wars work" />
-            </h4>
-            {panel.fronts.map((f) => (
-              <div key={f.front} className={`war war--${f.state}`}>
-                <header className="war__head">
-                  <strong>{FRONTS[f.front]} front</strong>
-                  <span className={`disposition disposition--${f.state}`} title={f.how}>
-                    {DISPOSITIONS[f.state]}
-                  </span>
-                  <span className="war__leader">{f.tug.leader}</span>
-                </header>
-                <WarTrackBar tug={f.tug} />
-                {f.end && <p className="war__now">{f.end}</p>}
-              </div>
-            ))}
-          </section>
-        )}
         {panel.march.length > 0 && (
           <ul className="court__march">
             {panel.march.map((m) => (
@@ -173,15 +140,63 @@ export const RivalCourt = memo(function RivalCourt({ panel, request, onAudience,
             ))}
           </ul>
         )}
-        {panel.rumors.length > 0 && (
-          <ul className="court__rumors">
-            {panel.rumors.map((r) => (
-              <li key={r.textId} data-text-id={r.textId}>
-                <GiSpeaker aria-hidden="true" /> {r.text}
-              </li>
-            ))}
-          </ul>
-        )}
+        <details className="court__more">
+          <summary>{moreLabel(panel)}</summary>
+          {!resolved && panel.standingNote && (
+            <p className="court__why">
+              {panel.standingNote} <HelpLink section="diplomacy" label="Peace, Tension and War" />
+            </p>
+          )}
+          <dl className="court__strength">
+            <div>
+              <dt>
+                <GiCoins aria-hidden="true" /> Treasury
+              </dt>
+              <dd>
+                {TREASURY[panel.treasuryBand]}
+                {panel.treasury !== undefined && <span className="court__exact"> ({amount(Math.floor(panel.treasury))})</span>}
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <GiCrossedSwords aria-hidden="true" /> Army
+              </dt>
+              <dd>
+                {ARMY[panel.armyBand]}
+                {panel.army !== undefined && <span className="court__exact"> ({amount(panel.army)})</span>}
+              </dd>
+            </div>
+          </dl>
+          {panel.fronts.length > 0 && (
+            <section className="court__wars" aria-label="His wars with the other rivals">
+              <h4 className="court__wars-title">
+                His wars with the other rivals <HelpLink section="diplomacy" label="How the rivals’ own wars work" />
+              </h4>
+              {panel.fronts.map((f) => (
+                <div key={f.front} className={`war war--${f.state}`}>
+                  <header className="war__head">
+                    <strong>{FRONTS[f.front]} front</strong>
+                    <span className={`disposition disposition--${f.state}`} title={f.how}>
+                      {DISPOSITIONS[f.state]}
+                    </span>
+                    <span className="war__leader">{f.tug.leader}</span>
+                  </header>
+                  <WarTrackBar tug={f.tug} />
+                  {f.end && <p className="war__now">{f.end}</p>}
+                </div>
+              ))}
+            </section>
+          )}
+          {panel.rumors.length > 0 && (
+            <ul className="court__rumors">
+              {panel.rumors.map((r) => (
+                <li key={r.textId} data-text-id={r.textId}>
+                  <GiSpeaker aria-hidden="true" /> {r.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
       </div>
     </article>
   )

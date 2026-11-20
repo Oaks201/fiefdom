@@ -56,6 +56,20 @@ export function commissionAsks(rival: RivalId, need: number): string {
   }
 }
 
+/** Patch 10 stage 4 (L1): what `rival`'s commission asks, in brief, for the week ahead: "3 days in his field". */
+export function commissionBrief(rival: RivalId, need: number): string {
+  switch (rival) {
+    case 'orc':
+      return `${need} days in his field`
+    case 'dwarf':
+      return `${need} wall levels raised`
+    case 'goblin':
+      return 'a hex won by coin'
+    case 'archmage':
+      return 'a deed of the unseen'
+  }
+}
+
 function signed(v: number): string {
   return v > 0 ? `+${v}` : `−${-v}`
 }

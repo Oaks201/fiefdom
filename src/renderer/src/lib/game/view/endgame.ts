@@ -23,6 +23,7 @@ import { dealsView, type DealLine } from './diplomacy'
 import { milestoneCard } from './armory'
 import { amount } from './refusals'
 import { requestsOf } from '../requests'
+import { rankPerkLines } from './rivalGuide'
 import { giftWords, realmConsistencyNow, rivalName, rivalNames } from './shell'
 
 const PERCENT = 100 // rules-ok: shares shown as percentages
@@ -240,12 +241,14 @@ export interface MomentSpec {
   action?: { label: string; battleId: string }
   /** Rules 3.14.0 (D-77, B2): a small picture beside the words: the Heart Oak at the stage a Milestone grows it to. */
   inset?: { slot: string; label: string }
+  /** Patch 10 stage 4 (L2): a path's rank: the ruler of that path, drawn as his portrait, and the rank, for his word on it. */
+  ruler?: { rival: RivalId; rank: number }
 }
 
 /**
  * The cards the events of a settlement (or a player action) raise, in order: each Milestone broken
- * with only its own unlocks; each Grand Battle the Marshal fought (with its replay) and each
- * decisive one; a coalition formed; an Ultimatum; and last, victory or the Fall with the record.
+ * with only its own unlocks; each path rank reached (L2); each Grand Battle the Marshal fought (with its
+ * replay) and each decisive one; a coalition formed; an Ultimatum; and last, victory or the Fall with the record.
  */
 export function momentsFor(state: CampaignState, events: readonly GameEvent[]): MomentSpec[] {
   const out: MomentSpec[] = []
@@ -258,6 +261,11 @@ export function momentsFor(state: CampaignState, events: readonly GameEvent[]): 
         // Rules 3.14.0 (D-77, B2): the Heart Oak grows a stage with each Milestone.
         const oak = `The Heart Oak grows to stage ${e.index} of ${RULES.milestones.count}.`
         out.push({ id: e.id, slot: card.slot, titleId: card.titleId, bodyId: card.bodyId, facts: card.facts, sound: 'milestone', lines: [...card.unlocks, oak], inset: { slot: `realm.heartOak.${e.index}`, label: 'The Heart Oak' } })
+        break
+      }
+      case 'pathRank': {
+        // Patch 10 stage 4 (L2, D-53): a rank reached is a moment: the rank, what the path gives now, and the ruler's word.
+        out.push({ id: e.id, slot: `rival.${e.path}.calm`, titleId: 'herald.pathRank.title', facts: { rival: rivalName(e.path), rank: numeral(e.rank) }, sound: 'milestone', lines: rankPerkLines(e.path, e.rank), ruler: { rival: e.path, rank: e.rank } })
         break
       }
       case 'grandBattle': {

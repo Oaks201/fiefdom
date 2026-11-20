@@ -45,13 +45,17 @@ function withPath(state: CampaignState, rival: RivalId, known: number): Campaign
   return { ...state, paths, hexes: state.hexes.map((h) => (h.id === hex.id ? { ...h, owner: 'player' } : h)) }
 }
 
-test('Rival guide: every rival has each part, the deeds in at least three groups, and no text reads undefined or NaN', () => {
+test('Rival guide: every rival has each part, the deeds in three groups (his craft first, X7), and no text reads undefined or NaN', () => {
   const state = realm(7)
   for (const r of RIVAL_IDS) {
     const g = rivalGuide(state, r)
     assert.equal(g.measures.length, 3, r)
     assert.ok(g.march.length >= 4, r)
-    assert.ok(g.deeds.length >= 3, r)
+    // Patch 10 stage 4 (X7): his craft (anywhere), his march, his Respect alone; fewer rows than the five groups' 26 to 30.
+    assert.deepEqual(g.deeds.map((x) => x.id), ['craft', 'march', 'respect'], r)
+    const rows = g.deeds.reduce((n, x) => n + x.rows.length, 0)
+    assert.ok(rows <= 23, `${r}: ${rows} rows`)
+    assert.ok(g.deeds.every((x) => x.rows.length > 0), r)
     assert.equal(g.ranks.length, RULES.dominion.rankShares.length, r)
     assert.ok(g.perks.length >= 3, r)
     assert.equal(g.ends.length, 4, r)
@@ -65,10 +69,11 @@ test('Respect and Renown pull apart: taking his land adds Renown and costs Respe
   const state = realm(7)
   for (const r of RIVAL_IDS) {
     const g = rivalGuide(state, r)
-    const taken = row(g, 'A hex he holds, taken by assault or Grand Battle')
+    const taken = row(g, 'A hex of his march taken by assault or Grand Battle')
     const hexConquered = (RULES.respect.byRival[r] as Readonly<Record<string, number>>).hexConquered ?? RULES.respect.change.hexConquered
-    assert.deepEqual(taken, { group: 'costly', deed: 'A hex he holds, taken by assault or Grand Battle', respect: signed(hexConquered), renown: 'its depth, +2 a wall level' }, r)
-    assert.equal(row(g, /^His raid/)?.group, 'both', r)
+    // X7: his hex and a wild hex of his march share a row.
+    assert.deepEqual(taken, { group: 'march', deed: 'A hex of his march taken by assault or Grand Battle', respect: `${signed(hexConquered)} if he held it`, renown: 'its depth, +2 a wall level' }, r)
+    assert.equal(row(g, /^His raid/)?.group, 'march', r)
     assert.equal(row(g, /^His raid/)?.respect, signed(respectChange(r, 'raidDefeated', RULES.respect.change.raidDefeated)), `${r}: his own weight for an attack of his beaten (D-80, K3)`)
     assert.equal(row(g, 'Resolving him, by any way')?.renown, signed(RULES.dominion.deeds.resolved), r)
     assert.match(g.measures[2].text, new RegExp(`costs Respect \\(${signed(hexConquered)}\\)`), r)
@@ -81,28 +86,37 @@ test('Each rival’s own deeds (D-34, P5-07) carry his own numbers from RULES', 
   const own = RULES.respect.byRival
   const orc = rivalGuide(state, 'orc')
   const k = RULES.dominion.crafts
-  assert.deepEqual(row(orc, 'A Grand Battle against him lost'), { group: 'resented', deed: 'A Grand Battle against him lost', respect: signed(own.orc.grandBattleLost) })
+  assert.deepEqual(row(orc, 'A Grand Battle against him lost'), { group: 'march', deed: 'A Grand Battle against him lost', respect: signed(own.orc.grandBattleLost) })
+  assert.equal(row(orc, /^A day in his field/)?.group, 'craft', 'X7: his craft comes first')
+  assert.equal(row(orc, 'A wall level you raise on a hex of his march')?.group, 'respect', 'R4: walls in his march cost Respect alone')
   assert.equal(row(orc, /^A battle lost to him/)?.renown, undefined, 'D-80 (X2): a loss to the Orc has no deed of its own; the day counts in his field')
   assert.equal(row(orc, /^A day in his field/)?.renown, `+${k.fieldDay} on a streak’s first day, +${k.fieldDay} more each day after, up to +${k.fieldDayCap} a day`)
   assert.equal(row(orc, new RegExp(`^Every ${k.fieldWeekDays}th day`))?.respect, signed(own.orc.fieldWeek))
   assert.equal(row(orc, 'A Truce with him'), undefined, 'the Orc gives nothing for a Truce')
   const goblin = rivalGuide(state, 'goblin')
-  assert.deepEqual(row(goblin, 'A bribe paid for a hex of his march'), { group: 'both', deed: 'A bribe paid for a hex of his march', respect: signed(own.goblin.bribePaid), renown: `${d.hexTakenPerDepth + d.dealTakenPerDepth} × its depth` })
-  assert.deepEqual(row(goblin, 'His bid for your village held off'), { group: 'costly', deed: 'His bid for your village held off', respect: signed(own.goblin.bidHeld), renown: `+${d.bribeBeaten}` }, 'X3 (D-82): holding his bid costs his own weight')
+  assert.deepEqual(row(goblin, 'A bribe paid for a hex of his march'), {
+    group: 'march',
+    deed: 'A bribe paid for a hex of his march',
+    respect: signed(own.goblin.bribePaid),
+    renown: `${d.hexTakenPerDepth + d.dealTakenPerDepth} × its depth, +${d.bargain} more below the garrison it bought`
+  })
+  assert.deepEqual(row(goblin, 'His bid for your village held off'), { group: 'march', deed: 'His bid for your village held off', respect: signed(own.goblin.bidHeld), renown: `+${d.bribeBeaten}` }, 'X3 (D-82): holding his bid costs his own weight')
   assert.equal(row(goblin, /in any other march$/)?.renown, `${d.dealTakenPerDepth} × its depth`)
-  assert.equal(row(goblin, 'His buy-off taken')?.respect, signed(own.goblin.buyOffAccepted))
+  assert.equal(row(goblin, 'His buy-off')?.respect, `${signed(own.goblin.buyOffAccepted)} taken, ${signed(own.goblin.buyOffRefused)} refused or left to lapse`)
+  const commission = row(goblin, /^His commission taken up/)
+  assert.deepEqual({ group: commission?.group, respect: commission?.respect, renown: commission?.renown }, { group: 'craft', respect: `${signed(RULES.requests.commission.met)} met, ${signed(RULES.requests.commission.missed)} unmet`, renown: `${signed(RULES.requests.commission.renown)} met` })
   const dwarf = rivalGuide(state, 'dwarf')
   assert.equal(row(dwarf, 'His raid or conquest attempt beaten')?.renown, `+${d.battleWon}`, 'D-80 (X5): his conquest beaten is an ordinary battle won')
   assert.equal(row(dwarf, /^A wall level you raise/)?.renown, `+${k.wallRaisedPerLevelBand} × the level × the hex’s band`)
   assert.equal(row(dwarf, /^A defense won that your walls turned/)?.renown, `+${k.wallsHeld} a wall level more`)
-  assert.equal(row(dwarf, 'A pact with him kept to its end')?.respect, signed(RULES.trade.pact.keptRespect), 'Patch 8 (D2): every ruler pays for a pact kept')
-  assert.equal(row(dwarf, 'An oath of stone with him kept to its end')?.respect, signed(RULES.trade.oath.keptRespect))
+  assert.match(row(dwarf, /^A pact with him kept to its end/)?.respect ?? '', new RegExp(`^\\${signed(RULES.trade.pact.keptRespect)} a pact kept, `), 'Patch 8 (D2): every ruler pays for a pact kept')
+  assert.equal(row(dwarf, /^An oath of stone with him/)?.respect, `${signed(RULES.trade.oath.keptRespect)} kept to its end, ${signed(RULES.trade.oath.brokenRespect)} broken`)
   assert.equal(row(dwarf, /wall levels broken/)?.respect, `${signed(own.dwarf.wallBroken)} a level`)
   const archmage = rivalGuide(state, 'archmage')
-  assert.deepEqual(row(archmage, 'His Ritual endured'), { group: 'both', deed: 'His Ritual endured', respect: signed(own.archmage.ritualEndured), renown: `+${d.ritualEndured}` })
+  assert.deepEqual(row(archmage, 'His Ritual endured'), { group: 'march', deed: 'His Ritual endured', respect: signed(own.archmage.ritualEndured), renown: `+${d.ritualEndured}` })
   assert.equal(row(archmage, 'A Mythic Hunt won')?.renown, `+${k.mythicHunted} more`)
   assert.equal(row(archmage, /^A mythic beaten/)?.renown, `+${k.mythicBeaten} more`)
-  assert.equal(row(archmage, 'A hex bought from him')?.group, 'both', 'only the Archmage sells hexes')
+  assert.equal(row(archmage, 'A hex bought from him')?.group, 'march', 'only the Archmage sells hexes')
   for (const r of ['orc', 'goblin', 'dwarf'] as RivalId[]) assert.equal(row(rivalGuide(state, r), 'A hex bought from him'), undefined, r)
 })
 

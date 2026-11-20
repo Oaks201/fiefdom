@@ -249,6 +249,11 @@ export function HowToPlay(): React.JSX.Element | null {
                 <li>the rivals take their turn (they spend, build, court and plan attacks), and each one’s stance toward you is read;</li>
                 <li>the Crown’s Grace is checked.</li>
               </ul>
+              <p>
+                <b>The week ahead</b> (above the Realm’s map, and in the week’s first Dawn tidings): up to three aims you can move this week, each with how it stands. A
+                ruler’s commission and Remedy’s request come first, then the standing siege, the path rank nearest, and the next building tier or Crossing stage that wants only
+                reputation.
+              </p>
             </>
           )
         },
@@ -535,7 +540,7 @@ export function HowToPlay(): React.JSX.Element | null {
                 </li>
                 <li>
                   <b>Path ranks</b> I to V come from each path’s own Dominion: {listed(ranks.map((t, i) => `${numeral(i + 1)} at ${formatNumber(t)}`))}. A rank, once reached, never
-                  falls, even if you lose the land.
+                  falls, even if you lose the land. Each one reached gets its own card at the day’s close: what the path gives you now, and its ruler’s word on it.
                 </li>
                 <li>
                   <b>Focus or spread:</b> walk one path deep for its rank V capstone, or several halfway for their rank III perks. Ignored marches harden while you’re away (see The
@@ -834,6 +839,10 @@ export function HowToPlay(): React.JSX.Element | null {
                 <b>Its marks</b> open more as it rises and bring worse as it falls, each ruler at his own numbers. Only the Accord’s are shared: talks at{' '}
                 {RULES.respect.thresholds.accordTalks}, an easier Accord at {RULES.respect.thresholds.accordEasier}, signed at {RULES.contracts.accord.signedAtRespect}. His court
                 shows the next mark each way; his guide lists them all.
+              </li>
+              <li>
+                <b>His court</b> shows first what you act on: his standing, his request, his Respect and his march today. A tap under it opens the rest: what his standing means,
+                his treasury and army, his wars with the other rivals and the rumors from his court.
               </li>
               <li>
                 <b>Peace, Tension or War</b> (beside each ruler’s name) follows his Respect, read at each day’s close. <b>War</b> at his War line or below, or while he stands in a

@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand'
 import type { TextFacts } from '../lib/game/text'
+import type { RivalId } from '../lib/game/types'
 import type { PortraitChoice } from '../lib/game/view/playerPortrait'
 
 export interface Moment {
@@ -25,6 +26,8 @@ export interface Moment {
   portrait?: PortraitChoice
   /** Rules 3.14.0 (D-77, B2): a small picture beside the words: the Heart Oak at the stage a Milestone grows it to. */
   inset?: { slot: string; label: string }
+  /** Patch 10 stage 4 (L2): a path's rank: its ruler's portrait in place of the slot's wide art, and his word on the rank. */
+  ruler?: { rival: RivalId; rank: number }
 }
 
 interface MomentStore {
